@@ -1,0 +1,38 @@
+# Smoke test em três sistemas.
+#
+# A matriz existe por um motivo específico: até aqui o macOS era uma lacuna DECLARADA
+# na documentação — mesmo caminho de código do Linux, que está verificado, mas "quase
+# certamente funciona" não é "funciona". Runner de macOS é gratuito em repositório
+# público, então a lacuna fecha sozinha a cada push em vez de esperar alguém relatar.
+#
+# O que está sendo exercitado de fato é o comportamento de link por plataforma: o
+# Windows usa junction, e fora dele o Node ignora o tipo 'junction' e cria um symlink.
+# É o ponto onde as plataformas divergem, e é o que o teste cobre.
+#
+# Sem dependência, igual ao resto do projeto: checkout, node, `node teste.mjs`.
+
+name: teste
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    strategy:
+      # Um sistema falhando não cancela os outros — saber que quebrou SÓ no macOS
+      # é a informação inteira, e fail-fast a esconderia.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # O piso declarado no package.json (engines: >=18). Testar no piso é o
+          # que garante que a promessa do campo é verdadeira.
+          node-version: 18
+      - run: node teste.mjs

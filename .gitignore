@@ -1,0 +1,44 @@
+# dependências e build
+node_modules/
+dist/
+build/
+__pycache__/
+*.pyc
+
+# segredos e dados — NUNCA
+**/credentials/
+**/data/
+.env
+.env.*
+*.pem
+*.key
+
+# artefatos de ferramenta de orquestração
+.swarm/
+.claude-flow/
+.hive-mind/
+*.rvf
+*.rvf.lock
+ruvector.db
+.claude/settings.local.json
+
+# grafo de código: DERIVADO. Versionar artefato derivado é como ele fica velho
+# em silêncio e passa a mentir com a autoridade de quem foi commitado.
+graphify-out/
+
+# lixo — shell mal-formado, temporários, locks
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+*.swp
+~$*
+nul
+NUL
+Thumbs.db
+.DS_Store
+
+# tarball do npm pack
+*.tgz

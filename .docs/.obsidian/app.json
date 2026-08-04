@@ -1,0 +1,9 @@
+{
+  "alwaysUpdateLinks": true,
+  "newLinkFormat": "shortest",
+  "useMarkdownLinks": false,
+  "attachmentFolderPath": "90_Anexos",
+  "readableLineLength": true,
+  "defaultViewMode": "preview",
+  "showFrontmatter": true
+}

@@ -1,0 +1,43 @@
+{
+  "name": "marvin-kb",
+  "version": "1.0.1",
+  "description": "Scaffolds a project's knowledge base for working with AI agents — one source, thin adapters, memory versioned inside the repository.",
+  "type": "module",
+  "bin": {
+    "marvin": "marvin.mjs"
+  },
+  "files": [
+    "marvin.mjs",
+    "PROMPT.md",
+    "README.md",
+    "README.pt-BR.md",
+    "AGENTS.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node teste.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "agents",
+    "agents-md",
+    "claude-code",
+    "codex",
+    "copilot",
+    "cursor",
+    "knowledge-base",
+    "obsidian",
+    "scaffold"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Josuebmota/Marvin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Josuebmota/Marvin/issues"
+  },
+  "homepage": "https://github.com/Josuebmota/Marvin#readme"
+}
