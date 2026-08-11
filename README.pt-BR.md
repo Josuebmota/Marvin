@@ -182,6 +182,13 @@ Além de criar, ele aponta problemas que passam despercebidos:
 --clean-legacy    remove artefatos de orquestrador antigo
 --no-git          não roda git init nem gera .gitignore
 --graphify        gera o grafo de código para consulta estrutural (requer o graphify no PATH)
+                  indexa sub-repos ignorados separadamente, para um monorepo não
+                  acabar com um grafo sem nenhum código do produto dentro
+--graphify-label  nomeia as comunidades com a CLI `claude` do PATH. Fora do padrão:
+                  uma chamada por vez, então custa minutos e cota
+--graphify-rebuild  refaz um grafo que já existe (o padrão nunca sobrescreve)
+--graphify-git-hook  escreve .git/hooks/post-commit para o grafo se atualizar sozinho.
+                  Nunca sobrescreve um post-commit que já existe
 --help, -h        uso; sai sem escrever nada
 ```
 
@@ -276,6 +283,62 @@ Faça as perguntas estruturais:
 graphify query "o que chama o serviço de pagamento"
 ```
 
+### O que ele gera
+
+Uma flag roda o ciclo inteiro, e tudo é AST local — sem chave de API, sem custo:
+
+```
+graphify-out/
+├── graph.json        o grafo — é o que o `graphify query` lê
+├── graph.html        abre em qualquer browser, sem servidor
+├── GRAPH_REPORT.md   comunidades, hubs, frescor
+└── repos/            uma extração por sub-repo (só em monorepo)
+```
+
+**Monorepo é o motivo de isso ser mais de um comando.** Sub-repositórios costumam estar no
+`.gitignore` da raiz, porque cada um é versionado por conta própria. O graphify respeita o
+`.gitignore`, então extrair só da raiz indexa tudo *menos* o seu código. Medido num monorepo
+de quatro sub-repos: 2.783 dos 2.854 nós vinham de `.claude/` e **nenhum** do produto — e
+nada no caminho avisava. O Marvin acha os sub-repos que a raiz ignora, indexa cada um e
+mescla tudo num grafo só.
+
+Nomear as comunidades é a única parte que exige LLM, então por padrão elas ficam
+`Community 0`, `Community 1`. Duas flags cobrem o resto:
+
+| flag | o que faz |
+|---|---|
+| `--graphify-label` | nomeia as comunidades com a CLI `claude` do seu PATH — sem chave de API, mas o graphify limita a uma chamada por vez, então custa minutos e cota |
+| `--graphify-rebuild` | refaz um grafo que já existe. O padrão nunca sobrescreve |
+
+Num monorepo, **`graphify update .` é o comando errado de atualização** — ele re-extrai só a
+raiz e joga fora os sub-repos. O Marvin escreve esse aviso no `CLAUDE.md` gerado, nomeando os
+sub-repos, para o agente não destruir o grafo seguindo a instrução do próprio graphify. O
+comando certo é `marvin --graphify --graphify-rebuild`.
+
+### Atualizando sozinho
+
+O grafo envelhece a cada commit e nunca avisa. O `--graphify-git-hook` fecha essa lacuna
+escrevendo um `post-commit` que atualiza em segundo plano, então o `git commit` volta na hora.
+
+**Não** é o `graphify hook install`. Aquele reconstrói a *raiz* do repositório onde foi
+instalado — que num monorepo é exatamente o caminho que apaga os sub-repos do grafo. Ele
+automatizaria o bug. O hook do Marvin roda o refresh que serve ao projeto: `graphify update .`
+em repositório único, o ciclo inteiro em monorepo.
+
+Três coisas antes de ligar:
+
+- **Nunca é instalado por padrão**, e **nunca sobrescreve um `post-commit` que já existe** —
+  esse arquivo costuma guardar o lint, o changelog ou o CI de alguém. Se já houver um, o
+  Marvin imprime a linha para você acrescentar à mão e não toca em nada.
+- **Não é versionado.** Hook mora em `.git/`, então é por clone e não chega ao time. Quem
+  quiser, roda a flag.
+- `MARVIN_SKIP_GRAPH_HOOK=1 git commit …` pula uma vez. Apagar o arquivo desinstala.
+
+Esse mesmo momento é o gatilho certo para a outra coisa derivada que envelhece — a memória. O
+`CLAUDE.md` gerado manda atualizar o `onde_paramos.md` **no commit**, e só quando o commit
+muda o estado do projeto. Commit de typo não pede nada. A nota é sobrescrita, nunca
+acrescentada: o histórico é o `git log`.
+
 Depois de mexer no código, atualize antes de confiar numa resposta — **ele não avisa quando
 está velho**:
 
@@ -305,6 +368,25 @@ ele está velho — o check que falta no hook original. Aviso, nunca ordem.
 > próprio graphify — não os 71× divulgados —, e esse 9,3× é contra *ler o repositório
 > inteiro*. Contra `grep` dirigido, o grafo só compensa em pergunta estrutural: para
 > localizar um arquivo ele custa ~1.650 tokens contra ~18 de um glob.
+
+## Relacionado: o `claude-code-setup` da Anthropic
+
+A Anthropic publica um plugin oficial,
+[`claude-code-setup`](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/claude-code-setup),
+que varre o código e **recomenda** automações do Claude Code — servidores MCP, skills, hooks,
+subagentes, slash commands. Ele é read-only: aconselha, não escreve nada.
+
+Os dois respondem perguntas diferentes. Aquele responde *"o que eu deveria adotar?"*. O Marvin
+responde *"cadê o esqueleto?"* — escreve o `AGENTS.md`, os adaptadores e o vault, monta a
+memória do agente **dentro** do repositório, e sai da frente. E não é só Claude: o `AGENTS.md`
+é a fonte e cada ferramenta ganha um adaptador fino.
+
+Use os dois. Pergunte ao plugin o que adotar; rode o Marvin para ter a estrutura que segura.
+
+O Marvin fala de papéis, mas só o que ele consegue derivar: o `.claude/agents/README.md`
+gerado nomeia as stacks encontradas e diz quantos papéis aquilo implica — um por fronteira
+num repo poliglota ou num monorepo, dois num de stack única. Ele nunca escreve os agentes.
+Agente sem as cicatrizes **deste** código é contexto fixo em toda sessão que não devolve nada.
 
 ## Requisitos
 

@@ -348,6 +348,61 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
+// ── 9e. monorepo: o sub-repo ignorado pela raiz chega ao CLAUDE.md gerado
+// Num monorepo o grafo nascia inútil EM SILÊNCIO: a raiz ignora os sub-repositórios,
+// o graphify respeita o .gitignore, e sobrava um grafo sem o código do produto dentro.
+// Medido num monorepo real: 2.783 de 2.854 nós vinham de `.claude/` e zero do produto.
+// O teste NÃO precisa do graphify instalado — o CI não tem. A detecção mora no topo do
+// script e quem escreve o aviso é o passo 7, que roda antes do passo 8b desistir.
+{
+  const temGit = spawnSync('git', ['--version'], { encoding: 'utf8' }).status === 0;
+  if (!temGit) {
+    console.log('  - 9e pulado: git ausente nesta máquina');
+  } else {
+    const a = arena('monorepo');
+    spawnSync('git', ['init', '-q', '.'], { cwd: a.proj });
+    fs.mkdirSync(path.join(a.proj, 'svc-a'), { recursive: true });
+    spawnSync('git', ['init', '-q', '.'], { cwd: path.join(a.proj, 'svc-a') });
+    fs.writeFileSync(path.join(a.proj, '.gitignore'), 'svc-a/\n');
+    rodar(a, '--no-git', '--graphify');
+    const claude = path.join(a.proj, 'CLAUDE.md');
+    const txt = fs.existsSync(claude) ? fs.readFileSync(claude, 'utf8') : '';
+    checa('o CLAUDE.md gerado avisa que o projeto é monorepo', /monorepo/i.test(txt));
+    checa('ele nomeia o sub-repo ignorado', /svc-a/.test(txt));
+    checa('ele desaconselha o `graphify update .`', /Não rode/.test(txt));
+    limpar(a);
+  }
+}
+
+// ── 9f. --graphify-git-hook: escreve o post-commit e NUNCA sobrescreve um que já existe
+// O grafo envelhece a cada commit e não avisa; o hook fecha essa lacuna. Mas post-commit
+// é lugar disputado — pode já ter lint, changelog ou CI de outra pessoa. Sobrescrever ali
+// é destruir trabalho alheio, que é o invariante 1 aplicado fora da memória.
+// Pula sem graphify no PATH: o bloco mora depois da checagem de versão, e o CI não o tem.
+{
+  const temGraphify = spawnSync('graphify', ['--version'], { encoding: 'utf8', shell: true }).status === 0;
+  const temGit = spawnSync('git', ['--version'], { encoding: 'utf8' }).status === 0;
+  if (!temGraphify || !temGit) {
+    console.log('  - 9f pulado: precisa de git e graphify no PATH');
+  } else {
+    const a = arena('githook');
+    spawnSync('git', ['init', '-q', '.'], { cwd: a.proj });
+    rodar(a, '--no-git', '--graphify', '--graphify-git-hook');
+    const hook = path.join(a.proj, '.git', 'hooks', 'post-commit');
+    checa('--graphify-git-hook escreve o post-commit', fs.existsSync(hook));
+    const txt = fs.existsSync(hook) ? fs.readFileSync(hook, 'utf8') : '';
+    checa('o hook traz a válvula de escape', /MARVIN_SKIP_GRAPH_HOOK/.test(txt));
+    checa('o hook fixa PYTHONHASHSEED — grafo tem que ser reprodutível',
+          /PYTHONHASHSEED=0/.test(txt));
+    const meu = '#!/bin/sh\necho hook-de-outra-pessoa\n';
+    fs.writeFileSync(hook, meu);
+    rodar(a, '--no-git', '--graphify', '--graphify-git-hook');
+    checa('post-commit que já existe NÃO é sobrescrito',
+          fs.readFileSync(hook, 'utf8') === meu);
+    limpar(a);
+  }
+}
+
 // ── 9. adaptador do Copilot — caminho conferido na documentação oficial
 {
   const a = arena('copilot');

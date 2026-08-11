@@ -70,6 +70,20 @@ const DRY = temFlag('--dry-run');
 // Opcional e nunca obrigatório: gera o grafo de código do graphify para consulta
 // estrutural. NÃO instala hook — ver o passo 8b para o porquê.
 const GRAPHIFY = temFlag('--graphify');
+// Nomeia as comunidades usando o `claude` do PATH (backend claude-cli do graphify,
+// que não pede chave). Fora do padrão de propósito: esse backend é forçado a UMA
+// chamada por vez, então num grafo de ~130 comunidades o run vira minutos e consome
+// cota da assinatura de quem rodou. Gastar tempo e cota sem perguntar não é padrão.
+const GRAPHIFY_LABEL = temFlag('--graphify-label');
+// Refaz o grafo mesmo que já exista. Sem isso, rodar duas vezes não reconstrói
+// (invariante 2). Existe porque num monorepo `graphify update .` NÃO serve: ele
+// re-extrai só a raiz, e a raiz é justamente o que não tem o código dentro.
+const GRAPHIFY_REBUILD = temFlag('--graphify-rebuild');
+// Escreve `.git/hooks/post-commit` para o grafo se atualizar sozinho depois do commit.
+// NÃO usa o `graphify hook install`: aquele reconstrói a RAIZ do repositório, que num
+// monorepo é justamente o caminho que apaga os sub-repos do grafo — automatizaria o bug.
+// Fora do padrão porque hook mora em `.git/`, não é versionado e dispara invisível.
+const GRAPHIFY_GIT_HOOK = temFlag('--graphify-git-hook');
 // Só diagnostica a montagem e sai com código != 0 se ela estiver quebrada.
 // Não escreve nada — nem no repositório, nem no perfil.
 const CHECK = temFlag('--check');
@@ -108,6 +122,13 @@ Flags:
   --no-git          skip git init and .gitignore
   --clean-legacy    remove leftovers from old orchestration tools
   --graphify        build a code graph for structural queries (needs graphify on PATH)
+                    indexes gitignored sub-repos separately and merges them, so a
+                    monorepo does not end up with a graph missing all of its code
+  --graphify-label  name the graph communities using the \`claude\` CLI on PATH.
+                    Off by default: one call at a time, so it costs minutes and quota
+  --graphify-rebuild  rebuild an existing graph (the default never overwrites one)
+  --graphify-git-hook  write .git/hooks/post-commit so the graph refreshes itself.
+                    Never overwrites a post-commit you already have
   --help, -h        this message
 
 What it writes:
@@ -247,6 +268,32 @@ const MARCA = {
   'pom.xml': 'Java/Maven', 'build.gradle': 'Gradle', 'Gemfile': 'Ruby', 'composer.json': 'PHP',
 };
 const IGNORAR = new Set(['node_modules', 'dist', 'build', 'bin', 'obj', '__pycache__', '.git', 'venv', '.venv']);
+
+// ── Sub-repos ignorados: o caso em que o grafo nascia inútil EM SILÊNCIO.
+// Num monorepo cada sub-repositório costuma estar no .gitignore da raiz, porque é
+// versionado por conta própria. O graphify respeita .gitignore, então extrair só da
+// raiz indexa tudo MENOS o código do produto. Medido num monorepo de quatro sub-repos:
+// 2.783 dos 2.854 nós vinham de `.claude/` e ZERO do produto — e nada avisava.
+// Sub-repo NÃO ignorado já é varrido junto com a raiz e fica de fora desta lista,
+// senão entraria duas vezes no grafo. Só é calculado com --graphify: é uma chamada
+// de git por diretório, e sem a flag ninguém usa o resultado.
+// Mora aqui em cima porque o CLAUDE.md gerado (passo 7) precisa dele para não
+// mandar o agente rodar `graphify update .`, que num monorepo destrói o grafo.
+const SUBREPOS = [];
+if (GRAPHIFY) {
+  try {
+    for (const e of fs.readdirSync(RAIZ, { withFileTypes: true })) {
+      if (!e.isDirectory() || e.name.startsWith('.') || IGNORAR.has(e.name)) continue;
+      if (!fs.existsSync(path.join(RAIZ, e.name, '.git'))) continue;
+      // Sai != 0 quando NÃO é ignorado — e também quando não existe git aqui.
+      try {
+        execSync('git check-ignore -q "' + e.name + '"', { cwd: RAIZ, stdio: 'ignore' });
+        SUBREPOS.push(e.name);
+      } catch {}
+    }
+  } catch {}
+}
+
 const stacks = new Map();
 (function varrer(dir, prof = 0) {
   if (prof > 3) return;
@@ -674,6 +721,29 @@ model: haiku | sonnet | opus
 
 Sempre tenha um papel \`tl\` em **opus** que lê diff e é dono dos invariantes.
 
+## O que ESTE projeto sugere
+
+${(() => {
+  // Recomendação DERIVADA do diagnóstico, nunca um menu. O Marvin não escreve o agente
+  // (invariante 4), mas ficar calado diante de uma pasta vazia também não ajuda: a
+  // pergunta "quantos papéis?" tem resposta diferente em repo de uma stack e em monorepo.
+  const lista = [...new Set([...stacks.values()].flatMap(s => [...s]))];
+  const fronteiras = lista.length + SUBREPOS.length;
+  const detectado = lista.length ? lista.join(', ') : 'nenhum marcador de stack';
+  return `Detectado aqui: **${detectado}**` +
+    (SUBREPOS.length ? `, mais ${SUBREPOS.length} sub-repositório(s) ignorado(s) pela raiz` : '') + `.
+
+` + (fronteiras > 1
+  ? `- **Um papel por fronteira, não um revisor universal.** São ${fronteiras} fronteiras aqui.
+  Um único revisor que atravessa todas não segura o invariante de nenhuma — ele vira
+  genérico, que é o modo de falhar deste arquivo.`
+  : `- **Comece com dois papéis:** o \`tl\` acima e **um** de implementação. O terceiro só
+  quando doer de verdade. Papel a mais é contexto fixo em toda sessão.`);
+})()}
+- **Não crie papel vazio para preencher a pasta.** Um \`.md\` sem as armadilhas concretas
+  deste código entra no contexto de toda sessão e não devolve nada. Genérico é pior que
+  ausente — é por isso que o marvin gera esta pasta e não os agentes.
+
 ## Subagente NÃO tem memória
 
 Cada um nasce com contexto limpo: não vê a conversa, não vê a memória do
@@ -923,6 +993,16 @@ vault no Obsidian. **Legível por qualquer ferramenta.**
 - \`${relMem}/onde_paramos.md\` — a única porta de entrada
 - \`${relDocs}/00_Fontes_Externas.md\` — o que vive fora deste repositório
 
+**Quando registrar: no commit.** É o momento em que uma unidade de trabalho fecha, e é o
+gatilho que faz a regra ser lembrada em vez de decorada. Sem gatilho, "sempre atualizar a
+memória" não dispara nunca — ou dispara sempre, que é pior.
+
+- Commit que muda o **estado** do projeto — decisão tomada, subsistema novo, armadilha
+  descoberta, algo que travou — pede uma passada no \`onde_paramos.md\` **antes**.
+- Commit de typo, formatação ou renomeação não pede nada.
+- A nota é **sobrescrita**, não acrescentada: o histórico é o \`git log\`. Criar
+  \`onde_paramos_<data>.md\` é erro.
+
 ## Higiene de sessão — quando sugerir um chat novo
 
 Contexto acumulado custa em **toda** requisição, não só uma vez. Conversa longa que já
@@ -1030,8 +1110,17 @@ sobre um grafo que ele não garante fresco.
 - \`graphify query "<pergunta>"\` para pergunta **estrutural** — o que chama o quê,
   hierarquia de tipo, dependência entre pacotes. É onde ele ganha do Grep.
 - Para **localizar** arquivo ou símbolo, Grep/Glob é mais barato.
-- Ele **não avisa quando está velho**. Depois de mexer no código, \`graphify update .\`
-  antes de confiar numa resposta — ou leia o arquivo direto, que sempre é a verdade.
+- Ele **não avisa quando está velho**. Depois de mexer no código, atualize antes de
+  confiar numa resposta — ou leia o arquivo direto, que sempre é a verdade:
+  \`\`\`bash
+  ${SUBREPOS.length ? 'marvin --graphify --graphify-rebuild   # monorepo: refaz o ciclo inteiro'
+                    : 'graphify update .'}
+  \`\`\`${SUBREPOS.length ? `
+- **Este projeto é um monorepo.** ${SUBREPOS.length} sub-repositório(s) estão no \`.gitignore\` da raiz
+  e foram indexados separadamente: ${SUBREPOS.join(', ')}. **Não rode \`graphify update .\`** —
+  ele re-extrai só a raiz e joga fora todos eles, deixando um grafo sem o código dentro.` : ''}
+- \`graphify-out/GRAPH_REPORT.md\` e \`graph.html\` existem. As comunidades se chamam
+  \`Community N\` porque nomeá-las exige LLM — isso é esperado, não é falha.
 ` : ''}`,
   },
   codex: {
@@ -1215,16 +1304,86 @@ if (GRAPHIFY) {
       } else info('graphify-out/ is already in .gitignore');
     }
 
+    const subRepos = SUBREPOS;   // detectado no topo: o passo 7 também precisa dele
+    const contarNos = (g) => {
+      try { return (JSON.parse(fs.readFileSync(g, 'utf8')).nodes || []).length; } catch { return 0; }
+    };
+
     // Idempotência: grafo que já existe não é reconstruído. Rebuild é decisão do humano.
-    if (fs.existsSync(GRAFO)) {
+    if (fs.existsSync(GRAFO) && !GRAPHIFY_REBUILD) {
       info('graph.json already exists — not rebuilding (running twice must not overwrite)');
+      info('to rebuild after code changes:  marvin --graphify --graphify-rebuild');
     } else {
+      if (subRepos.length) {
+        info(subRepos.length + ' gitignored sub-repo(s) — the root scan would MISS these,');
+        info('so each one is indexed on its own and merged at the end:');
+        subRepos.forEach(s => info('  ' + s));
+      }
       // --code-only: só AST local. Sem isso ele exige chave de LLM paga para os .md.
       try {
-        exec('graphify . --code-only --no-viz', { cwd: RAIZ, stdio: 'inherit' });
-        ok('graph built in graphify-out/');
+        const partes = [];
+        if (!subRepos.length) {
+          exec('graphify . --code-only --no-viz', { cwd: RAIZ, stdio: 'inherit' });
+        } else {
+          // A saída de cada extração cai dentro de graphify-out/, que já está no
+          // .gitignore. Escrever dentro do sub-repo sujaria repositório alheio —
+          // nenhum deles tem `graphify` no .gitignore próprio.
+          for (const alvo of ['.', ...subRepos]) {
+            const nome = alvo === '.' ? '_root' : alvo;
+            const destino = path.join(SAIDA, 'repos', nome);
+            // try POR SUB-REPO, não em volta do laço: o `graphify extract` sai com
+            // código != 0 quando o alvo não produz nó nenhum — um sub-repo ainda
+            // vazio (só LICENSE e README, o placeholder de todo monorepo) é caso
+            // comum, e derrubava o build inteiro junto: sem merge, sem backup.
+            try {
+              exec('graphify extract "' + path.join(RAIZ, alvo) + '" --code-only --out "' + destino + '"',
+                   { cwd: RAIZ, stdio: 'inherit' });
+            } catch {}
+            const g = path.join(destino, 'graphify-out', 'graph.json');
+            if (DRY || fs.existsSync(g)) partes.push(g);
+            else warn(nome + ' produced no nodes — left out of the merge');
+          }
+          // Invariante 1: o grafo anterior não é apagado, vira .bak, e as duas
+          // contagens vão para a tela. Aqui MENOS nós é legítimo — o escopo mudou —
+          // então o certo é mostrar o número, não abortar como na migração.
+          if (!DRY && fs.existsSync(GRAFO)) {
+            fsw.copyFileSync(GRAFO, path.join(SAIDA, 'graph.bak.json'));
+            info('previous graph kept as graphify-out/graph.bak.json (' + contarNos(GRAFO) + ' nodes)');
+          }
+          if (partes.length > 1) {
+            exec('graphify merge-graphs ' + partes.map(p => '"' + p + '"').join(' ') +
+                 ' --out "' + GRAFO + '"', { cwd: RAIZ, stdio: 'inherit' });
+          } else if (partes.length === 1) {
+            fsw.copyFileSync(partes[0], GRAFO);   // merge-graphs exige dois
+          }
+        }
+        if (!DRY) {
+          if (fs.existsSync(GRAFO)) ok('graph built — ' + contarNos(GRAFO) + ' nodes in graphify-out/');
+          else err('no graph was produced');
+        }
       } catch {
         err('the graph build failed — nothing else changed');
+      }
+
+      // ── Relatório e HTML. O `extract` para no graph.json DE PROPÓSITO: o report e
+      // os nomes das comunidades são passo separado, e é por isso que tanta gente
+      // acha que a instalação quebrou ao não achar o graph.html que o README do
+      // graphify mostra. Sem --graphify-label roda --no-label: determinístico,
+      // grátis, sem chave — o html sai igual, só com "Community 0/1/2" nos nomes.
+      if (DRY || fs.existsSync(GRAFO)) {
+        let modo = '--no-label';
+        if (GRAPHIFY_LABEL) {
+          let temClaude = false;
+          try { execSync('claude --version', { stdio: 'ignore' }); temClaude = true; } catch {}
+          if (temClaude) modo = '--backend claude-cli';
+          else warn('--graphify-label ignored: no `claude` on PATH — using --no-label');
+        }
+        try {
+          exec('graphify cluster-only . ' + modo, { cwd: RAIZ, stdio: 'inherit' });
+          ok('GRAPH_REPORT.md and graph.html written — open the html in any browser');
+        } catch {
+          warn('the report step failed — graph.json is fine, only the html is missing');
+        }
       }
     }
 
@@ -1249,8 +1408,67 @@ if (GRAPHIFY) {
         warn(novos.length + ' source file(s) newer than the graph — it is STALE');
         novos.slice(0, 5).forEach(f => info('  ' + f));
         if (novos.length > 5) info('  … e mais ' + (novos.length - 5));
-        info('refresh with:  graphify update .');
+        // Num monorepo `graphify update .` re-extrai SÓ a raiz e joga fora os
+        // sub-repos — o comando certo é refazer o ciclo inteiro.
+        info(subRepos.length ? 'refresh with:  marvin --graphify --graphify-rebuild'
+                             : 'refresh with:  graphify update .');
       } else ok('graph is newer than all source — it is fresh');
+    }
+
+    // ── post-commit: o grafo se atualiza sozinho depois do commit (só com a flag).
+    // NÃO é o `graphify hook install`. Aquele reconstrói a RAIZ do repositório, e num
+    // monorepo a raiz é o que NÃO tem o código dentro — ele automatizaria, a cada
+    // commit, exatamente o estrago que o passo acima existe para evitar.
+    if (GRAPHIFY_GIT_HOOK) {
+      // Barra normal também no Windows: dentro de aspas do `sh` a barra invertida só
+      // não vira escape por sorte, e o node aceita as duas. Não depender de sorte.
+      const comando = subRepos.length
+        ? 'node "' + process.argv[1].replace(/\\/g, '/') + '" --graphify --graphify-rebuild'
+        : 'graphify update .';
+      const script = `#!/bin/sh
+# marvin — atualiza o grafo de código depois do commit.
+# O grafo é DERIVADO: envelhece a cada commit e não avisa. Isto é o que fecha essa lacuna.
+# Instalado por: marvin --graphify --graphify-git-hook   ·   remover: apague este arquivo.
+
+[ "\${MARVIN_SKIP_GRAPH_HOOK:-0}" = "1" ] && exit 0
+
+# Rebase, merge e cherry-pick deixam a árvore em trânsito: reconstruir ali disputa com
+# o --continue. git exporta GIT_DIR para o hook; o rev-parse só roda em chamada à mão.
+GIT_DIR=\${GIT_DIR:-$(git rev-parse --git-dir 2>/dev/null)}
+[ -d "$GIT_DIR/rebase-merge" ] && exit 0
+[ -d "$GIT_DIR/rebase-apply" ] && exit 0
+[ -f "$GIT_DIR/MERGE_HEAD" ] && exit 0
+[ -f "$GIT_DIR/CHERRY_PICK_HEAD" ] && exit 0
+
+# Sem isto o louvain do networkx troca as comunidades a cada run, e o grafo deixa de ser
+# reprodutível — a mesma doença que o marvin evita não usando Date.now() nem Math.random().
+export PYTHONHASHSEED=0
+
+# Em segundo plano: num monorepo o ciclo inteiro leva perto de um minuto, e ninguém
+# aceita esperar isso a cada commit.
+LOG="\${TMPDIR:-/tmp}/marvin-graph-refresh.log"
+echo "[marvin] atualizando o grafo em segundo plano (log: $LOG)"
+{ ${comando} ; } >"$LOG" 2>&1 &
+`;
+      const dirHooks = path.join(RAIZ, '.git', 'hooks');
+      const alvo = path.join(dirHooks, 'post-commit');
+      if (!fs.existsSync(path.join(RAIZ, '.git'))) {
+        warn('--graphify-git-hook skipped: this is not a git repository');
+      } else if (fs.existsSync(alvo)) {
+        // Invariante 1: hook alheio não é sobrescrito. Um post-commit que já existe
+        // pode ser o CI, o lint ou o gerador de changelog de outra pessoa.
+        warn('a post-commit hook already exists — left untouched');
+        info('  to get the refresh, add this line to it by hand:');
+        info('    ' + comando);
+      } else {
+        fsw.mkdirSync(dirHooks, { recursive: true });
+        fsw.writeFileSync(alvo, script);
+        try { if (!DRY) fs.chmodSync(alvo, 0o755); } catch {}   // no-op no Windows
+        ok('.git/hooks/post-commit — the graph refreshes itself after each commit');
+        info('  it runs:  ' + comando);
+        info('  NOT versioned: it lives in .git/, so it does not reach the team');
+        info('  skip it once with:  MARVIN_SKIP_GRAPH_HOOK=1 git commit …');
+      }
     }
 
     log('');
@@ -1258,11 +1476,20 @@ if (GRAPHIFY) {
     info('  · no hook, and graphify made no change to CLAUDE.md.');
     info('    `graphify claude install` answers MANDATORY on every Read/Grep about a');
     info('    graph it does not guarantee is fresh. Do not run it.');
+    info('  · graphify-out/graph.html is ready — open it in any browser, no server.');
+    info('    Communities are named "Community N" because naming needs an LLM.');
+    info('    `--graphify-label` names them with the claude CLI, one call at a time.');
+    if (subRepos.length) {
+      info('  · this is a monorepo: ' + subRepos.length + ' gitignored sub-repo(s) were indexed');
+      info('    separately and merged. Do NOT run `graphify update .` here — it');
+      info('    re-extracts the root only and throws the sub-repos away.');
+    }
     info('  · `graphify query "<question>"` — for STRUCTURAL questions (what calls');
     info('    what, type hierarchy, cross-package deps). That is where it beats Grep.');
     info('  · to LOCATE a file or symbol, Grep/Glob is cheaper than the graph.');
-    info('  · the graph does not warn when it is stale — run `graphify update .` before');
-    info('    trusting an answer after you have touched the code.');
+    info('  · the graph does not warn when it is stale — refresh it before trusting');
+    info('    an answer after you have touched the code:');
+    info(subRepos.length ? '      marvin --graphify --graphify-rebuild' : '      graphify update .');
   }
 }
 
@@ -1328,6 +1555,11 @@ const ATUALIZACOES = [
     o_que: 'the "Portabilidade" table — what migrates between tools' },
   { arquivo: 'CLAUDE.md', marca: /Grafo de código/i, soCom: GRAPHIFY,
     o_que: 'the "Grafo de código" section (appears with --graphify)' },
+  // Bloco novo em arquivo que já existe é exatamente o que este passo existe para pegar.
+  // Sem esta marca, quem montou o projeto antes desta versão continua olhando para uma
+  // pasta de agentes sem nenhuma pista de QUANTOS papéis o repositório dele pede.
+  { arquivo: '.claude/agents/README.md', marca: /O que ESTE projeto sugere/,
+    o_que: 'the "O que ESTE projeto sugere" section — how many roles this repo implies' },
   // Sem esta marca, quem montou o projeto antes do --check existir nunca fica sabendo
   // que ele existe — e é justamente quem já pode estar com a junction quebrada.
   { arquivo: 'CLAUDE.md', marca: /--check/,

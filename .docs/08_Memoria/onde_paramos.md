@@ -5,12 +5,12 @@ description: "ÚNICA porta de entrada do Marvin. Estado corrente — sempre sobr
 tags: [moc, entrada]
 metadata:
   type: project
-  atualizado: 2026-08-03
+  atualizado: 2026-08-09
 ---
 
 # ▶ ONDE PARAMOS
 
-**Atualizado:** 03/08/2026
+**Atualizado:** 09/08/2026
 
 > Esta nota é versionada e **pública**, porque este repositório é público. Escreva aqui
 > como se fosse lido — o que for de outro projeto vai na memória daquele projeto.
@@ -19,7 +19,7 @@ metadata:
 ## Estado corrente
 
 **No ar nos dois lugares.** Código em https://github.com/Josuebmota/Marvin e pacote em
-`marvin-kb@1.0.0` no npm. `marvin.mjs` com ~1.380 linhas, `teste.mjs` com ~350, **45
+`marvin-kb@1.0.0` no npm. `marvin.mjs` com ~1.520 linhas, `teste.mjs` com ~390, **51
 verificações** verdes em Linux, Windows e macOS pelo CI. Zero dependência de runtime.
 
 O remote é **HTTPS**, não SSH: `https://github.com/Josuebmota/Marvin.git`. Esta máquina não
@@ -32,7 +32,7 @@ empilhados, artefato de orquestrador antigo), vault com **junction invertida**,
 `onde_paramos.md`, scaffold de `agents/` e `skills/`, `git init` + `.gitignore`, e o
 aviso de atualizações para projeto montado por versão antiga.
 
-Opcionais: `--check`, `--dry-run`, `--graphify`.
+Opcionais: `--check`, `--dry-run`, `--graphify`, `--graphify-label`, `--graphify-rebuild`.
 
 Não faz, de propósito: **não escreve agente, skill nem o corpo do `AGENTS.md`**.
 
@@ -109,7 +109,11 @@ uma boa história; o campo real do cliente não pode vir junto.
 - **Graphify entra como consulta, nunca como hook.** Medido: o grafo dele responde com
   função apagada, arquivo e linha, marcada `[EXTRACTED]`, sem avisar. O hook oficial diz
   `MANDATORY` sobre isso. Ganho real medido: **9,3×**, não os 71× divulgados — e contra
-  "ler o repo inteiro". Só compensa em pergunta estrutural.
+  "ler o repo inteiro". Só compensa em pergunta estrutural. **Reafirmado em 09/08**, com
+  caso real: num monorepo o hook estava exigindo consulta a um grafo que não tinha uma
+  linha do produto dentro. Garantia de uso não é garantia de acerto.
+- **Nada que gaste dinheiro ou tempo do usuário roda sem flag.** Nomear comunidade exige
+  LLM, então o padrão é `--no-label`. `--graphify-label` existe, mas não é o caminho feliz.
 
 ## Travado
 
@@ -178,6 +182,66 @@ Nada.
   o `00_Inicio.md` gerados ensinam a flag e a armadilha, e há marca na `ATUALIZACOES`, então
   projeto montado por versão antiga também é avisado.
 - ~~Publicar no npm~~ — feito em 03/08. `marvin-kb@1.0.0`.
+
+## O que esta sessão (09/08) produziu
+
+Tudo no `--graphify`, e a origem foi um projeto real: **num monorepo o grafo nascia inútil
+em silêncio.** Sub-repositório costuma estar no `.gitignore` da raiz, porque é versionado
+por conta própria; o graphify respeita `.gitignore`; então extrair da raiz indexava tudo
+**menos** o código do produto. Medido num monorepo de quatro sub-repos: **2.783 dos 2.854
+nós vinham de `.claude/` e nenhum do produto**, e nada no caminho avisava. Pior: o hook
+oficial do graphify estava instalado lá, mandando `MANDATORY` a cada Read sobre esse grafo.
+
+O passo 8b agora faz o ciclo inteiro, tudo AST local, sem chave e sem custo:
+
+1. detecta sub-repo com `git check-ignore` — **só o que a raiz ignora**, senão entraria
+   duas vezes no grafo;
+2. `graphify extract` de cada um para `graphify-out/repos/<nome>/`, que já está ignorado —
+   escrever dentro do sub-repo sujaria repositório alheio;
+3. `merge-graphs` para `graph.json`, com o anterior virando `graph.bak.json`;
+4. `cluster-only --no-label`, que gera `graph.html` e `GRAPH_REPORT.md`.
+
+**O passo 4 fechou uma confusão que não era nossa.** O README do graphify abre mostrando
+`graph.html` e `GRAPH_REPORT.md`, mas `extract` para no `graph.json` de propósito — o
+relatório é passo separado e exige LLM. Quem instalava achava que tinha quebrado. O
+`--no-label` gera os dois de graça, com as comunidades como `Community N`.
+
+Duas flags novas: `--graphify-label` (nomeia com a CLI `claude`, sem chave de API — fora do
+padrão porque o backend é forçado a **uma chamada por vez**, então custa minutos e cota) e
+`--graphify-rebuild` (o padrão continua não sobrescrevendo).
+
+⚠️ **Num monorepo `graphify update .` DESTRÓI o grafo** — re-extrai só a raiz e joga fora os
+sub-repos. E a documentação do próprio graphify manda rodar esse comando. O Marvin escreve o
+aviso no `CLAUDE.md` gerado, nomeando os sub-repos, para o agente não se autossabotar.
+
+**Bug pego rodando de verdade, não no teste:** `graphify extract` sai com código != 0 quando
+o alvo não produz nó, e sub-repo placeholder (só `LICENSE` e `README`) é caso comum. O `try`
+estava em volta do laço, então um sub-repo vazio derrubava merge e backup junto. Agora o
+`try` é por sub-repo. **Dry-run passou limpo e a execução real falhou** — vale lembrar disso.
+
+Três verificações novas (48 → 51) e nenhuma exige o graphify instalado: a detecção mora no
+topo do script e quem escreve o aviso é o passo 7, então o CI segue verde sem o binário.
+
+**Duas premissas viraram um gatilho só: o commit.** É o momento em que uma unidade de
+trabalho fecha, e as duas coisas derivadas que envelhecem em silêncio pertencem ali.
+
+- **Grafo:** `--graphify-git-hook` escreve um `post-commit` que atualiza em segundo plano.
+  Não é o `graphify hook install` — aquele reconstrói a **raiz**, que num monorepo é o
+  caminho que apaga os sub-repos: automatizaria o bug a cada commit. O nosso roda o refresh
+  que serve ao projeto. Não sobrescreve `post-commit` alheio (invariante 1 fora da memória),
+  não é versionado porque mora em `.git/`, e `MARVIN_SKIP_GRAPH_HOOK=1` pula uma vez.
+- **Memória:** não virou hook, porque escrever estado exige julgamento e hook não tem. Virou
+  regra no `CLAUDE.md` gerado, com o mesmo gatilho: atualizar `onde_paramos.md` **no commit**,
+  e só quando o commit muda o estado. Commit de typo não pede nada.
+
+⚠️ **"Sempre atualizar a memória" foi rejeitado como texto.** Sem gatilho não dispara; com
+obediência literal a nota vira changelog — e ela é **estado sobrescrito**, o histórico é o
+`git log`. A regra só funciona amarrada a um momento.
+
+Também levantado e **descartado**: `rtk`, `headroom` e `caveman`. Anunciam 33–99%, 54% e 50%;
+medidos em sessão real economizam **0,5%, 2,8% e 0,4%** do gasto. O `rtk` filtra saída de
+shell, mas 78% dos tokens de tool-output vêm do `Read` nativo e não passam por lá. O
+`codegraph` é concorrente do graphify, não complemento — se um dia entrar, é substituindo.
 
 ## O que esta sessão (03/08, tarde) produziu
 
