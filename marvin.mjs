@@ -22,25 +22,25 @@
  *     │   ├── agents/             o time (tu escreve)
  *     │   ├── skills/             procedimentos compartilhados (tu escreve)
  *     │   └── commands/retomar.md porta de entrada: /retomar num chat novo
- *     └── .docs/                  ← vault do Obsidian
- *         ├── .obsidian/          (o ponto no nome evita colidir com Docs/ do produto;
- *         ├── 00_Inicio.md         se já existir um vault em Docs/, ele é reaproveitado)
- *         ├── 00_Fontes_Externas.md   onde vivem US, roadmap, design
+ *     └── .marvin/                ← base de conhecimento
+ *         ├── 00_Inicio.md        (o nome diz de quem é a pasta: ela é material de
+ *         ├── 00_Fontes_Externas.md   trabalho, não entregável do projeto; se já
+ *         │                           existir um vault em Docs/, ele é reaproveitado)
  *         ├── 08_Memoria/             ← memória, ARQUIVOS REAIS versionados
  *         │   └── onde_paramos.md     a única porta; sempre sobrescrita
  *         └── 99_Backup/
  *
- * PORTABILIDADE: o durável (AGENTS.md + .docs/ + memória) é markdown puro e migra
+ * PORTABILIDADE: o durável (AGENTS.md + .marvin/ + memória) é markdown puro e migra
  * inteiro para Codex, Cursor, Aider, Zed, opencode. Só o frontmatter dos agentes,
  * os slash commands e o auto-load da memória são do Claude Code — e desses, só o
  * auto-load some: os arquivos de memória ficam, porque moram no repositório.
  *
  * O truque central é a JUNCTION INVERTIDA:
  *
- *     ~/.claude/projects/<caminho>/memory  ──junction──►  Docs/08_Memoria/
+ *     ~/.claude/projects/<caminho>/memory  ──junction──►  .marvin/08_Memoria/
  *
  * O Claude escreve no caminho padrão dele e os arquivos nascem dentro do
- * repositório. Memória versionada em git, visível no Obsidian, uma fonte só.
+ * repositório. Memória em markdown puro no repositório, uma fonte só.
  *
  * O que ele NÃO faz — de propósito:
  *   Não escreve os agentes nem o CLAUDE.md. Isso exige conhecer as armadilhas
@@ -133,7 +133,7 @@ Flags:
 
 What it writes:
   <project>/AGENTS.md, the tool adapters, .claude/{agents,skills,commands},
-  and a knowledge vault (.docs/ or an existing Docs/).
+  and a knowledge base (.marvin/ or an existing Docs/).
 
 What it touches OUTSIDE the project:
   ~/.claude/projects/<path>/memory  becomes a junction pointing INTO the repo,
@@ -182,11 +182,18 @@ const MEM = path.join(os.homedir(), '.claude', 'projects', RAIZ.replace(/[:\\/]/
 
 // ── Onde fica o vault e a memória. É só LEITURA, e mora aqui em cima porque o
 // --check precisa das duas antes de qualquer escrita acontecer.
-// Prefere um vault que JÁ existe (identificado pelos marcadores), senão `.docs`.
-// O ponto no nome evita colidir com um `Docs/` do próprio produto.
-const CANDIDATOS = ['.docs', 'Docs', 'docs', 'doc'].map(d => path.join(RAIZ, d));
+// Prefere um vault que JÁ existe (identificado pelos marcadores), senão `.marvin`.
+// O nome diz de quem é a pasta: na maioria dos repositórios ela é MATERIAL DE
+// TRABALHO de quem usa a ferramenta, não entregável do projeto. `.docs` genérico
+// sugeria o contrário. `.docs` segue na lista para que projeto montado pela versão
+// antiga continue sendo reconhecido — a detecção é por marcador, não por nome, e
+// por isso trocar o padrão NÃO exige migrar ninguém (invariante 2).
+const CANDIDATOS = ['.marvin', '.docs', 'Docs', 'docs', 'doc'].map(d => path.join(RAIZ, d));
+// `.obsidian` continua valendo como marcador de LEITURA: o script não escreve mais
+// config de Obsidian, mas quem já tinha um vault seu numa dessas pastas segue sendo
+// reaproveitado em vez de ganhar uma segunda base de conhecimento ao lado.
 const ehVault = (d) => fs.existsSync(path.join(d, '08_Memoria')) || fs.existsSync(path.join(d, '.obsidian'));
-const DOCS = CANDIDATOS.find(ehVault) || path.join(RAIZ, '.docs');
+const DOCS = CANDIDATOS.find(ehVault) || path.join(RAIZ, '.marvin');
 const DEST = path.join(DOCS, '08_Memoria');
 const ehJunction = (p) => { try { return fs.lstatSync(p).isSymbolicLink(); } catch { return false; } };
 const contarNotas = (d) => { try { return fs.readdirSync(d).filter(f => f.endsWith('.md')).length; } catch { return 0; } };
@@ -434,35 +441,23 @@ if (gl && emTokens(gl[1].chars) > 2000) {
   info('    used in 0 projects  → out — it is pure weight');
 }
 
-// ═══════════════════════════════════════════ 5. VAULT EM Docs/
-log('\n\x1b[1m5. Knowledge vault (single folder — this is the Obsidian vault)\x1b[0m');
+// ═══════════════════════════════════════════ 5. BASE DE CONHECIMENTO EM .marvin/
+log('\n\x1b[1m5. Knowledge base (a single folder — plain markdown, no tool required)\x1b[0m');
 // DOCS foi detectado lá em cima, antes de qualquer escrita, porque o --check precisa dele.
 const novoVault = !fs.existsSync(DOCS);
 fsw.mkdirSync(DOCS, { recursive: true });
 info('vault: ' + path.relative(RAIZ, DOCS) + (novoVault ? '  (created now)' : '  (already existed)'));
 const docsDoProduto = CANDIDATOS.find(d => fs.existsSync(d) && !ehVault(d) && path.resolve(d) !== path.resolve(DOCS));
 if (docsDoProduto) info('living next to ' + path.relative(RAIZ, docsDoProduto) + '/ from the product — untouched');
-if (path.basename(DOCS).startsWith('.')) {
-  info('hidden folder: in Obsidian, enable "show hidden files" to select it as a vault');
-}
-
-const cfgDir = path.join(DOCS, '.obsidian');
-fsw.mkdirSync(cfgDir, { recursive: true });
-const cfg = path.join(cfgDir, 'app.json');
-if (!fs.existsSync(cfg)) {
-  fsw.writeFileSync(cfg, JSON.stringify({
-    alwaysUpdateLinks: true, newLinkFormat: 'shortest', useMarkdownLinks: false,
-    attachmentFolderPath: '90_Anexos', readableLineLength: true,
-    defaultViewMode: 'preview', showFrontmatter: true,
-  }, null, 2));
-  ok('.obsidian/app.json');
-} else info('.obsidian/app.json already exists');
+// Nenhuma config de ferramenta é escrita aqui: são só arquivos .md numa pasta, e
+// esse é o ponto. Qualquer editor abre. Quem quiser usar um app de notas por cima
+// aponta ele para esta pasta — a base não depende disso para funcionar.
 for (const d of ['10_Decisoes', '11_Sessoes', '90_Anexos', '99_Backup']) fsw.mkdirSync(path.join(DOCS, d), { recursive: true });
 
 // vault numa pasta separada é layout antigo deste script
 const LEGADO = path.join(RAIZ, 'Obsidian');
 if (fs.existsSync(LEGADO) && path.resolve(LEGADO) !== path.resolve(DOCS)) {
-  warn('a separate Obsidian/ folder exists — old layout. The vault is Docs/ now.');
+  warn('a separate Obsidian/ folder exists — old layout. The knowledge base is .marvin/ now.');
   for (const e of fs.readdirSync(LEGADO, { withFileTypes: true })) {
     const p = path.join(LEGADO, e.name);
     let tipo = e.isFile() ? 'file' : 'folder';
@@ -552,8 +547,8 @@ tags: [moc]
 
 # ${path.basename(RAIZ)} — Base de Conhecimento
 
-> **Esta pasta é o vault.** No Obsidian: *Open folder as vault* apontando para \`${path.relative(RAIZ, DOCS)}\`.
-> Tudo aqui é arquivo real e versionado em git.
+> **Esta pasta é a base de conhecimento** deste projeto: \`${path.relative(RAIZ, DOCS)}\`.
+> Markdown puro, arquivo real, sem depender de ferramenta nenhuma para ser lido.
 
 ## Montagem
 
@@ -987,8 +982,8 @@ Relatório verde de agente não substitui ler o diff.
 
 ## Conhecimento e memória
 
-\`${relDocs}/\` é a base de conhecimento — markdown puro, versionado em git, aberto como
-vault no Obsidian. **Legível por qualquer ferramenta.**
+\`${relDocs}/\` é a base de conhecimento — markdown puro, arquivo real.
+**Legível por qualquer ferramenta**, e por nenhuma também: é só uma pasta com \`.md\` dentro.
 
 - \`${relMem}/onde_paramos.md\` — a única porta de entrada
 - \`${relDocs}/00_Fontes_Externas.md\` — o que vive fora deste repositório

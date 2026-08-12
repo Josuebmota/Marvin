@@ -154,8 +154,8 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
     path.join('.claude', 'agents', 'README.md'),
     path.join('.claude', 'skills', 'README.md'),
     path.join('.claude', 'commands', 'retomar.md'),
-    path.join('.docs', '00_Inicio.md'),
-    path.join('.docs', '08_Memoria', 'onde_paramos.md'),
+    path.join('.marvin', '00_Inicio.md'),
+    path.join('.marvin', '08_Memoria', 'onde_paramos.md'),
   ];
   const criados = arquivos(a.proj);
   for (const e of esperados) checa('cria ' + e, criados.includes(e));
@@ -172,7 +172,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
     // A prova real: escrever pelo caminho do agente tem que cair no repositório.
     fs.writeFileSync(path.join(mem, 'prova.md'), '# prova\n');
     checa('escrita pelo perfil aparece dentro do repo',
-          fs.existsSync(path.join(a.proj, '.docs', '08_Memoria', 'prova.md')));
+          fs.existsSync(path.join(a.proj, '.marvin', '08_Memoria', 'prova.md')));
   }
   limpar(a);
 }
@@ -205,7 +205,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const r = rodar(a, '--no-git');
   checa('migração sai com código 0', r.status === 0, r.stderr.slice(0, 300));
 
-  const destino = path.join(a.proj, '.docs', '08_Memoria');
+  const destino = path.join(a.proj, '.marvin', '08_Memoria');
   const sobreviventes = fs.existsSync(destino)
     ? fs.readdirSync(destino).filter(f => /^nota\d+\.md$/.test(f)).length : 0;
   checa(`as ${N} notas sobrevivem no repositório`, sobreviventes === N,
@@ -271,7 +271,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   if (ehLink) {
     fs.writeFileSync(path.join(mem, 'prova2.md'), '# prova\n');
     checa('a memória volta a cair dentro do repositório',
-          fs.existsSync(path.join(a.proj, '.docs', '08_Memoria', 'prova2.md')));
+          fs.existsSync(path.join(a.proj, '.marvin', '08_Memoria', 'prova2.md')));
   }
   limpar(a);
 }
@@ -323,7 +323,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   rodar(a, '--no-git');
   const claude = fs.readFileSync(path.join(a.proj, 'CLAUDE.md'), 'utf8');
   checa('o CLAUDE.md gerado ensina o marvin --check', /--check/.test(claude));
-  const inicio = fs.readFileSync(path.join(a.proj, '.docs', '00_Inicio.md'), 'utf8');
+  const inicio = fs.readFileSync(path.join(a.proj, '.marvin', '00_Inicio.md'), 'utf8');
   checa('o 00_Inicio.md avisa que mover a pasta quebra a junction', /--check/.test(inicio));
 
   // Simula projeto montado por versão antiga: CLAUDE.md sem a seção.

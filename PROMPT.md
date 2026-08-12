@@ -19,7 +19,7 @@ node "<caminho>/marvin/marvin.mjs" --limpar-ruflo
 
 ```
 Vou montar a base de conhecimento deste projeto. O script do marvin
-já rodou e criou o esqueleto (vault em Docs/, memória com junction invertida,
+já rodou e criou o esqueleto (base em .marvin/, memória com junction invertida,
 .claude/agents vazio, git). Agora falta a parte que exige julgamento.
 
 PASSO 1 — Lê o código de verdade antes de escrever qualquer coisa.
@@ -69,7 +69,7 @@ procurou o suficiente — volta ao passo 1.
 
 ## Por que é dividido assim
 
-O script acerta o mecânico: junction, config do Obsidian, detecção de stack,
+O script acerta o mecânico: junction, esqueleto da base, detecção de stack,
 `.gitignore` com os sub-repos, diagnóstico de colisão entre níveis de `.claude`.
 
 Mas os agentes só prestam quando carregam coisas que **só se descobrem apanhando**.
@@ -87,8 +87,7 @@ Estes são de um app financeiro real — nenhum sairia de template:
 <projeto>/
 ├── CLAUDE.md
 ├── .claude/agents/         o time (6 a 9 papéis)
-└── Docs/                   ← o vault do Obsidian É esta pasta
-    ├── .obsidian/
+└── .marvin/                ← a base de conhecimento É esta pasta
     ├── 00_Inicio.md
     ├── 08_Memoria/         ← memória do Claude, arquivos reais e versionados
     ├── 09_Arquivo_*/       arquivo morto, se houver

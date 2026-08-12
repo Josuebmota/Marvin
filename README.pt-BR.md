@@ -44,12 +44,12 @@ impossível.
 **Memória dentro do repositório, por junction invertida:**
 
 ```
-~/.claude/projects/<caminho>/memory  ──junction──►  .docs/08_Memoria/
+~/.claude/projects/<caminho>/memory  ──junction──►  .marvin/08_Memoria/
 ```
 
-A ferramenta escreve no caminho padrão dela; os arquivos nascem no repositório. Memória
-versionada em git, visível como vault do Obsidian, uma fonte só. Se trocar de ferramenta,
-**os arquivos ficam** — só o carregamento automático some.
+A ferramenta escreve no caminho padrão dela; os arquivos nascem no repositório. Memória em
+markdown puro dentro do projeto, uma fonte só. Se trocar de ferramenta, **os arquivos
+ficam** — só o carregamento automático some.
 
 ## O que ele cria
 
@@ -62,7 +62,7 @@ versionada em git, visível como vault do Obsidian, uma fonte só. Se trocar de 
 │   ├── agents/README.md        guia de como escrever o time
 │   ├── skills/README.md        skill × agente × command: o discriminador
 │   └── commands/retomar.md     /retomar: a porta de entrada
-└── .docs/                      ← vault do Obsidian
+└── .marvin/                    ← base de conhecimento
     ├── 00_Inicio.md
     ├── 00_Fontes_Externas.md   onde vivem US, roadmap, design
     ├── 08_Memoria/
@@ -70,33 +70,38 @@ versionada em git, visível como vault do Obsidian, uma fonte só. Se trocar de 
     └── 99_Backup/
 ```
 
-## Onde o vault vai parar — e por que nem sempre é `.docs`
+## Onde a base vai parar — e por que nem sempre é `.marvin`
 
-O script **procura um vault existente pelos marcadores** (`08_Memoria/` ou `.obsidian/`),
+O script **procura uma base existente pelos marcadores** (`08_Memoria/` ou `.obsidian/`),
 não pelo nome da pasta. A regra:
 
 | Situação | Resultado |
 |---|---|
-| Projeto novo | cria **`.docs/`** |
-| Já existe vault em `Docs/` (ou `docs/`) | **reaproveita**, não duplica |
-| Existe `Docs/` que **não** é vault (documentação do produto) | cria `.docs/` ao lado e avisa: *"convivendo com Docs/ do produto — intocado"* |
+| Projeto novo | cria **`.marvin/`** |
+| Já existe base em `.docs/`, `Docs/` ou `docs/` | **reaproveita**, não duplica |
+| Existe `Docs/` que **não** é base (documentação do produto) | cria `.marvin/` ao lado e avisa: *"convivendo com Docs/ do produto — intocado"* |
 
-O ponto no nome existe para **não colidir com a documentação do produto**. Se o `Docs/` do
-projeto já é onde vive o conhecimento, fundir é melhor que separar: os wikilinks entre
-memória e docs ficam no mesmo grafo do Obsidian. Separar criaria dois vaults que não se
-enxergam, e `[[link]]` de um para o outro quebra.
+**O nome diz de quem é a pasta.** Na maioria dos repositórios em que a ferramenta roda —
+código de cliente, de empregador, de time — esta base é *seu material de trabalho*, não
+entregável do projeto. `.docs` genérico sugeria o contrário e convidava a ser commitada
+junto com o produto. `.marvin` deixa explícito de onde ela veio e a quem serve.
+
+`.docs` continua na lista de candidatos, então **projeto montado por versão anterior segue
+funcionando sem migração** — a detecção é por marcador, não por nome. Se o `Docs/` do
+projeto já é onde o conhecimento vive, fundir continua sendo melhor que separar: duas bases
+que não se enxergam é o pior dos mundos.
 
 **Consequência prática:** projetos migrados costumam ficar em `Docs/` e projetos novos em
-`.docs/`. Isso é o desenho, não inconsistência. Só renomeie para `.docs` se a pasta for
-**100% ferramenta** — e, se renomear, **refaça a junction**, porque ela aponta para o
-caminho antigo e fica órfã em silêncio:
+`.marvin/`. Isso é o desenho, não inconsistência. Só renomeie se a pasta for **100%
+ferramenta** — e, se renomear, **refaça a junction**, porque ela aponta para o caminho
+antigo e fica órfã em silêncio:
 
 ```powershell
 # PowerShell — remove SÓ o link, nunca o conteúdo
 [System.IO.Directory]::Delete("$env:USERPROFILE\.claude\projects\<caminho>\memory", $false)
-git mv Docs .docs
+git mv Docs .marvin
 New-Item -ItemType Junction -Path "$env:USERPROFILE\.claude\projects\<caminho>\memory" `
-         -Target "$PWD\.docs\08_Memoria"
+         -Target "$PWD\.marvin\08_Memoria"
 ```
 
 Depois atualize as referências a `Docs/` no `AGENTS.md`, no adaptador da ferramenta, no

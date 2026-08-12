@@ -6,15 +6,15 @@ tags: [moc]
 
 # Marvin — Base de Conhecimento
 
-> **Esta pasta é o vault.** No Obsidian: *Open folder as vault* apontando para `.docs`.
-> Tudo aqui é arquivo real e versionado em git.
+> **Esta pasta é a base de conhecimento** deste projeto: `.marvin`.
+> Markdown puro, arquivo real, sem depender de ferramenta nenhuma para ser lido.
 
 ## Montagem
 
 Existe **uma junction só**, e ela é invertida:
 
 ```
-~/.claude/projects/<raiz-com-hifens>/memory  ──►  .docs/08_Memoria/
+~/.claude/projects/<raiz-com-hifens>/memory  ──►  .marvin/08_Memoria/
 ```
 
 O Claude escreve no caminho padrão dele; os arquivos nascem dentro do repositório.

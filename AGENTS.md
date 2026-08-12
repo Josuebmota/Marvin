@@ -6,7 +6,7 @@ trabalhar com agentes de IA. Documentação de uso: [README.md](README.md).
 > **Fonte de verdade deste projeto, independente de ferramenta.**
 > O `CLAUDE.md` é ponteiro, não cópia.
 >
-> Estado corrente: `.docs/08_Memoria/onde_paramos.md` — versionado e público, ver abaixo.
+> Estado corrente: `.marvin/08_Memoria/onde_paramos.md` — versionado e público, ver abaixo.
 
 ## Estrutura real
 
@@ -74,7 +74,7 @@ adaptador ausente.
 ## A memória deste repo é versionada — e pública
 
 O Marvin prega **memória versionada dentro do repositório**, e aqui isso vale sem
-exceção: `.docs/08_Memoria/onde_paramos.md` está no git. Consequências:
+exceção: `.marvin/08_Memoria/onde_paramos.md` está no git. Consequências:
 
 - **Escreva a memória como se fosse lida**, porque é. O que for de outro projeto vai na
   memória daquele projeto, não aqui.
@@ -87,7 +87,7 @@ Num projeto privado — o caso de uso normal — a memória guarda decisão de p
 cliente, e é por isso que o script avisa **"repo PRIVADO, sempre"**. Aqui o conteúdo é
 sobre uma ferramenta pública, então não há o que proteger.
 
-O **pacote npm** não leva `.docs/` nem `.claude/`: o `files` do `package.json` manda só o
+O **pacote npm** não leva `.marvin/` nem `.claude/`: o `files` do `package.json` manda só o
 script e a documentação. Quem instala roda a ferramenta e gera os seus.
 
 ## Convenções

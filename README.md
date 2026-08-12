@@ -43,12 +43,12 @@ pointer** with no content of its own. Divergence becomes structurally impossible
 **Memory inside the repository, via an inverted junction:**
 
 ```
-~/.claude/projects/<path>/memory  ──junction──►  .docs/08_Memoria/
+~/.claude/projects/<path>/memory  ──junction──►  .marvin/08_Memoria/
 ```
 
 The tool writes to its own default path; the files are born inside the repository. Memory
-versioned in git, browsable as an Obsidian vault, one source. Switch tools and **the files
-stay** — only the auto-loading goes away.
+as plain markdown inside the project, one source. Switch tools and **the files stay** —
+only the auto-loading goes away.
 
 ## What it creates
 
@@ -61,7 +61,7 @@ stay** — only the auto-loading goes away.
 │   ├── agents/README.md        guide for writing your team
 │   ├── skills/README.md        skill vs. agent vs. command: the discriminator
 │   └── commands/retomar.md     /retomar: the entry point
-└── .docs/                      ← Obsidian vault
+└── .marvin/                    ← knowledge base
     ├── 00_Inicio.md
     ├── 00_Fontes_Externas.md   where user stories, roadmap and design live
     ├── 08_Memoria/
@@ -71,35 +71,40 @@ stay** — only the auto-loading goes away.
 
 > Generated file and folder names are in Portuguese, matching the templates the script
 > ships. They are yours to rename — nothing in the script depends on the names except the
-> vault markers below.
+> markers below.
 
-## Where the vault lands — and why it isn't always `.docs`
+## Where the knowledge base lands — and why it isn't always `.marvin`
 
-The script **looks for an existing vault by its markers** (`08_Memoria/` or `.obsidian/`),
+The script **looks for an existing base by its markers** (`08_Memoria/` or `.obsidian/`),
 not by folder name. The rule:
 
 | Situation | Result |
 |---|---|
-| New project | creates **`.docs/`** |
-| A vault already exists in `Docs/` (or `docs/`) | **reuses it**, no duplicate |
-| A `Docs/` exists that is **not** a vault (product documentation) | creates `.docs/` alongside and says: *"living next to product Docs/ — untouched"* |
+| New project | creates **`.marvin/`** |
+| A base already exists in `.docs/`, `Docs/` or `docs/` | **reuses it**, no duplicate |
+| A `Docs/` exists that is **not** a base (product documentation) | creates `.marvin/` alongside and says: *"living next to product Docs/ — untouched"* |
 
-The dot in the name exists so it **won't collide with product documentation**. If the
-project's `Docs/` is already where knowledge lives, merging beats separating: wikilinks
-between memory and docs stay in the same Obsidian graph. Separating would create two
-vaults that can't see each other, and `[[link]]` across them breaks.
+**The name says whose folder it is.** In most repositories this tool runs in — a client's
+code, an employer's, a team's — this base is *your working material*, not a project
+deliverable. A generic `.docs` suggested the opposite and invited being committed along
+with the product. `.marvin` makes its origin and its audience explicit.
 
-**Practical consequence:** migrated projects tend to sit in `Docs/`, new ones in `.docs/`.
-That's the design, not an inconsistency. Only rename to `.docs` if the folder is **100%
-tooling** — and if you do rename it, **rebuild the junction**, because it still points at
-the old path and goes orphaned silently:
+`.docs` stays in the candidate list, so **a project set up by an earlier version keeps
+working with no migration** — detection is by marker, not by name. And if the project's
+`Docs/` is already where knowledge lives, merging still beats separating: two bases that
+can't see each other is the worst outcome.
+
+**Practical consequence:** migrated projects tend to sit in `Docs/`, new ones in `.marvin/`.
+That's the design, not an inconsistency. Only rename if the folder is **100% tooling** —
+and if you do rename it, **rebuild the junction**, because it still points at the old path
+and goes orphaned silently:
 
 ```powershell
 # PowerShell — removes ONLY the link, never the content
 [System.IO.Directory]::Delete("$env:USERPROFILE\.claude\projects\<path>\memory", $false)
-git mv Docs .docs
+git mv Docs .marvin
 New-Item -ItemType Junction -Path "$env:USERPROFILE\.claude\projects\<path>\memory" `
-         -Target "$PWD\.docs\08_Memoria"
+         -Target "$PWD\.marvin\08_Memoria"
 ```
 
 Then update the references to `Docs/` in `AGENTS.md`, in the tool adapter, in

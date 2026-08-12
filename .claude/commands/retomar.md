@@ -4,7 +4,7 @@ description: Retoma o trabalho a partir do estado corrente registrado — a port
 
 Retome o trabalho neste projeto.
 
-1. Leia `.docs/08_Memoria/onde_paramos.md` — é a **única**
+1. Leia `.marvin/08_Memoria/onde_paramos.md` — é a **única**
    porta de entrada, sempre atualizada. Se não existir, leia o `MEMORY.md` e diga que a
    nota canônica está faltando.
 

@@ -63,7 +63,7 @@ do lado de fora: `npx marvin-kb@1.0.0 --help` num diretório limpo roda e não e
 O comando instalado é **`marvin`**. **`npx marvin` roda o pacote de outra pessoa** — o nome
 estava ocupado. A documentação precisa dizer `npx marvin-kb` sempre.
 
-O pacote leva o script e as docs. O `.docs/` e o `.claude/` daqui ficam de fora por
+O pacote leva o script e as docs. O `.marvin/` e o `.claude/` daqui ficam de fora por
 desenho — quem instala roda a ferramenta e gera os seus.
 
 **A conta npm (`josubatsta`) tem 2FA por security key, não por app autenticador.**
@@ -138,7 +138,7 @@ Nada.
 - **Mover a pasta do projeto quebra a memória de um jeito que parece perda de dado.** A
   junction antiga continua apontando para o caminho velho, e no caminho novo o Claude Code
   cria um `memory/` **vazio de verdade** — abre a sessão, a memória parece ter sumido, e
-  nada avisa. O conteúdo está intacto em `.docs/08_Memoria`; o que falta é só a junction.
+  nada avisa. O conteúdo está intacto em `.marvin/08_Memoria`; o que falta é só a junction.
 
   **O script agora resolve isso sozinho:** `marvin --check` diagnostica e sai com código
   != 0; `marvin` normal conserta, removendo o diretório vazio e recriando o link. O
@@ -146,13 +146,13 @@ Nada.
   projeto**, ou quando o `marvin` não estiver à mão:
 
   ```powershell
-  $novo = "<caminho-do-projeto>"; $chave = ($novo -replace '[:\\/]','-'); $link = "$env:USERPROFILE\.claude\projects\$chave\memory"; if (Test-Path $link) { $i = Get-Item $link -Force; if ($i.Attributes -band [IO.FileAttributes]::ReparsePoint) { [System.IO.Directory]::Delete($link, $false) } else { Remove-Item $link -Force } }; New-Item -ItemType Junction -Path $link -Target "$novo\.docs\08_Memoria" | Out-Null; Get-ChildItem $link -Filter *.md
+  $novo = "<caminho-do-projeto>"; $chave = ($novo -replace '[:\\/]','-'); $link = "$env:USERPROFILE\.claude\projects\$chave\memory"; if (Test-Path $link) { $i = Get-Item $link -Force; if ($i.Attributes -band [IO.FileAttributes]::ReparsePoint) { [System.IO.Directory]::Delete($link, $false) } else { Remove-Item $link -Force } }; New-Item -ItemType Junction -Path $link -Target "$novo\.marvin\08_Memoria" | Out-Null; Get-ChildItem $link -Filter *.md
   ```
 
   Remove **só o link** se for junction, apaga o diretório vazio se for diretório, recria e
   lista as notas. Vale limpar a junction órfã do caminho antigo também — ela sobrevive
   apontando para o vazio. Se a última linha não listar `onde_paramos.md`, pare e confira
-  `.docs/08_Memoria` antes de mexer em mais nada.
+  `.marvin/08_Memoria` antes de mexer em mais nada.
 - **`--dry-run` só é honesto porque toda escrita passa por `fsw`/`exec`.** Escrita nova
   que chame `fs.writeFileSync` direto faz o dry-run mentir em silêncio.
 - **A tabela `ATUALIZACOES` (passo 10) é mantida à mão.** Seção nova em template gerado
