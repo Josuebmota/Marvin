@@ -320,6 +320,100 @@ const stacks = new Map();
 if (stacks.size) for (const [d, t] of stacks) info(d.padEnd(40) + [...t].join(' + '));
 else warn('no stack marker found');
 
+// ── Comandos canônicos. O passo 1 sabia QUAL manifesto existe e nunca o abria: o
+// `AGENTS.md` saía com "_(como rodar teste e build)_" para o humano preencher, sendo
+// que `scripts` está a um `JSON.parse` de distância. Ler manifesto é FATO, não
+// julgamento — cabe ao script (o invariante 4 protege o que exige conhecer o projeto,
+// não o que está escrito no disco).
+//
+// Por que isso importa mais do que parece: agente que adivinha comando roda `npm i`
+// num projeto pnpm e suja o lockfile. O gerenciador vem do LOCKFILE, nunca do palpite.
+//
+// Cada linha carrega a ORIGEM. É o que impede o bloco de envelhecer em silêncio quando
+// o manifesto muda: dá para conferir a fonte sem sair do arquivo.
+const lerJSON = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } };
+const temNaRaiz = (n) => fs.existsSync(path.join(RAIZ, n));
+const COMANDOS = [];
+const poe = (rotulo, comando, origem) => {
+  if (comando && !COMANDOS.some(c => c.rotulo === rotulo)) COMANDOS.push({ rotulo, comando, origem });
+};
+
+(function detectarComandos() {
+  // Node: o gerenciador sai do LOCKFILE. `<pm> install` e `<pm> run <script>` são
+  // válidos nos quatro, então uma forma só serve para todos — menos caso especial.
+  const pkg = lerJSON(path.join(RAIZ, 'package.json'));
+  if (pkg) {
+    const pm = temNaRaiz('pnpm-lock.yaml') ? 'pnpm'
+      : temNaRaiz('yarn.lock') ? 'yarn'
+      : (temNaRaiz('bun.lockb') || temNaRaiz('bun.lock')) ? 'bun'
+      : 'npm';
+    const lock = pm === 'pnpm' ? 'pnpm-lock.yaml' : pm === 'yarn' ? 'yarn.lock'
+      : pm === 'bun' ? 'bun.lock*'
+      : temNaRaiz('package-lock.json') ? 'package-lock.json' : 'no lockfile — npm is the default';
+    poe('Instalar', pm + ' install', lock);
+    const s = (pkg.scripts && typeof pkg.scripts === 'object') ? pkg.scripts : {};
+    for (const [rotulo, nomes] of [
+      ['Lint', ['lint']], ['Typecheck', ['typecheck', 'type-check', 'tsc']],
+      ['Testar', ['test']], ['Build', ['build']], ['Rodar', ['dev', 'start']],
+    ]) {
+      const achou = nomes.find(n => typeof s[n] === 'string');
+      if (achou) poe(rotulo, pm + ' run ' + achou, 'package.json > scripts.' + achou);
+    }
+  }
+
+  // Python: pytest.ini / tox.ini / [tool.pytest] no pyproject são declaração explícita
+  // de que a suíte é pytest. Sem um desses, não inventar o runner.
+  const pyproj = temNaRaiz('pyproject.toml');
+  let pyprojTxt = '';
+  if (pyproj) { try { pyprojTxt = fs.readFileSync(path.join(RAIZ, 'pyproject.toml'), 'utf8'); } catch {} }
+  if (temNaRaiz('pytest.ini')) poe('Testar', 'pytest', 'pytest.ini');
+  else if (temNaRaiz('tox.ini')) poe('Testar', 'pytest', 'tox.ini');
+  else if (/\[tool\.pytest/.test(pyprojTxt)) poe('Testar', 'pytest', 'pyproject.toml > [tool.pytest]');
+  if (temNaRaiz('requirements.txt')) poe('Instalar', 'pip install -r requirements.txt', 'requirements.txt');
+  else if (pyproj) poe('Instalar', 'pip install -e .', 'pyproject.toml');
+
+  if (temNaRaiz('go.mod')) { poe('Testar', 'go test ./...', 'go.mod'); poe('Build', 'go build ./...', 'go.mod'); }
+  if (temNaRaiz('Cargo.toml')) { poe('Testar', 'cargo test', 'Cargo.toml'); poe('Build', 'cargo build', 'Cargo.toml'); }
+  if (temNaRaiz('pubspec.yaml')) { poe('Instalar', 'flutter pub get', 'pubspec.yaml'); poe('Testar', 'flutter test', 'pubspec.yaml'); }
+
+  // .NET: o marcador costuma estar em subdiretório — o passo 1 já varreu por isso.
+  if ([...stacks.values()].some(t => t.has('.NET/C#'))) {
+    poe('Testar', 'dotnet test', '*.csproj / *.sln'); poe('Build', 'dotnet build', '*.csproj / *.sln');
+  }
+
+  // Makefile por último: só preenche o que ninguém preencheu antes. `^alvo:` na coluna
+  // zero é o que distingue alvo de variável e de linha de receita.
+  if (temNaRaiz('Makefile')) {
+    let mk = ''; try { mk = fs.readFileSync(path.join(RAIZ, 'Makefile'), 'utf8'); } catch {}
+    for (const [rotulo, alvo] of [['Testar', 'test'], ['Build', 'build'], ['Lint', 'lint'], ['Instalar', 'install']])
+      if (new RegExp('^' + alvo + '\s*:', 'm').test(mk)) poe(rotulo, 'make ' + alvo, 'Makefile');
+  }
+})();
+
+if (COMANDOS.length) {
+  log('\n\x1b[1m1b. Canonical commands (read from the manifest, not guessed)\x1b[0m');
+  for (const c of COMANDOS) info(c.rotulo.padEnd(11) + c.comando.padEnd(34) + '\x1b[2m' + c.origem + '\x1b[0m');
+}
+
+// O `AGENTS.md` do passo 7 é um template literal. Montar o bloco AQUI, como string,
+// evita crase dentro de crase — que é exatamente como este arquivo se quebrou ao
+// escrever esta feature. Array + join deixa cada linha visível no diff.
+const BLOCO_COMANDOS = COMANDOS.length ? [
+  '## Comandos canônicos',
+  '',
+  'Use **exatamente** estes — não adivinhe. Agente que adivinha roda `npm install` num',
+  'projeto pnpm e suja o lockfile.',
+  '',
+  '| O quê | Comando | De onde saiu |',
+  '|---|---|---|',
+  ...COMANDOS.map(c => '| ' + c.rotulo + ' | `' + c.comando + '` | `' + c.origem + '` |'),
+  '',
+  'A coluna da direita existe para este bloco **não envelhecer em silêncio**: o marvin leu',
+  'do manifesto no dia da montagem. Mudou o manifesto, é aqui que se confere.',
+  '', '',
+].join('\n') : '';
+const LINHA_TESTE_BUILD = COMANDOS.length ? '' : '- _(como rodar teste e build)_\n';
+
 // ═══════════════════════════════════════════ 2. DIRETÓRIOS VAZIOS
 log('\n\x1b[1m2. Directories that look like a service but are empty\x1b[0m');
 log('   (an agent written for an empty folder invents code — this is the warning not to)');
@@ -441,6 +535,35 @@ if (gl && emTokens(gl[1].chars) > 2000) {
   info('    used in 0 projects  → out — it is pure weight');
 }
 
+// ── 4b. A NOTA também é contexto fixo, e era a única que ninguém contava.
+//
+// O passo 4 media agente, skill e command e parava ali. Mas a memória carrega em TODA
+// sessão pela junction, e é o arquivo que mais cresce — porque a tentação de acrescentar
+// "o que esta sessão produziu" é permanente. Este repositório mesmo chegou a 314 linhas
+// com quatro seções de changelog dentro, sendo que o cabeçalho da própria nota diz que
+// o histórico é o `git log`.
+//
+// O aviso só serve com DESTINO. "Sua nota está grande" é moralismo; "o que virou
+// histórico pertence a 10_Decisoes/" é uma ação. Por isso os dois andam juntos.
+//
+// O teto: ~6 KB. Não é número mágico — é o dobro de uma nota bem-formada de referência
+// (3,3 KB, respondendo as três perguntas e nada mais). Dobro dá folga para projeto
+// grande sem deixar changelog passar batido.
+const NOTA = path.join(DEST, 'onde_paramos.md');
+const TETO_NOTA = 6 * 1024;
+try {
+  const bytes = fs.statSync(NOTA).size;
+  const tk = emTokens(bytes);
+  info(`${''.padStart(11)}the memory note itself: ~${tk} tk — it loads in every session too`);
+  if (bytes > TETO_NOTA) {
+    warn(`onde_paramos.md is ${Math.round(bytes / 1024)} KB (~${tk} tk) — too long to load every session`);
+    info('  it answers three questions and no more: where we stopped · what to do now · what is stuck.');
+    info('  what turned into history has a destination, and it is not this file:');
+    info(`    a decision that still explains a choice  → ${path.relative(RAIZ, path.join(DOCS, '10_Decisoes')).replace(/\\/g, '/')}/<slug>.md`);
+    info('    a log of what was done                   → git log');
+  }
+} catch { /* nota ainda não existe: o passo 7b a cria */ }
+
 // ═══════════════════════════════════════════ 5. BASE DE CONHECIMENTO EM .marvin/
 log('\n\x1b[1m5. Knowledge base (a single folder — plain markdown, no tool required)\x1b[0m');
 // DOCS foi detectado lá em cima, antes de qualquer escrita, porque o --check precisa dele.
@@ -453,6 +576,57 @@ if (docsDoProduto) info('living next to ' + path.relative(RAIZ, docsDoProduto) +
 // esse é o ponto. Qualquer editor abre. Quem quiser usar um app de notas por cima
 // aponta ele para esta pasta — a base não depende disso para funcionar.
 for (const d of ['10_Decisoes', '11_Sessoes', '90_Anexos', '99_Backup']) fsw.mkdirSync(path.join(DOCS, d), { recursive: true });
+
+// README de 10_Decisoes. A pasta nascia vazia e sem uma linha explicando para que serve,
+// e pasta vazia não ensina ninguém: o resultado era todo mundo empilhando histórico no
+// `onde_paramos.md` até ele virar changelog. Mesmo remédio que já vale para `agents/` e
+// `skills/` — a pasta vem com o README que diz o que entra nela.
+const decDir = path.join(DOCS, '10_Decisoes');
+const decReadme = path.join(decDir, 'README.md');
+if (!fs.existsSync(decReadme)) {
+  fsw.writeFileSync(decReadme, [
+  '# Decisões',
+  '',
+  'Uma decisão por arquivo, nome em `slug-curto.md`. **Acrescenta, nunca sobrescreve** —',
+  'é o oposto do `onde_paramos.md`, e essa é a razão desta pasta existir.',
+  '',
+  '| Arquivo | Responde | Regime |',
+  '|---|---|---|',
+  '| `08_Memoria/onde_paramos.md` | **onde estamos agora** | sobrescrito, sempre um |',
+  '| `10_Decisoes/<slug>.md` | **por que escolhemos isto** | imutável, um por decisão |',
+  '',
+  'São perguntas diferentes. A segunda não cabe numa nota sobrescrita: assim que você',
+  'escreve o porquê de uma escolha dentro do `onde_paramos.md`, ele começa a virar',
+  'changelog — e nota longa carrega em TODA sessão, usada ou não.',
+  '',
+  '## Quando escrever uma',
+  '',
+  'Quando a escolha ainda vai ser questionada daqui a três meses: troca de arquitetura,',
+  'dependência adotada ou recusada, caminho descartado e por quê. Se ninguém for',
+  'perguntar "por que assim?", é `git log`, não decisão.',
+  '',
+  '## O formato mínimo',
+  '',
+  '```markdown',
+  '# <a decisão, em uma frase>',
+  '',
+  '**Quando:** <data>   ·   **Estado:** aceita | substituída por <slug>',
+  '',
+  '## O problema',                                             
+  '## O que foi decidido',
+  '## O que foi descartado, e por quê',
+  '```',
+  '',
+  'O descarte é a parte que mais paga: sem ele a mesma alternativa é relitigada todo ano.',
+  '',
+  '## Publicar ou não',
+  '',
+  'Esta pasta é versionada. Decisão que não pode sair do seu computador vai em',
+  '`10_Decisoes/privado/`, e essa linha entra no `.gitignore` — sem config, sem flag.',
+  '',
+  ].join('\n'));
+  ok('10_Decisoes/README.md');
+} else info('10_Decisoes/README.md already exists');
 
 // vault numa pasta separada é layout antigo deste script
 const LEGADO = path.join(RAIZ, 'Obsidian');
@@ -887,6 +1061,17 @@ metadata:
 > **Esta nota é a única porta de entrada.** Sempre este nome, sempre sobrescrita.
 > Criar \`onde_paramos_<data>.md\` é **erro**: o histórico já está no \`git log\`.
 > Duas portas viram duas verdades, e uma delas fica velha em silêncio.
+>
+> **E ela é CURTA por desenho:** *onde paramos · o que fazer agora · o que está travado.*
+> Nada além dessas três. Ela carrega em TODA sessão, e nota longa é lida na diagonal.
+>
+> Quando crescer, não resuma — **cada tipo de transbordo tem um destino**:
+>
+> | O que você ia escrever aqui | Onde ele mora |
+> |---|---|
+> | armadilha do código, convenção, invariante | \`AGENTS.md\` (é durável, não é estado) |
+> | o porquê de uma escolha | \`10_Decisoes/<slug>.md\` |
+> | relato do que foi feito | \`git log\` |
 
 **Atualizado:** _(preencher)_
 
@@ -902,9 +1087,6 @@ _(o que fazer, e qual papel do time faz)_
 
 _(o que não anda, e por quê — se nada, escreva "nada")_
 
-## Contexto que economiza tempo
-
-_(ids, caminhos, credenciais de teste, armadilhas recorrentes)_
 `);
   ok('onde_paramos.md (skeleton — fill it in at the end of each session)');
 } else info('onde_paramos.md already exists');
@@ -957,12 +1139,11 @@ consegue julgar se uma mudança é segura.)_
 _(o que já mordeu: campo que parece uma coisa e é outra, valor derivado que parece
 persistido, efeito colateral não óbvio, UI que promete o que o código não faz)_
 
-## Convenções
+${BLOCO_COMANDOS}## Convenções
 
 - _(idioma do código / comentário / commit)_
 - _(limite de tamanho de arquivo)_
-- _(como rodar teste e build)_
-- Nunca commitar secret, \`.env\` ou credencial
+${LINHA_TESTE_BUILD}- Nunca commitar secret, \`.env\` ou credencial
 - **Nada de arquivo que ninguém pediu.** Antes de fechar: \`git status --short\` e uma
   justificativa por arquivo novo — sem justificativa, apaga.
 
@@ -987,6 +1168,12 @@ Relatório verde de agente não substitui ler o diff.
 
 - \`${relMem}/onde_paramos.md\` — a única porta de entrada
 - \`${relDocs}/00_Fontes_Externas.md\` — o que vive fora deste repositório
+- \`${relDocs}/10_Decisoes/<slug>.md\` — **por que** escolhemos cada coisa (ver o README de lá)
+
+**A nota é curta; a decisão é imutável.** O \`onde_paramos.md\` responde *onde estamos agora* e é
+sobrescrito. Quando você escrever o *porquê* de uma escolha dentro dele, ele começou a virar
+changelog — e ele carrega em toda sessão. O porquê vai para \`10_Decisoes/\`; o relato do que foi
+feito já está no \`git log\`.
 
 **Quando registrar: no commit.** É o momento em que uma unidade de trabalho fecha, e é o
 gatilho que faz a regra ser lembrada em vez de decorada. Sem gatilho, "sempre atualizar a
@@ -1550,6 +1737,19 @@ const ATUALIZACOES = [
     o_que: 'the "Portabilidade" table — what migrates between tools' },
   { arquivo: 'CLAUDE.md', marca: /Grafo de código/i, soCom: GRAPHIFY,
     o_que: 'the "Grafo de código" section (appears with --graphify)' },
+  // Comando canônico só entra quando HÁ manifesto legível — `soCom` evita cobrar o bloco
+  // de quem monta um repo sem stack detectável e ficaria com um aviso impossível de
+  // resolver. Quem montou antes desta versão preencheu à mão (ou não preencheu).
+  { arquivo: 'AGENTS.md', marca: /Comandos canônicos/, soCom: COMANDOS.length > 0,
+    o_que: 'the "Comandos canônicos" table — install/test/build read from the manifest' },
+  // A pasta de decisões existia desde sempre e nascia VAZIA. Quem montou antes desta
+  // versão tem a pasta e nenhuma pista do que ela é — e é justamente quem já está
+  // empilhando histórico no onde_paramos.md sem saber que havia outro lugar.
+  { arquivo: path.relative(RAIZ, path.join(DOCS, '10_Decisoes', 'README.md')).replace(/\\/g, '/'),
+    marca: /por que escolhemos isto/i,
+    o_que: 'the decisions README — what belongs there instead of in onde_paramos.md' },
+  { arquivo: 'AGENTS.md', marca: /A nota é curta; a decisão é imutável/,
+    o_que: 'the "note is short, decision is immutable" rule — where overflow goes' },
   // Bloco novo em arquivo que já existe é exatamente o que este passo existe para pegar.
   // Sem esta marca, quem montou o projeto antes desta versão continua olhando para uma
   // pasta de agentes sem nenhuma pista de QUANTOS papéis o repositório dele pede.

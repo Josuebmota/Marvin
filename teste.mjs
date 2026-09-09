@@ -20,6 +20,8 @@
  *   7. junction quebrada por mudança de pasta é CONSERTADA, não só avisada
  *   8. --check acusa a montagem quebrada e não escreve nada
  *   9. o adaptador do Copilot nasce no caminho da documentação oficial
+ *  10. os comandos canônicos saem do MANIFESTO — e o gerenciador, do lockfile
+ *  11. a nota promete três perguntas e entrega três, com destino para o transbordo
  *
  * HERMÉTICO: cada caso roda com HOME e USERPROFILE apontando para um diretório
  * temporário. Sem isso o teste criaria junctions no perfil real de quem rodasse —
@@ -40,6 +42,7 @@ import { spawnSync } from 'node:child_process';
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 const SCRIPT = path.join(AQUI, 'marvin.mjs');
+const NLQ = String.fromCharCode(10);
 
 let passou = 0, falhou = 0;
 const verde = (s) => '\x1b[32m' + s + '\x1b[0m';
@@ -403,6 +406,90 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   }
 }
 
+// ── 9g. comandos canônicos: lidos do manifesto, nunca adivinhados. O gerenciador sai
+//     do LOCKFILE — é o erro que mais custa (npm install num projeto pnpm suja o lock).
+{
+  const a = arena('cmd');
+  fs.writeFileSync(path.join(a.proj, 'package.json'),
+    JSON.stringify({ name: 'cobaia', scripts: { test: 'vitest', build: 'tsc', dev: 'vite' } }));
+  fs.writeFileSync(path.join(a.proj, 'pnpm-lock.yaml'), '');
+  const r = rodar(a, '--no-git');
+  const md = fs.readFileSync(path.join(a.proj, 'AGENTS.md'), 'utf8');
+  checa('o AGENTS.md ganha a tabela de comandos canônicos', /## Comandos canônicos/.test(md));
+  // Asserção na LINHA DA TABELA, não em substring solta: `pnpm install` contém
+  // `npm install`, e a própria prosa do bloco cita o npm como exemplo do erro.
+  checa('o gerenciador vem do lockfile, não do palpite',
+        /| Instalar | `pnpm install` |/.test(md));
+  checa('o script do package.json vira comando', /pnpm run test/.test(md));
+  // A origem é o que impede o bloco de envelhecer em silêncio quando o manifesto muda.
+  checa('cada linha declara de onde saiu', /package.json > scripts.test/.test(md));
+  checa('a lacuna manual some quando o script preencheu', !/como rodar teste e build/.test(md));
+  checa('a saída anuncia o passo 1b', /1b. Canonical commands/.test(r.stdout));
+  limpar(a);
+}
+
+// ── 9h. sem manifesto legível o script NÃO inventa comando — a lacuna manual continua.
+{
+  const a = arena('cmd-vazio');
+  fs.rmSync(path.join(a.proj, 'package.json'));
+  rodar(a, '--no-git');
+  const md = fs.readFileSync(path.join(a.proj, 'AGENTS.md'), 'utf8');
+  checa('sem manifesto, nenhuma tabela de comando é inventada', !/## Comandos canônicos/.test(md));
+  checa('sem manifesto, a lacuna manual permanece', /como rodar teste e build/.test(md));
+  limpar(a);
+}
+// ── 9i. a nota é contexto fixo e tem teto. O aviso só serve com DESTINO — por isso o
+//     teste cobre as duas metades: que ele mede, e que ele diz para onde vai o transbordo.
+{
+  const a = arena('nota');
+  rodar(a, '--no-git');
+  const nota = path.join(a.proj, '.marvin', '08_Memoria', 'onde_paramos.md');
+  const curta = rodar(a, '--dry-run');
+  checa('a nota entra na conta do contexto fixo', /the memory note itself/.test(curta.stdout));
+  checa('nota recém-criada não dispara aviso', !/too long to load every session/.test(curta.stdout));
+
+  // 12 KB: o dobro do teto, para o teste não depender do valor exato.
+  fs.appendFileSync(nota, '#'.repeat(12 * 1024));
+  const longa = rodar(a, '--dry-run');
+  checa('nota longa é acusada', /too long to load every session/.test(longa.stdout));
+  checa('o aviso aponta o destino do transbordo', longa.stdout.includes('10_Decisoes/<slug>.md'));
+  checa('o aviso lembra que o relato é git log', /→ git log/.test(longa.stdout));
+  limpar(a);
+}
+
+// ── 9j. a pasta de decisões nasce explicada. Vazia, ela não ensina ninguém — e foi
+//     assim que o histórico foi parar dentro do onde_paramos.md.
+{
+  const a = arena('dec');
+  rodar(a, '--no-git');
+  const rd = path.join(a.proj, '.marvin', '10_Decisoes', 'README.md');
+  checa('10_Decisoes nasce com README', fs.existsSync(rd));
+  const txt = fs.existsSync(rd) ? fs.readFileSync(rd, 'utf8') : '';
+  checa('o README contrasta os dois regimes', /sobrescrito, sempre um/.test(txt) && /imutável, um por decisão/.test(txt));
+  checa('o README ensina o descarte, que é a parte que paga', /descartado/i.test(txt));
+  checa('o README resolve publicar-ou-não sem config', txt.includes('10_Decisoes/privado/'));
+  const md = fs.readFileSync(path.join(a.proj, 'AGENTS.md'), 'utf8');
+  checa('o AGENTS.md ensina para onde vai o transbordo da nota', /A nota é curta; a decisão é imutável/.test(md));
+  limpar(a);
+}
+// ── 9k. a nota promete três perguntas e entrega três. Ela entregava QUATRO, e a quarta
+//     ("Contexto que economiza tempo") duplicava o `## Armadilhas` do AGENTS.md por
+//     desenho — era 41% da nota deste repositório e a única seção sem teto.
+{
+  const a = arena('tres');
+  rodar(a, '--no-git');
+  const nota = fs.readFileSync(path.join(a.proj, '.marvin', '08_Memoria', 'onde_paramos.md'), 'utf8');
+  const secoes = nota.split(NLQ).filter(l => l.startsWith('## '));
+  checa('a nota gerada tem exatamente três seções', secoes.length === 3, 'tem: ' + secoes.join(' | '));
+  checa('e são as três perguntas', /## Estado corrente/.test(nota) && /## Próximo passo/.test(nota) && /## Travado/.test(nota));
+  checa('a seção que duplicava o AGENTS.md saiu', !/Contexto que economiza tempo/.test(nota));
+  // O cabeçalho tem que dizer PARA ONDE vai cada tipo de transbordo — sem destino,
+  // o "seja breve" é conselho vazio e a pessoa acrescenta assim mesmo.
+  checa('o cabeçalho manda armadilha durável para o AGENTS.md', /é durável, não é estado/.test(nota));
+  checa('o cabeçalho manda o porquê para 10_Decisoes', nota.includes('10_Decisoes/<slug>.md'));
+  checa('o cabeçalho manda o relato para o git log', /relato do que foi feito/.test(nota));
+  limpar(a);
+}
 // ── 9. adaptador do Copilot — caminho conferido na documentação oficial
 {
   const a = arena('copilot');
