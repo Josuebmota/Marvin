@@ -8,7 +8,7 @@ Monta a **base de conhecimento** de um projeto para trabalhar com agentes de IA 
 jeito que sobrevive à troca de ferramenta e de LLM.
 
 Não é um framework, não roda nada em background, não tem dependência. É um script Node
-de ~1390 linhas que cria uma estrutura e sai da frente.
+de ~1810 linhas que cria uma estrutura e sai da frente.
 
 ```bash
 npx marvin-kb --tools=claude,codex
@@ -67,6 +67,8 @@ ficam** — só o carregamento automático some.
     ├── 00_Fontes_Externas.md   onde vivem US, roadmap, design
     ├── 08_Memoria/
     │   └── onde_paramos.md     única porta; sempre sobrescrita
+    ├── 10_Decisoes/
+    │   └── README.md           o porquê de cada escolha (só acrescenta)
     └── 99_Backup/
 ```
 
@@ -173,6 +175,12 @@ Além de criar, ele aponta problemas que passam despercebidos:
   a `description` de cada um custa em **toda** sessão. Nível global pesado é pago em todo
   projeto, usando ou não. Também avisa quando há mais de 2 níveis com agentes — o mais
   específico vence em silêncio
+- **Comandos canônicos** — lê instalar/testar/build do manifesto (`package.json`,
+  `pyproject`, `go.mod`, `Cargo.toml`, `*.csproj`, `pubspec.yaml`, `Makefile`) e tira o
+  **gerenciador do lockfile**. Agente que adivinha roda `npm install` num projeto pnpm
+- **Tamanho da nota de memória** — ela carrega em toda sessão pela junction, e é o arquivo
+  que mais cresce. Acima de ~6 KB o aviso vem **com destino**: o porquê de cada escolha vai
+  para `10_Decisoes/`, o relato do que foi feito já está no `git log`
 - **Artefatos de orquestrador antigo** — só aparece se detectar
 
 ## Flags
@@ -413,7 +421,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-48 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
+73 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

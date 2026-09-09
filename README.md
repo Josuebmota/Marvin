@@ -7,7 +7,7 @@
 Scaffolds a project's **knowledge base** for working with AI agents — in a way that
 survives switching tools and switching LLMs.
 
-Not a framework. Nothing runs in the background. No dependencies. It's a ~1390-line Node
+Not a framework. Nothing runs in the background. No dependencies. It's a ~1810-line Node
 script that creates a structure and gets out of the way.
 
 ```bash
@@ -66,6 +66,8 @@ only the auto-loading goes away.
     ├── 00_Fontes_Externas.md   where user stories, roadmap and design live
     ├── 08_Memoria/
     │   └── onde_paramos.md     the only door; always overwritten
+    ├── 10_Decisoes/
+    │   └── README.md           why each choice was made (append-only)
     └── 99_Backup/
 ```
 
@@ -179,6 +181,12 @@ Beyond creating things, it points out problems that slip by:
   tokens each `description` costs in **every** session. A heavy global level is paid in
   every project, used or not. Also warns when more than 2 levels have agents — the most
   specific one wins silently
+- **Canonical commands** — reads install/test/build from the manifest (`package.json`,
+  `pyproject`, `go.mod`, `Cargo.toml`, `*.csproj`, `pubspec.yaml`, `Makefile`) and takes the
+  **package manager from the lockfile**. An agent that guesses runs `npm install` in a pnpm repo
+- **Size of the memory note** — it loads in every session through the junction, and it is the
+  file that grows the most. Past ~6 KB the warning comes **with a destination**: the why of each
+  choice goes to `10_Decisoes/`, the log of what was done is already in `git log`
 - **Leftovers from old orchestration tools** — only shows up if detected
 
 ## Flags
@@ -428,7 +436,7 @@ rather than final text.
 node teste.mjs
 ```
 
-48 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
+73 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

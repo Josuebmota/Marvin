@@ -97,7 +97,7 @@ Estes são de um app financeiro real — nenhum sairia de template:
 Uma junction só, invertida:
 
 ```
-~/.claude/projects/<caminho-com-hifens>/memory  ──►  Docs/08_Memoria/
+~/.claude/projects/<caminho-com-hifens>/memory  ──►  .marvin/08_Memoria/
 ```
 
 **Regra dos níveis:** GLOBAL (`~/.claude/`) = capacidade · PROJETO = time · meio-termo não existe.
