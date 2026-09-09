@@ -20,6 +20,20 @@ model: haiku | sonnet | opus
 
 Sempre tenha um papel `tl` em **opus** que lê diff e é dono dos invariantes.
 
+## O que ESTE projeto sugere
+
+Detectado aqui: **Node/JS**.
+
+- **Comece com dois papéis:** o `tl` acima e **um** de implementação. O terceiro só
+  quando doer de verdade. Papel a mais é contexto fixo em toda sessão.
+- **Não crie papel vazio para preencher a pasta.** Um `.md` sem as armadilhas concretas
+  deste código entra no contexto de toda sessão e não devolve nada. Genérico é pior que
+  ausente — é por isso que o marvin gera esta pasta e não os agentes.
+
+> Este repositório **não tem agente nenhum escrito**, e isso é coerente: são ~1810 linhas
+> num arquivo só, que cabem inteiras na cabeça de quem lê. Papel aqui seria contexto fixo
+> pago em toda sessão sem devolver nada — exatamente o que o passo 4 acusa nos outros.
+
 ## Subagente NÃO tem memória
 
 Cada um nasce com contexto limpo: não vê a conversa, não vê a memória do

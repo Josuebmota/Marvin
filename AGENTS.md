@@ -12,13 +12,24 @@ trabalhar com agentes de IA. Documentação de uso: [README.md](README.md).
 
 | Arquivo | O que é |
 |---|---|
-| `marvin.mjs` | o script inteiro — ~1390 linhas, zero dependência |
+| `marvin.mjs` | o script inteiro — ~1810 linhas, zero dependência |
 | `teste.mjs` | smoke test dos invariantes — zero dependência |
 | `PROMPT.md` | o prompt que guia a escrita dos agentes (o script não escreve) |
 | `README.md` / `README.pt-BR.md` | documentação pública, inglês e português |
 | `.github/workflows/teste.yml` | CI: `node teste.mjs` em Linux, Windows e macOS |
 
-Não tem build. Rodar é `node marvin.mjs` ou `marvin`; testar é `node teste.mjs`.
+## Comandos canônicos
+
+Use **exatamente** estes — não adivinhe. Não há build.
+
+| O quê | Comando | De onde saiu |
+|---|---|---|
+| Instalar | `npm install` | `no lockfile — npm is the default` |
+| Testar | `npm run test` | `package.json > scripts.test` |
+
+O comando publicado é `marvin` (o pacote é `marvin-kb`); de dentro do clone,
+`node marvin.mjs`. A coluna da direita é o que impede a tabela de envelhecer em
+silêncio: mudou o `package.json`, é aqui que se confere.
 
 **O `package.json` é exceção declarada.** A convenção abaixo diz "zero dependência — se
 precisar de pacote, provavelmente é sinal de estar fazendo demais". Ele continua valendo
@@ -66,8 +77,19 @@ adaptador ausente.
   vazio de verdade. `marvin --check` diagnostica (sai != 0) e o `marvin` normal conserta:
   diretório vazio no lugar do link é removido e a junction recriada. Com notas dentro,
   elas são copiadas e conferidas antes — o invariante 1 vale igual.
+  Receita manual, para quando o problema é na junction de OUTRO projeto:
+  [`10_Decisoes/junction-quebrada.md`](.marvin/10_Decisoes/junction-quebrada.md).
 - **O caminho da memória é derivado do `cwd`** (`:`, `\` e `/` viram `-`). Rodar de um
   subdiretório monta a junction no lugar errado.
+- **O `--dry-run` só é honesto porque toda escrita passa por `fsw`/`exec`.** Escrita nova
+  que chame `fs.writeFileSync` direto faz o dry-run mentir em silêncio.
+- **A tabela `ATUALIZACOES` (passo 10) é mantida à mão.** Seção nova em template gerado
+  precisa de uma marca lá, senão quem montou o projeto na versão anterior nunca fica
+  sabendo. É o ponto do código mais propenso a desincronizar — já falhou uma vez: não
+  cobria o `.gitignore`, e por isso este repo ficou meses sem o bloco de segredos.
+- **Convenção de ferramenta muda rápido.** Cursor/Aider/Zed estão marcados como confiança
+  média/baixa **de propósito**. Se confirmar alguma, atualize a tabela dos **dois**
+  READMEs e o selo no `marvin.mjs` juntos.
 - **Não usar `Date.now()` nem `Math.random()`** — o script precisa ser determinístico
   para ser idempotente.
 
@@ -83,6 +105,13 @@ exceção: `.marvin/08_Memoria/onde_paramos.md` está no git. Consequências:
 - E o `/retomar` funciona num clone. Enquanto a memória esteve no `.gitignore`, o
   primeiro comando de quem clonasse apontava para um arquivo inexistente.
 
+**A nota é curta; a decisão é imutável.** O `onde_paramos.md` responde *onde estamos* e é
+sobrescrito. O *porquê* de cada escolha mora em `.marvin/10_Decisoes/`, que acrescenta e
+nunca sobrescreve. A separação não é estética: a nota carrega em toda sessão, e em 09/09
+ela chegou a 19 KB (~4.900 tk) porque seis sessões de histórico foram empilhadas dentro —
+com o próprio passo 4b acusando. Está em 3,2 KB, e nada foi perdido — o que era durável foi para as
+seções acima deste arquivo, e o resto para `10_Decisoes/`.
+
 Num projeto privado — o caso de uso normal — a memória guarda decisão de produto e id de
 cliente, e é por isso que o script avisa **"repo PRIVADO, sempre"**. Aqui o conteúdo é
 sobre uma ferramenta pública, então não há o que proteger.
@@ -96,6 +125,14 @@ script e a documentação. Quem instala roda a ferramenta e gera os seus.
 - Zero dependência. Se precisar de pacote, provavelmente é sinal de estar fazendo demais
 - Nunca commitar caminho pessoal nem nome de projeto de cliente — use `<caminho>` nos
   exemplos. Vale para o **texto do commit** também, não só para o arquivo
+- **Rode `node teste.mjs` antes de qualquer commit** — ele já pegou uma quebra real
+  durante a tradução da saída
+- **Antes de qualquer push, confira onde você está:** `pwd && git remote -v && git log
+  --oneline -1`. Em 03/08 um push foi rodado dentro de **outro repositório** por engano;
+  só não vazou porque a autenticação falhou
+- **Commit daqui não leva `Co-Authored-By`** — o trailer vira um segundo contribuidor na
+  página do GitHub. Desligado em `~/.claude/settings.json` (`"includeCoAuthoredBy": false`);
+  se reaparecer, é outra máquina ou outro perfil commitando sem o ajuste
 - Antes de fechar: `git status --short` e uma justificativa por arquivo novo
 
 ## Higiene de sessão — quando sugerir um chat novo
