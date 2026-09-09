@@ -19,7 +19,8 @@ metadata:
 ## Estado corrente
 
 **No ar nos dois lugares.** Código em https://github.com/Josuebmota/Marvin e pacote em
-`marvin-kb` no npm. Zero dependência de runtime, um arquivo só, **73 verificações** verdes
+`marvin-kb@1.1.0` no npm (09/09). Zero dependência de runtime, um arquivo só, **79
+verificações** verdes
 em Linux, Windows e macOS pelo CI.
 
 A base de conhecimento chama `.marvin/` desde 09/09/2026 (era `.docs/`). `.docs` continua
@@ -43,7 +44,8 @@ repositório com a própria régua:
 - **Consertar o ponteiro do `PROMPT.md` e do `--help`.** Eles ensinam
   `node <path>/marvin/marvin.mjs` e `<path>/marvin/PROMPT.md`, mas a via principal virou
   `npx marvin-kb` / `marvin` — quem instalou pelo npm não tem esse caminho. O ponteiro do
-  `PROMPT.md` devia ser a URL do GitHub, que serve aos dois. Vale um patch.
+  `PROMPT.md` devia ser a URL do GitHub, que serve aos dois. **Saiu assim no 1.1.0** —
+  dá para ver rodando `npx marvin-kb --help`. Vale o `1.1.1`.
 
 ## Travado
 
