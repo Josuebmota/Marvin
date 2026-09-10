@@ -18,9 +18,10 @@ metadata:
 
 ## Estado corrente
 
-**No ar nos dois lugares.** Código em https://github.com/Josuebmota/Marvin e pacote em
-`marvin-kb@1.1.1` no npm. Zero dependência de runtime, um arquivo só,
-**92 verificações** verdes em Linux, Windows e macOS pelo CI.
+**Código no ar; o `1.1.1` ainda não.** https://github.com/Josuebmota/Marvin está em `1.1.0`,
+e o npm também. O **`1.1.1` está commitado e tagueado localmente, sem push e sem publish** —
+ver Travado. Zero dependência de runtime, um arquivo só, **92 verificações** verdes em
+Linux, Windows e macOS pelo CI.
 
 A base de conhecimento chama `.marvin/` desde 09/09/2026 (era `.docs/`). `.docs` continua
 na lista de candidatos e a detecção é por marcador, então **projeto montado antes não
@@ -50,16 +51,25 @@ repositório com a própria régua:
 
 ## Próximo passo
 
-Nada em fila. As duas ideias levantadas e não feitas:
+1. **Publicar o `1.1.1`** (ver Travado) e então `git push --follow-tags`.
+2. **O `--check` deveria medir a nota.** Hoje o teto de 6 KB só aparece no run completo ou
+   no `--dry-run`; o `--check` é o comando que se roda por hábito, e é onde a régua pega
+   antes de virar problema. Três repositórios chegaram a 19, 67 e 90 KB sem ninguém ver.
+3. **O passo 3 confunde backup com lixo de shell.** Ele diz "almost always a malformed
+   shell command" para qualquer nome estranho, mas `.bak`/`.orig`/`~` são backup declarado
+   e pedem outra conversa. Visto num repo real com `firestore.rules.bak`.
 
-- **Painel de fechamento** — um resumo no fim do run dizendo o que ESTE run fez.
-  Impresso, nunca em arquivo: `PAINEL.md` seria artefato derivado envelhecendo em silêncio.
-- **Skills mortas no passo 4** — cruzar as skills globais com a stack detectada e apontar
-  as que não têm relação. É a única heurística do lote; entra como dica, nunca como "apague".
+As duas ideias antigas, ainda não feitas: **painel de fechamento** (resumo do que ESTE run
+fez, impresso, nunca em arquivo) e **skills mortas no passo 4** (cruzar as globais com a
+stack detectada — única heurística do lote, entra como dica e nunca como "apague").
 
 ## Travado
 
-Nada.
+- **O token do npm expirou.** `npm whoami` devolve 401 e o `publish` responde **404** — o
+  npm usa 404 no lugar de 401 para não revelar se o pacote existe. O `~/.npmrc` tem token,
+  mas morto. Conserto: `npm login` (navegador + security key, **sem `--otp`**), conferir com
+  `npm whoami`, e então `npm publish`. Com 2FA por security key o token do fluxo web tem
+  vida curta — deve repetir.
 
 ## Decisões — o porquê mora em `10_Decisoes/`
 
