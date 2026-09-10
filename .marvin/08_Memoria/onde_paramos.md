@@ -52,12 +52,31 @@ repositório com a própria régua:
 ## Próximo passo
 
 1. **Publicar o `1.1.1`** (ver Travado) e então `git push --follow-tags`.
-2. **O `--check` deveria medir a nota.** Hoje o teto de 6 KB só aparece no run completo ou
-   no `--dry-run`; o `--check` é o comando que se roda por hábito, e é onde a régua pega
-   antes de virar problema. Três repositórios chegaram a 19, 67 e 90 KB sem ninguém ver.
-3. **O passo 3 confunde backup com lixo de shell.** Ele diz "almost always a malformed
+2. **O passo 4b mede o arquivo errado — ou melhor, mede só um dos três.** O que carrega em
+   TODA sessão é `AGENTS.md` + o adaptador (`CLAUDE.md`, que faz `@AGENTS.md`) + a nota. O
+   4b mede a nota e ignora os outros dois. Medido em 10/09:
+
+   | | `AGENTS.md` | `CLAUDE.md` | nota | carrega sempre |
+   |---|---|---|---|---|
+   | Marvin | **2.418 tk** | 512 | 1.234 | 4.163 tk |
+   | zino-agent-service | **2.941 tk** | 539 | 1.624 | 5.103 tk |
+   | parci-front | **6.124 tk** | 1.298 | 1.096 | 8.518 tk |
+
+   O `AGENTS.md` é o dobro da nota aqui e **cinco vezes** no `parci-front`. Passamos o dia
+   09/09 cortando o arquivo menor. O 4b deve mostrar os três e o total.
+3. **O `--check` também precisa mostrar isso** — é o comando que se roda por hábito, e é
+   onde a régua pega antes de virar problema.
+4. **A regra ainda não nomeia a brecha.** Ela proíbe criar `onde_paramos_<data>.md`, e todo
+   mundo obedeceu: ninguém criou arquivo — criaram **seção nova dentro do mesmo arquivo**,
+   18 delas no `parci-front`. O texto gerado tem que dizer que seção de relato é o mesmo
+   erro que arquivo novo.
+5. **O passo 3 confunde backup com lixo de shell.** Ele diz "almost always a malformed
    shell command" para qualquer nome estranho, mas `.bak`/`.orig`/`~` são backup declarado
    e pedem outra conversa. Visto num repo real com `firestore.rules.bak`.
+
+**O princípio que faltava escrever:** teto é para o que carrega sozinho; o arquivo pode
+crescer à vontade. O `10_Decisoes/` do Zino tem 58.110 tk e custa **zero** por sessão — é
+por isso que o registro isolado por atividade funciona.
 
 As duas ideias antigas, ainda não feitas: **painel de fechamento** (resumo do que ESTE run
 fez, impresso, nunca em arquivo) e **skills mortas no passo 4** (cruzar as globais com a
