@@ -19,9 +19,8 @@ metadata:
 ## Estado corrente
 
 **No ar nos dois lugares.** Código em https://github.com/Josuebmota/Marvin e pacote em
-`marvin-kb@1.1.0` no npm (09/09). Zero dependência de runtime, um arquivo só, **79
-verificações** verdes
-em Linux, Windows e macOS pelo CI.
+`marvin-kb@1.1.1` no npm. Zero dependência de runtime, um arquivo só,
+**92 verificações** verdes em Linux, Windows e macOS pelo CI.
 
 A base de conhecimento chama `.marvin/` desde 09/09/2026 (era `.docs/`). `.docs` continua
 na lista de candidatos e a detecção é por marcador, então **projeto montado antes não
@@ -39,13 +38,24 @@ repositório com a própria régua:
   ignorava justamente o arquivo que mais cresce. Agora mede, e acima de ~6 KB avisa **com
   destino**: o porquê vai para `10_Decisoes/`, o relato já está no `git log`.
 
+**1.1.1 (10/09)** — dois consertos nascidos de rodar a ferramenta em projeto de verdade:
+
+- **Junction órfã agora é REPONTADA.** Aponta para pasta que não existe mais? É órfã, não
+  montagem alheia — o script reponta e avisa. Quando o outro alvo existe, continua intocado.
+  Duas ocorrências reais no mesmo dia trouxeram o ramo.
+- **Os ponteiros ensinavam o caminho de quem clonou.** `--help` mostra `marvin`, `npx
+  marvin-kb` e o clone nessa ordem; o rodapé aponta o `PROMPT.md` pela URL do GitHub.
+- E o número de verificações do README **virou teste**: já desincronizou três vezes
+  (26/28 · 48/73 · 73/87). Lembrar não funcionou.
+
 ## Próximo passo
 
-- **Consertar o ponteiro do `PROMPT.md` e do `--help`.** Eles ensinam
-  `node <path>/marvin/marvin.mjs` e `<path>/marvin/PROMPT.md`, mas a via principal virou
-  `npx marvin-kb` / `marvin` — quem instalou pelo npm não tem esse caminho. O ponteiro do
-  `PROMPT.md` devia ser a URL do GitHub, que serve aos dois. **Saiu assim no 1.1.0** —
-  dá para ver rodando `npx marvin-kb --help`. Vale o `1.1.1`.
+Nada em fila. As duas ideias levantadas e não feitas:
+
+- **Painel de fechamento** — um resumo no fim do run dizendo o que ESTE run fez.
+  Impresso, nunca em arquivo: `PAINEL.md` seria artefato derivado envelhecendo em silêncio.
+- **Skills mortas no passo 4** — cruzar as skills globais com a stack detectada e apontar
+  as que não têm relação. É a única heurística do lote; entra como dica, nunca como "apague".
 
 ## Travado
 

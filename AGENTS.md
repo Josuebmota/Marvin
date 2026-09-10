@@ -77,6 +77,9 @@ adaptador ausente.
   vazio de verdade. `marvin --check` diagnostica (sai != 0) e o `marvin` normal conserta:
   diretório vazio no lugar do link é removido e a junction recriada. Com notas dentro,
   elas são copiadas e conferidas antes — o invariante 1 vale igual.
+  **Junction que aponta para pasta que não existe mais é REPONTADA** desde o 1.1.1 —
+  é o caso de quem renomeia o vault. Quando o outro alvo EXISTE, ela continua intocada:
+  aí é montagem de outra pessoa, e desfazer não é decisão do script.
   Receita manual, para quando o problema é na junction de OUTRO projeto:
   [`10_Decisoes/junction-quebrada.md`](.marvin/10_Decisoes/junction-quebrada.md).
 - **O caminho da memória é derivado do `cwd`** (`:`, `\` e `/` viram `-`). Rodar de um

@@ -490,6 +490,70 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   checa('o cabeçalho manda o relato para o git log', /relato do que foi feito/.test(nota));
   limpar(a);
 }
+// ── 9l. junction ÓRFÃ (aponta para pasta que não existe mais) é REPONTADA, não só
+//     avisada. Renomear o vault cai exatamente aqui, e o script só avisava — duas
+//     ocorrências reais em projetos de verdade no mesmo dia trouxeram este ramo.
+{
+  const a = arena('orfa');
+  rodar(a, '--no-git');
+  const mem = caminhoMemoria(a.lar, a.proj);
+  const vault = path.join(a.proj, '.marvin');
+  fs.writeFileSync(path.join(vault, '08_Memoria', 'prova.md'), '# prova' + NLQ);
+  // Simula o rename: o alvo da junction deixa de existir, o conteúdo vai para outro nome.
+  fs.renameSync(vault, path.join(a.proj, '.docs'));
+  fs.renameSync(path.join(a.proj, '.docs'), vault);
+  // Aponta a junction para um caminho morto, como o rename faria.
+  try { fs.unlinkSync(mem); } catch {}
+  fs.symlinkSync(path.join(a.proj, '.docs', '08_Memoria'), mem, 'junction');
+
+  const r = rodar(a, '--no-git');
+  checa('junction órfã é acusada', /no longer exists/.test(r.stdout), r.stdout.slice(-400));
+  checa('e é repontada para o vault vivo', /repointed to/.test(r.stdout));
+  let alvo = null;
+  try { alvo = fs.readlinkSync(mem); } catch {}
+  checa('a junction aponta para o vault de verdade',
+        alvo !== null && path.resolve(alvo) === path.resolve(path.join(vault, '08_Memoria')),
+        'aponta para ' + alvo);
+  checa('a nota continua visível pelo caminho do agente',
+        fs.existsSync(path.join(mem, 'prova.md')));
+  limpar(a);
+}
+
+// ── 9m. o ponteiro que a pessoa vê tem que servir para quem instalou pelo npm. O
+//     caminho do clone só serve para quem clonou — e a via principal virou o pacote.
+{
+  const a = arena('ponteiro');
+  const h = rodar(a, '--help');
+  checa('o --help mostra o comando instalado primeiro', h.stdout.includes("    marvin [flags]"));
+  checa('o --help mostra o npx como alternativa', h.stdout.includes("npx marvin-kb [flags]"));
+  checa('o --help não ensina mais <path>/marvin/marvin.mjs',
+        !h.stdout.includes('<path>/marvin/marvin.mjs'));
+  const r = rodar(a, '--no-git');
+  checa('o rodapé aponta o PROMPT.md por URL, que serve a clone e npm',
+        r.stdout.includes('github.com/Josuebmota/Marvin/blob/main/PROMPT.md'));
+  limpar(a);
+}
+// ── 9o. o ramo novo do passo 6 PASSA pelo shim: o --dry-run tem que ANUNCIAR o
+//     conserto da órfã e não executá-lo. Escrita nova que chame fs direto faz o
+//     dry-run mentir em silêncio — é armadilha declarada no AGENTS.md.
+{
+  const a = arena('dry-orfa');
+  rodar(a, '--no-git');
+  const mem = caminhoMemoria(a.lar, a.proj);
+  try { fs.unlinkSync(mem); } catch {}
+  const morto = path.join(a.proj, '.docs', '08_Memoria');
+  fs.symlinkSync(morto, mem, 'junction');
+
+  const r = rodar(a, '--dry-run');
+  checa('o dry-run anuncia a remoção do link', /remove link/.test(r.stdout), r.stdout.slice(-300));
+  checa('e diz que é SÓ o link', /only the link/.test(r.stdout));
+  let alvo = null;
+  try { alvo = fs.readlinkSync(mem); } catch {}
+  checa('o dry-run NÃO mexeu na junction',
+        alvo !== null && path.resolve(alvo) === path.resolve(morto),
+        'aponta para ' + alvo);
+  limpar(a);
+}
 // ── 9. adaptador do Copilot — caminho conferido na documentação oficial
 {
   const a = arena('copilot');
@@ -501,6 +565,27 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
+// ── ÚLTIMO. O número de verificações afirmado nos READMEs bate com o real.
+//
+// Ele já desincronizou TRÊS vezes neste repositório: 26 quando eram 28, 48 quando eram
+// 73, 73 quando eram 87. É número derivado escrito à mão em arquivo durável — a doença
+// que este projeto inteiro combate, acontecendo na documentação dele. Lembrar não
+// funcionou; a régua funciona.
+//
+// Roda por último de propósito: só aqui `passou + falhou` é o total da suíte. O `+ 2`
+// conta as duas asserções deste bloco, que ainda não rodaram.
+{
+  const total = passou + falhou + 2;
+  const alvos = [['README.md', /([0-9]+) checks, no dependencies/],
+                 ['README.pt-BR.md', /([0-9]+) verificações, zero dependência/]];
+  for (const [arq, re] of alvos) {
+    let m = null;
+    try { m = fs.readFileSync(path.join(AQUI, arq), 'utf8').match(re); } catch {}
+    checa(arq + ' afirma o número real de verificações',
+          m !== null && Number(m[1]) === total,
+          'diz ' + (m ? m[1] : '(não achou a frase)') + ', são ' + total);
+  }
+}
 // ═══════════════════════════════════════════════════════════════════════
 console.log('\n' + (falhou === 0
   ? verde(`${passou} passaram`)

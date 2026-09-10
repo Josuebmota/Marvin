@@ -5,13 +5,13 @@
  * A SAÍDA do script é em inglês (o repo é público); comentário e template, em português.
  *
  * Rode DE DENTRO da raiz do projeto:
- *     node <caminho>/marvin/marvin.mjs --help       ← sai sem escrever nada
- *     node <caminho>/marvin/marvin.mjs --dry-run    ← mostra o plano, não escreve
- *     node <caminho>/marvin/marvin.mjs
- *     node <caminho>/marvin/marvin.mjs --tools=claude,codex
- *     node <caminho>/marvin/marvin.mjs --clean-legacy
- *     node <caminho>/marvin/marvin.mjs --no-git
- *     node <caminho>/marvin/marvin.mjs --graphify
+ *     marvin --help       ← sai sem escrever nada
+ *     marvin --dry-run    ← mostra o plano, não escreve
+ *     marvin
+ *     marvin --tools=claude,codex
+ *     marvin --clean-legacy
+ *     marvin --no-git
+ *     marvin --graphify
  *
  * A arquitetura:
  *
@@ -45,7 +45,7 @@
  * O que ele NÃO faz — de propósito:
  *   Não escreve os agentes nem o CLAUDE.md. Isso exige conhecer as armadilhas
  *   do projeto, e agente genérico é pior que agente nenhum. Use o prompt de
- *   acompanhamento: <caminho>/marvin/PROMPT.md
+ *   acompanhamento: https://github.com/Josuebmota/Marvin/blob/main/PROMPT.md
  *
  * Projeto que veio de outra ferramenta (claude-flow/ruflo, etc.) tem uma etapa
  * extra de limpeza — ela só aparece se o script detectar os artefatos.
@@ -110,7 +110,9 @@ if (temFlag('--help', '-h')) {
 marvin — scaffolds a project's knowledge base for working with AI agents.
 
 Run it FROM the project root:
-    node <path>/marvin/marvin.mjs [flags]
+    marvin [flags]                      after  npm i -g marvin-kb
+    npx marvin-kb [flags]               without installing
+    node <path>/marvin.mjs [flags]      from a clone
 
 Flags:
   --tools=<list>    adapters to generate. Default: claude
@@ -169,6 +171,9 @@ const fsw = !DRY ? fs : {
   appendFileSync: (p) => plano.push('append to     ' + rel(p)),
   cpSync:         (a, b) => plano.push('copy          ' + a + '  →  ' + rel(b)),
   rmSync:         (p) => plano.push('REMOVE        ' + p),
+  // Só o LINK, nunca o conteúdo — é a diferença que o AGENTS.md repete e que o
+  // plano precisa mostrar com essas palavras, senão quem lê o dry-run se assusta.
+  unlinkSync:     (p) => plano.push('remove link   ' + p + '  (only the link)'),
   symlinkSync:    (alvo, link) => plano.push('junction      ' + link + '  →  ' + rel(alvo)),
   copyFileSync:   (a, b) => plano.push('copy          ' + rel(a) + '  →  ' + rel(b)),
 };
@@ -658,7 +663,21 @@ if (ehJunction(MEM)) {
   }
   if (path.resolve(alvo) === path.resolve(DEST)) {
     ok('already inverted — ' + contarNotas(DEST) + ' notes in ' + path.relative(RAIZ, DEST));
+  } else if (!fs.existsSync(alvo)) {
+    // Aponta para OUTRO lugar E esse lugar não existe: é órfã, não montagem alheia.
+    // Distinguir os dois casos é o que faltava — renomear o vault (ou aceitar o
+    // `.docs` -> `.marvin`) cai exatamente aqui, e antes o script só avisava. Duas
+    // ocorrências reais no mesmo dia foram o que trouxe este ramo.
+    //
+    // Repontar é seguro porque não há nada no destino velho para perder: só o link
+    // morre, e o conteúdo vivo está em DEST. O invariante 1 vale sem drama.
+    warn('the junction pointed somewhere that no longer exists: ' + alvo);
+    fsw.unlinkSync(MEM);
+    fsw.symlinkSync(DEST, MEM, 'junction');
+    ok('repointed to ' + path.relative(RAIZ, DEST) + ' — ' + contarNotas(DEST) + ' notes');
   } else {
+    // O outro alvo EXISTE: aí é montagem de outra pessoa (ou outro projeto), e
+    // desfazer não é decisão deste script.
     warn('already a junction, but it points elsewhere: ' + alvo);
     info('the memory of this project is landing outside this repository.');
     info('nothing was touched — undoing someone else`s mount is not this script`s call.');
@@ -1813,4 +1832,4 @@ log('  • AGENTS.md — real structure, invariants, traps, the team (the SOURCE
 log("  • .claude/agents/*.md — the roles, with the scars of THIS codebase");
 log("  • .claude/skills/*/SKILL.md — only procedures already run twice (see its README)");
 log('  • ' + relMem + '/onde_paramos.md — the current state');
-log('  Companion prompt: <path>/marvin/PROMPT.md\n');
+log('  Companion prompt: https://github.com/Josuebmota/Marvin/blob/main/PROMPT.md\n');
