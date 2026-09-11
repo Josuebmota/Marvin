@@ -1998,7 +1998,11 @@ $ARGUMENTS
   // Confiança MÉDIA: convenção de hook muda rápido — o aviso manda conferir (invariante 3).
   // settings.json que já existe é de outra pessoa: NÃO faz merge — imprime o bloco e para.
   const settings = path.join(RAIZ, '.claude', 'settings.json');
-  const comandoHook = fs.existsSync(path.join(RAIZ, 'marvin.mjs')) ? 'node marvin.mjs --status --curto' : 'npx marvin-kb --status --curto';
+  // O comando aponta para O SCRIPT QUE MONTOU, não para `npx marvin-kb`: o npx baixa a
+  // versão publicada, e uma versão que não conhece `--status` ignoraria a flag e rodaria
+  // a montagem inteira a cada abertura de sessão. Mesma escolha do post-commit do 8b.
+  const comandoHook = fs.existsSync(path.join(RAIZ, 'marvin.mjs')) ? 'node marvin.mjs --status --curto'
+    : 'node "' + process.argv[1].replace(/\\/g, '/') + '" --status --curto';
   const blocoHook = { hooks: { SessionStart: [{ matcher: '', hooks: [{ type: 'command', command: comandoHook }] }] } };
   if (!fs.existsSync(settings)) {
     fsw.writeFileSync(settings, JSON.stringify(blocoHook, null, 2) + '\n');

@@ -23,7 +23,7 @@ metadata:
 
 ## Em andamento
 
-- [US-03 — publicar no npm](../Planejamento/Manutencao/publicacao/npm/US-03-publicar-1-1-1/Sobre.md) — travada pelo token expirado; o conserto está nas Skills dela
+- [US-03 — publicar no npm](../Planejamento/Manutencao/publicacao/npm/US-03-publicar-1-1-1/Sobre.md) — agora é o **v1.3.0** (`Releases/1.2.0.md` + `1.3.0.md` fechados pelo `--release`); travada pelo token expirado; o conserto está nas Skills dela
 
 ## Travado
 
