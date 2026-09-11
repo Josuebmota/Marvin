@@ -217,6 +217,10 @@ Além de criar, ele aponta problemas que passam despercebidos:
 --status          dashboard, só leitura: US ativas com o último Rumo, progresso por Epic,
                   última release, a conta do contexto fixo, idade do grafo. Sai != 0 quando
                   a nota e os nós discordam. Rode ao abrir a sessão
+   --curto        só US ativas e avisos, sem cabeçalho, sempre sai 0 — é o que o hook
+                  SessionStart que o scaffold escreve em .claude/settings.json roda
+   --html         escreve também .marvin/.status/index.html e grava um ponto por commit
+                  em historico.jsonl: a tendência do contexto fixo, das US, da idade do grafo
 --us <caminho>    abre uma US: Novos|Manutencao/<Epic>/<Feature>/<US>. Cria a cadeia de
                   Sobre.md que falta e põe o ponteiro na nota
 --release <v>     fecha o ciclo: toda US com estado: concluida que não está em nenhum
@@ -243,7 +247,7 @@ Regra que mora num arquivo depende de alguém lembrar. Três comandos a disparam
 
 | Quando | Comando | O que faz |
 |---|---|---|
-| abrir a sessão | `/retomar` (+ `marvin --status`) | lê a nota, segue os ponteiros, confere contra o `git log` |
+| abrir a sessão | hook SessionStart → `marvin --status --curto`, depois `/retomar` | lê a nota, segue os ponteiros, confere contra o `git log` |
 | começar trabalho | `/us <caminho>` → `marvin --us` | cria a cadeia de `Sobre.md` e o ponteiro; o agente mapeia, propõe o time e as skills |
 | lançar | `marvin --release <v>` | escreve `Releases/<v>.md` a partir das US concluídas e as tira da nota |
 | fechar | `/fechar` | entrada no Rumo por US tocada, nota reescrita como ponteiros, agentes atualizados em camadas, `--status`, e se é hora de chat novo |
@@ -475,7 +479,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-161 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
+176 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

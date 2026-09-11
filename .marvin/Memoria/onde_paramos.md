@@ -24,8 +24,6 @@ metadata:
 ## Em andamento
 
 - [US-03 — publicar no npm](../Planejamento/Manutencao/publicacao/npm/US-03-publicar-1-1-1/Sobre.md) — travada pelo token expirado; o conserto está nas Skills dela
-- [US-06 — hook de sessão](../Planejamento/Novos/organizacao-por-grafo/script/US-06-hook-sessao/Sobre.md) — refinada; depois da 05
-- [US-07 — status em HTML com série](../Planejamento/Novos/organizacao-por-grafo/script/US-07-status-html/Sobre.md) — refinada; depois da 06
 
 ## Travado
 

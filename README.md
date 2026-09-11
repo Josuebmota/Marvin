@@ -222,6 +222,10 @@ Beyond creating things, it points out problems that slip by:
 --status          dashboard, read-only: active USs with their last Rumo, progress per
                   Epic, last release, the fixed-context bill, graph age. Exits non-zero
                   when the note and the nodes disagree. Run it when you open a session
+   --curto        only active USs and warnings, no header, always exit 0 — the
+                  SessionStart hook the scaffold writes to .claude/settings.json runs it
+   --html         also writes .marvin/.status/index.html and records one point per
+                  commit in historico.jsonl: the trend of fixed context, USs, graph age
 --us <path>       opens a US: Novos|Manutencao/<Epic>/<Feature>/<US>. Creates the
                   Sobre.md chain that is missing and adds the pointer to the note
 --release <v>     closes the cycle: every US with estado: concluida that is in no
@@ -248,7 +252,7 @@ A rule that lives in a file depends on someone remembering it. Three commands fi
 
 | When | Command | What it does |
 |---|---|---|
-| opening a session | `/retomar` (+ `marvin --status`) | reads the note, follows the pointers, checks against `git log` |
+| opening a session | SessionStart hook → `marvin --status --curto`, then `/retomar` | reads the note, follows the pointers, checks against `git log` |
 | starting work | `/us <path>` → `marvin --us` | creates the `Sobre.md` chain and the pointer; the agent then maps, proposes the team and the skills |
 | releasing | `marvin --release <v>` | writes `Releases/<v>.md` from the concluded USs and takes them out of the note |
 | closing | `/fechar` | Rumo entry per US touched, note rewritten as pointers, agents updated in layers, `--status`, and whether it is time for a new chat |
@@ -489,7 +493,7 @@ rather than final text.
 node teste.mjs
 ```
 
-161 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
+176 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

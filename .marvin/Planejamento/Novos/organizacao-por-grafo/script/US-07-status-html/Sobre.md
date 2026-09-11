@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-07 — `--status --html`: a série histórica
@@ -35,5 +35,7 @@ _(nenhum)_
   teto de 500 linhas; sem git, gera o HTML do que já existe e avisa. Fazer depois da 05 e da 06 — a
   separação cálculo/impressão que a 06 força deixa esta mais barata.
 
+- **11/09/2026** — feita: cálculo separado da impressão (`calcularStatus`/`imprimirStatus`); `--html` escreve `.marvin/.status/index.html` com SVG pré-renderizado e a série em `<script type=application/json>`; `historico.jsonl` um ponto por commit (data do git), teto 500; `.gitignore` ganha a pasta. Com um ponto só o gráfico é um ponto — a série cresce a cada commit.
+
 ## Evidência
-<!-- preenchido ao concluir -->
+- teste 9x: sem `--html` nada nasce; dois runs no mesmo commit = 1 ponto; commit novo = 2 pontos e o total cresceu; HTML com JSON inline e `<polyline>`, sem `<script src>`; dry-run não escreve. Aberto no navegador: renderiza sem rede.

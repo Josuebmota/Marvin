@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-06 — `--status --curto` como hook de abertura de sessão
@@ -31,5 +31,7 @@ _(nenhum)_
   `post-commit`; o comando é `node <caminho>/marvin.mjs` no clone e `npx marvin-kb` nos outros, sempre
   com `|| true`; marca nova no passo 10. Depende de separar cálculo de impressão no `--status`.
 
+- **11/09/2026** — feita: `--status --curto` (sem cabeçalho, sem cor, sempre 0, ~130 tk); o 7b escreve `.claude/settings.json` com o hook `SessionStart` se não existe, e imprime o bloco sem tocar se existe; marca no passo 10.
+
 ## Evidência
-<!-- preenchido ao concluir -->
+- teste 9w: hook gerado e JSON válido; `--curto` acusa e sai 0; settings alheio intocado byte a byte; passo 10 cobra. 176 verdes.

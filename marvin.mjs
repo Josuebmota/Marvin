@@ -106,7 +106,9 @@ const FERRAMENTAS = (argFerr ? argFerr.split('=').slice(1).join('=') : 'claude')
   .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 const ferrInvalidas = FERRAMENTAS.filter(f => !FERRAMENTAS_VALIDAS.includes(f));
 
-const log = (s = '') => console.log(s);
+// --curto é saída de hook: sem cabeçalho e sem cor — vai direto para o contexto do agente.
+const CURTO_HOOK = process.argv.includes('--curto');
+const log = (s = '') => console.log(CURTO_HOOK ? String(s).replace(/\x1b\[[0-9;]*m/g, '') : s);
 const ok = (s) => log('  \x1b[32m✓\x1b[0m ' + s);
 const warn = (s) => log('  \x1b[33m!\x1b[0m ' + s);
 const err = (s) => log('  \x1b[31m✗\x1b[0m ' + s);
@@ -144,6 +146,9 @@ Flags:
   --status          dashboard, read-only: active USs with their last Rumo, progress per
                     Epic, last release, fixed context, graph age. Exits non-zero when the
                     note and the nodes disagree. Run it when you open a session
+     --curto        only active USs and warnings, always exit 0 — for the session hook
+     --html         also writes .marvin/.status/index.html and records one point per
+                    commit in historico.jsonl: the trend of fixed context, USs, graph age
   --us <caminho>    open a US: Novos|Manutencao/<Epic>/<Feature>/<US> — creates the
                     Sobre.md chain that is missing and adds the pointer to the note
   --release <v>     close the cycle: every US with estado: concluida that is in no
@@ -302,8 +307,10 @@ const imprimirContextoFixo = () => {
 };
 const contarNotas = (d) => { try { return fs.readdirSync(d).filter(f => f.endsWith('.md')).length; } catch { return 0; } };
 
-log('\n\x1b[1mmarvin\x1b[0m — ' + RAIZ);
-log('agent memory: ' + MEM + '\n');
+if (!CURTO_HOOK) {
+  log('\n\x1b[1mmarvin\x1b[0m — ' + RAIZ);
+  log('agent memory: ' + MEM + '\n');
+}
 
 // ── --check. Diagnostica a montagem e sai. Existe porque a junction quebra em
 // SILÊNCIO: mover ou renomear a pasta do projeto a deixa apontando para o caminho
@@ -403,88 +410,221 @@ const nosDoPlanejamento = () => {
 };
 const dias = (d) => Math.floor((Date.now() - d.getTime()) / 86400000);  // só para exibir; --status não escreve nada
 
-// ── --status. O dashboard que a organização por grafo tornou possível: todo nó tem estado
-// no frontmatter e Rumo datado, então o estado do projeto é LEITURA. Nunca escreve — é o
-// comando que se roda ao abrir a sessão, e é onde a régua pega antes de virar problema.
-// Existe porque a nota de um projeto real chegou a nove seções de relato e 52 KB sem que
-// ninguém rodasse --check: medir sob demanda não basta; tem que estar no caminho.
-if (temFlag('--status')) {
-  log('\x1b[1mstatus\x1b[0m — read-only\n');
-  if (LAYOUT_ANTIGO) { warn('old layout — --status reads Planejamento/<Epic>/<Feature>/<US>/Sobre.md. Run `marvin --migrar` first.'); process.exit(1); }
+// ── --status --html. Um `index.html` único, regerado a cada run, com a série embutida
+// (`file://` bloqueia fetch, então nada de JSON separado lido pela página). O histórico
+// mora em `.marvin/.status/historico.jsonl`, uma linha por COMMIT — a data vem do
+// `git log -1 --format=%cI`, não de `Date.now()`, então dois runs no mesmo commit não
+// duplicam. Tudo em pasta ignorada pelo git: é derivado, e derivado envelhece em silêncio.
+// SVG pré-renderizado aqui, sem JS na página: abre sem rede, sem lib, em qualquer coisa.
+const escreverStatusHtml = (st) => {
+  const dir = path.join(DOCS, '.status');
+  const jsonl = path.join(dir, 'historico.jsonl');
+  fsw.mkdirSync(dir, { recursive: true });
+  // .gitignore: a mesma disciplina do graphify-out/
+  const relStatus = path.relative(RAIZ, dir).replace(/\\/g, '/') + '/';
+  const gi = path.join(RAIZ, '.gitignore');
+  if (fs.existsSync(gi)) {
+    const txt = fs.readFileSync(gi, 'utf8');
+    if (!txt.split(/\r?\n/).some(l => l.trim() === relStatus || l.trim() === relStatus.replace(/\/$/, ''))) {
+      fsw.appendFileSync(gi, (txt.endsWith('\n') ? '' : '\n') + '\n# status do marvin: DERIVADO, não versionar\n' + relStatus + '\n');
+      ok(relStatus + ' added to .gitignore');
+    }
+  }
+  // a série
+  let commit = null, data = null;
+  try {
+    const out = execSync('git log -1 --format=%h%x09%cI', { cwd: RAIZ, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    [commit, data] = out.split('\t');
+  } catch {}
+  let serie = [];
+  try { serie = fs.readFileSync(jsonl, 'utf8').split(/\r?\n/).filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean); } catch {}
+  const tk = Object.fromEntries(st.contexto.linhas.map(l => [l.nome.replace(/\s.*$/, ''), l.tk]));
+  const ponto = { commit, data, total: st.contexto.total, tk, us_ativas: st.ativas.filter(a => a.estado === 'ativa').length,
+                  us_concluidas: st.nos.concluidas, us_total: st.nos.us, problemas: st.problemas,
+                  grafo_nos: st.grafo ? st.grafo.nos : null, grafo_mtime: st.grafo ? st.grafo.mtime : null };
+  if (!commit) warn('no git here — the series is not recorded (the page is built from what exists)');
+  else if (serie.length && serie[serie.length - 1].commit === commit) info('historico.jsonl — this commit is already recorded (' + serie.length + ' point(s))');
+  else {
+    serie.push(ponto);
+    if (serie.length > 500) serie = serie.slice(-500);
+    fsw.writeFileSync(jsonl, serie.map(p => JSON.stringify(p)).join('\n') + '\n');
+    ok('historico.jsonl — point recorded for ' + commit + ' (' + serie.length + ' total)');
+  }
+  const pts = serie.length ? serie : [ponto];
+
+  // gráficos: polyline pré-renderizada. Uma função, três usos.
+  const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const grafico = (titulo, series, fmt = (v) => v) => {
+    const W = 640, H = 200, PL = 46, PR = 12, PT = 18, PB = 28;
+    const n = pts.length;
+    const vals = series.flatMap(s => s.v).filter(v => v !== null && v !== undefined);
+    const max = Math.max(1, ...vals), min = 0;
+    const x = (i) => n < 2 ? (PL + W - PR) / 2 : PL + (i / (n - 1)) * (W - PL - PR);
+    const y = (v) => PT + (1 - (v - min) / (max - min)) * (H - PT - PB);
+    const ticks = [0, 0.5, 1].map(f => min + f * (max - min));
+    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(titulo)}">`;
+    for (const t of ticks) svg += `<line x1="${PL}" y1="${y(t).toFixed(1)}" x2="${W - PR}" y2="${y(t).toFixed(1)}" class="grid"/><text x="${PL - 6}" y="${(y(t) + 4).toFixed(1)}" class="tick" text-anchor="end">${esc(fmt(Math.round(t)))}</text>`;
+    series.forEach((s, k) => {
+      const p = s.v.map((v, i) => v === null || v === undefined ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`).filter(Boolean);
+      if (p.length > 1) svg += `<polyline points="${p.join(' ')}" class="s${k}"/>`;
+      p.forEach(q => { const [cx, cy] = q.split(','); svg += `<circle cx="${cx}" cy="${cy}" r="2.5" class="s${k}"/>`; });
+    });
+    const rot = (i) => (pts[i].data || '').slice(5, 10) + (pts[i].commit ? ' ' + pts[i].commit : '');
+    if (n) svg += `<text x="${PL}" y="${H - 8}" class="tick">${esc(rot(0))}</text>`;
+    if (n > 1) svg += `<text x="${W - PR}" y="${H - 8}" class="tick" text-anchor="end">${esc(rot(n - 1))}</text>`;
+    svg += '</svg>';
+    const legenda = series.map((s, k) => `<span class="lg s${k}">${esc(s.nome)}</span>`).join(' ');
+    return `<figure><figcaption>${esc(titulo)} ${legenda}</figcaption>${svg}</figure>`;
+  };
+  const idadeGrafo = (p) => p.grafo_mtime && p.data ? Math.max(0, Math.round((new Date(p.data) - new Date(p.grafo_mtime)) / 86400000)) : null;
+  const gContexto = grafico('Contexto fixo por commit (tk)', [
+    { nome: 'total', v: pts.map(p => p.total) },
+    { nome: 'AGENTS.md', v: pts.map(p => p.tk && p.tk['AGENTS.md'] != null ? p.tk['AGENTS.md'] : null) },
+    { nome: 'nota', v: pts.map(p => p.tk && p.tk['onde_paramos.md'] != null ? p.tk['onde_paramos.md'] : null) },
+  ]);
+  const gUS = grafico('US ativas × concluídas', [
+    { nome: 'ativas (na nota)', v: pts.map(p => p.us_ativas) },
+    { nome: 'concluídas (nos nós)', v: pts.map(p => p.us_concluidas) },
+  ]);
+  const gGrafo = grafico('Idade do grafo no commit (dias)', [{ nome: 'dias desde a extração', v: pts.map(idadeGrafo) }]);
+
+  const linhaUS = (a) => `<tr class="${esc(a.estado)}"><td>${a.estado === 'ativa' ? '●' : a.estado === 'concluida' ? '✓' : '✗'}</td><td><strong>${esc(a.titulo)}</strong>${a.cadeia.length ? `<div class="dim">${esc(a.cadeia.join(' › '))}</div>` : ''}${a.proximo ? `<div>${esc(a.proximo)}</div>` : ''}${a.avisos.map(w => `<div class="warn">! ${esc(w)}</div>`).join('')}</td><td>${a.rumo ? `<span class="dim">${a.idade}d</span> ${esc(a.rumo.slice(0, 120))}` : '<span class="dim">sem Rumo datado</span>'}</td></tr>`;
+  const html = `<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(path.basename(RAIZ))} — marvin status</title>
+<style>
+:root{color-scheme:light dark;--fg:#1a1a1a;--bg:#fafaf7;--dim:#6b6b6b;--line:#e2e0d8;--ok:#2f7d4f;--warn:#b3641c;--err:#b23a3a;--s0:#2b5f9e;--s1:#c2571a;--s2:#5c8a3a}
+@media(prefers-color-scheme:dark){:root{--fg:#e8e6df;--bg:#161615;--dim:#9a9891;--line:#2c2b28}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,sans-serif;padding:24px;max-width:1080px}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:28px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.dim{color:var(--dim)}.warn{color:var(--warn)}.err{color:var(--err)}.ok{color:var(--ok)}
+table{border-collapse:collapse;width:100%}td,th{padding:6px 8px;vertical-align:top;border-bottom:1px solid var(--line);text-align:left}td:first-child{width:1.5em}
+figure{margin:12px 0 20px}figcaption{font-size:13px;margin-bottom:4px}svg{width:100%;height:auto;display:block}
+.grid{stroke:var(--line);stroke-width:1}.tick{fill:var(--dim);font-size:10px}
+polyline{fill:none;stroke-width:2}.s0{stroke:var(--s0);fill:var(--s0)}.s1{stroke:var(--s1);fill:var(--s1)}.s2{stroke:var(--s2);fill:var(--s2)}
+polyline.s0,polyline.s1,polyline.s2{fill:none}.lg{font-size:12px;padding-left:10px;position:relative}.lg::before{content:"";position:absolute;left:0;top:6px;width:7px;height:7px;border-radius:50%;background:currentColor}
+.lg.s0{color:var(--s0)}.lg.s1{color:var(--s1)}.lg.s2{color:var(--s2)}
+.kpi{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0}.kpi div{border:1px solid var(--line);border-radius:6px;padding:8px 12px;min-width:120px}.kpi b{display:block;font-size:20px}
+</style>
+<h1>${esc(path.basename(RAIZ))} <span class="dim">— marvin status</span></h1>
+<div class="dim">${commit ? `commit ${esc(commit)} · ${esc((data || '').slice(0, 10))}` : 'sem git'} · ${st.problemas ? `<span class="warn">${st.problemas} coisa(s) a corrigir</span>` : '<span class="ok">tudo consistente</span>'} · derivado, nunca versionado</div>
+<div class="kpi">
+<div><span class="dim">contexto fixo</span><b>${st.contexto.total} tk</b></div>
+<div><span class="dim">US ativas</span><b>${ponto.us_ativas}</b></div>
+<div><span class="dim">US concluídas</span><b>${ponto.us_concluidas}<span class="dim"> / ${ponto.us_total}</span></b></div>
+<div><span class="dim">última release</span><b>${st.release ? esc(st.release.nome) : '—'}</b></div>
+<div><span class="dim">grafo</span><b>${st.grafo ? st.grafo.nos + '<span class="dim"> nós · ' + st.grafo.idade + 'd</span>' : '—'}</b></div>
+</div>
+<h2>Tendência <span class="dim">— ${pts.length} ponto(s), um por commit</span></h2>
+${gContexto}${gUS}${gGrafo}
+<h2>Em andamento</h2>
+<table><tr><th></th><th>US</th><th>último Rumo</th></tr>${st.ativas.map(linhaUS).join('')}</table>
+${st.avisos.length ? `<p>${st.avisos.map(w => `<div class="${w.nivel}">${w.nivel === 'info' ? '' : '! '}${esc(w.texto)}</div>`).join('')}</p>` : ''}
+<h2>Epics</h2>
+<table>${st.epics.map(e => `<tr><td>${e.estado === 'ativa' ? '●' : e.estado === 'concluida' ? '✓' : '✗'}</td><td><strong>${esc(e.titulo)}</strong></td><td>${e.total ? `${e.concluidas}/${e.total} ${e.rotulo} concluídas${e.canceladas ? ' · ' + e.canceladas + ' cancelada(s)' : ''}${e.ativas ? ' · ' + e.ativas + ' ativa(s)' : ''}` : '<span class="dim">sem filhos</span>'}</td></tr>`).join('')}</table>
+<h2>Contexto fixo <span class="dim">— o que carrega em toda sessão</span></h2>
+<table>${st.contexto.linhas.map(l => `<tr><td></td><td>${esc(l.nome)}</td><td>${l.tk} tk</td></tr>`).join('')}<tr><td></td><td><strong>total</strong></td><td><strong>${st.contexto.total} tk</strong></td></tr></table>
+<script type="application/json" id="historico">${JSON.stringify(pts)}</script>
+`;
+  fsw.writeFileSync(path.join(dir, 'index.html'), html);
+  ok(relStatus + 'index.html — open it in any browser, no server');
+};
+
+// Cálculo separado da impressão: o texto, o `--curto` do hook e o `--html` leem a mesma
+// estrutura. Nada aqui escreve.
+const calcularStatus = () => {
   const nos = nosDoPlanejamento();
   const porArq = new Map(nos.map(n => [path.resolve(n.arq), n]));
   const paiDe = (n) => n.pai ? porArq.get(path.resolve(path.dirname(n.arq), n.pai)) || null : null;
   const cadeia = (n) => { const c = []; for (let p = paiDe(n); p; p = paiDe(p)) c.unshift(p.titulo); return c; };
-  let problemas = 0;
-
-  // Em andamento: o que a nota aponta, conferido contra o nó.
-  log('\x1b[1mEm andamento\x1b[0m  (onde_paramos.md → Sobre.md)');
+  const st = { ativas: [], avisos: [], problemas: 0, epics: [], release: null, contexto: contextoFixo(), grafo: null,
+               nos: { us: nos.filter(n => n.tipo === 'us').length, concluidas: nos.filter(n => n.tipo === 'us' && n.estado === 'concluida').length } };
   let nota = ''; try { nota = fs.readFileSync(path.join(DEST, 'onde_paramos.md'), 'utf8'); } catch {}
   const ponteiros = [...nota.matchAll(/^- \[([^\]]+)\]\(([^)]+)\)(?:\s*[—-]+\s*(.*))?$/gm)];
-  if (!ponteiros.length) info('(none — the note has no "- [US](path)" lines)');
   for (const [, rotulo, href, resto] of ponteiros) {
     const abs = path.resolve(DEST, href);
     const n = porArq.get(abs) || lerNo(abs);
-    if (!n) { err(rotulo + ' → ' + href + '  (file not found)'); problemas++; continue; }
+    if (!n) { st.avisos.push({ nivel: 'err', texto: rotulo + ' → ' + href + '  (file not found)' }); st.problemas++; continue; }
     const ultimo = n.rumo.length ? n.rumo[n.rumo.length - 1] : null;
-    const idade = ultimo ? dias(ultimo.data) : null;
-    const marca = n.estado === 'ativa' ? '\x1b[32m●\x1b[0m' : n.estado === 'concluida' ? '\x1b[34m✓\x1b[0m' : '\x1b[31m✗\x1b[0m';
-    log(`  ${marca} ${n.titulo}${cadeia(n).length ? '   \x1b[2m(' + cadeia(n).join(' › ') + ')\x1b[0m' : ''}`);
-    if (resto) info('  ' + resto.trim());
-    if (ultimo) info(`  last Rumo: ${idade}d ago — ${ultimo.texto.slice(0, 90)}${ultimo.texto.length > 90 ? '…' : ''}`);
-    else info('  no dated Rumo entry');
-    if (n.estado === 'concluida') { warn('  concluida but still in the note — it belongs in Releases/<versao>.md, and out of here'); problemas++; }
-    if (n.estado === 'concluida' && !n.comEvidencia) { warn('  concluida without Evidência'); problemas++; }
-    if (idade !== null && idade > 14 && n.estado === 'ativa') warn(`  ${idade} days without a Rumo entry — stalled, or done and not recorded?`);
+    const item = { titulo: n.titulo, cadeia: cadeia(n), estado: n.estado, proximo: (resto || '').trim(),
+                   rumo: ultimo ? ultimo.texto : null, rumoData: ultimo ? ultimo.data : null, idade: ultimo ? dias(ultimo.data) : null, avisos: [] };
+    if (n.estado === 'concluida') { item.avisos.push('concluida but still in the note — it belongs in Releases/<versao>.md, and out of here'); st.problemas++; }
+    if (n.estado === 'concluida' && !n.comEvidencia) { item.avisos.push('concluida without Evidência'); st.problemas++; }
+    if (item.idade !== null && item.idade > 14 && n.estado === 'ativa') item.avisos.push(item.idade + ' days without a Rumo entry — stalled, or done and not recorded?');
+    st.ativas.push(item);
   }
-
-  // A brecha: seção de relato dentro da nota.
+  if (!ponteiros.length) st.avisos.push({ nivel: 'info', texto: 'the note has no "- [US](path)" lines' });
   const secoes = [...nota.matchAll(/^##\s+(.+)$/gm)].map(m => m[1].trim());
   const estranhas = secoes.filter(s => !/^(Em andamento|Travado|Estado|Próxima|Depende|Primeira frase)/i.test(s));
-  if (estranhas.length) { warn(`the note has ${estranhas.length} section(s) that look like a report: ${estranhas.slice(0, 3).map(s => '"' + s + '"').join(', ')}${estranhas.length > 3 ? '…' : ''} → Rumo of the US`); problemas++; }
-  const ativasForaDaNota = nos.filter(n => n.tipo === 'us' && n.estado === 'ativa' && !ponteiros.some(([, , h]) => path.resolve(DEST, h) === path.resolve(n.arq)));
-  if (ativasForaDaNota.length) warn(`${ativasForaDaNota.length} US marked ativa but not in the note: ${ativasForaDaNota.map(n => n.titulo.split(' — ')[0]).join(', ')}`);
-
-  // Progresso por Epic.
-  const epics = nos.filter(n => n.tipo === 'epic');
-  if (epics.length) {
-    log('\n\x1b[1mEpics\x1b[0m');
-    for (const e of epics) {
-      const desc = nos.filter(n => n !== e && (() => { for (let p = paiDe(n); p; p = paiDe(p)) if (p === e) return true; return false; })());
-      const us = desc.filter(n => n.tipo === 'us'), feats = desc.filter(n => n.tipo === 'feature');
-      const c = (arr, s) => arr.filter(n => n.estado === s).length;
-      const conta = us.length ? us : feats;
-      const rot = us.length ? 'US' : 'features';
-      if (!conta.length) { log(`  ${e.estado === 'ativa' ? '●' : e.estado === 'concluida' ? '✓' : '✗'} ${e.titulo}  [2mno children yet[0m`); continue; }
-      log(`  ${e.estado === 'ativa' ? '●' : e.estado === 'concluida' ? '✓' : '✗'} ${e.titulo}  \x1b[2m${c(conta, 'concluida')}/${conta.length} ${rot} concluídas` + (c(conta, 'cancelada') ? ` · ${c(conta, 'cancelada')} cancelada(s)` : '') + (c(conta, 'ativa') ? ` · ${c(conta, 'ativa')} ativa(s)` : '') + '\x1b[0m');
-    }
+  if (estranhas.length) { st.avisos.push({ nivel: 'warn', texto: `the note has ${estranhas.length} section(s) that look like a report: ${estranhas.slice(0, 3).map(s => '"' + s + '"').join(', ')}${estranhas.length > 3 ? '…' : ''} → Rumo of the US` }); st.problemas++; }
+  const foraDaNota = nos.filter(n => n.tipo === 'us' && n.estado === 'ativa' && !ponteiros.some(([, , h]) => path.resolve(DEST, h) === path.resolve(n.arq)));
+  if (foraDaNota.length) st.avisos.push({ nivel: 'warn', texto: `${foraDaNota.length} US marked ativa but not in the note: ${foraDaNota.map(n => n.titulo.split(' — ')[0]).join(', ')}` });
+  for (const e of nos.filter(n => n.tipo === 'epic')) {
+    const desc = nos.filter(n => n !== e && (() => { for (let p = paiDe(n); p; p = paiDe(p)) if (p === e) return true; return false; })());
+    const us = desc.filter(n => n.tipo === 'us'), feats = desc.filter(n => n.tipo === 'feature');
+    const conta = us.length ? us : feats;
+    const c = (s) => conta.filter(n => n.estado === s).length;
+    st.epics.push({ titulo: e.titulo, estado: e.estado, rotulo: us.length ? 'US' : 'features', total: conta.length, concluidas: c('concluida'), canceladas: c('cancelada'), ativas: c('ativa') });
   }
-
-  // Última release.
   const rel = path.join(DOCS, 'Releases');
   let releases = []; try { releases = fs.readdirSync(rel).filter(f => f.endsWith('.md') && f !== 'README.md').sort(); } catch {}
-  log('\n\x1b[1mReleases\x1b[0m');
-  if (releases.length) {
-    const u = releases[releases.length - 1];
-    const n = (fs.readFileSync(path.join(rel, u), 'utf8').match(/^- \[/gm) || []).length;
-    info(`last: ${u.replace(/\.md$/, '')} — ${n} US`);
-  } else info('none yet');
-
-  // Contexto fixo — a mesma conta do --check.
-  log('\n\x1b[1mFixed context\x1b[0m');
-  imprimirContextoFixo();
-
-  // Grafo.
+  if (releases.length) { const u = releases[releases.length - 1]; st.release = { nome: u.replace(/\.md$/, ''), us: (fs.readFileSync(path.join(rel, u), 'utf8').match(/^- \[/gm) || []).length }; }
   const GRAFO_ST = path.join(RAIZ, 'graphify-out', 'graph.json');
-  log('\n\x1b[1mGraph\x1b[0m');
   if (fs.existsSync(GRAFO_ST)) {
     let n = 0, d = 0; try { const g = JSON.parse(fs.readFileSync(GRAFO_ST, 'utf8')); n = (g.nodes || []).length; d = (g.nodes || []).filter(x => x._origin === 'marvin').length; } catch {}
-    const idade = dias(fs.statSync(GRAFO_ST).mtime);
-    info(`${n} nodes (${d} from the knowledge base) — extracted ${idade}d ago` + (idade > 7 ? '  → marvin --graphify --graphify-rebuild' : ''));
-  } else info('none — marvin --graphify builds it');
+    const mtime = fs.statSync(GRAFO_ST).mtime;
+    st.grafo = { nos: n, docs: d, mtime: mtime.toISOString(), idade: dias(mtime) };
+  }
+  return st;
+};
 
-  log('\n' + (problemas ? `\x1b[33m${problemas} thing(s) to fix\x1b[0m` : '\x1b[32mall consistent\x1b[0m') + '\n');
-  process.exit(problemas ? 1 : 0);
+const marcaEstado = (e) => e === 'ativa' ? '\x1b[32m●\x1b[0m' : e === 'concluida' ? '\x1b[34m✓\x1b[0m' : '\x1b[31m✗\x1b[0m';
+const imprimirStatus = (st, curto) => {
+  log('\x1b[1mEm andamento\x1b[0m  (onde_paramos.md → Sobre.md)');
+  for (const a of st.ativas) {
+    log(`  ${marcaEstado(a.estado)} ${a.titulo}${a.cadeia.length ? '   \x1b[2m(' + a.cadeia.join(' › ') + ')\x1b[0m' : ''}`);
+    if (a.proximo) info('  ' + a.proximo);
+    if (!curto) info(a.rumo ? `  last Rumo: ${a.idade}d ago — ${a.rumo.slice(0, 90)}${a.rumo.length > 90 ? '…' : ''}` : '  no dated Rumo entry');
+    a.avisos.forEach(w => warn('  ' + w));
+  }
+  for (const w of st.avisos) (w.nivel === 'err' ? err : w.nivel === 'warn' ? warn : info)(w.texto);
+  if (curto) return;
+  if (st.epics.length) {
+    log('\n\x1b[1mEpics\x1b[0m');
+    for (const e of st.epics) {
+      const m = e.estado === 'ativa' ? '●' : e.estado === 'concluida' ? '✓' : '✗';
+      if (!e.total) { log(`  ${m} ${e.titulo}  \x1b[2mno children yet\x1b[0m`); continue; }
+      log(`  ${m} ${e.titulo}  \x1b[2m${e.concluidas}/${e.total} ${e.rotulo} concluídas` + (e.canceladas ? ` · ${e.canceladas} cancelada(s)` : '') + (e.ativas ? ` · ${e.ativas} ativa(s)` : '') + '\x1b[0m');
+    }
+  }
+  log('\n\x1b[1mReleases\x1b[0m');
+  info(st.release ? `last: ${st.release.nome} — ${st.release.us} US` : 'none yet');
+  log('\n\x1b[1mFixed context\x1b[0m');
+  imprimirContextoFixo();
+  log('\n\x1b[1mGraph\x1b[0m');
+  info(st.grafo ? `${st.grafo.nos} nodes (${st.grafo.docs} from the knowledge base) — extracted ${st.grafo.idade}d ago` + (st.grafo.idade > 7 ? '  → marvin --graphify --graphify-rebuild' : '') : 'none — marvin --graphify builds it');
+};
+
+// ── --status. O dashboard que a organização por grafo tornou possível: todo nó tem estado
+// no frontmatter e Rumo datado, então o estado do projeto é LEITURA. É o comando que se
+// roda ao abrir a sessão, e é onde a régua pega antes de virar problema. Existe porque a
+// nota de um projeto real chegou a nove seções de relato e 52 KB sem que ninguém rodasse
+// --check: medir sob demanda não basta; tem que estar no caminho.
+//
+//   --curto   só o que o hook de sessão precisa (≤ 200 tk): US ativas e avisos. SEMPRE sai 0
+//             — em hook, exit != 0 vira erro visível e derruba a sessão.
+//   --html    escreve .marvin/.status/index.html e anexa uma linha em historico.jsonl —
+//             a única forma do --status que escreve, e só ela. O texto é uma foto; "medição"
+//             é filme: sem a série ninguém responde "o contexto fixo cresceu desde a release?".
+if (temFlag('--status')) {
+  const CURTO = temFlag('--curto'), HTML = temFlag('--html');
+  if (!CURTO) log('\x1b[1mstatus\x1b[0m — ' + (HTML ? 'writes .marvin/.status/ only' : 'read-only') + '\n');
+  if (LAYOUT_ANTIGO) { if (!CURTO) warn('old layout — --status reads Planejamento/<Epic>/<Feature>/<US>/Sobre.md. Run `marvin --migrar` first.'); process.exit(CURTO ? 0 : 1); }
+  const st = calcularStatus();
+  imprimirStatus(st, CURTO);
+  if (HTML) { log(''); escreverStatusHtml(st); }
+  if (!CURTO) log('\n' + (st.problemas ? `\x1b[33m${st.problemas} thing(s) to fix\x1b[0m` : '\x1b[32mall consistent\x1b[0m') + '\n');
+  process.exit(CURTO ? 0 : st.problemas ? 1 : 0);
 }
 
 // ── --us <Epic>/<Feature>/<US>. O gatilho físico da regra "antes de qualquer US": cria a
@@ -1850,6 +1990,27 @@ $ARGUMENTS
 `);
     ok('.claude/commands/fechar.md  → /fechar closes the session; the pair of /retomar');
   } else info('/fechar already exists');
+
+  // ── Hook de abertura de sessão. O `--status` sai != 0 quando a nota mente, mas só quem
+  // roda vê — e a nota de um projeto real chegou a 52 KB sem que ninguém rodasse. O hook
+  // SessionStart do Claude Code injeta a saída no contexto: o agente não pode ignorar.
+  // `--curto` sempre sai 0 (exit != 0 em hook vira erro visível) e custa ~150 tk.
+  // Confiança MÉDIA: convenção de hook muda rápido — o aviso manda conferir (invariante 3).
+  // settings.json que já existe é de outra pessoa: NÃO faz merge — imprime o bloco e para.
+  const settings = path.join(RAIZ, '.claude', 'settings.json');
+  const comandoHook = fs.existsSync(path.join(RAIZ, 'marvin.mjs')) ? 'node marvin.mjs --status --curto' : 'npx marvin-kb --status --curto';
+  const blocoHook = { hooks: { SessionStart: [{ matcher: '', hooks: [{ type: 'command', command: comandoHook }] }] } };
+  if (!fs.existsSync(settings)) {
+    fsw.writeFileSync(settings, JSON.stringify(blocoHook, null, 2) + '\n');
+    ok('.claude/settings.json — SessionStart hook: `' + comandoHook + '` (confidence: medium — check the hook format in the current Claude Code docs)');
+  } else {
+    let txt = ''; try { txt = fs.readFileSync(settings, 'utf8'); } catch {}
+    if (/--status --curto/.test(txt)) info('.claude/settings.json already runs the status hook');
+    else {
+      warn('.claude/settings.json exists — not merged (it is yours). To get the status at session start, add:');
+      JSON.stringify(blocoHook, null, 2).split('\n').forEach(l => info('  ' + l));
+    }
+  }
 }
 
 const ondeParamos = path.join(DEST, 'onde_paramos.md');
@@ -2741,6 +2902,8 @@ const ATUALIZACOES = [
   // Organização por grafo (1.2). Quem montou no layout novo por uma versão anterior a
   // alguma seção nova fica sabendo aqui; quem está no layout antigo recebe o aviso do
   // passo 5, não estas marcas — cobrar seção de grafo num AGENTS.md antigo seria ruído.
+  { arquivo: '.claude/settings.json', marca: /--status --curto/, soCom: !LAYOUT_ANTIGO,
+    o_que: 'the SessionStart hook running `marvin --status --curto` (the note cannot lie unnoticed)' },
   { arquivo: 'AGENTS.md', marca: /Antes de qualquer US/,
     o_que: 'the "Antes de qualquer US" pointer — the rule itself lives in Planejamento/README.md' },
   { arquivo: path.relative(RAIZ, path.join(DOCS, 'Contexto', 'Sobre.md')).replace(/\\/g, '/'),

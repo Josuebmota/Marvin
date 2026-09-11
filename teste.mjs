@@ -768,6 +768,59 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
+// ── 9w. --status --curto é saída de hook: sem cabeçalho, sem cor, e SEMPRE sai 0 — em hook,
+//     exit != 0 vira erro visível e derruba a sessão. O 7b gera o hook; settings.json alheio
+//     é intocado byte a byte.
+{
+  const a = arena('curto');
+  rodar(a, '--no-git');
+  const settings = path.join(a.proj, '.claude', 'settings.json');
+  checa('o 7b gera o settings.json com o hook SessionStart', fs.existsSync(settings) && /SessionStart/.test(fs.readFileSync(settings, 'utf8')) && /--status --curto/.test(fs.readFileSync(settings, 'utf8')));
+  checa('e ele é JSON válido', (() => { try { JSON.parse(fs.readFileSync(settings, 'utf8')); return true; } catch { return false; } })());
+  rodar(a, '--us', 'Novos/E/F/US-1');
+  const usArq = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E', 'F', 'US-1', 'Sobre.md');
+  fs.writeFileSync(usArq, fs.readFileSync(usArq, 'utf8').replace('estado: ativa', 'estado: concluida'));
+  checa('--status acusa e sai 1', rodar(a, '--status').status === 1);
+  const c = rodar(a, '--status', '--curto');
+  checa('--status --curto acusa a mesma coisa e sai 0', c.status === 0 && /still in the note/.test(c.stdout));
+  checa('--curto não tem cabeçalho nem cor', !/agent memory/.test(c.stdout) && !/\x1b\[/.test(c.stdout));
+  checa('--curto cabe no orçamento do hook (≤ 200 tk)', Buffer.byteLength(c.stdout) / 4 <= 200, Buffer.byteLength(c.stdout) + ' bytes');
+  // settings.json alheio
+  const alheio = '{\n  "permissions": { "allow": ["Bash(ls)"] }\n}\n';
+  fs.writeFileSync(settings, alheio);
+  const r = rodar(a, '--no-git');
+  checa('settings.json alheio fica intocado byte a byte, e o bloco é impresso', fs.readFileSync(settings, 'utf8') === alheio && /not merged/.test(r.stdout) && /SessionStart/.test(r.stdout));
+  checa('o passo 10 cobra o hook que falta', /settings\.json — missing/.test(r.stdout));
+  limpar(a);
+}
+
+// ── 9x. --status --html: a única forma do --status que escreve — e só em .marvin/.status/,
+//     ignorada pelo git. Um ponto por COMMIT (data do git, não Date.now()): dois runs no mesmo
+//     commit não duplicam. Sem --html o jsonl não nasce. O HTML abre sem rede: JSON inline.
+{
+  const a = arena('html');
+  rodar(a);   // com git init
+  const git = (...args) => spawnSync('git', args, { cwd: a.proj, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
+  git('add', '-A'); git('commit', '-q', '-m', 'um');
+  const dir = path.join(a.proj, '.marvin', '.status');
+  rodar(a, '--status');
+  checa('--status sem --html não cria .status/', !fs.existsSync(dir));
+  const h1 = rodar(a, '--status', '--html');
+  checa('--status --html sai 0 e escreve index.html + historico.jsonl', h1.status === 0 && fs.existsSync(path.join(dir, 'index.html')) && fs.existsSync(path.join(dir, 'historico.jsonl')), h1.stdout.slice(-300));
+  rodar(a, '--status', '--html');
+  const linhas = () => fs.readFileSync(path.join(dir, 'historico.jsonl'), 'utf8').split(/\r?\n/).filter(Boolean);
+  checa('dois runs no mesmo commit: um ponto só', linhas().length === 1);
+  fs.appendFileSync(path.join(a.proj, 'AGENTS.md'), NLQ + '## Mais' + NLQ + 'x'.repeat(400) + NLQ);
+  git('add', '-A'); git('commit', '-q', '-m', 'dois');
+  rodar(a, '--status', '--html');
+  checa('commit novo: segundo ponto, e o contexto fixo cresceu', linhas().length === 2 && JSON.parse(linhas()[1]).total > JSON.parse(linhas()[0]).total);
+  const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
+  checa('o HTML embute a série (file:// bloqueia fetch) e desenha SVG', /<script type="application\/json" id="historico">/.test(html) && /<polyline/.test(html) && !/<script src=/.test(html));
+  checa('.marvin/.status/ entrou no .gitignore', /^\.marvin\/\.status\/$/m.test(fs.readFileSync(path.join(a.proj, '.gitignore'), 'utf8')));
+  checa('--status --html --dry-run não escreve', (() => { const antes = linhas().length; fs.rmSync(path.join(dir, 'index.html')); rodar(a, '--status', '--html', '--dry-run'); return !fs.existsSync(path.join(dir, 'index.html')) && linhas().length === antes; })());
+  limpar(a);
+}
+
 // ── 9. adaptador do Copilot — caminho conferido na documentação oficial
 {
   const a = arena('copilot');
