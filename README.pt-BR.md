@@ -220,7 +220,10 @@ Além de criar, ele aponta problemas que passam despercebidos:
    --curto        só US ativas e avisos, sem cabeçalho, sempre sai 0 — é o que o hook
                   SessionStart que o scaffold escreve em .claude/settings.json roda
    --html         escreve também .marvin/.status/index.html e grava um ponto por commit
-                  em historico.jsonl: a tendência do contexto fixo, das US, da idade do grafo
+                  em historico.jsonl: a tendência do contexto fixo, das US, da idade do grafo.
+                  Os dois leem as transcrições do Claude Code do projeto e mostram os tokens
+                  de fato GASTOS, por modelo — medido — mais o custo estimado (tabela de
+                  preços datada) e quanto de cada turno é o contexto fixo
 --us <caminho>    abre uma US: Novos|Manutencao/<Epic>/<Feature>/<US>. Cria a cadeia de
                   Sobre.md que falta e põe o ponteiro na nota
 --release <v>     fecha o ciclo: toda US com estado: concluida que não está em nenhum
@@ -479,7 +482,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-176 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
+182 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

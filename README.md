@@ -225,7 +225,10 @@ Beyond creating things, it points out problems that slip by:
    --curto        only active USs and warnings, no header, always exit 0 — the
                   SessionStart hook the scaffold writes to .claude/settings.json runs it
    --html         also writes .marvin/.status/index.html and records one point per
-                  commit in historico.jsonl: the trend of fixed context, USs, graph age
+                  commit in historico.jsonl: the trend of fixed context, USs, graph age.
+                  Both read the Claude Code transcripts of the project and show the tokens
+                  actually SPENT, per model — measured — plus an estimated cost (dated
+                  price table) and how much of each turn is the fixed context
 --us <path>       opens a US: Novos|Manutencao/<Epic>/<Feature>/<US>. Creates the
                   Sobre.md chain that is missing and adds the pointer to the note
 --release <v>     closes the cycle: every US with estado: concluida that is in no
@@ -493,7 +496,7 @@ rather than final text.
 node teste.mjs
 ```
 
-176 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
+182 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

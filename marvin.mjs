@@ -410,6 +410,67 @@ const nosDoPlanejamento = () => {
 };
 const dias = (d) => Math.floor((Date.now() - d.getTime()) / 86400000);  // só para exibir; --status não escreve nada
 
+// ── Tokens GASTOS, por modelo — lidos das transcrições do Claude Code. O 4b mede o que
+// carrega; isto mede o que foi pago. O dado é fato: cada resposta do agente fica em
+// ~/.claude/projects/<projeto>/*.jsonl com `model` e `usage`. Só a conversão em dinheiro é
+// estimativa, e a tabela abaixo envelhece — por isso vem datada e a saída diz "confira".
+//
+// Dedupe por id de mensagem: a mesma resposta é gravada mais de uma vez enquanto streama
+// (3× por id neste repositório), e a última tem o usage completo. Sub-agentes
+// (`isSidechain`) contam — foram pagos — e aparecem separados.
+const PRECOS_DATA = '2026-09';   // USD por milhão de tokens: input · output · cache write · cache read
+const PRECOS = [
+  [/fable|mythos/, { in: 10, out: 50, cw: 12.5, cr: 1 }],
+  [/opus/,         { in: 5,  out: 25, cw: 6.25, cr: 0.5 }],
+  [/sonnet/,       { in: 2,  out: 10, cw: 2.5,  cr: 0.2 }],
+  [/haiku/,        { in: 1,  out: 5,  cw: 1.25, cr: 0.1 }],
+];
+const precoDe = (modelo) => (PRECOS.find(([re]) => re.test(modelo)) || PRECOS[1])[1];
+const custoDe = (t, modelo) => { const p = precoDe(modelo); return (t.in * p.in + t.out * p.out + t.cw * p.cw + t.cr * p.cr) / 1e6; };
+const calcularGastos = () => {
+  const dir = path.dirname(MEM);   // ~/.claude/projects/<slug>/
+  let arqs = []; try { arqs = fs.readdirSync(dir).filter(f => f.endsWith('.jsonl')); } catch {}
+  const porId = new Map();
+  for (const f of arqs) {
+    let txt; try { txt = fs.readFileSync(path.join(dir, f), 'utf8'); } catch { continue; }
+    for (const linha of txt.split('\n')) {
+      if (!linha.includes('"usage"')) continue;
+      let o; try { o = JSON.parse(linha); } catch { continue; }
+      const m = o.message; if (!m || !m.usage || o.type !== 'assistant') continue;
+      const u = m.usage;
+      porId.set(m.id || o.uuid, { modelo: m.model || '?', dia: (o.timestamp || '').slice(0, 10), sessao: o.sessionId || f, sub: !!o.isSidechain,
+        in: u.input_tokens || 0, out: u.output_tokens || 0, cw: u.cache_creation_input_tokens || 0, cr: u.cache_read_input_tokens || 0 });
+    }
+  }
+  const zero = () => ({ in: 0, out: 0, cw: 0, cr: 0, msgs: 0 });
+  const soma = (a, b) => { a.in += b.in; a.out += b.out; a.cw += b.cw; a.cr += b.cr; a.msgs++; };
+  const total = zero(), sub = zero(), porModelo = {}, porDia = {}, sessoes = new Set();
+  let contextoAcum = 0;
+  for (const r of porId.values()) {
+    soma(total, r); if (r.sub) soma(sub, r);
+    (porModelo[r.modelo] = porModelo[r.modelo] || zero()); soma(porModelo[r.modelo], r);
+    (porDia[r.dia] = porDia[r.dia] || zero()); soma(porDia[r.dia], r);
+    sessoes.add(r.sessao);
+    contextoAcum += r.in + r.cw + r.cr;
+  }
+  let custo = 0; for (const [m, t] of Object.entries(porModelo)) custo += custoDe(t, m);
+  const contextoMedio = total.msgs ? Math.round(contextoAcum / total.msgs) : 0;
+  return { total, sub, porModelo, porDia, sessoes: sessoes.size, custo, contextoMedio, transcricoes: arqs.length };
+};
+const kTk = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n);
+const imprimirGastos = (g, fixoTk) => {
+  log('\n\x1b[1mTokens spent\x1b[0m  (from the Claude Code transcripts of this project — measured, not estimated)');
+  if (!g.total.msgs) { info('none found in ' + path.dirname(MEM)); return; }
+  info(`${g.sessoes} session(s), ${g.total.msgs} model turns` + (g.sub.msgs ? ` (${g.sub.msgs} by subagents)` : ''));
+  for (const [m, t] of Object.entries(g.porModelo).sort((a, b) => b[1].cr + b[1].in - (a[1].cr + a[1].in)))
+    info(`${m.padEnd(18)} ${kTk(t.in).padStart(6)} in  ${kTk(t.cw).padStart(6)} cache-write  ${kTk(t.cr).padStart(7)} cache-read  ${kTk(t.out).padStart(6)} out  ≈ $${custoDe(t, m).toFixed(2)}`);
+  info(`≈ $${g.custo.toFixed(2)} total at ${PRECOS_DATA} list prices — an estimate; check the current price table`);
+  if (fixoTk && g.contextoMedio) {
+    const fatia = Math.min(100, Math.round(100 * fixoTk / g.contextoMedio));
+    info(`each turn re-reads ~${kTk(g.contextoMedio)} tk of context; the fixed context is ~${fatia}% of it — that is what the 4b measures, paid every turn`);
+  }
+};
+
 // ── --status --html. Um `index.html` único, regerado a cada run, com a série embutida
 // (`file://` bloqueia fetch, então nada de JSON separado lido pela página). O histórico
 // mora em `.marvin/.status/historico.jsonl`, uma linha por COMMIT — a data vem do
@@ -441,7 +502,8 @@ const escreverStatusHtml = (st) => {
   const tk = Object.fromEntries(st.contexto.linhas.map(l => [l.nome.replace(/\s.*$/, ''), l.tk]));
   const ponto = { commit, data, total: st.contexto.total, tk, us_ativas: st.ativas.filter(a => a.estado === 'ativa').length,
                   us_concluidas: st.nos.concluidas, us_total: st.nos.us, problemas: st.problemas,
-                  grafo_nos: st.grafo ? st.grafo.nos : null, grafo_mtime: st.grafo ? st.grafo.mtime : null };
+                  grafo_nos: st.grafo ? st.grafo.nos : null, grafo_mtime: st.grafo ? st.grafo.mtime : null,
+                  gasto_tk: st.gastos.total.in + st.gastos.total.cw + st.gastos.total.cr + st.gastos.total.out, custo: +st.gastos.custo.toFixed(2), turnos: st.gastos.total.msgs };
   if (!commit) warn('no git here — the series is not recorded (the page is built from what exists)');
   else if (serie.length && serie[serie.length - 1].commit === commit) info('historico.jsonl — this commit is already recorded (' + serie.length + ' point(s))');
   else {
@@ -487,6 +549,27 @@ const escreverStatusHtml = (st) => {
     { nome: 'concluídas (nos nós)', v: pts.map(p => p.us_concluidas) },
   ]);
   const gGrafo = grafico('Idade do grafo no commit (dias)', [{ nome: 'dias desde a extração', v: pts.map(idadeGrafo) }]);
+  const gCusto = grafico('Custo acumulado por commit (USD, estimado)', [{ nome: 'USD', v: pts.map(p => p.custo == null ? null : p.custo) }]);
+  // por dia: o que foi lido (in + cache) e o que foi escrito — do transcript, não da série
+  const dias = Object.keys(st.gastos.porDia).filter(Boolean).sort();
+  const g = st.gastos;
+  const barras = (() => {
+    if (!dias.length) return '';
+    const W = 640, H = 200, PL = 46, PR = 12, PT = 18, PB = 28;
+    const vals = dias.map(d => g.porDia[d].in + g.porDia[d].cw + g.porDia[d].cr);
+    const max = Math.max(1, ...vals);
+    const bw = (W - PL - PR) / dias.length;
+    const y = (v) => PT + (1 - v / max) * (H - PT - PB);
+    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="tokens lidos por dia">`;
+    [0, 0.5, 1].forEach(f => { svg += `<line x1="${PL}" y1="${y(f * max).toFixed(1)}" x2="${W - PR}" y2="${y(f * max).toFixed(1)}" class="grid"/><text x="${PL - 6}" y="${(y(f * max) + 4).toFixed(1)}" class="tick" text-anchor="end">${kTk(Math.round(f * max))}</text>`; });
+    dias.forEach((d, i) => { const v = vals[i]; svg += `<rect x="${(PL + i * bw + 1).toFixed(1)}" y="${y(v).toFixed(1)}" width="${Math.max(1, bw - 2).toFixed(1)}" height="${(H - PB - y(v)).toFixed(1)}" class="s0"><title>${esc(d)}: ${kTk(v)} lidos · ${kTk(g.porDia[d].out)} escritos · ${g.porDia[d].msgs} turnos</title></rect>`; });
+    svg += `<text x="${PL}" y="${H - 8}" class="tick">${esc(dias[0])}</text>`;
+    if (dias.length > 1) svg += `<text x="${W - PR}" y="${H - 8}" class="tick" text-anchor="end">${esc(dias[dias.length - 1])}</text>`;
+    return `<figure><figcaption>Tokens lidos por dia (input + cache) <span class="lg s0">passe o mouse para ver o dia</span></figcaption>${svg}</svg></figure>`;
+  })();
+  const fatiaFixo = g.contextoMedio ? Math.min(100, Math.round(100 * st.contexto.total / g.contextoMedio)) : null;
+  const tabelaModelos = Object.entries(g.porModelo).sort((a, b) => b[1].cr + b[1].in - (a[1].cr + a[1].in)).map(([m, t]) =>
+    `<tr><td></td><td>${esc(m)}</td><td>${kTk(t.in)}</td><td>${kTk(t.cw)}</td><td>${kTk(t.cr)}</td><td>${kTk(t.out)}</td><td>${t.msgs}</td><td>≈ $${custoDe(t, m).toFixed(2)}</td></tr>`).join('');
 
   const linhaUS = (a) => `<tr class="${esc(a.estado)}"><td>${a.estado === 'ativa' ? '●' : a.estado === 'concluida' ? '✓' : '✗'}</td><td><strong>${esc(a.titulo)}</strong>${a.cadeia.length ? `<div class="dim">${esc(a.cadeia.join(' › '))}</div>` : ''}${a.proximo ? `<div>${esc(a.proximo)}</div>` : ''}${a.avisos.map(w => `<div class="warn">! ${esc(w)}</div>`).join('')}</td><td>${a.rumo ? `<span class="dim">${a.idade}d</span> ${esc(a.rumo.slice(0, 120))}` : '<span class="dim">sem Rumo datado</span>'}</td></tr>`;
   const html = `<!doctype html>
@@ -514,9 +597,14 @@ polyline.s0,polyline.s1,polyline.s2{fill:none}.lg{font-size:12px;padding-left:10
 <div><span class="dim">US concluídas</span><b>${ponto.us_concluidas}<span class="dim"> / ${ponto.us_total}</span></b></div>
 <div><span class="dim">última release</span><b>${st.release ? esc(st.release.nome) : '—'}</b></div>
 <div><span class="dim">grafo</span><b>${st.grafo ? st.grafo.nos + '<span class="dim"> nós · ' + st.grafo.idade + 'd</span>' : '—'}</b></div>
+<div><span class="dim">gasto estimado</span><b>$${g.custo.toFixed(2)}<span class="dim"> · ${g.total.msgs} turnos</span></b></div>
 </div>
 <h2>Tendência <span class="dim">— ${pts.length} ponto(s), um por commit</span></h2>
-${gContexto}${gUS}${gGrafo}
+${gContexto}${gUS}${gGrafo}${gCusto}
+<h2>Tokens gastos <span class="dim">— medido nas transcrições do Claude Code, ${g.sessoes} sessão(ões)</span></h2>
+${barras}
+<table><tr><th></th><th>modelo</th><th>input</th><th>cache write</th><th>cache read</th><th>output</th><th>turnos</th><th>custo</th></tr>${tabelaModelos}</table>
+<p class="dim">Tokens são medidos; o custo é <strong>estimativa</strong> pela tabela de ${PRECOS_DATA} (input · output · cache write ≈ 1,25× · cache read ≈ 0,1×) — confira os preços vigentes.${fatiaFixo != null ? ` Cada turno relê ~${kTk(g.contextoMedio)} tk de contexto; o contexto fixo (${st.contexto.total} tk) é <strong>~${fatiaFixo}%</strong> disso — o resto é a conversa. Sessão longa custa mais que arquivo grande.` : ''}</p>
 <h2>Em andamento</h2>
 <table><tr><th></th><th>US</th><th>último Rumo</th></tr>${st.ativas.map(linhaUS).join('')}</table>
 ${st.avisos.length ? `<p>${st.avisos.map(w => `<div class="${w.nivel}">${w.nivel === 'info' ? '' : '! '}${esc(w.texto)}</div>`).join('')}</p>` : ''}
@@ -537,7 +625,7 @@ const calcularStatus = () => {
   const porArq = new Map(nos.map(n => [path.resolve(n.arq), n]));
   const paiDe = (n) => n.pai ? porArq.get(path.resolve(path.dirname(n.arq), n.pai)) || null : null;
   const cadeia = (n) => { const c = []; for (let p = paiDe(n); p; p = paiDe(p)) c.unshift(p.titulo); return c; };
-  const st = { ativas: [], avisos: [], problemas: 0, epics: [], release: null, contexto: contextoFixo(), grafo: null,
+  const st = { ativas: [], avisos: [], problemas: 0, epics: [], release: null, contexto: contextoFixo(), grafo: null, gastos: calcularGastos(),
                nos: { us: nos.filter(n => n.tipo === 'us').length, concluidas: nos.filter(n => n.tipo === 'us' && n.estado === 'concluida').length } };
   let nota = ''; try { nota = fs.readFileSync(path.join(DEST, 'onde_paramos.md'), 'utf8'); } catch {}
   const ponteiros = [...nota.matchAll(/^- \[([^\]]+)\]\(([^)]+)\)(?:\s*[—-]+\s*(.*))?$/gm)];
@@ -601,6 +689,7 @@ const imprimirStatus = (st, curto) => {
   info(st.release ? `last: ${st.release.nome} — ${st.release.us} US` : 'none yet');
   log('\n\x1b[1mFixed context\x1b[0m');
   imprimirContextoFixo();
+  imprimirGastos(st.gastos, st.contexto.total);
   log('\n\x1b[1mGraph\x1b[0m');
   info(st.grafo ? `${st.grafo.nos} nodes (${st.grafo.docs} from the knowledge base) — extracted ${st.grafo.idade}d ago` + (st.grafo.idade > 7 ? '  → marvin --graphify --graphify-rebuild' : '') : 'none — marvin --graphify builds it');
 };

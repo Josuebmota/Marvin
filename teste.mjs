@@ -821,6 +821,33 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
+// ── 9y. tokens gastos: lidos das transcrições, deduplicados por id de mensagem (a mesma
+//     resposta é gravada mais de uma vez enquanto streama), por modelo, subagente à parte.
+//     O custo é estimativa e a saída diz isso.
+{
+  const a = arena('gastos');
+  rodar(a, '--no-git');
+  const dir = path.dirname(caminhoMemoria(a.lar, a.proj));
+  const linha = (id, model, usage, extra = {}) => JSON.stringify({ type: 'assistant', timestamp: '2026-09-11T10:00:00Z', sessionId: 's1', message: { id, model, usage }, ...extra });
+  fs.writeFileSync(path.join(dir, 's1.jsonl'), [
+    JSON.stringify({ type: 'user', message: { role: 'user', content: 'oi' } }),
+    linha('msg_1', 'claude-opus-5', { input_tokens: 10, cache_creation_input_tokens: 1000, cache_read_input_tokens: 0, output_tokens: 50 }),
+    linha('msg_1', 'claude-opus-5', { input_tokens: 10, cache_creation_input_tokens: 1000, cache_read_input_tokens: 0, output_tokens: 200 }),   // mesma msg, usage final
+    linha('msg_2', 'claude-sonnet-5', { input_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 1000, output_tokens: 100 }, { isSidechain: true }),
+    ''].join(NLQ));
+  const r = rodar(a, '--status');
+  checa('--status lê as transcrições e conta turnos deduplicados', /2 model turns/.test(r.stdout) && /1 by subagents/.test(r.stdout), r.stdout.slice(-600));
+  checa('o dedupe fica com o usage final da mensagem', /claude-opus-5.*200 out/.test(r.stdout));
+  checa('um bloco por modelo', /claude-sonnet-5/.test(r.stdout));
+  // opus: 10*5 + 200*25 + 1000*6.25 = 50+5000+6250 = 11300 / 1e6 = $0.0113 ; sonnet: 5*2+100*10+1000*0.2 = 1210/1e6
+  checa('o custo é calculado pela tabela e declarado como estimativa', /≈ \$0\.01 total/.test(r.stdout) && /an estimate/.test(r.stdout));
+  checa('a fatia do contexto fixo é dita', /fixed context is ~\d+% of it/.test(r.stdout));
+  rodar(a, '--status', '--html');
+  const html = fs.readFileSync(path.join(a.proj, '.marvin', '.status', 'index.html'), 'utf8');
+  checa('o HTML traz a tabela por modelo e o aviso de estimativa', /claude-sonnet-5/.test(html) && /estimativa/.test(html));
+  limpar(a);
+}
+
 // ── 9. adaptador do Copilot — caminho conferido na documentação oficial
 {
   const a = arena('copilot');
