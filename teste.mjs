@@ -643,6 +643,86 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
+// ── 9r. --us: o gatilho físico da regra "antes de qualquer US". Cria a cadeia de Sobre.md
+//     que falta, acrescenta o filho no pai que já existe, põe o ponteiro na nota — e rodar
+//     de novo não duplica nada. /us e /fechar nascem no 7b.
+{
+  const a = arena('us');
+  rodar(a, '--no-git');
+  checa('/us nasce no 7b', fs.existsSync(path.join(a.proj, '.claude', 'commands', 'us.md')));
+  checa('/fechar nasce no 7b, o par do /retomar', fs.existsSync(path.join(a.proj, '.claude', 'commands', 'fechar.md')));
+  const r = rodar(a, '--us', 'Novos/Pagamentos/Estorno/US-01-parcial');
+  checa('--us sai 0', r.status === 0, r.stdout.slice(-300));
+  const P = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'Pagamentos');
+  checa('--us cria Epic, Feature e US', ['Sobre.md', 'Estorno/Sobre.md', 'Estorno/US-01-parcial/Sobre.md'].every(f => fs.existsSync(path.join(P, f))));
+  const us = fs.readFileSync(path.join(P, 'Estorno', 'US-01-parcial', 'Sobre.md'), 'utf8');
+  checa('a US nasce no formato: Time, Skills, Código tocado, Rumo datado', /tipo: us/.test(us) && /## Time/.test(us) && /## Skills/.test(us) && /## Código tocado/.test(us) && /- \*\*\d\d\/\d\d\/\d{4}\*\*/.test(us));
+  const nota1 = fs.readFileSync(path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md'), 'utf8');
+  checa('o ponteiro entra na nota e o placeholder sai', nota1.includes('](../Planejamento/Novos/Pagamentos/Estorno/US-01-parcial/Sobre.md)') && !/_\(uma por linha/.test(nota1));
+  rodar(a, '--us', 'Novos/Pagamentos/Estorno/US-02-total');
+  const feat = fs.readFileSync(path.join(P, 'Estorno', 'Sobre.md'), 'utf8');
+  checa('a segunda US entra em Filhos da Feature que já existia', /US-01-parcial\/Sobre\.md/.test(feat) && /US-02-total\/Sobre\.md/.test(feat));
+  const antes = fs.readFileSync(path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md'), 'utf8');
+  rodar(a, '--us', 'Novos/Pagamentos/Estorno/US-02-total');
+  const depois = fs.readFileSync(path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md'), 'utf8');
+  checa('--us duas vezes não duplica o ponteiro', antes === depois && (depois.match(/^- \[US-02-total\]/gm) || []).length === 1);
+  checa('--us com caminho errado sai != 0 e não cria nada', rodar(a, '--us', 'Errado/x').status !== 0 && !fs.existsSync(path.join(a.proj, '.marvin', 'Planejamento', 'Errado')));
+
+  // ── 9s. --status: lê os nós, confere contra a nota, e o código de saída é a mensagem.
+  const s1 = rodar(a, '--status');
+  checa('--status sai 0 quando nota e nós concordam', s1.status === 0, s1.stdout.slice(-400));
+  checa('--status lista as US com a cadeia Epic › Feature', /US-01-parcial/.test(s1.stdout) && /Pagamentos › Estorno/.test(s1.stdout));
+  checa('--status mostra o progresso por Epic', /0\/2 US concluídas/.test(s1.stdout));
+  checa('--status traz a conta do contexto fixo', /loads in EVERY session/.test(s1.stdout));
+  checa('--status não escreve nada', fs.readFileSync(path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md'), 'utf8') === depois);
+  // US concluída que continua na nota: a brecha mais comum depois de fechar uma entrega.
+  const usArq = path.join(P, 'Estorno', 'US-01-parcial', 'Sobre.md');
+  fs.writeFileSync(usArq, fs.readFileSync(usArq, 'utf8').replace('estado: ativa', 'estado: concluida'));
+  const s2 = rodar(a, '--status');
+  checa('--status acusa US concluída que ainda está na nota', s2.status !== 0 && /still in the note/.test(s2.stdout));
+  checa('--status acusa concluída sem Evidência', /without Evidência/.test(s2.stdout));
+  // Seção de relato dentro da nota: a brecha que o texto nomeia e o status pega.
+  fs.appendFileSync(path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md'), NLQ + '## Última rodada' + NLQ + NLQ + 'fizemos muita coisa' + NLQ);
+  const s3 = rodar(a, '--status');
+  checa('--status acusa seção de relato na nota', /look like a report/.test(s3.stdout));
+  limpar(a);
+}
+
+// ── 9t. --migrar: layout antigo → grafo, com backup conferido antes de mover, links
+//     reescritos, e o que exige julgamento listado em vez de adivinhado.
+{
+  const a = arena('migrar');
+  const m = path.join(a.proj, '.marvin');
+  fs.mkdirSync(path.join(m, '08_Memoria'), { recursive: true });
+  fs.mkdirSync(path.join(m, '10_Decisoes'), { recursive: true });
+  fs.mkdirSync(path.join(m, '11_Sessoes'), { recursive: true });
+  fs.writeFileSync(path.join(m, '08_Memoria', 'onde_paramos.md'), '# nota' + NLQ + 'ver [x](../10_Decisoes/x.md)' + NLQ);
+  fs.writeFileSync(path.join(m, '08_Memoria', 'MEMORY.md'), '- [nota](onde_paramos.md)' + NLQ);
+  fs.writeFileSync(path.join(m, '10_Decisoes', 'x.md'), '# x' + NLQ + 'nota: `.marvin/08_Memoria/onde_paramos.md`' + NLQ);
+  fs.writeFileSync(path.join(m, '10_Decisoes', 'README.md'), '# Decisões' + NLQ);
+  fs.writeFileSync(path.join(m, '00_Fontes_Externas.md'), '# fontes' + NLQ);
+  fs.writeFileSync(path.join(m, '00_Inicio.md'), '# inicio' + NLQ);
+  rodar(a, '--no-git');   // monta no layout antigo: junction → 08_Memoria
+  checa('cenário: junction aponta para 08_Memoria', (() => { try { return /08_Memoria$/.test(fs.readlinkSync(caminhoMemoria(a.lar, a.proj))); } catch { return false; } })());
+  const d = rodar(a, '--migrar', '--dry-run');
+  checa('--migrar --dry-run não move nada', fs.existsSync(path.join(m, '08_Memoria', 'onde_paramos.md')) && !fs.existsSync(path.join(m, 'Memoria')));
+  const r = rodar(a, '--migrar');
+  checa('--migrar sai 0', r.status === 0, r.stdout.slice(-400));
+  checa('backup completo antes de mover', fs.existsSync(path.join(m, '99_Backup', 'antes-do-grafo', '08_Memoria', 'onde_paramos.md')) && fs.existsSync(path.join(m, '99_Backup', 'antes-do-grafo', '10_Decisoes', 'x.md')));
+  checa('memória inteira em Memoria/, 08_Memoria some', fs.existsSync(path.join(m, 'Memoria', 'onde_paramos.md')) && fs.existsSync(path.join(m, 'Memoria', 'MEMORY.md')) && !fs.existsSync(path.join(m, '08_Memoria')));
+  checa('decisão vai para Contexto/Arquitetura; o README antigo para o backup', fs.existsSync(path.join(m, 'Contexto', 'Arquitetura', 'x.md')) && fs.existsSync(path.join(m, '99_Backup', '10_Decisoes-README.md')) && !fs.existsSync(path.join(m, '10_Decisoes')));
+  checa('fontes e índice antigo', fs.existsSync(path.join(m, 'Fontes', 'Externas.md')) && fs.existsSync(path.join(m, '99_Backup', '00_Inicio.md')) && !fs.existsSync(path.join(m, '11_Sessoes')));
+  checa('links reescritos nos dois sentidos',
+        /\.\.\/Contexto\/Arquitetura\/x\.md/.test(fs.readFileSync(path.join(m, 'Memoria', 'onde_paramos.md'), 'utf8')) &&
+        /\.marvin\/Memoria\/onde_paramos\.md/.test(fs.readFileSync(path.join(m, 'Contexto', 'Arquitetura', 'x.md'), 'utf8')));
+  checa('--migrar diz o que ficou para o humano', /left for you/.test(r.stdout) && /the note/.test(r.stdout));
+  const r2 = rodar(a, '--no-git');
+  checa('o run seguinte reponta a junction para Memoria/', (() => { try { return /Memoria$/.test(fs.readlinkSync(caminhoMemoria(a.lar, a.proj))) && !/08_Memoria$/.test(fs.readlinkSync(caminhoMemoria(a.lar, a.proj))); } catch { return false; } })(), r2.stdout.slice(-300));
+  checa('e cria os templates do layout novo', fs.existsSync(path.join(m, 'Contexto', 'Sobre.md')) && fs.existsSync(path.join(m, 'Planejamento', 'README.md')));
+  checa('--migrar de novo: nada a migrar, sai 0', rodar(a, '--migrar').status === 0);
+  limpar(a);
+}
+
 // ── 9. adaptador do Copilot — caminho conferido na documentação oficial
 {
   const a = arena('copilot');

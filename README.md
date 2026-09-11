@@ -219,6 +219,13 @@ Beyond creating things, it points out problems that slip by:
 --check           diagnoses the memory mount and exits non-zero if it is broken.
                   Writes nothing. Run it after moving or renaming the project
 --dry-run         print everything it would do, write nothing
+--status          dashboard, read-only: active USs with their last Rumo, progress per
+                  Epic, last release, the fixed-context bill, graph age. Exits non-zero
+                  when the note and the nodes disagree. Run it when you open a session
+--us <path>       opens a US: Novos|Manutencao/<Epic>/<Feature>/<US>. Creates the
+                  Sobre.md chain that is missing and adds the pointer to the note
+--migrar          old layout (08_Memoria/, 10_Decisoes/) → graph layout. Backs up,
+                  moves, rewrites paths; what takes judgment is listed at the end
 --clean-legacy    removes old orchestrator leftovers
 --no-git          skips git init and .gitignore
 --graphify        builds a code graph for structural queries (needs graphify on PATH)
@@ -231,6 +238,18 @@ Beyond creating things, it points out problems that slip by:
                   Never overwrites a post-commit you already have
 --help, -h        usage; exits without writing
 ```
+
+### The three triggers
+
+A rule that lives in a file depends on someone remembering it. Three commands fire it:
+
+| When | Command | What it does |
+|---|---|---|
+| opening a session | `/retomar` (+ `marvin --status`) | reads the note, follows the pointers, checks against `git log` |
+| starting work | `/us <path>` → `marvin --us` | creates the `Sobre.md` chain and the pointer; the agent then maps, proposes the team and the skills |
+| closing | `/fechar` | Rumo entry per US touched, note rewritten as pointers, agents updated in layers, `--status`, and whether it is time for a new chat |
+
+`/retomar` and `/fechar` are the pair; `--status` is the ruler between them.
 
 ### After moving or renaming the project folder
 
@@ -466,7 +485,7 @@ rather than final text.
 node teste.mjs
 ```
 
-120 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
+149 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

@@ -214,6 +214,13 @@ Além de criar, ele aponta problemas que passam despercebidos:
 --check           diagnostica a montagem da memória e sai com código != 0 se ela
                   estiver quebrada. Não escreve nada. Rode depois de mover a pasta
 --dry-run         mostra tudo o que faria, sem escrever
+--status          dashboard, só leitura: US ativas com o último Rumo, progresso por Epic,
+                  última release, a conta do contexto fixo, idade do grafo. Sai != 0 quando
+                  a nota e os nós discordam. Rode ao abrir a sessão
+--us <caminho>    abre uma US: Novos|Manutencao/<Epic>/<Feature>/<US>. Cria a cadeia de
+                  Sobre.md que falta e põe o ponteiro na nota
+--migrar          layout antigo (08_Memoria/, 10_Decisoes/) → layout por grafo. Faz backup,
+                  move, reescreve caminhos; o que exige julgamento é listado no fim
 --clean-legacy    remove artefatos de orquestrador antigo
 --no-git          não roda git init nem gera .gitignore
 --graphify        gera o grafo de código para consulta estrutural (requer o graphify no PATH)
@@ -226,6 +233,18 @@ Além de criar, ele aponta problemas que passam despercebidos:
                   Nunca sobrescreve um post-commit que já existe
 --help, -h        uso; sai sem escrever nada
 ```
+
+### Os três gatilhos
+
+Regra que mora num arquivo depende de alguém lembrar. Três comandos a disparam:
+
+| Quando | Comando | O que faz |
+|---|---|---|
+| abrir a sessão | `/retomar` (+ `marvin --status`) | lê a nota, segue os ponteiros, confere contra o `git log` |
+| começar trabalho | `/us <caminho>` → `marvin --us` | cria a cadeia de `Sobre.md` e o ponteiro; o agente mapeia, propõe o time e as skills |
+| fechar | `/fechar` | entrada no Rumo por US tocada, nota reescrita como ponteiros, agentes atualizados em camadas, `--status`, e se é hora de chat novo |
+
+`/retomar` e `/fechar` são o par; o `--status` é a régua entre os dois.
 
 ### Depois de mover ou renomear a pasta do projeto
 
@@ -452,7 +471,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-120 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
+149 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

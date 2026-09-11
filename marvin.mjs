@@ -141,6 +141,13 @@ Flags:
   --graphify-rebuild  rebuild an existing graph (the default never overwrites one)
   --graphify-git-hook  write .git/hooks/post-commit so the graph refreshes itself.
                     Never overwrites a post-commit you already have
+  --status          dashboard, read-only: active USs with their last Rumo, progress per
+                    Epic, last release, fixed context, graph age. Exits non-zero when the
+                    note and the nodes disagree. Run it when you open a session
+  --us <caminho>    open a US: Novos|Manutencao/<Epic>/<Feature>/<US> — creates the
+                    Sobre.md chain that is missing and adds the pointer to the note
+  --migrar          old layout (08_Memoria/, 10_Decisoes/) → graph layout. Backs up,
+                    moves, rewrites paths; what takes judgment is listed at the end
   --help, -h        this message
 
 What it writes:
@@ -362,6 +369,288 @@ if (CHECK) {
     ? '\x1b[31m' + problemas + ' problem(s)\x1b[0m — the memory is NOT wired to this repository'
     : '\x1b[32mall good\x1b[0m — memory is wired into the repository') + '\n');
   process.exit(problemas ? 1 : 0);
+}
+
+// ── Leitura de nós. Todo Sobre.md tem frontmatter (tipo, estado, pai), um título e uma
+// seção Rumo com entradas "- **dd/mm/aaaa** — …". É tudo que --status e --us precisam.
+const lerNo = (arq) => {
+  let txt; try { txt = fs.readFileSync(arq, 'utf8'); } catch { return null; }
+  const fm = txt.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  const campo = (k) => { const m = fm && fm[1].match(new RegExp('^' + k + ':[ \\t]*(.+)$', 'm')); return m ? m[1].trim().replace(/\s+#.*$/, '') : null; };
+  const titulo = ((txt.match(/^#\s+(.+)$/m) || [])[1] || path.basename(path.dirname(arq))).trim();
+  const rumo = [...txt.matchAll(/^- \*\*(\d{2})\/(\d{2})\/(\d{4})[^*]*\*\*[ —-]*(.*)$/gm)]
+    .map(m => ({ data: new Date(+m[3], +m[2] - 1, +m[1]), texto: m[4].trim() }));
+  const evidencia = (txt.match(/^##\s+Evidência\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m) || [])[1] || '';
+  return { arq, tipo: campo('tipo'), estado: campo('estado'), pai: campo('pai'), titulo, rumo,
+           comEvidencia: /\S/.test(evidencia.replace(/<!--[\s\S]*?-->/g, '').replace(/_\([^)]*\)_/g, '')) };
+};
+const nosDoPlanejamento = () => {
+  const nos = [];
+  (function varrer(d, prof = 0) {
+    if (prof > 8) return;
+    let ents; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) varrer(p, prof + 1);
+      else if (e.name === 'Sobre.md') { const n = lerNo(p); if (n && n.tipo) nos.push(n); }
+    }
+  })(path.join(DOCS, 'Planejamento'));
+  return nos;
+};
+const dias = (d) => Math.floor((Date.now() - d.getTime()) / 86400000);  // só para exibir; --status não escreve nada
+
+// ── --status. O dashboard que a organização por grafo tornou possível: todo nó tem estado
+// no frontmatter e Rumo datado, então o estado do projeto é LEITURA. Nunca escreve — é o
+// comando que se roda ao abrir a sessão, e é onde a régua pega antes de virar problema.
+// Existe porque a nota de um projeto real chegou a nove seções de relato e 52 KB sem que
+// ninguém rodasse --check: medir sob demanda não basta; tem que estar no caminho.
+if (temFlag('--status')) {
+  log('\x1b[1mstatus\x1b[0m — read-only\n');
+  if (LAYOUT_ANTIGO) { warn('old layout — --status reads Planejamento/<Epic>/<Feature>/<US>/Sobre.md. Run `marvin --migrar` first.'); process.exit(1); }
+  const nos = nosDoPlanejamento();
+  const porArq = new Map(nos.map(n => [path.resolve(n.arq), n]));
+  const paiDe = (n) => n.pai ? porArq.get(path.resolve(path.dirname(n.arq), n.pai)) || null : null;
+  const cadeia = (n) => { const c = []; for (let p = paiDe(n); p; p = paiDe(p)) c.unshift(p.titulo); return c; };
+  let problemas = 0;
+
+  // Em andamento: o que a nota aponta, conferido contra o nó.
+  log('\x1b[1mEm andamento\x1b[0m  (onde_paramos.md → Sobre.md)');
+  let nota = ''; try { nota = fs.readFileSync(path.join(DEST, 'onde_paramos.md'), 'utf8'); } catch {}
+  const ponteiros = [...nota.matchAll(/^- \[([^\]]+)\]\(([^)]+)\)(?:\s*[—-]+\s*(.*))?$/gm)];
+  if (!ponteiros.length) info('(none — the note has no "- [US](path)" lines)');
+  for (const [, rotulo, href, resto] of ponteiros) {
+    const abs = path.resolve(DEST, href);
+    const n = porArq.get(abs) || lerNo(abs);
+    if (!n) { err(rotulo + ' → ' + href + '  (file not found)'); problemas++; continue; }
+    const ultimo = n.rumo.length ? n.rumo[n.rumo.length - 1] : null;
+    const idade = ultimo ? dias(ultimo.data) : null;
+    const marca = n.estado === 'ativa' ? '\x1b[32m●\x1b[0m' : n.estado === 'concluida' ? '\x1b[34m✓\x1b[0m' : '\x1b[31m✗\x1b[0m';
+    log(`  ${marca} ${n.titulo}${cadeia(n).length ? '   \x1b[2m(' + cadeia(n).join(' › ') + ')\x1b[0m' : ''}`);
+    if (resto) info('  ' + resto.trim());
+    if (ultimo) info(`  last Rumo: ${idade}d ago — ${ultimo.texto.slice(0, 90)}${ultimo.texto.length > 90 ? '…' : ''}`);
+    else info('  no dated Rumo entry');
+    if (n.estado === 'concluida') { warn('  concluida but still in the note — it belongs in Releases/<versao>.md, and out of here'); problemas++; }
+    if (n.estado === 'concluida' && !n.comEvidencia) { warn('  concluida without Evidência'); problemas++; }
+    if (idade !== null && idade > 14 && n.estado === 'ativa') warn(`  ${idade} days without a Rumo entry — stalled, or done and not recorded?`);
+  }
+
+  // A brecha: seção de relato dentro da nota.
+  const secoes = [...nota.matchAll(/^##\s+(.+)$/gm)].map(m => m[1].trim());
+  const estranhas = secoes.filter(s => !/^(Em andamento|Travado|Estado|Próxima|Depende|Primeira frase)/i.test(s));
+  if (estranhas.length) { warn(`the note has ${estranhas.length} section(s) that look like a report: ${estranhas.slice(0, 3).map(s => '"' + s + '"').join(', ')}${estranhas.length > 3 ? '…' : ''} → Rumo of the US`); problemas++; }
+  const ativasForaDaNota = nos.filter(n => n.tipo === 'us' && n.estado === 'ativa' && !ponteiros.some(([, , h]) => path.resolve(DEST, h) === path.resolve(n.arq)));
+  if (ativasForaDaNota.length) warn(`${ativasForaDaNota.length} US marked ativa but not in the note: ${ativasForaDaNota.map(n => n.titulo.split(' — ')[0]).join(', ')}`);
+
+  // Progresso por Epic.
+  const epics = nos.filter(n => n.tipo === 'epic');
+  if (epics.length) {
+    log('\n\x1b[1mEpics\x1b[0m');
+    for (const e of epics) {
+      const desc = nos.filter(n => n !== e && (() => { for (let p = paiDe(n); p; p = paiDe(p)) if (p === e) return true; return false; })());
+      const us = desc.filter(n => n.tipo === 'us'), feats = desc.filter(n => n.tipo === 'feature');
+      const c = (arr, s) => arr.filter(n => n.estado === s).length;
+      const conta = us.length ? us : feats;
+      const rot = us.length ? 'US' : 'features';
+      if (!conta.length) { log(`  ${e.estado === 'ativa' ? '●' : e.estado === 'concluida' ? '✓' : '✗'} ${e.titulo}  [2mno children yet[0m`); continue; }
+      log(`  ${e.estado === 'ativa' ? '●' : e.estado === 'concluida' ? '✓' : '✗'} ${e.titulo}  \x1b[2m${c(conta, 'concluida')}/${conta.length} ${rot} concluídas` + (c(conta, 'cancelada') ? ` · ${c(conta, 'cancelada')} cancelada(s)` : '') + (c(conta, 'ativa') ? ` · ${c(conta, 'ativa')} ativa(s)` : '') + '\x1b[0m');
+    }
+  }
+
+  // Última release.
+  const rel = path.join(DOCS, 'Releases');
+  let releases = []; try { releases = fs.readdirSync(rel).filter(f => f.endsWith('.md') && f !== 'README.md').sort(); } catch {}
+  log('\n\x1b[1mReleases\x1b[0m');
+  if (releases.length) {
+    const u = releases[releases.length - 1];
+    const n = (fs.readFileSync(path.join(rel, u), 'utf8').match(/^- \[/gm) || []).length;
+    info(`last: ${u.replace(/\.md$/, '')} — ${n} US`);
+  } else info('none yet');
+
+  // Contexto fixo — a mesma conta do --check.
+  log('\n\x1b[1mFixed context\x1b[0m');
+  imprimirContextoFixo();
+
+  // Grafo.
+  const GRAFO_ST = path.join(RAIZ, 'graphify-out', 'graph.json');
+  log('\n\x1b[1mGraph\x1b[0m');
+  if (fs.existsSync(GRAFO_ST)) {
+    let n = 0, d = 0; try { const g = JSON.parse(fs.readFileSync(GRAFO_ST, 'utf8')); n = (g.nodes || []).length; d = (g.nodes || []).filter(x => x._origin === 'marvin').length; } catch {}
+    const idade = dias(fs.statSync(GRAFO_ST).mtime);
+    info(`${n} nodes (${d} from the knowledge base) — extracted ${idade}d ago` + (idade > 7 ? '  → marvin --graphify --graphify-rebuild' : ''));
+  } else info('none — marvin --graphify builds it');
+
+  log('\n' + (problemas ? `\x1b[33m${problemas} thing(s) to fix\x1b[0m` : '\x1b[32mall consistent\x1b[0m') + '\n');
+  process.exit(problemas ? 1 : 0);
+}
+
+// ── --us <Epic>/<Feature>/<US>. O gatilho físico da regra "antes de qualquer US": cria a
+// pasta com o Sobre.md no formato, cria o Epic e a Feature se faltarem, e põe a linha na
+// nota. Sem isto a regra depende de alguém lembrar — e a US nasce torta para ser
+// consertada depois. Idempotente: nó que existe não é tocado.
+const argUS = process.argv.find(a => a.startsWith('--us='));
+if (argUS || temFlag('--us')) {
+  const alvo = argUS ? argUS.slice(5) : process.argv[process.argv.indexOf('--us') + 1];
+  if (!alvo || alvo.startsWith('--')) { err('usage: marvin --us Novos/<Epic>/<Feature>/<US-nome>   (or Manutencao/…)'); process.exit(2); }
+  if (LAYOUT_ANTIGO) { err('old layout — run `marvin --migrar` first'); process.exit(1); }
+  const partes = alvo.replace(/\\/g, '/').replace(/^\/|\/$/g, '').split('/');
+  if (partes.length !== 4 || !['Novos', 'Manutencao'].includes(partes[0])) { err('expected 4 parts: Novos|Manutencao / <Epic> / <Feature> / <US>'); process.exit(2); }
+  log('\x1b[1m--us\x1b[0m — ' + alvo + '\n');
+  const hoje = (() => { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); })();
+  const tipos = ['epic', 'feature', 'us'];
+  for (let i = 1; i <= 3; i++) {
+    const dir = path.join(DOCS, 'Planejamento', ...partes.slice(0, i + 1));
+    const sobre = path.join(dir, 'Sobre.md');
+    const tipo = tipos[i - 1], nome = partes[i];
+    if (fs.existsSync(sobre)) { info(tipo + ': ' + partes.slice(0, i + 1).join('/') + ' already exists'); continue; }
+    fsw.mkdirSync(dir, { recursive: true });
+    const cab = `---\ntipo: ${tipo}\nestado: ativa\npai: ${i === 1 ? '../../README.md' : '../Sobre.md'}\n---\n# ${nome}\n\n**Por quê:** _(uma linha)_\n**Pronto quando:** _(critério verificável)_\n`;
+    const corpo = tipo === 'us' ? `
+## Fluxos ligados
+_(link para ${path.relative(dir, path.join(DOCS, 'Contexto', 'Fluxos')).replace(/\\/g, '/')}/<fluxo>.md — fluxo sem nota ganha uma agora)_
+
+## Código tocado
+_(crase com o caminho a partir da raiz, e a função depois de um traço — é o que liga a US ao grafo)_
+
+## Time
+_(base: tl · po · dev-front · dev-back · qa · scout; mais design/dba/sec/infra se a atividade pede. O que ela não usa não entra.)_
+
+## Skills
+_(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
+
+## Rumo
+- **${hoje}** — aberta.
+
+## Evidência
+<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+` : `
+## Filhos
+- [${partes[i + 1]}](${partes[i + 1]}/Sobre.md)
+
+## Rumo
+- **${hoje}** — aberta${tipo === 'epic' ? '' : ', com a primeira US'}.
+`;
+    fsw.writeFileSync(sobre, cab + corpo);
+    ok(tipo + ': ' + partes.slice(0, i + 1).join('/') + '/Sobre.md');
+  }
+  // Pai que já existia: acrescenta o filho novo na seção Filhos, se não estiver.
+  for (let i = 1; i <= 2; i++) {
+    const sobre = path.join(DOCS, 'Planejamento', ...partes.slice(0, i + 1), 'Sobre.md');
+    const filho = partes[i + 1];
+    let t; try { t = fs.readFileSync(sobre, 'utf8'); } catch { continue; }
+    if (t.includes('](' + filho + '/Sobre.md)')) continue;
+    const linha = '- [' + filho + '](' + filho + '/Sobre.md)';
+    const novo = /^##\s+Filhos\s*$/m.test(t) ? t.replace(/^(##\s+Filhos\s*\n)([\s\S]*?)(?=^##\s|(?![\s\S]))/m, (m, h, b) => h + b.replace(/\s+$/, '') + '\n' + linha + '\n\n') : t + '\n## Filhos\n' + linha + '\n';
+    fsw.writeFileSync(sobre, novo);
+    ok(partes.slice(0, i + 1).join('/') + '/Sobre.md — child added: ' + filho);
+  }
+  // A linha na nota.
+  const NOTA_US = path.join(DEST, 'onde_paramos.md');
+  const relSobre = path.relative(DEST, path.join(DOCS, 'Planejamento', ...partes, 'Sobre.md')).replace(/\\/g, '/');
+  let nota = ''; try { nota = fs.readFileSync(NOTA_US, 'utf8'); } catch {}
+  if (!nota) warn('onde_paramos.md not found — run marvin first');
+  else if (nota.includes('](' + relSobre + ')')) info('onde_paramos.md already points to it');
+  else {
+    const linha = `- [${partes[3]}](${relSobre}) — aberta ${hoje}; próximo passo: _(uma frase)_`;
+    // Entra no FIM da lista da seção; o placeholder do template sai na primeira US.
+    const m = nota.match(/^##\s+Em andamento[ \t]*\r?\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
+    let nova;
+    if (m) {
+      const corpo = m[1].replace(/^_\(.*\)_[ \t]*$/gm, '').replace(/<!--[\s\S]*?-->[ \t]*/g, '');
+      const linhas = corpo.split(/\r?\n/).filter(l => l.startsWith('- ['));
+      const resto = corpo.split(/\r?\n/).filter(l => !l.startsWith('- [') && l.trim()).join('\n');
+      nova = nota.slice(0, m.index) + '## Em andamento\n\n' + [...linhas, linha].join('\n') + '\n' + (resto ? '\n' + resto + '\n' : '') + '\n' + nota.slice(m.index + m[0].length);
+    } else nova = nota + '\n## Em andamento\n\n' + linha + '\n';
+    fsw.writeFileSync(NOTA_US, nova);
+    ok('onde_paramos.md — pointer added');
+  }
+  log('');
+  info('now the pass that the rule asks for, in ' + path.relative(RAIZ, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/') + ':');
+  info('  map what it touches → fill Fluxos ligados and Código tocado · propose the team → Time · propose skills → Skills');
+  log('');
+  process.exit(0);
+}
+
+// ── --migrar. Layout antigo (08_Memoria/, 10_Decisoes/…) → layout por grafo. Feito três
+// vezes à mão em projetos reais no mesmo dia, sempre na mesma ordem: backup → memória →
+// decisões → fontes → sobras → links. O que exige julgamento (o conteúdo da nota, qual
+// arquivo é Epic) fica de fora e é dito no fim. Invariante 1 em cada passo: copia, confere,
+// só então apaga. Depois dele, o run normal cria os templates e reponta a junction.
+if (temFlag('--migrar')) {
+  log('\x1b[1m--migrar\x1b[0m — old layout → graph layout\n');
+  if (!LAYOUT_ANTIGO) { ok('nothing to migrate: this base is already on the graph layout'); process.exit(0); }
+  const dest = path.join(DOCS, '99_Backup', 'antes-do-grafo');
+  if (fs.existsSync(dest) && !DRY) { err('99_Backup/antes-do-grafo already exists — a previous --migrar stopped halfway. Look at it before running again.'); process.exit(1); }
+  const contar = (d) => { let n = 0; (function w(x) { let es; try { es = fs.readdirSync(x, { withFileTypes: true }); } catch { return; } for (const e of es) e.isDirectory() ? w(path.join(x, e.name)) : n++; })(d); return n; };
+  // 1. backup de tudo, menos do próprio 99_Backup
+  let n = 0;
+  (function cp(dir, rel = '') {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (rel === '' && e.name === '99_Backup') continue;
+      const p = path.join(dir, e.name), r = path.join(rel, e.name);
+      if (e.isDirectory()) { fsw.mkdirSync(path.join(dest, r), { recursive: true }); cp(p, r); }
+      else { fsw.mkdirSync(path.dirname(path.join(dest, r)), { recursive: true }); fsw.copyFileSync(p, path.join(dest, r)); n++; }
+    }
+  })(DOCS);
+  if (!DRY && contar(dest) !== n) { err('backup copied ' + contar(dest) + ' of ' + n + ' files — aborting, nothing moved'); process.exit(1); }
+  ok('backup: ' + n + ' files → ' + path.relative(RAIZ, dest).replace(/\\/g, '/'));
+  const mover = (de, para) => {
+    if (!fs.existsSync(de)) return false;
+    if (fs.existsSync(para)) { warn('exists, left alone: ' + path.relative(DOCS, para)); return false; }
+    fsw.mkdirSync(path.dirname(para), { recursive: true });
+    fsw.copyFileSync(de, para);
+    if (!DRY && fs.statSync(de).size !== fs.statSync(para).size) { err('size differs after copy: ' + de); process.exit(1); }
+    fsw.unlinkSync(de);
+    info(path.relative(DOCS, de).replace(/\\/g, '/') + '  →  ' + path.relative(DOCS, para).replace(/\\/g, '/'));
+    return true;
+  };
+  // 2. memória inteira (a junction é repontada pelo run normal, que vê 08_Memoria sumir)
+  const m8 = path.join(DOCS, '08_Memoria');
+  for (const f of fs.readdirSync(m8)) mover(path.join(m8, f), path.join(DOCS, 'Memoria', f));
+  if (!DRY) fs.rmdirSync(m8);
+  ok('08_Memoria/ → Memoria/');
+  // 3. decisões → Contexto/Arquitetura (o README antigo vai para o backup: o novo layout tem o seu)
+  const d10 = path.join(DOCS, '10_Decisoes');
+  if (fs.existsSync(d10)) {
+    for (const f of fs.readdirSync(d10)) {
+      const p = path.join(d10, f);
+      if (f === 'README.md') { mover(p, path.join(DOCS, '99_Backup', '10_Decisoes-README.md')); continue; }
+      if (fs.statSync(p).isDirectory()) { warn('10_Decisoes/' + f + '/ is a folder — left for you: features go to Planejamento/, reports to Fontes/'); continue; }
+      mover(p, path.join(DOCS, 'Contexto', 'Arquitetura', f));
+    }
+    try { if (!DRY) fs.rmdirSync(d10); ok('10_Decisoes/ → Contexto/Arquitetura/'); } catch { warn('10_Decisoes/ not empty — see above'); }
+  }
+  // 4. fontes e o índice antigo
+  mover(path.join(DOCS, '00_Fontes_Externas.md'), path.join(DOCS, 'Fontes', 'Externas.md'));
+  mover(path.join(DOCS, '00_Inicio.md'), path.join(DOCS, '99_Backup', '00_Inicio.md'));
+  // 5. sobras vazias
+  for (const d of ['11_Sessoes', '90_Anexos']) {
+    const p = path.join(DOCS, d);
+    if (!fs.existsSync(p)) continue;
+    if (fs.readdirSync(p).length) { warn(d + '/ is not empty — left for you'); continue; }
+    if (!DRY) fs.rmdirSync(p); info(d + '/ removed (empty)');
+  }
+  // 6. links: os caminhos que mudaram, nos .md da base e nos ponteiros da raiz
+  const troca = [[/08_Memoria\//g, 'Memoria/'], [/10_Decisoes\/README\.md/g, '99_Backup/10_Decisoes-README.md'], [/10_Decisoes\//g, 'Contexto/Arquitetura/'], [/00_Fontes_Externas\.md/g, 'Fontes/Externas.md']];
+  const alvos = [];
+  (function w(d, prof = 0) { if (prof > 6) return; let es; try { es = fs.readdirSync(d, { withFileTypes: true }); } catch { return; } for (const e of es) { const p = path.join(d, e.name); if (e.isDirectory()) { if (e.name !== '99_Backup') w(p, prof + 1); } else if (e.name.endsWith('.md')) alvos.push(p); } })(DOCS);
+  for (const f of ['AGENTS.md', 'CLAUDE.md']) if (fs.existsSync(path.join(RAIZ, f))) alvos.push(path.join(RAIZ, f));
+  (function w(d) { let es; try { es = fs.readdirSync(d, { withFileTypes: true }); } catch { return; } for (const e of es) { const p = path.join(d, e.name); e.isDirectory() ? w(p) : e.name.endsWith('.md') && alvos.push(p); } })(path.join(RAIZ, '.claude'));
+  let arqs = 0, refs = 0;
+  for (const f of alvos) {
+    let t; try { t = fs.readFileSync(f, 'utf8'); } catch { continue; }
+    let novo = t, k = 0;
+    for (const [re, sub] of troca) novo = novo.replace(re, () => { k++; return sub; });
+    if (k) { fsw.writeFileSync(f, novo); arqs++; refs += k; }
+  }
+  ok(refs + ' path reference(s) rewritten in ' + arqs + ' file(s)');
+  log('');
+  info('left for you — it takes judgment, not a script:');
+  info('  · the note: it is a list of pointers now. What it says today goes to the Rumo of the node that owns it');
+  info('  · specs and feature files at the root of the base: one folder per Epic/Feature under Planejamento/');
+  info('  · then run:  marvin          (creates the templates, re-points the junction)');
+  info('               marvin --status (shows what is still inconsistent)');
+  log('');
+  process.exit(0);
 }
 
 // ═══════════════════════════════════════════ 1. STACK
@@ -1393,6 +1682,73 @@ e **qual seria a primeira frase** do chat novo.
 `);
   ok('.claude/commands/retomar.md  → type /retomar in a new chat');
 } else info('/retomar already exists');
+
+// /us e /fechar: os dois gatilhos que faltavam. A regra "antes de qualquer US" e a regra
+// de fechar sessão existiam como texto; texto depende de alguém lembrar. Um comando dispara.
+// /us chama o `marvin --us`, que cria a cadeia de Sobre.md e o ponteiro — o agente só
+// preenche o que exige julgamento. /fechar é o par do /retomar. Só no layout por grafo.
+if (!LAYOUT_ANTIGO) {
+  const relDocs = path.relative(RAIZ, DOCS).replace(/\\/g, '/');   // o 7c declara o dele depois
+  const cmdUs = path.join(cmdDir, 'us.md');
+  if (!fs.existsSync(cmdUs)) {
+    fsw.writeFileSync(cmdUs, `---
+description: Abre uma US — cria o Sobre.md, aponta na nota, e faz a passada de mapear, time e skills
+---
+
+Abra a US **$ARGUMENTS** neste projeto. O caminho é \`Novos|Manutencao/<Epic>/<Feature>/<US-nome>\`;
+se eu passei só o nome, pergunte em qual Epic e Feature ela entra (liste os que existem em
+\`${relDocs}/Planejamento/\`) antes de criar qualquer coisa.
+
+1. Rode \`marvin --us <caminho>\`. Ele cria a cadeia de \`Sobre.md\` que faltar e põe a linha em
+   \`${path.relative(RAIZ, DEST).replace(/\\/g, '/')}/onde_paramos.md\`. Se \`marvin\` não estiver no PATH:
+   \`npx marvin-kb --us <caminho>\`.
+
+2. A passada que a regra pede — está em \`${relDocs}/Planejamento/README.md\`, leia antes:
+   - **Mapear** o que a US toca: fluxo, arquitetura, código. Fluxo que ainda não tem nota em
+     \`${relDocs}/Contexto/Fluxos/\` ganha uma agora. Preencha *Fluxos ligados* e *Código tocado*
+     (crase com o caminho, e a função depois de um traço — é o que liga a US ao grafo).
+   - **Propor o time** desta US, a partir da base do \`AGENTS.md\`: só os papéis que ela usa,
+     mais a camada da atividade (design, dba, sec, infra) se ela pede. Escreva em *Time*.
+   - **Propor skills**: procedimento que a US vai repetir vai em *Skills* como proposta.
+   - **Por quê** e **Pronto quando** — se eu não disse, pergunte; não invente.
+
+3. Me mostre o \`Sobre.md\` preenchido e a linha da nota. **Não comece a implementar.**
+`);
+    ok('.claude/commands/us.md  → /us <caminho> opens a US the right way');
+  } else info('/us already exists');
+
+  const cmdFechar = path.join(cmdDir, 'fechar.md');
+  if (!fs.existsSync(cmdFechar)) {
+    fsw.writeFileSync(cmdFechar, `---
+description: Fecha a sessão — registra o Rumo da US, atualiza a nota, confere a árvore, e diz se é hora de um chat novo
+---
+
+Feche a sessão. O par do \`/retomar\`: nada do que foi descoberto hoje pode ficar só na conversa.
+
+1. \`git status --short\` e \`git log --oneline -3\`. Arquivo novo sem justificativa → me pergunte.
+
+2. Para cada US que mexemos hoje (as da seção *Em andamento* de
+   \`${path.relative(RAIZ, DEST).replace(/\\/g, '/')}/onde_paramos.md\`): uma entrada no **Rumo** do \`Sobre.md\`
+   dela, datada, com o que se viu e o que se decidiu — e o que foi descartado, se houve. Concluiu
+   e foi validada? *Evidência* preenchida, \`estado: concluida\`, linha em \`${relDocs}/Releases/<versao>.md\`,
+   e **sai da nota**.
+
+3. Reescreva a linha de cada US na nota: **o próximo passo numa frase**. A nota é lista de
+   ponteiros — **não** escreva relato nela; o relato acabou de ir para o Rumo.
+
+4. Armadilha nova que um papel sofreu hoje → o \`.md\` daquele agente em \`.claude/agents/\`,
+   acrescentando. Procedimento que rodou pela **segunda** vez → skill.
+
+5. Rode \`marvin --status\` e me mostre. Se acusar algo, conserte antes de fechar.
+
+6. Diga se é hora de um chat novo — a regra está no rodapé do \`/retomar\` — e, se for, **qual
+   seria a primeira frase** dele.
+
+$ARGUMENTS
+`);
+    ok('.claude/commands/fechar.md  → /fechar closes the session; the pair of /retomar');
+  } else info('/fechar already exists');
+}
 
 const ondeParamos = path.join(DEST, 'onde_paramos.md');
 if (fs.existsSync(ondeParamos)) {
