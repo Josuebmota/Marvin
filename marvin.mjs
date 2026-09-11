@@ -1931,7 +1931,8 @@ if (GRAPHIFY) {
         if (prof > 8) return;
         let ents; try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
         for (const e of ents) {
-          if (e.name.startsWith('.')) continue;
+          // 99_Backup/ e historico/ ficam fora do caminho de leitura — e do grafo.
+          if (e.name.startsWith('.') || e.name === '99_Backup' || e.name === 'historico') continue;
           const p = path.join(dir, e.name);
           if (e.isDirectory()) { varrerDocs(p, prof + 1); continue; }
           if (e.name.endsWith('.md')) docs.push(p);
