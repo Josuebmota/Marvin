@@ -32,5 +32,10 @@ _(nenhum ainda — o fluxo de montagem do script ganha nota quando alguém preci
 - **10/09/2026** — regra "antes de qualquer US" (time em camadas + skills) entrou no
   `AGENTS.md` gerado, no formato da US e no `PROMPT.md`, a pedido.
 
+- **10/09/2026** — commit `eed72ec`. Migrado também o primeiro projeto real (33 features viraram
+  pastas com `Sobre.md`; grafo com 113 nós de doc). A migração ensinou duas coisas que
+  entraram no script: `[[wikilink]]` vira aresta (base vinda de vault de notas é cheia deles),
+  e o 6b não cria `Externas.md` em branco quando o `00_Fontes_Externas.md` antigo ainda existe.
+
 ## Evidência
 _(pendente: commit, CI verde nos três SOs, `1.2.0` no npm)_

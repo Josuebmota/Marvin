@@ -23,7 +23,7 @@ metadata:
 
 ## Em andamento
 
-- [US-01 — layout por grafo no script](../Planejamento/Novos/organizacao-por-grafo/script/US-01-layout-por-grafo/Sobre.md) — código e teste prontos (118 verdes), este repo migrado; **falta commitar e publicar o `1.2.0`**
+- [US-01 — layout por grafo no script](../Planejamento/Novos/organizacao-por-grafo/script/US-01-layout-por-grafo/Sobre.md) — commitada em `eed72ec` + ajustes da migração do Zino (wikilink, `Externas.md`); **falta o bump e publicar o `1.2.0`** — depende da US-03
 - [US-02 — `marvin --status`](../Planejamento/Novos/organizacao-por-grafo/script/US-02-status/Sobre.md) — não começada; escopo fechado no Sobre.md
 - [US-03 — publicar no npm](../Planejamento/Manutencao/publicacao/npm/US-03-publicar-1-1-1/Sobre.md) — travada pelo token expirado; o conserto está nas Skills dela
 - [US-04 — passo 3 confunde backup com lixo](../Planejamento/Manutencao/diagnostico/passo-3/US-04-backup-nao-e-lixo/Sobre.md) — não começada

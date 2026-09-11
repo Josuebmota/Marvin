@@ -1056,8 +1056,13 @@ if (encontradas.size) {
   for (const [nome, urls] of encontradas) { info(nome + ':'); [...urls].slice(0, 2).forEach(u => info('  ' + u)); }
 } else info('no tool URLs found in the docs');
 
+// Projeto migrado do layout antigo ainda tem o arquivo com o nome velho: é o mesmo
+// conteúdo, então conta como existente — senão nasce um em branco por cima (aconteceu).
+const FONTES_ANTIGO = path.join(DOCS, '00_Fontes_Externas.md');
 if (fs.existsSync(FONTES)) {
   info(NOME_FONTES + ' already exists — not overwriting');
+} else if (!LAYOUT_ANTIGO && fs.existsSync(FONTES_ANTIGO)) {
+  warn('00_Fontes_Externas.md is the old name — move it to ' + NOME_FONTES + ' (nothing written)');
 } else {
   let respostas = null;
   if (process.stdin.isTTY) {
@@ -1944,7 +1949,7 @@ if (GRAPHIFY) {
         g.nodes = g.nodes.filter(n => n._origin !== 'marvin');
         g.edges = g.edges.filter(e => e._origin !== 'marvin');
         const ids = new Set(g.nodes.map(n => n.id));
-        const novosNos = [], novasArestas = [], avisos = [];
+        const novosNos = [], novasArestas = [], avisos = [], porNome = new Map();
         const relDe = (abs) => path.relative(RAIZ, abs).replace(/\\/g, '/');
 
         for (const arq of docs) {
@@ -1960,6 +1965,10 @@ if (GRAPHIFY) {
           if (estado) no.estado = estado;
           novosNos.push(no);
           ids.add(id);
+          // [[wikilink]] resolve por nome de arquivo ou pelo `name:` do frontmatter —
+          // é como vault de notas liga, e base migrada de lá vem cheia deles.
+          porNome.set(path.basename(arq, '.md').toLowerCase(), id);
+          const nome = campo('name'); if (nome) porNome.set(nome.replace(/^["']|["']$/g, '').toLowerCase(), id);
         }
 
         for (const arq of docs) {
@@ -1987,6 +1996,10 @@ if (GRAPHIFY) {
             const alvoId = idDe(alvoRel);
             if (alvo.endsWith('.md') && alvoRel.startsWith(relDe(DOCS))) aresta(id, alvoId, 'references');
             else if (ids.has(alvoId)) aresta(id, alvoId, 'touches');
+          }
+          for (const m of corpo.matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]/g)) {
+            const alvoId = porNome.get(m[1].trim().toLowerCase());
+            if (alvoId && alvoId !== id) aresta(id, alvoId, 'references');
           }
           // ## Código tocado
           const sec = corpo.match(/^##\s+Código tocado\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
