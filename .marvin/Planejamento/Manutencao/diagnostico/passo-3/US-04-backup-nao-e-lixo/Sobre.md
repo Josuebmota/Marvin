@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-04 — O passo 3 confunde backup com lixo de shell
@@ -24,7 +24,8 @@ _(nenhum)_
 - nenhuma
 
 ## Rumo
-- **10/09/2026** — aberta, ainda não começada.
+- **10/09/2026** — aberta.
+- **11/09/2026** — feita: `.bak/.orig/.old/.backup/~` saem da lista de lixo e ganham aviso próprio, sem `rm -f` — a pergunta é "é para versionar?". Teste 9u cobre os dois lados.
 
 ## Evidência
-_(vazio)_
+- teste 9u em `teste.mjs`: `.bak` acusado como backup, fora do `rm -f`; `{` continua lixo. 152 verdes.

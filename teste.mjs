@@ -723,6 +723,19 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
+// ── 9u. o passo 3 distingue backup declarado de lixo de shell. `firestore.rules.bak` num
+//     repo real era chamado de "malformed shell command" — aviso que ensina errado.
+{
+  const a = arena('backup');
+  fs.writeFileSync(path.join(a.proj, 'firestore.rules.bak'), 'x' + NLQ);
+  fs.writeFileSync(path.join(a.proj, '{'), '');
+  const r = rodar(a, '--no-git');
+  checa('.bak é acusado como backup, com a pergunta certa', /firestore\.rules\.bak.*backup file in the root/.test(r.stdout) && /meant to be versioned/.test(r.stdout));
+  checa('.bak NÃO entra na lista de lixo de shell nem no rm -f', !/rm -f.*firestore\.rules\.bak/.test(r.stdout));
+  checa('lixo de shell continua sendo acusado como lixo', /rm -f.*"\{"/.test(r.stdout));
+  limpar(a);
+}
+
 // ── 9. adaptador do Copilot — caminho conferido na documentação oficial
 {
   const a = arena('copilot');

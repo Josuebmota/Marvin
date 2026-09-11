@@ -833,7 +833,7 @@ const ehLixo = (n, vazio) => (
   /^[`'"(){}[\],;|&<>~^$]/.test(n) ||
   /^-/.test(n) ||
   /^(nul|NUL|con|CON)$/.test(n) ||
-  /\.(tmp|temp|bak|orig|rej|swp)$/i.test(n) ||
+  /\.(tmp|temp|rej|swp)$/i.test(n) ||
   /^~\$/.test(n) ||
   // Os testes acima ancoram no PRIMEIRO caractere e deixavam passar coisas como
   // `0\`` e `!!obj.id)).toBe(true)` — o padrão apareceu num repositório real:
@@ -855,6 +855,19 @@ if (lixo.length) {
   info('check the contents before deleting — it may be output you actually wanted');
   info('to delete:  rm -f ' + lixo.map(f => JSON.stringify(f)).join(' '));
 } else ok('none');
+
+// Backup declarado NÃO é lixo de shell — `.bak`, `.orig`, `nome~` são alguém guardando
+// uma versão de propósito. Este passo os chamava de "malformed shell command", e num
+// repositório real (`firestore.rules.bak`) o aviso ensinava errado. A pergunta certa é
+// outra: isso é para versionar? Se sim, o git já guarda versões; se não, vai para o
+// .gitignore. Aviso próprio, sem o "rm -f" — decisão é do humano.
+const BACKUP = /(\.(bak|orig|old|backup)$|~$)/i;
+const backups = fs.readdirSync(RAIZ, { withFileTypes: true }).filter(e => e.isFile() && BACKUP.test(e.name)).map(e => e.name);
+if (backups.length) {
+  backups.forEach(f => warn(JSON.stringify(f) + '  backup file in the root — not shell junk, but is it meant to be versioned?'));
+  info('git already keeps every version; a .bak next to the file is a second truth that ages in silence.');
+  info('keep it → move it out of the root or add it to .gitignore · done with it → delete');
+}
 
 // ═══════════════════════════════════════════ 4. CONTEXTO FIXO
 //

@@ -26,7 +26,7 @@ metadata:
 - [US-01 — layout por grafo no script](../Planejamento/Novos/organizacao-por-grafo/script/US-01-layout-por-grafo/Sobre.md) — tudo commitado e tagueado `v1.2.0` (`2e335ef`); **falta só o `npm publish` + `git push --follow-tags`** — é a US-03
 - [US-02 — `marvin --status`](../Planejamento/Novos/organizacao-por-grafo/script/US-02-status/Sobre.md) — implementada com `--us`, `/us`, `/fechar` e `--migrar`; entra em `Releases/1.2.0.md` quando publicar
 - [US-03 — publicar no npm](../Planejamento/Manutencao/publicacao/npm/US-03-publicar-1-1-1/Sobre.md) — travada pelo token expirado; o conserto está nas Skills dela
-- [US-04 — passo 3 confunde backup com lixo](../Planejamento/Manutencao/diagnostico/passo-3/US-04-backup-nao-e-lixo/Sobre.md) — não começada
+- [US-04 — passo 3 confunde backup com lixo](../Planejamento/Manutencao/diagnostico/passo-3/US-04-backup-nao-e-lixo/Sobre.md) — feita; entra na release junto com a 01 e a 02
 
 ## Travado
 
