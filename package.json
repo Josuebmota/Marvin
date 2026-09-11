@@ -1,6 +1,6 @@
 {
   "name": "marvin-kb",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Scaffolds a project's knowledge base for working with AI agents — one source, thin adapters, memory versioned inside the repository.",
   "type": "module",
   "bin": {
