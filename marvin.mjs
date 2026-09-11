@@ -2290,7 +2290,7 @@ const ATUALIZACOES = [
     o_que: 'the "Portabilidade" table (moved here from AGENTS.md)' },
   { arquivo: 'AGENTS.md', marca: /A nota aponta; o nó guarda/, soCom: !LAYOUT_ANTIGO,
     o_que: 'the "note points, node keeps" rule — the knowledge base as a graph' },
-  { arquivo: 'AGENTS.md', marca: /ou uma seção de relato dentro dela/, soCom: !LAYOUT_ANTIGO,
+  { arquivo: 'AGENTS.md', marca: /seção de relato/, soCom: !LAYOUT_ANTIGO,
     o_que: 'the rule naming the loophole: a report SECTION inside the note is the same error as a new file' },
   { arquivo: path.relative(RAIZ, path.join(DOCS, 'Contexto', 'Sobre.md')).replace(/\\/g, '/'),
     marca: /Como esta base está organizada/, soCom: !LAYOUT_ANTIGO,

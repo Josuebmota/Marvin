@@ -115,7 +115,7 @@ Rumo de cada uma moram no `Sobre.md` dela em `.marvin/Planejamento/`, e só carr
 são seguidos. Decisão estrutural mora em `.marvin/Contexto/Arquitetura/`, que acrescenta e
 nunca sobrescreve. A separação não é estética: a nota carrega em toda sessão, e em 09/09
 ela chegou a 19 KB (~4.900 tk) porque seis sessões de histórico foram empilhadas dentro —
-com o próprio passo 4b acusando. Hoje ela tem quatro linhas de ponteiro.
+com o próprio passo 4b acusando. Hoje ela tem quatro linhas de ponteiro — e **seção de relato dentro dela é o mesmo erro que arquivo novo**.
 
 **Antes de qualquer US, a passada do `AGENTS.md` gerado vale aqui também:** mapear o que a
 atividade toca, propor o time dela (num projeto de uma pessoa, `tl` + `dev-back` + `qa` +
@@ -145,25 +145,11 @@ script e a documentação. Quem instala roda a ferramenta e gera os seus.
   se reaparecer, é outra máquina ou outro perfil commitando sem o ajuste
 - Antes de fechar: `git status --short` e uma justificativa por arquivo novo
 
-## Higiene de sessão — quando sugerir um chat novo
+## Higiene de sessão
 
-Contexto acumulado custa em **toda** requisição, não uma vez só. Conversa longa que já
-mudou de assunto carrega peso morto pelo resto da sessão.
-
-**Sugira chat novo quando as três forem verdade:** o assunto mudou; a sessão já está longa;
-e o estado **está registrado** em `onde_paramos.md` — sem isso o chat novo começa cego.
-
-**Não sugira** quando o trabalho novo depende de algo descoberto agora e ainda não escrito,
-quando está no meio de algo (correção feita, falta validar), ou quando a sessão é curta —
-recomeçar custa mais do que continuar, porque o contexto fixo recarrega inteiro.
-
-**A regra que fecha:** registrar **antes** de sugerir. Sugerir chat novo com estado não
-salvo transfere para a próxima sessão o trabalho de redescobrir, que é o custo que se
-queria evitar. Ao sugerir, diga o que já está salvo e qual seria a primeira frase do
-chat novo.
-
-> Esta seção existia no template gerado e faltava aqui — o passo 10 acusou em todo run
-> por meses. Ficar sem ela era o repositório da ferramenta desobedecendo a própria régua.
+Contexto acumulado custa em **toda** requisição. Quando sugerir um chat novo, e o que dizer ao
+sugerir, está no rodapé de `/retomar` — o comando que abre a sessão é onde a regra de fechar mora.
+**A regra que fecha:** registrar antes de sugerir.
 
 ## Portabilidade
 

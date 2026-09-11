@@ -42,6 +42,16 @@ Ligação é **link markdown** — é o que vira aresta no grafo. Menção em pr
 Nada muda de pasta ao concluir: a US ganha `estado: concluida` e entra numa release.
 Mudar esta organização é uma entrada no Rumo abaixo.
 
+## Portabilidade
+
+| Item | Migra? |
+|---|---|
+| `AGENTS.md`, esta pasta inteira, a memória | ✅ é só markdown |
+| Persona dos agentes (o corpo do `.md`) | ✅ copiar e colar |
+| Definição de modelo/tools no frontmatter | ❌ formato de cada ferramenta |
+| Slash commands | ❌ vira prompt manual |
+| Auto-load da memória | ❌ **só o carregamento; os arquivos ficam** |
+
 ## Rumo
 
 - **10/09/2026** — base reorganizada por grafo. Antes era por tipo de arquivo

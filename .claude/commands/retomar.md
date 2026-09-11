@@ -23,3 +23,22 @@ Retome o trabalho neste projeto.
 Não comece a trabalhar. Espere eu confirmar por onde ir.
 
 $ARGUMENTS
+
+---
+
+## Ao fechar — quando sugerir um chat novo
+
+Contexto acumulado custa em **toda** requisição, não uma vez só. Conversa longa que já
+mudou de assunto carrega peso morto pelo resto da sessão.
+
+**Sugira chat novo quando as três forem verdade:** o assunto mudou; a sessão já está longa;
+e o estado **está registrado** em `onde_paramos.md` — sem isso o chat novo começa cego.
+
+**Não sugira** quando o trabalho novo depende de algo descoberto agora e ainda não escrito,
+quando está no meio de algo (correção feita, falta validar), ou quando a sessão é curta —
+recomeçar custa mais do que continuar, porque o contexto fixo recarrega inteiro.
+
+**A regra que fecha:** registrar **antes** de sugerir. Sugerir chat novo com estado não
+salvo transfere para a próxima sessão o trabalho de redescobrir, que é o custo que se
+queria evitar. Ao sugerir, diga o que já está salvo e qual seria a primeira frase do
+chat novo.
