@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-02 — `marvin --status`, o dashboard derivado
@@ -35,5 +35,4 @@ _(nenhum)_
   quando o texto tiver rodado o suficiente para saber o que mostrar.
 
 ## Evidência
-- 149 verificações verdes (`teste.mjs` 9r, 9s, 9t); `--status` verde em Marvin, Zino, parci-front e parci-invest.
-  Falta a release (1.2.0) para ir para `Releases/`.
+- `--status` em texto, `--us`, `/us`, `/fechar`, `--migrar` — testes 9r/9s/9t. O HTML com série virou a US-07.

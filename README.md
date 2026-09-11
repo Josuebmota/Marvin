@@ -224,6 +224,9 @@ Beyond creating things, it points out problems that slip by:
                   when the note and the nodes disagree. Run it when you open a session
 --us <path>       opens a US: Novos|Manutencao/<Epic>/<Feature>/<US>. Creates the
                   Sobre.md chain that is missing and adds the pointer to the note
+--release <v>     closes the cycle: every US with estado: concluida that is in no
+                  Releases/*.md goes into Releases/<v>.md (Evidência required) and
+                  leaves the note. No tag, no commit — it prints the git tag to run
 --migrar          old layout (08_Memoria/, 10_Decisoes/) → graph layout. Backs up,
                   moves, rewrites paths; what takes judgment is listed at the end
 --clean-legacy    removes old orchestrator leftovers
@@ -247,6 +250,7 @@ A rule that lives in a file depends on someone remembering it. Three commands fi
 |---|---|---|
 | opening a session | `/retomar` (+ `marvin --status`) | reads the note, follows the pointers, checks against `git log` |
 | starting work | `/us <path>` → `marvin --us` | creates the `Sobre.md` chain and the pointer; the agent then maps, proposes the team and the skills |
+| releasing | `marvin --release <v>` | writes `Releases/<v>.md` from the concluded USs and takes them out of the note |
 | closing | `/fechar` | Rumo entry per US touched, note rewritten as pointers, agents updated in layers, `--status`, and whether it is time for a new chat |
 
 `/retomar` and `/fechar` are the pair; `--status` is the ruler between them.
@@ -485,7 +489,7 @@ rather than final text.
 node teste.mjs
 ```
 
-152 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
+161 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

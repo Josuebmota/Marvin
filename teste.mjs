@@ -736,6 +736,38 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
+// ── 9v. --release fecha o ciclo. Invariante 1 no lugar mais perigoso do script: ele REMOVE
+//     linhas da nota — só a linha cuja US entrou, com contagem conferida, e o release escrito
+//     antes. Sem Evidência não escreve nada; rodar de novo recusa; dry-run não toca o disco.
+{
+  const a = arena('release');
+  rodar(a, '--no-git');
+  for (const u of ['US-01-a', 'US-02-b', 'US-03-c']) rodar(a, '--us', 'Novos/E/F/' + u);
+  const P = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E', 'F');
+  const marcar = (u, evid) => { const p = path.join(P, u, 'Sobre.md'); let s = fs.readFileSync(p, 'utf8').replace('estado: ativa', 'estado: concluida'); if (evid) s = s.replace(/## Evidência[\s\S]*$/, '## Evidência' + NLQ + '- ' + evid + NLQ); fs.writeFileSync(p, s); };
+  marcar('US-01-a', 'PR #1 verde');
+  marcar('US-02-b', null);   // concluída SEM evidência
+  const nota = path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md');
+  const antes = fs.readFileSync(nota, 'utf8');
+  const r0 = rodar(a, '--release', '1.0.0');
+  checa('--release aborta sem Evidência, com o nome, e não escreve nada', r0.status !== 0 && /US-02-b/.test(r0.stdout) && !fs.existsSync(path.join(a.proj, '.marvin', 'Releases', '1.0.0.md')) && fs.readFileSync(nota, 'utf8') === antes);
+  marcar('US-02-b', 'teste x verde');
+  const d = rodar(a, '--release', '1.0.0', '--dry-run');
+  checa('--release --dry-run mostra o conteúdo e não escreve', /US-01-a/.test(d.stdout) && /US-02-b/.test(d.stdout) && !fs.existsSync(path.join(a.proj, '.marvin', 'Releases', '1.0.0.md')) && fs.readFileSync(nota, 'utf8') === antes);
+  const r1 = rodar(a, '--release', '1.0.0');
+  checa('--release sai 0 e escreve o índice', r1.status === 0, r1.stdout.slice(-400));
+  const rel = fs.readFileSync(path.join(a.proj, '.marvin', 'Releases', '1.0.0.md'), 'utf8');
+  checa('o índice tem as duas concluídas com evidência, e não a ativa', /US-01-a/.test(rel) && /US-02-b/.test(rel) && !/US-03-c/.test(rel) && /PR #1 verde/.test(rel));
+  const depois = fs.readFileSync(nota, 'utf8');
+  checa('a nota perde exatamente as duas linhas e mantém a ativa e as seções', !/US-01-a/.test(depois) && !/US-02-b/.test(depois) && /US-03-c/.test(depois) && /## Travado/.test(depois));
+  checa('o --status volta a sair 0', rodar(a, '--status').status === 0);
+  checa('--release de novo com a mesma versão recusa', rodar(a, '--release', '1.0.0').status !== 0);
+  const r2 = rodar(a, '--release', '1.0.1');
+  checa('versão nova sem US nova: nada a escrever, sai 0, sem arquivo', r2.status === 0 && !fs.existsSync(path.join(a.proj, '.marvin', 'Releases', '1.0.1.md')));
+  checa('--release não faz tag nem commit — sugere', /git tag -a v1\.0\.0/.test(r1.stdout));
+  limpar(a);
+}
+
 // ── 9. adaptador do Copilot — caminho conferido na documentação oficial
 {
   const a = arena('copilot');

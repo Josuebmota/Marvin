@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-01 — Layout por grafo no script
@@ -38,4 +38,4 @@ _(nenhum ainda — o fluxo de montagem do script ganha nota quando alguém preci
   e o 6b não cria `Externas.md` em branco quando o `00_Fontes_Externas.md` antigo ainda existe.
 
 ## Evidência
-_(pendente: commit, CI verde nos três SOs, `1.2.0` no npm)_
+- commits `eed72ec`…`b3b8a30`; 161 verificações verdes; quatro projetos migrados e com `--status` verde. Publicação no npm é a US-03.

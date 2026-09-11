@@ -11,6 +11,9 @@ pai: ../Sobre.md
 ## Filhos
 - [US-01 — layout por grafo no script](US-01-layout-por-grafo/Sobre.md)
 - [US-02 — `marvin --status`](US-02-status/Sobre.md)
+- [US-05-release](US-05-release/Sobre.md)
+- [US-06-hook-sessao](US-06-hook-sessao/Sobre.md)
+- [US-07-status-html](US-07-status-html/Sobre.md)
 
 ## Rumo
 - **10/09/2026** — aberta.

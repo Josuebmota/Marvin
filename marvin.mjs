@@ -146,6 +146,9 @@ Flags:
                     note and the nodes disagree. Run it when you open a session
   --us <caminho>    open a US: Novos|Manutencao/<Epic>/<Feature>/<US> — creates the
                     Sobre.md chain that is missing and adds the pointer to the note
+  --release <v>     close the cycle: every US with estado: concluida that is in no
+                    Releases/*.md goes into Releases/<v>.md (Evidência required) and
+                    leaves the note. No tag, no commit — it prints the git tag to run
   --migrar          old layout (08_Memoria/, 10_Decisoes/) → graph layout. Backs up,
                     moves, rewrites paths; what takes judgment is listed at the end
   --help, -h        this message
@@ -381,8 +384,9 @@ const lerNo = (arq) => {
   const rumo = [...txt.matchAll(/^- \*\*(\d{2})\/(\d{2})\/(\d{4})[^*]*\*\*[ —-]*(.*)$/gm)]
     .map(m => ({ data: new Date(+m[3], +m[2] - 1, +m[1]), texto: m[4].trim() }));
   const evidencia = (txt.match(/^##\s+Evidência\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m) || [])[1] || '';
+  const evidenciaLimpa = evidencia.replace(/<!--[\s\S]*?-->/g, '').replace(/_\([^)]*\)_/g, '').trim();
   return { arq, tipo: campo('tipo'), estado: campo('estado'), pai: campo('pai'), titulo, rumo,
-           comEvidencia: /\S/.test(evidencia.replace(/<!--[\s\S]*?-->/g, '').replace(/_\([^)]*\)_/g, '')) };
+           evidencia: evidenciaLimpa, comEvidencia: /\S/.test(evidenciaLimpa) };
 };
 const nosDoPlanejamento = () => {
   const nos = [];
@@ -566,6 +570,91 @@ _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
   log('');
   info('now the pass that the rule asks for, in ' + path.relative(RAIZ, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/') + ':');
   info('  map what it touches → fill Fluxos ligados and Código tocado · propose the team → Time · propose skills → Skills');
+  log('');
+  process.exit(0);
+}
+
+// ── --release <versao>. Fecha o ciclo US → Rumo → Evidência → Release, o único passo que
+// ainda era manual — e é onde a nota volta a inflar. Lê toda US `concluida` que não está em
+// nenhum Releases/*.md, EXIGE Evidência (sem escape: quem quer marcar sem, escreve
+// `_(sem evidência: hotfix)_` no nó e a decisão fica registrada), escreve o índice e tira
+// as linhas da nota. Não faz tag, commit nem bump — isso é decisão do humano; sugere o tag.
+//
+// Invariante 1 aqui: o release é escrito ANTES da nota (se cair no meio, sobra uma nota
+// "suja" que o --status acusa — nunca uma US sumida sem registro); só sai da nota a linha
+// cujo href casa EXATAMENTE a US que entrou; e a contagem é conferida antes de escrever.
+// Data pelo git, não por `new Date()`: o índice precisa ser reproduzível.
+const argRel = process.argv.find(a => a.startsWith('--release='));
+if (argRel || temFlag('--release')) {
+  const versao = argRel ? argRel.slice(10) : process.argv[process.argv.indexOf('--release') + 1];
+  if (!versao || versao.startsWith('--')) { err('usage: marvin --release <versao>'); process.exit(2); }
+  if (LAYOUT_ANTIGO) { err('old layout — run `marvin --migrar` first'); process.exit(1); }
+  log('\x1b[1m--release\x1b[0m — ' + versao + '\n');
+  const relDir = path.join(DOCS, 'Releases');
+  const alvo = path.join(relDir, versao + '.md');
+  if (fs.existsSync(alvo)) { err('Releases/' + versao + '.md already exists — nothing touched (a release is written once)'); process.exit(1); }
+
+  // US que já subiram: todo href dentro de Releases/*.md, resolvido.
+  const jaSubiu = new Set();
+  let relArqs = []; try { relArqs = fs.readdirSync(relDir).filter(f => f.endsWith('.md') && f !== 'README.md'); } catch {}
+  for (const f of relArqs) {
+    const txt = fs.readFileSync(path.join(relDir, f), 'utf8');
+    const hrefs = [...txt.matchAll(/^- \[[^\]]*\]\(([^)\s#]+)/gm)].map(m => m[1]);
+    if (!hrefs.length) warn('Releases/' + f + ' has no "- [US](path)" line — not in the expected format, so it protects nothing');
+    for (const h of hrefs) jaSubiu.add(path.resolve(relDir, h));
+  }
+  const nos = nosDoPlanejamento();
+  let semFrontmatter = 0;
+  (function varrer(d, prof = 0) {
+    if (prof > 8) return;
+    let ents; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) varrer(p, prof + 1);
+      else if (e.name === 'Sobre.md' && !(lerNo(p) || {}).tipo) semFrontmatter++;
+    }
+  })(path.join(DOCS, 'Planejamento'));
+  if (semFrontmatter) warn(semFrontmatter + ' Sobre.md without `tipo:` in the frontmatter — invisible to --release');
+
+  const concluidas = nos.filter(n => n.tipo === 'us' && n.estado === 'concluida' && !jaSubiu.has(path.resolve(n.arq)))
+    .sort((a, b) => a.arq.localeCompare(b.arq));
+  if (!concluidas.length) { ok('no US with estado: concluida outside a release — nothing to write'); process.exit(0); }
+  const semEvidencia = concluidas.filter(n => !n.comEvidencia);
+  if (semEvidencia.length) {
+    err(semEvidencia.length + ' concluida US without Evidência — nothing written:');
+    semEvidencia.forEach(n => info('  ' + n.titulo + '  (' + path.relative(RAIZ, n.arq).replace(/\\/g, '/') + ')'));
+    info('fill the Evidência section (PR, test, screenshot). No flag skips this: write `_(sem evidência: <motivo>)_` in the node if that is the decision.');
+    process.exit(1);
+  }
+
+  // Data do último commit — reproduzível; sem git, fica para o humano.
+  let data = '_(data)_';
+  try { data = execSync('git log -1 --format=%cs', { cwd: RAIZ, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || data; } catch {}
+  const linhaDe = (n) => '- [' + n.titulo + '](' + path.relative(relDir, n.arq).replace(/\\/g, '/') + ') — evidência: ' + n.evidencia.split(/\r?\n/)[0].replace(/^- /, '').trim();
+  const conteudo = '# ' + versao + ' — ' + data + '\n\n' + concluidas.map(linhaDe).join('\n') + '\n';
+
+  // A nota: só sai a linha cujo href resolve para uma US que entrou. Conferido antes de escrever.
+  const NOTA_R = path.join(DEST, 'onde_paramos.md');
+  let nota = ''; try { nota = fs.readFileSync(NOTA_R, 'utf8'); } catch {}
+  const entram = new Set(concluidas.map(n => path.resolve(n.arq)));
+  const linhas = nota.split(/\r?\n/);
+  const sai = (l) => { const m = l.match(/^- \[[^\]]*\]\(([^)\s#]+)/); return !!m && entram.has(path.resolve(DEST, m[1])); };
+  const removidas = linhas.filter(sai).length;
+  const novaNota = linhas.filter(l => !sai(l)).join('\n');
+  if (linhas.length - novaNota.split('\n').length !== removidas) { err('line count mismatch while editing the note — nothing written'); process.exit(1); }
+
+  log('  Releases/' + versao + '.md' + (DRY ? '  (dry-run — this is what it would contain)' : '') + ':');
+  conteudo.trimEnd().split('\n').forEach(l => info('  ' + l));
+  fsw.mkdirSync(relDir, { recursive: true });
+  fsw.writeFileSync(alvo, conteudo);
+  ok('Releases/' + versao + '.md — ' + concluidas.length + ' US');
+  if (removidas) { fsw.writeFileSync(NOTA_R, novaNota); ok('onde_paramos.md — ' + removidas + ' pointer(s) removed'); }
+  else info('onde_paramos.md — none of these US was in the note');
+  const naNota = concluidas.length - removidas;
+  if (naNota) info(naNota + ' of them were not in the note (fine — they were never pointed to)');
+  log('');
+  info('not done, on purpose — yours to run:');
+  info('  git add -A && git commit -m "chore: ' + versao + '" && git tag -a v' + versao + ' -m "' + versao + '"');
   log('');
   process.exit(0);
 }

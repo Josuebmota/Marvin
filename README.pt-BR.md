@@ -219,6 +219,9 @@ Além de criar, ele aponta problemas que passam despercebidos:
                   a nota e os nós discordam. Rode ao abrir a sessão
 --us <caminho>    abre uma US: Novos|Manutencao/<Epic>/<Feature>/<US>. Cria a cadeia de
                   Sobre.md que falta e põe o ponteiro na nota
+--release <v>     fecha o ciclo: toda US com estado: concluida que não está em nenhum
+                  Releases/*.md entra em Releases/<v>.md (Evidência obrigatória) e sai
+                  da nota. Sem tag, sem commit — imprime o git tag para você rodar
 --migrar          layout antigo (08_Memoria/, 10_Decisoes/) → layout por grafo. Faz backup,
                   move, reescreve caminhos; o que exige julgamento é listado no fim
 --clean-legacy    remove artefatos de orquestrador antigo
@@ -242,6 +245,7 @@ Regra que mora num arquivo depende de alguém lembrar. Três comandos a disparam
 |---|---|---|
 | abrir a sessão | `/retomar` (+ `marvin --status`) | lê a nota, segue os ponteiros, confere contra o `git log` |
 | começar trabalho | `/us <caminho>` → `marvin --us` | cria a cadeia de `Sobre.md` e o ponteiro; o agente mapeia, propõe o time e as skills |
+| lançar | `marvin --release <v>` | escreve `Releases/<v>.md` a partir das US concluídas e as tira da nota |
 | fechar | `/fechar` | entrada no Rumo por US tocada, nota reescrita como ponteiros, agentes atualizados em camadas, `--status`, e se é hora de chat novo |
 
 `/retomar` e `/fechar` são o par; o `--status` é a régua entre os dois.
@@ -471,7 +475,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-152 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
+161 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:
