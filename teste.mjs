@@ -585,7 +585,10 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   checa('11_Sessoes/ e as pastas numeradas não nascem mais',
         !fs.existsSync(path.join(m, '11_Sessoes')) && !fs.existsSync(path.join(m, '10_Decisoes')) && !fs.existsSync(path.join(m, '08_Memoria')));
   const md = fs.readFileSync(path.join(a.proj, 'AGENTS.md'), 'utf8');
-  checa('o AGENTS.md carrega a regra "antes de qualquer US"', /## Antes de qualquer US/.test(md) && /scout/.test(md) && /em camadas/.test(md));
+  checa('o AGENTS.md só lembra a regra "antes de qualquer US"; ela mora no Planejamento/README', /## Antes de qualquer US/.test(md) && /## Antes de qualquer US/.test(plan) && /scout/.test(plan) && /em camadas/.test(plan));
+  const ret = fs.readFileSync(path.join(a.proj, '.claude', 'commands', 'retomar.md'), 'utf8');
+  checa('a regra de fechar sessão mora no /retomar, onde dispara', /## Ao fechar/.test(ret) && /primeira frase/.test(ret) && !/## Higiene de sessão — quando/.test(md));
+  checa('a tabela de portabilidade mora no Sobre.md, não no AGENTS.md', /## Portabilidade/.test(sobre) && !/## Portabilidade/.test(md));
   checa('o AGENTS.md ensina "a nota aponta; o nó guarda"', /A nota aponta; o nó guarda/.test(md));
   checa('o AGENTS.md nomeia a brecha da seção de relato', /seção de relato dentro dela/.test(md));
 

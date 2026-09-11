@@ -227,15 +227,40 @@ const ehJunction = (p) => { try { return fs.lstatSync(p).isSymbolicLink(); } cat
 const emTokens = (chars) => Math.round(chars / 4);
 const TETO_NOTA = 6 * 1024;      // o dobro de uma nota bem-formada de referência (3,3 KB)
 const TETO_FIXO_TK = 6000;       // os três somados; acima disso a sessão começa pesada
+// Cinco fontes, não três — a segunda medição (11/09) achou duas que a primeira ignorava:
+// o MEMORY.md (índice da memória, que o Claude Code carrega inteiro pela junction) e o
+// nível GLOBAL (~/.claude/CLAUDE.md + rules/**/*.md), que entra em TODO projeto. Num
+// projeto real eram 2.900 tk invisíveis num total de 11.700.
 const contextoFixo = () => {
+  const globalDir = path.join(os.homedir(), '.claude');
   const arqs = [['AGENTS.md', path.join(RAIZ, 'AGENTS.md')],
                 ['CLAUDE.md', path.join(RAIZ, 'CLAUDE.md')],
-                ['onde_paramos.md', path.join(DEST, 'onde_paramos.md')]];
+                ['onde_paramos.md', path.join(DEST, 'onde_paramos.md')],
+                ['MEMORY.md (memory index)', path.join(DEST, 'MEMORY.md')],
+                ['~/.claude/CLAUDE.md (GLOBAL)', path.join(globalDir, 'CLAUDE.md')]];
   const linhas = [];
   for (const [nome, p] of arqs) {
     let bytes = 0; try { bytes = fs.statSync(p).size; } catch { continue; }
     linhas.push({ nome, bytes, tk: emTokens(bytes) });
   }
+  // rules/**/*.md: lido em toda sessão de todo projeto — EXCETO o que tem `paths:` no
+  // frontmatter, que só entra quando um arquivo casado é tocado. Contar esses seria
+  // inflar a conta com o que não carrega; a régua só vale se for justa.
+  let regras = 0, nRegras = 0, nCond = 0;
+  (function varrer(d, prof = 0) {
+    if (prof > 4) return;
+    let ents; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      const q = path.join(d, e.name);
+      if (e.isDirectory()) { varrer(q, prof + 1); continue; }
+      if (!e.name.endsWith('.md')) continue;
+      let txt = ''; try { txt = fs.readFileSync(q, 'utf8'); } catch { continue; }
+      const fm = txt.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+      if (fm && /^paths:/m.test(fm[1])) { nCond++; continue; }
+      regras += Buffer.byteLength(txt); nRegras++;
+    }
+  })(path.join(globalDir, 'rules'));
+  if (nRegras) linhas.push({ nome: `~/.claude/rules/**/*.md (GLOBAL, ${nRegras} always-on${nCond ? `; ${nCond} path-scoped not counted` : ''})`, bytes: regras, tk: emTokens(regras) });
   return { linhas, total: linhas.reduce((a, l) => a + l.tk, 0) };
 };
 const imprimirContextoFixo = () => {
@@ -243,6 +268,8 @@ const imprimirContextoFixo = () => {
   if (!linhas.length) return;
   for (const l of linhas) info(`${String(l.tk).padStart(6)} tk  ${l.nome}`);
   info(`${String(total).padStart(6)} tk  loads in EVERY session, before the first word`);
+  const globalTk = linhas.filter(l => /GLOBAL/.test(l.nome)).reduce((a, l) => a + l.tk, 0);
+  if (globalTk > 1000) warn(`~${globalTk} tk of that is GLOBAL — paid in every session of EVERY project. Rules you do not use there are the cheapest cut you have.`);
   if (total > TETO_FIXO_TK) warn(`~${total} tk of fixed context — above ~${TETO_FIXO_TK}. What is not needed at the START of a session has a home elsewhere:`);
   const nota = linhas.find(l => l.nome === 'onde_paramos.md');
   if (nota && nota.bytes > TETO_NOTA) {
@@ -754,6 +781,18 @@ Ligação é **link markdown** — é o que vira aresta no grafo. Menção em pr
 Nada muda de pasta ao concluir: a US ganha \`estado: concluida\` e entra numa release.
 Mudar esta organização é uma entrada no Rumo abaixo.
 
+## Portabilidade
+
+| Item | Migra? |
+|---|---|
+| \`AGENTS.md\`, esta pasta inteira, a memória | ✅ é só markdown |
+| Persona dos agentes (o corpo do \`.md\`) | ✅ copiar e colar |
+| Definição de modelo/tools no frontmatter | ❌ formato de cada ferramenta |
+| Slash commands | ❌ vira prompt manual |
+| Auto-load da memória | ❌ **só o carregamento; os arquivos ficam** |
+
+A memória foi montada de propósito **dentro do repositório**, não no perfil do usuário.
+
 ## Rumo
 
 - **_(data)_** — base criada com esta organização.
@@ -787,6 +826,34 @@ Formato mínimo:
 
 O que está sendo **feito**, em três níveis: \`<Epic>/<Feature>/<US>/\`, cada um com o seu
 \`Sobre.md\`. \`Manutencao/\` para o que já existe; \`Novos/\` para o que ainda não.
+
+## Antes de qualquer US — mapear, montar o time, propor skills
+
+**Nenhuma US começa sem esta passada, e ela se repete a cada atividade nova.** É o que
+faz o time crescer em camadas em vez de nascer genérico.
+
+1. **Mapear o que a atividade toca:** o fluxo, a arquitetura, o código. Fluxo que ainda
+   não tem nota em \`../Contexto/Fluxos/\` ganha uma agora — é assim que ela cresce.
+2. **Propor o time desta atividade** e registrar na seção *Time* do \`Sobre.md\` da US.
+   A base é sempre esta; o que a atividade não usa **não é criado**:
+
+   | Papel | Dono de | Precisa de |
+   |---|---|---|
+   | \`tl\` | invariantes, diff, decisão de rumo | julgamento |
+   | \`po\` | o porquê, o critério de pronto, a prioridade | julgamento |
+   | \`dev-front\` | tela e componente | implementação |
+   | \`dev-back\` | serviço, regra, integração | implementação |
+   | \`qa\` | evidência: teste, cenário, o que ainda não foi provado | implementação |
+   | \`scout\` | achar arquivo, símbolo, uso — e só isso | recuperação |
+
+   Mais a **camada da atividade**, quando ela pede: \`design\` se há tela nova, \`dba\` se há
+   schema ou migração, \`sec\` se há auth ou dado sensível, \`infra\` se há deploy ou CI.
+3. **Atualizar os agentes em camadas:** \`.claude/agents/<papel>.md\` recebe as armadilhas
+   descobertas **nesta** atividade — acrescenta, não reescreve o que já valia. Um papel só
+   existe como arquivo depois de ter uma armadilha concreta para carregar.
+4. **Propor skills:** procedimento que esta atividade vai repetir (rodar migração, gerar
+   release, subir ambiente) entra na seção *Skills* da US como proposta — e vira
+   \`.claude/skills/<nome>/SKILL.md\` na **segunda** vez que rodar, não na primeira.
 
 Regras:
 
@@ -1303,6 +1370,26 @@ Retome o trabalho neste projeto.
 Não comece a trabalhar. Espere eu confirmar por onde ir.
 
 $ARGUMENTS
+
+---
+
+## Ao fechar — quando sugerir um chat novo
+
+Contexto acumulado custa em **toda** requisição, não só uma vez. Conversa longa que já
+mudou de assunto carrega peso morto no resto da sessão inteira.
+
+**Sugira um chat novo quando as três forem verdade:**
+
+1. O assunto mudou — outra tarefa, outro subsistema, outro projeto
+2. A sessão já está longa
+3. **O estado está registrado** em \`onde_paramos.md\` — sem isso, o chat novo começa cego
+
+**NÃO sugira quando:** o trabalho novo depende de algo descoberto agora e **ainda não
+escrito**; está no meio de algo (correção feita, falta validar); a sessão é curta — recomeçar
+custa mais do que continuar, porque o contexto fixo recarrega inteiro.
+
+**A regra que fecha:** registrar **antes** de sugerir. Ao sugerir, diga **o que já está salvo**
+e **qual seria a primeira frase** do chat novo.
 `);
   ok('.claude/commands/retomar.md  → type /retomar in a new chat');
 } else info('/retomar already exists');
@@ -1475,21 +1562,14 @@ sobrescrito. Quando você escrever o *porquê* de uma escolha dentro dele, ele c
 changelog — e ele carrega em toda sessão. O porquê vai para \`10_Decisoes/\`; o relato do que foi
 feito já está no \`git log\`.
 ` : `
-| Pasta | Responde | Regime |
-|---|---|---|
-| \`${relDocs}/Contexto/\` | o que o projeto **é** — \`Sobre.md\` é o nó raiz; \`Fluxos/\`, \`Arquitetura/\` | cresce quando um fluxo é analisado |
-| \`${relDocs}/Planejamento/\` | o que está sendo **feito**: Epic → Feature → US, cada um com \`Sobre.md\` | decisão mora no nó que a tomou |
-| \`${relDocs}/Releases/\` | o que **subiu** para main | índice, um por versão |
-| \`${relDocs}/Fontes/\` | apoio; \`Externas.md\` diz o que vive fora daqui | |
-| \`${relMem}/onde_paramos.md\` | as US **em andamento** | só ponteiros; sobrescrito |
+- \`${relDocs}/Contexto/Sobre.md\` — o nó raiz: o que o projeto é, e a tabela de como a base é organizada
+- \`${relDocs}/Planejamento/\` — Epic → Feature → US, cada um com \`Sobre.md\`; decisão mora no nó que a tomou
+- \`${relMem}/onde_paramos.md\` — as US **em andamento**; só ponteiros; sobrescrito
 
 **A nota aponta; o nó guarda.** O \`onde_paramos.md\` carrega em toda sessão, por isso é uma
 lista de links — o estado, as decisões e o Rumo de cada US moram no \`Sobre.md\` dela e só
-carregam quando são seguidos. Escrever o *porquê* de uma escolha na nota é o começo de um
-changelog; o porquê vai no Rumo do nó que decidiu. O relato do que foi feito já está no \`git log\`.
-
-**Ligação é link markdown.** Fluxo ligado, código tocado, pai — é o que vira aresta no grafo
-(\`marvin --graphify\`). Menção em prosa não conta.
+carregam quando são seguidos. O relato do que foi feito já está no \`git log\`.
+**Ligação é link markdown** — é o que vira aresta no grafo (\`marvin --graphify\`). Menção em prosa não conta.
 `}
 **Quando registrar: no commit.** É o momento em que uma unidade de trabalho fecha, e é o
 gatilho que faz a regra ser lembrada em vez de decorada. Sem gatilho, "sempre atualizar a
@@ -1501,70 +1581,19 @@ memória" não dispara nunca — ou dispara sempre, que é pior.
 - A nota é **sobrescrita**, não acrescentada: o histórico é o \`git log\`. Criar
   \`onde_paramos_<data>.md\` **ou uma seção de relato dentro dela** é o mesmo erro.
 
-## Antes de qualquer US — mapear, montar o time, propor skills
+## Antes de qualquer US
 
-**Nenhuma US começa sem esta passada, e ela se repete a cada atividade nova.** É o que
-faz o time crescer em camadas em vez de nascer genérico.
+**Nenhuma US começa sem a passada de \`${relDocs}/Planejamento/README.md\`:** mapear o que a
+atividade toca, propor o time dela em camadas (\`tl\`, \`po\` · \`dev-front\`, \`dev-back\`, \`qa\` ·
+\`scout\`, mais a camada da atividade), propor as skills que ela vai repetir. A regra inteira
+mora lá porque é lá que ela dispara — aqui só o lembrete.
 
-1. **Mapear o que a atividade toca:** o fluxo, a arquitetura, o código. Fluxo que ainda
-   não tem nota em \`${relDocs}/Contexto/Fluxos/\` ganha uma agora — é assim que ela cresce.
-2. **Propor o time desta atividade** e registrar na seção *Time* do \`Sobre.md\` da US.
-   A base é sempre esta; o que a atividade não usa **não é criado**:
+## Higiene de sessão
 
-   | Papel | Dono de | Precisa de |
-   |---|---|---|
-   | \`tl\` | invariantes, diff, decisão de rumo | julgamento |
-   | \`po\` | o porquê, o critério de pronto, a prioridade | julgamento |
-   | \`dev-front\` | tela e componente | implementação |
-   | \`dev-back\` | serviço, regra, integração | implementação |
-   | \`qa\` | evidência: teste, cenário, o que ainda não foi provado | implementação |
-   | \`scout\` | achar arquivo, símbolo, uso — e só isso | recuperação |
+Contexto acumulado custa em **toda** requisição. Quando sugerir um chat novo, e o que dizer
+ao sugerir, está no rodapé de \`/retomar\` (\`.claude/commands/retomar.md\`) — é o comando que
+abre a sessão, então é onde a regra de fechar mora. **A regra que fecha:** registrar antes de sugerir.
 
-   Mais a **camada da atividade**, quando ela pede: \`design\` se há tela nova, \`dba\` se há
-   schema ou migração, \`sec\` se há auth ou dado sensível, \`infra\` se há deploy ou CI.
-3. **Atualizar os agentes em camadas:** \`.claude/agents/<papel>.md\` recebe as armadilhas
-   descobertas **nesta** atividade — acrescenta, não reescreve o que já valia. Um papel só
-   existe como arquivo depois de ter uma armadilha concreta para carregar.
-4. **Propor skills:** procedimento que esta atividade vai repetir (rodar migração, gerar
-   release, subir ambiente) entra na seção *Skills* da US como proposta — e vira
-   \`.claude/skills/<nome>/SKILL.md\` na **segunda** vez que rodar, não na primeira.
-
-## Higiene de sessão — quando sugerir um chat novo
-
-Contexto acumulado custa em **toda** requisição, não só uma vez. Conversa longa que já
-mudou de assunto carrega peso morto no resto da sessão inteira.
-
-**Sugira um chat novo quando as três forem verdade:**
-
-1. O assunto mudou — outra tarefa, outro subsistema, outro projeto
-2. A sessão já está longa
-3. **O estado está registrado** em \`onde_paramos.md\` — sem isso, o chat novo começa cego
-
-**NÃO sugira quando:**
-
-- O trabalho novo depende de algo descoberto agora e **ainda não escrito**
-- Está no meio de algo (correção feita, falta validar)
-- A sessão é curta — recomeçar custa mais do que continuar, porque o contexto fixo
-  recarrega inteiro
-
-**A regra que fecha:** registrar **antes** de sugerir. Sugerir chat novo com estado não
-salvo transfere para a próxima sessão o trabalho de redescobrir — que é exatamente o
-custo que se queria evitar.
-
-Ao sugerir, diga **o que já está salvo** e **qual seria a primeira frase** do chat novo.
-
-## Portabilidade
-
-| Item | Migra? |
-|---|---|
-| Este arquivo, \`${relDocs}/\` inteiro, a memória | ✅ é só markdown |
-| Persona dos agentes (o corpo do \`.md\`) | ✅ copiar e colar |
-| Definição de modelo/tools no frontmatter | ❌ formato de cada ferramenta |
-| Slash commands | ❌ vira prompt manual |
-| Auto-load da memória | ❌ **só o carregamento; os arquivos ficam** |
-
-A memória foi montada de propósito **dentro do repositório**, não no perfil do usuário.
-É o que garante que ela sobreviva à troca de ferramenta.
 `);
   ok('AGENTS.md — the source (fill it in; it is the only place with content)');
 } else info('AGENTS.md already exists');
@@ -2229,10 +2258,13 @@ if (legado.length) {
 const ATUALIZACOES = [
   { arquivo: '.claude/skills/README.md', marca: /Skill, agente ou command/i,
     o_que: 'the skill vs. agent vs. command discriminator (and the 2x rule)' },
+  // Regra mora onde dispara (11/09): fechar sessão → /retomar; portabilidade → Sobre.md;
+  // antes da US → Planejamento/README. O AGENTS.md carrega em toda sessão e ficou só com
+  // o lembrete de uma linha. Quem montou antes tem as seções inteiras no AGENTS.md — vale.
+  { arquivo: '.claude/commands/retomar.md', marca: /Ao fechar/,
+    o_que: 'the "Ao fechar" footer — when to suggest a new chat (moved here from AGENTS.md)' },
   { arquivo: 'AGENTS.md', marca: /Higiene de sessão/i,
-    o_que: 'the "Higiene de sessão" section — when to suggest a new chat' },
-  { arquivo: 'AGENTS.md', marca: /##\s*Portabilidade/i,
-    o_que: 'the "Portabilidade" table — what migrates between tools' },
+    o_que: 'the "Higiene de sessão" pointer' },
   { arquivo: 'CLAUDE.md', marca: /Grafo de código/i, soCom: GRAPHIFY,
     o_que: 'the "Grafo de código" section (appears with --graphify)' },
   // Comando canônico só entra quando HÁ manifesto legível — `soCom` evita cobrar o bloco
@@ -2252,7 +2284,10 @@ const ATUALIZACOES = [
   // alguma seção nova fica sabendo aqui; quem está no layout antigo recebe o aviso do
   // passo 5, não estas marcas — cobrar seção de grafo num AGENTS.md antigo seria ruído.
   { arquivo: 'AGENTS.md', marca: /Antes de qualquer US/,
-    o_que: 'the "Antes de qualquer US" rule — map the activity, propose the team in layers, propose skills' },
+    o_que: 'the "Antes de qualquer US" pointer — the rule itself lives in Planejamento/README.md' },
+  { arquivo: path.relative(RAIZ, path.join(DOCS, 'Contexto', 'Sobre.md')).replace(/\\/g, '/'),
+    marca: /##\s*Portabilidade/, soCom: !LAYOUT_ANTIGO,
+    o_que: 'the "Portabilidade" table (moved here from AGENTS.md)' },
   { arquivo: 'AGENTS.md', marca: /A nota aponta; o nó guarda/, soCom: !LAYOUT_ANTIGO,
     o_que: 'the "note points, node keeps" rule — the knowledge base as a graph' },
   { arquivo: 'AGENTS.md', marca: /ou uma seção de relato dentro dela/, soCom: !LAYOUT_ANTIGO,
