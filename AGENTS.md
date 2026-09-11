@@ -6,7 +6,7 @@ trabalhar com agentes de IA. Documentação de uso: [README.md](README.md).
 > **Fonte de verdade deste projeto, independente de ferramenta.**
 > O `CLAUDE.md` é ponteiro, não cópia.
 >
-> Estado corrente: `.marvin/08_Memoria/onde_paramos.md` — versionado e público, ver abaixo.
+> Estado corrente: `.marvin/Memoria/onde_paramos.md` — versionado e público, ver abaixo.
 
 ## Estrutura real
 
@@ -81,7 +81,7 @@ adaptador ausente.
   é o caso de quem renomeia o vault. Quando o outro alvo EXISTE, ela continua intocada:
   aí é montagem de outra pessoa, e desfazer não é decisão do script.
   Receita manual, para quando o problema é na junction de OUTRO projeto:
-  [`10_Decisoes/junction-quebrada.md`](.marvin/10_Decisoes/junction-quebrada.md).
+  [`Contexto/Arquitetura/junction-quebrada.md`](.marvin/Contexto/Arquitetura/junction-quebrada.md).
 - **O caminho da memória é derivado do `cwd`** (`:`, `\` e `/` viram `-`). Rodar de um
   subdiretório monta a junction no lugar errado.
 - **O `--dry-run` só é honesto porque toda escrita passa por `fsw`/`exec`.** Escrita nova
@@ -99,7 +99,7 @@ adaptador ausente.
 ## A memória deste repo é versionada — e pública
 
 O Marvin prega **memória versionada dentro do repositório**, e aqui isso vale sem
-exceção: `.marvin/08_Memoria/onde_paramos.md` está no git. Consequências:
+exceção: `.marvin/Memoria/onde_paramos.md` está no git. Consequências:
 
 - **Escreva a memória como se fosse lida**, porque é. O que for de outro projeto vai na
   memória daquele projeto, não aqui.
@@ -108,12 +108,19 @@ exceção: `.marvin/08_Memoria/onde_paramos.md` está no git. Consequências:
 - E o `/retomar` funciona num clone. Enquanto a memória esteve no `.gitignore`, o
   primeiro comando de quem clonasse apontava para um arquivo inexistente.
 
-**A nota é curta; a decisão é imutável.** O `onde_paramos.md` responde *onde estamos* e é
-sobrescrito. O *porquê* de cada escolha mora em `.marvin/10_Decisoes/`, que acrescenta e
+**A nota aponta; o nó guarda.** A base é organizada como **grafo** desde 10/09/2026 —
+o porquê e o que foi descartado: [`organizacao-por-grafo.md`](.marvin/Contexto/Arquitetura/organizacao-por-grafo.md).
+O `onde_paramos.md` é uma lista de links para as US em andamento; o estado, as decisões e o
+Rumo de cada uma moram no `Sobre.md` dela em `.marvin/Planejamento/`, e só carregam quando
+são seguidos. Decisão estrutural mora em `.marvin/Contexto/Arquitetura/`, que acrescenta e
 nunca sobrescreve. A separação não é estética: a nota carrega em toda sessão, e em 09/09
 ela chegou a 19 KB (~4.900 tk) porque seis sessões de histórico foram empilhadas dentro —
-com o próprio passo 4b acusando. Está em 3,2 KB, e nada foi perdido — o que era durável foi para as
-seções acima deste arquivo, e o resto para `10_Decisoes/`.
+com o próprio passo 4b acusando. Hoje ela tem quatro linhas de ponteiro.
+
+**Antes de qualquer US, a passada do `AGENTS.md` gerado vale aqui também:** mapear o que a
+atividade toca, propor o time dela (num projeto de uma pessoa, `tl` + `dev-back` + `qa` +
+`scout` bastam; `po` é o dono), propor as skills que ela vai repetir, registrar na seção
+*Time* e *Skills* da US.
 
 Num projeto privado — o caso de uso normal — a memória guarda decisão de produto e id de
 cliente, e é por isso que o script avisa **"repo PRIVADO, sempre"**. Aqui o conteúdo é

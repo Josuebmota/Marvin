@@ -44,7 +44,7 @@ impossível.
 **Memória dentro do repositório, por junction invertida:**
 
 ```
-~/.claude/projects/<caminho>/memory  ──junction──►  .marvin/08_Memoria/
+~/.claude/projects/<caminho>/memory  ──junction──►  .marvin/Memoria/
 ```
 
 A ferramenta escreve no caminho padrão dela; os arquivos nascem no repositório. Memória em
@@ -62,19 +62,38 @@ ficam** — só o carregamento automático some.
 │   ├── agents/README.md        guia de como escrever o time
 │   ├── skills/README.md        skill × agente × command: o discriminador
 │   └── commands/retomar.md     /retomar: a porta de entrada
-└── .marvin/                    ← base de conhecimento
-    ├── 00_Inicio.md
-    ├── 00_Fontes_Externas.md   onde vivem US, roadmap, design
-    ├── 08_Memoria/
-    │   └── onde_paramos.md     única porta; sempre sobrescrita
-    ├── 10_Decisoes/
-    │   └── README.md           o porquê de cada escolha (só acrescenta)
-    └── 99_Backup/
+└── .marvin/                    ← base de conhecimento, organizada como GRAFO
+    ├── Contexto/               o que o projeto É
+    │   ├── Sobre.md            nó raiz — liga aos fluxos
+    │   ├── Fluxos/             um .md por fluxo; nasce quando um fluxo é analisado
+    │   ├── Arquitetura/        como foi projetado; decisão estrutural mora aqui
+    │   └── Design/             só quando há front
+    ├── Planejamento/           o que está sendo FEITO: <Epic>/<Feature>/<US>/Sobre.md
+    │   ├── Manutencao/         todo nó tem o mesmo Sobre.md: estado, pai, Rumo
+    │   └── Novos/
+    ├── Fontes/                 apoio; Externas.md diz o que vive fora do repositório
+    ├── Releases/               <versao>.md — índice do que subiu, com evidência
+    └── Memoria/
+        └── onde_paramos.md     única porta; só ponteiros para as US ativas
 ```
+
+Dois eixos: o que o projeto **é** (`Contexto/`) e o que está sendo **feito** nele
+(`Planejamento/`). Todo nó é um `Sobre.md` com `estado` no frontmatter, link para o pai e
+uma seção **Rumo** — uma entrada por mudança de direção. Decisão mora no nó que a tomou:
+a da US na US, a estrutural em `Arquitetura/`. Nada muda de pasta ao concluir: a US ganha
+`estado: concluida`, a evidência, e uma linha em `Releases/`. **Link é aresta**: com
+`--graphify` a base entra no grafo do código, e `graphify affected "<função>"` responde
+que US e que código dependem dela.
+
+O `AGENTS.md` gerado carrega a regra que se repete **antes de qualquer US**: mapear o que
+a atividade toca, propor o time dela em camadas (`tl`, `po` · `dev-front`, `dev-back`,
+`qa` · `scout`, mais `design`/`dba`/`sec`/`infra` quando a atividade pede), propor as
+skills que ela vai repetir, e atualizar os agentes com o que esta atividade ensinou —
+acrescenta, nunca reescreve.
 
 ## Onde a base vai parar — e por que nem sempre é `.marvin`
 
-O script **procura uma base existente pelos marcadores** (`08_Memoria/` ou `.obsidian/`),
+O script **procura uma base existente pelos marcadores** (`Memoria/`, `08_Memoria/` ou `.obsidian/`),
 não pelo nome da pasta. A regra:
 
 | Situação | Resultado |
@@ -103,7 +122,7 @@ antigo e fica órfã em silêncio:
 [System.IO.Directory]::Delete("$env:USERPROFILE\.claude\projects\<caminho>\memory", $false)
 git mv Docs .marvin
 New-Item -ItemType Junction -Path "$env:USERPROFILE\.claude\projects\<caminho>\memory" `
-         -Target "$PWD\.marvin\08_Memoria"
+         -Target "$PWD\.marvin\Memoria"
 ```
 
 Depois atualize as referências a `Docs/` no `AGENTS.md`, no adaptador da ferramenta, no
@@ -178,9 +197,12 @@ Além de criar, ele aponta problemas que passam despercebidos:
 - **Comandos canônicos** — lê instalar/testar/build do manifesto (`package.json`,
   `pyproject`, `go.mod`, `Cargo.toml`, `*.csproj`, `pubspec.yaml`, `Makefile`) e tira o
   **gerenciador do lockfile**. Agente que adivinha roda `npm install` num projeto pnpm
-- **Tamanho da nota de memória** — ela carrega em toda sessão pela junction, e é o arquivo
-  que mais cresce. Acima de ~6 KB o aviso vem **com destino**: o porquê de cada escolha vai
-  para `10_Decisoes/`, o relato do que foi feito já está no `git log`
+- **O que carrega em toda sessão** — `AGENTS.md`, o adaptador (`CLAUDE.md`) e a nota de
+  memória, cada um medido e somados. Medido em três projetos reais, o `AGENTS.md` pesava
+  mais que a nota em todos — a versão anterior media só a nota. Acima de ~6 KB na nota, ou
+  ~6000 tokens nos três, o aviso vem **com destino**: como um fluxo funciona vai para
+  `Contexto/Fluxos/`, o estado de uma US vai para o `Sobre.md` dela, o relato do que foi
+  feito já está no `git log`. O `--check` imprime a mesma conta
 - **Artefatos de orquestrador antigo** — só aparece se detectar
 
 ## Flags
@@ -258,6 +280,15 @@ Opcional e nunca dependência. Gera `graphify-out/graph.json` com
 onde o grafo ganha do `grep` — que te dá o nome, mas não a relação.
 
 Sem ele no PATH o passo avisa e pula, sem alterar mais nada.
+
+**A base de conhecimento entra no mesmo grafo.** O graphify só indexa `.md` por LLM
+(medido: 93 K tokens para três arquivos minúsculos, não determinístico, e ele mesmo
+descartou a aresta doc→código como "out-of-scope"). Então o marvin escreve o lado dos docs
+por regex — link relativo vira `references`, `pai:` vira `child_of`, o caminho em crase
+sob *Código tocado* vira `touches` no nó de código — e anexa direto no `graph.json`, antes
+do relatório. Zero LLM, zero custo, o mesmo resultado a cada run; função que não existe
+mais vira aviso, nunca nó fantasma. O ganho é a pergunta que ninguém respondia antes:
+`graphify affected "calcularEstorno"` → a US que a toca e o código que a chama.
 
 ### Vale a pena para você?
 
@@ -421,7 +452,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-92 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
+118 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

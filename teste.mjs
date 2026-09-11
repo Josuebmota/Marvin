@@ -157,8 +157,11 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
     path.join('.claude', 'agents', 'README.md'),
     path.join('.claude', 'skills', 'README.md'),
     path.join('.claude', 'commands', 'retomar.md'),
-    path.join('.marvin', '00_Inicio.md'),
-    path.join('.marvin', '08_Memoria', 'onde_paramos.md'),
+    path.join('.marvin', 'Contexto', 'Sobre.md'),
+    path.join('.marvin', 'Planejamento', 'README.md'),
+    path.join('.marvin', 'Releases', 'README.md'),
+    path.join('.marvin', 'Fontes', 'Externas.md'),
+    path.join('.marvin', 'Memoria', 'onde_paramos.md'),
   ];
   const criados = arquivos(a.proj);
   for (const e of esperados) checa('cria ' + e, criados.includes(e));
@@ -175,7 +178,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
     // A prova real: escrever pelo caminho do agente tem que cair no repositório.
     fs.writeFileSync(path.join(mem, 'prova.md'), '# prova\n');
     checa('escrita pelo perfil aparece dentro do repo',
-          fs.existsSync(path.join(a.proj, '.marvin', '08_Memoria', 'prova.md')));
+          fs.existsSync(path.join(a.proj, '.marvin', 'Memoria', 'prova.md')));
   }
   limpar(a);
 }
@@ -208,7 +211,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const r = rodar(a, '--no-git');
   checa('migração sai com código 0', r.status === 0, r.stderr.slice(0, 300));
 
-  const destino = path.join(a.proj, '.marvin', '08_Memoria');
+  const destino = path.join(a.proj, '.marvin', 'Memoria');
   const sobreviventes = fs.existsSync(destino)
     ? fs.readdirSync(destino).filter(f => /^nota\d+\.md$/.test(f)).length : 0;
   checa(`as ${N} notas sobrevivem no repositório`, sobreviventes === N,
@@ -274,7 +277,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   if (ehLink) {
     fs.writeFileSync(path.join(mem, 'prova2.md'), '# prova\n');
     checa('a memória volta a cair dentro do repositório',
-          fs.existsSync(path.join(a.proj, '.marvin', '08_Memoria', 'prova2.md')));
+          fs.existsSync(path.join(a.proj, '.marvin', 'Memoria', 'prova2.md')));
   }
   limpar(a);
 }
@@ -326,8 +329,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   rodar(a, '--no-git');
   const claude = fs.readFileSync(path.join(a.proj, 'CLAUDE.md'), 'utf8');
   checa('o CLAUDE.md gerado ensina o marvin --check', /--check/.test(claude));
-  const inicio = fs.readFileSync(path.join(a.proj, '.marvin', '00_Inicio.md'), 'utf8');
-  checa('o 00_Inicio.md avisa que mover a pasta quebra a junction', /--check/.test(inicio));
+  checa('o 00_Inicio.md do layout antigo não nasce mais', !fs.existsSync(path.join(a.proj, '.marvin', '00_Inicio.md')));
 
   // Simula projeto montado por versão antiga: CLAUDE.md sem a seção.
   fs.writeFileSync(path.join(a.proj, 'CLAUDE.md'), '# projeto\n\nAponta para AGENTS.md.\n');
@@ -443,25 +445,35 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
 {
   const a = arena('nota');
   rodar(a, '--no-git');
-  const nota = path.join(a.proj, '.marvin', '08_Memoria', 'onde_paramos.md');
+  const nota = path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md');
   const curta = rodar(a, '--dry-run');
-  checa('a nota entra na conta do contexto fixo', /the memory note itself/.test(curta.stdout));
-  checa('nota recém-criada não dispara aviso', !/too long to load every session/.test(curta.stdout));
+  checa('a nota entra na conta do contexto fixo', /tk  onde_paramos\.md/.test(curta.stdout));
+  checa('a fonte e o adaptador entram na mesma conta', /tk  AGENTS\.md/.test(curta.stdout) && /tk  CLAUDE\.md/.test(curta.stdout));
+  checa('e a conta fecha com o total do que carrega sempre', /loads in EVERY session/.test(curta.stdout));
+  checa('nota recém-criada não dispara aviso', !/not a report/.test(curta.stdout));
 
   // 12 KB: o dobro do teto, para o teste não depender do valor exato.
   fs.appendFileSync(nota, '#'.repeat(12 * 1024));
   const longa = rodar(a, '--dry-run');
-  checa('nota longa é acusada', /too long to load every session/.test(longa.stdout));
-  checa('o aviso aponta o destino do transbordo', longa.stdout.includes('10_Decisoes/<slug>.md'));
+  checa('nota longa é acusada', /not a report/.test(longa.stdout));
+  checa('o aviso aponta o destino do transbordo', longa.stdout.includes('Contexto/Fluxos/<fluxo>.md') && /its Sobre\.md under/.test(longa.stdout));
   checa('o aviso lembra que o relato é git log', /→ git log/.test(longa.stdout));
   limpar(a);
 }
 
-// ── 9j. a pasta de decisões nasce explicada. Vazia, ela não ensina ninguém — e foi
-//     assim que o histórico foi parar dentro do onde_paramos.md.
+// ── 9j. LAYOUT ANTIGO (08_Memoria/, 10_Decisoes/): continua detectado, a junction vai
+//     para onde as notas ESTÃO, nada é movido, e o script avisa. A pasta de decisões
+//     nasce explicada — vazia, ela não ensina ninguém.
 {
   const a = arena('dec');
-  rodar(a, '--no-git');
+  fs.mkdirSync(path.join(a.proj, '.marvin', '08_Memoria'), { recursive: true });
+  const r = rodar(a, '--no-git');
+  checa('layout antigo é acusado, não migrado', /old layout/.test(r.stdout) && /nothing was moved/.test(r.stdout));
+  checa('Memoria/ NÃO nasce ao lado do 08_Memoria/', !fs.existsSync(path.join(a.proj, '.marvin', 'Memoria')));
+  checa('Contexto/ NÃO nasce no layout antigo', !fs.existsSync(path.join(a.proj, '.marvin', 'Contexto')));
+  let alvo = null; try { alvo = fs.readlinkSync(caminhoMemoria(a.lar, a.proj)); } catch {}
+  checa('a junction aponta para onde as notas estão',
+        alvo !== null && path.resolve(alvo) === path.resolve(path.join(a.proj, '.marvin', '08_Memoria')), 'aponta para ' + alvo);
   const rd = path.join(a.proj, '.marvin', '10_Decisoes', 'README.md');
   checa('10_Decisoes nasce com README', fs.existsSync(rd));
   const txt = fs.existsSync(rd) ? fs.readFileSync(rd, 'utf8') : '';
@@ -478,16 +490,18 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
 {
   const a = arena('tres');
   rodar(a, '--no-git');
-  const nota = fs.readFileSync(path.join(a.proj, '.marvin', '08_Memoria', 'onde_paramos.md'), 'utf8');
+  const nota = fs.readFileSync(path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md'), 'utf8');
   const secoes = nota.split(NLQ).filter(l => l.startsWith('## '));
-  checa('a nota gerada tem exatamente três seções', secoes.length === 3, 'tem: ' + secoes.join(' | '));
-  checa('e são as três perguntas', /## Estado corrente/.test(nota) && /## Próximo passo/.test(nota) && /## Travado/.test(nota));
+  checa('a nota gerada tem exatamente duas seções', secoes.length === 2, 'tem: ' + secoes.join(' | '));
+  checa('e são: em andamento · travado', /## Em andamento/.test(nota) && /## Travado/.test(nota));
   checa('a seção que duplicava o AGENTS.md saiu', !/Contexto que economiza tempo/.test(nota));
-  // O cabeçalho tem que dizer PARA ONDE vai cada tipo de transbordo — sem destino,
-  // o "seja breve" é conselho vazio e a pessoa acrescenta assim mesmo.
-  checa('o cabeçalho manda armadilha durável para o AGENTS.md', /é durável, não é estado/.test(nota));
-  checa('o cabeçalho manda o porquê para 10_Decisoes', nota.includes('10_Decisoes/<slug>.md'));
-  checa('o cabeçalho manda o relato para o git log', /relato do que foi feito/.test(nota));
+  // O cabeçalho tem que dizer PARA ONDE vai cada coisa — sem destino, o "seja breve" é
+  // conselho vazio. E tem que NOMEAR a brecha: todo mundo obedeceu "não crie arquivo
+  // novo" criando seção nova dentro do mesmo arquivo (18 delas num projeto real).
+  checa('o cabeçalho manda o estado da US para o Sobre.md dela', /Sobre\.md/.test(nota) && /não aqui/.test(nota));
+  checa('o cabeçalho nomeia a brecha: seção de relato é o mesmo erro', /seção de relato/.test(nota));
+  checa('o cabeçalho manda a US concluída para Releases', /Releases\/<versao>\.md/.test(nota));
+  checa('o cabeçalho manda o histórico para o git log', /git log/.test(nota));
   limpar(a);
 }
 // ── 9l. junction ÓRFÃ (aponta para pasta que não existe mais) é REPONTADA, não só
@@ -498,13 +512,13 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   rodar(a, '--no-git');
   const mem = caminhoMemoria(a.lar, a.proj);
   const vault = path.join(a.proj, '.marvin');
-  fs.writeFileSync(path.join(vault, '08_Memoria', 'prova.md'), '# prova' + NLQ);
+  fs.writeFileSync(path.join(vault, 'Memoria', 'prova.md'), '# prova' + NLQ);
   // Simula o rename: o alvo da junction deixa de existir, o conteúdo vai para outro nome.
   fs.renameSync(vault, path.join(a.proj, '.docs'));
   fs.renameSync(path.join(a.proj, '.docs'), vault);
   // Aponta a junction para um caminho morto, como o rename faria.
   try { fs.unlinkSync(mem); } catch {}
-  fs.symlinkSync(path.join(a.proj, '.docs', '08_Memoria'), mem, 'junction');
+  fs.symlinkSync(path.join(a.proj, '.docs', 'Memoria'), mem, 'junction');
 
   const r = rodar(a, '--no-git');
   checa('junction órfã é acusada', /no longer exists/.test(r.stdout), r.stdout.slice(-400));
@@ -512,7 +526,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   let alvo = null;
   try { alvo = fs.readlinkSync(mem); } catch {}
   checa('a junction aponta para o vault de verdade',
-        alvo !== null && path.resolve(alvo) === path.resolve(path.join(vault, '08_Memoria')),
+        alvo !== null && path.resolve(alvo) === path.resolve(path.join(vault, 'Memoria')),
         'aponta para ' + alvo);
   checa('a nota continua visível pelo caminho do agente',
         fs.existsSync(path.join(mem, 'prova.md')));
@@ -541,7 +555,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   rodar(a, '--no-git');
   const mem = caminhoMemoria(a.lar, a.proj);
   try { fs.unlinkSync(mem); } catch {}
-  const morto = path.join(a.proj, '.docs', '08_Memoria');
+  const morto = path.join(a.proj, '.docs', 'Memoria');
   fs.symlinkSync(morto, mem, 'junction');
 
   const r = rodar(a, '--dry-run');
@@ -554,6 +568,78 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
         'aponta para ' + alvo);
   limpar(a);
 }
+// ── 9p. organização por grafo: cada pasta nasce com o arquivo que diz o que entra nela,
+//     o AGENTS.md carrega a regra que se repete antes de toda US, e Design/ só nasce
+//     quando há front — lido do package.json, não adivinhado.
+{
+  const a = arena('grafo');
+  fs.writeFileSync(path.join(a.proj, 'package.json'), '{"name":"x","dependencies":{"react":"18"}}');
+  rodar(a, '--no-git');
+  const m = path.join(a.proj, '.marvin');
+  const sobre = fs.readFileSync(path.join(m, 'Contexto', 'Sobre.md'), 'utf8');
+  checa('Contexto/Sobre.md é o nó raiz e explica a organização', /Como esta base está organizada/.test(sobre) && /## Rumo/.test(sobre));
+  checa('Contexto/Design/ nasce quando há front', fs.existsSync(path.join(m, 'Contexto', 'Design')) && /## Design/.test(sobre));
+  const plan = fs.readFileSync(path.join(m, 'Planejamento', 'README.md'), 'utf8');
+  checa('o formato da US tem Rumo, Código tocado, Time e Skills',
+        /## Rumo/.test(plan) && /## Código tocado/.test(plan) && /## Time/.test(plan) && /## Skills/.test(plan));
+  checa('11_Sessoes/ e as pastas numeradas não nascem mais',
+        !fs.existsSync(path.join(m, '11_Sessoes')) && !fs.existsSync(path.join(m, '10_Decisoes')) && !fs.existsSync(path.join(m, '08_Memoria')));
+  const md = fs.readFileSync(path.join(a.proj, 'AGENTS.md'), 'utf8');
+  checa('o AGENTS.md carrega a regra "antes de qualquer US"', /## Antes de qualquer US/.test(md) && /scout/.test(md) && /em camadas/.test(md));
+  checa('o AGENTS.md ensina "a nota aponta; o nó guarda"', /A nota aponta; o nó guarda/.test(md));
+  checa('o AGENTS.md nomeia a brecha da seção de relato', /seção de relato dentro dela/.test(md));
+
+  const b = arena('semfront');
+  rodar(b, '--no-git');
+  checa('sem front, Design/ não nasce', !fs.existsSync(path.join(b.proj, '.marvin', 'Contexto', 'Design')));
+  limpar(a); limpar(b);
+}
+
+// ── 9q. o lado dos docs no grafo é gerado pelo marvin, por regex, e anexado direto no
+//     graph.json — medido em 10/09: o graphify só indexa .md por LLM e descarta a
+//     aresta doc→código. Este teste não precisa do graphify: com graph.json presente,
+//     o anexo roda mesmo sem o binário. Com o binário, o resultado tem que ser o mesmo.
+{
+  const a = arena('docgrafo');
+  fs.mkdirSync(path.join(a.proj, 'src'), { recursive: true });
+  fs.writeFileSync(path.join(a.proj, 'src', 'pag.js'), 'export function estornar(v) { return v; }' + NLQ);
+  rodar(a, '--no-git');
+  const us = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E1', 'F1', 'US-1');
+  fs.mkdirSync(us, { recursive: true });
+  fs.writeFileSync(path.join(us, 'Sobre.md'), [
+    '---', 'tipo: us', 'estado: ativa', 'pai: ../Sobre.md', '---', '# US-1 — estorno',
+    '## Fluxos ligados', '- [pag](../../../../../Contexto/Fluxos/pag.md)',
+    '## Código tocado', '- `src/pag.js` — `estornar`', '- `src/pag.js` — `sumiu`', ''].join(NLQ));
+  fs.writeFileSync(path.join(us, '..', 'Sobre.md'), '---' + NLQ + 'tipo: feature' + NLQ + '---' + NLQ + '# F1' + NLQ);
+  fs.writeFileSync(path.join(a.proj, '.marvin', 'Contexto', 'Fluxos', 'pag.md'), '# Fluxo pag' + NLQ + '[US-1](../../Planejamento/Novos/E1/F1/US-1/Sobre.md)' + NLQ);
+  // grafo de código como o `graphify extract --code-only` escreve — ids previsíveis
+  const saida = path.join(a.proj, 'graphify-out');
+  fs.mkdirSync(saida, { recursive: true });
+  const grafo = { directed: true, nodes: [
+    { id: 'src_pag', label: 'pag.js', file_type: 'code', source_file: 'src/pag.js', _origin: 'ast' },
+    { id: 'src_pag_estornar', label: 'estornar()', file_type: 'code', source_file: 'src/pag.js', _origin: 'ast' }],
+    edges: [{ source: 'src_pag', target: 'src_pag_estornar', relation: 'contains', _origin: 'ast' }] };
+  fs.writeFileSync(path.join(saida, 'graph.json'), JSON.stringify(grafo));
+
+  const r = rodar(a, '--no-git', '--graphify');
+  checa('o anexo dos docs roda e conta nós e arestas', /knowledge base in the graph — \d+ doc node\(s\), \d+ edge\(s\)/.test(r.stdout), r.stdout.slice(-600));
+  const g = JSON.parse(fs.readFileSync(path.join(saida, 'graph.json'), 'utf8'));
+  const arestas = g.edges || g.links || [];
+  const tem = (s, t, rel) => arestas.some(e => e.source === s && e.target === t && e.relation === rel);
+  const usId = 'marvin_planejamento_novos_e1_f1_us_1_sobre';
+  checa('US → função de código vira touches', tem(usId, 'src_pag_estornar', 'touches'), JSON.stringify(arestas.filter(e => e._origin === 'marvin').map(e => e.source + '>' + e.target)));
+  checa('US → fluxo vira references', tem(usId, 'marvin_contexto_fluxos_pag', 'references'));
+  checa('pai: vira child_of', tem(usId, 'marvin_planejamento_novos_e1_f1_sobre', 'child_of'));
+  checa('o nó da US carrega tipo e estado', g.nodes.some(n => n.id === usId && n.estado === 'ativa' && n.tipo === 'us'));
+  checa('função que não existe vira AVISO, não nó fantasma', /`sumiu` is not in `src\/pag\.js`/.test(r.stdout) && !g.nodes.some(n => n.id === 'src_pag_sumiu'));
+  checa('exemplo dentro de bloco de código não vira aresta', !arestas.some(e => e.target === 'src_checkout_pagamento_calcularestorno'));
+  const antes = arestas.filter(e => e._origin === 'marvin').length;
+  rodar(a, '--no-git', '--graphify');
+  const g2 = JSON.parse(fs.readFileSync(path.join(saida, 'graph.json'), 'utf8'));
+  checa('rodar de novo não duplica o lado dos docs', (g2.edges || g2.links).filter(e => e._origin === 'marvin').length === antes);
+  limpar(a);
+}
+
 // ── 9. adaptador do Copilot — caminho conferido na documentação oficial
 {
   const a = arena('copilot');

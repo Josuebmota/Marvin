@@ -22,13 +22,23 @@
  *     │   ├── agents/             o time (tu escreve)
  *     │   ├── skills/             procedimentos compartilhados (tu escreve)
  *     │   └── commands/retomar.md porta de entrada: /retomar num chat novo
- *     └── .marvin/                ← base de conhecimento
- *         ├── 00_Inicio.md        (o nome diz de quem é a pasta: ela é material de
- *         ├── 00_Fontes_Externas.md   trabalho, não entregável do projeto; se já
- *         │                           existir um vault em Docs/, ele é reaproveitado)
- *         ├── 08_Memoria/             ← memória, ARQUIVOS REAIS versionados
- *         │   └── onde_paramos.md     a única porta; sempre sobrescrita
- *         └── 99_Backup/
+ *     └── .marvin/                ← base de conhecimento, organizada como GRAFO
+ *         ├── Contexto/           o que o projeto É
+ *         │   ├── Sobre.md        nó raiz — liga aos fluxos
+ *         │   ├── Fluxos/         um .md por fluxo, nasce quando um fluxo é analisado
+ *         │   ├── Arquitetura/    como foi projetado; decisão estrutural mora aqui
+ *         │   └── Design/         só se há front
+ *         ├── Planejamento/       o que está sendo FEITO: Epic/ → Feature/ → US/
+ *         │   ├── Manutencao/     cada nó tem um Sobre.md com estado, pai e Rumo
+ *         │   └── Novos/
+ *         ├── Fontes/             apoio e suporte (Externas.md: o que vive fora daqui)
+ *         ├── Releases/           <versao>.md — índice do que subiu, com evidência
+ *         └── Memoria/            ← memória, ARQUIVOS REAIS versionados
+ *             └── onde_paramos.md a única porta; só ponteiros para as US ativas
+ *
+ *     Layout anterior (08_Memoria/, 10_Decisoes/…) continua detectado e NÃO é movido —
+ *     mover é decisão do humano. O script só avisa. O porquê da mudança está em
+ *     .marvin/10_Decisoes/organizacao-por-grafo.md deste repositório.
  *
  * PORTABILIDADE: o durável (AGENTS.md + .marvin/ + memória) é markdown puro e migra
  * inteiro para Codex, Cursor, Aider, Zed, opencode. Só o frontmatter dos agentes,
@@ -37,7 +47,7 @@
  *
  * O truque central é a JUNCTION INVERTIDA:
  *
- *     ~/.claude/projects/<caminho>/memory  ──junction──►  .marvin/08_Memoria/
+ *     ~/.claude/projects/<caminho>/memory  ──junction──►  .marvin/Memoria/
  *
  * O Claude escreve no caminho padrão dele e os arquivos nascem dentro do
  * repositório. Memória em markdown puro no repositório, uma fonte só.
@@ -197,10 +207,62 @@ const CANDIDATOS = ['.marvin', '.docs', 'Docs', 'docs', 'doc'].map(d => path.joi
 // `.obsidian` continua valendo como marcador de LEITURA: o script não escreve mais
 // config de Obsidian, mas quem já tinha um vault seu numa dessas pastas segue sendo
 // reaproveitado em vez de ganhar uma segunda base de conhecimento ao lado.
-const ehVault = (d) => fs.existsSync(path.join(d, '08_Memoria')) || fs.existsSync(path.join(d, '.obsidian'));
+const ehVault = (d) => fs.existsSync(path.join(d, 'Memoria')) || fs.existsSync(path.join(d, '08_Memoria'))
+  || fs.existsSync(path.join(d, '.obsidian'));
 const DOCS = CANDIDATOS.find(ehVault) || path.join(RAIZ, '.marvin');
-const DEST = path.join(DOCS, '08_Memoria');
+// Layout antigo: pastas numeradas por tipo (08_Memoria/, 10_Decisoes/). Desde a
+// organização por grafo a memória mora em Memoria/. Projeto montado antes continua
+// funcionando no lugar onde está — a junction aponta para onde as notas ESTÃO, e
+// mover é decisão do humano (invariante 1). O passo 5 avisa; nada mais.
+const LAYOUT_ANTIGO = fs.existsSync(path.join(DOCS, '08_Memoria')) && !fs.existsSync(path.join(DOCS, 'Memoria'));
+const DEST = path.join(DOCS, LAYOUT_ANTIGO ? '08_Memoria' : 'Memoria');
 const ehJunction = (p) => { try { return fs.lstatSync(p).isSymbolicLink(); } catch { return false; } };
+
+// ── O que carrega em TODA sessão, sem ninguém pedir: a fonte (AGENTS.md), o adaptador
+// (CLAUDE.md, que faz @AGENTS.md) e a nota (pela junction). Medido em três projetos
+// reais: a fonte era o dobro da nota num, e CINCO vezes noutro — e a régua antiga só
+// media a nota. Teto é para o que carrega sozinho; o resto da base cresce à vontade
+// e custa zero por sessão. ~4 chars por token: estimativa, serve para ordem de grandeza.
+// Mora aqui em cima porque o --check imprime a mesma conta.
+const emTokens = (chars) => Math.round(chars / 4);
+const TETO_NOTA = 6 * 1024;      // o dobro de uma nota bem-formada de referência (3,3 KB)
+const TETO_FIXO_TK = 6000;       // os três somados; acima disso a sessão começa pesada
+const contextoFixo = () => {
+  const arqs = [['AGENTS.md', path.join(RAIZ, 'AGENTS.md')],
+                ['CLAUDE.md', path.join(RAIZ, 'CLAUDE.md')],
+                ['onde_paramos.md', path.join(DEST, 'onde_paramos.md')]];
+  const linhas = [];
+  for (const [nome, p] of arqs) {
+    let bytes = 0; try { bytes = fs.statSync(p).size; } catch { continue; }
+    linhas.push({ nome, bytes, tk: emTokens(bytes) });
+  }
+  return { linhas, total: linhas.reduce((a, l) => a + l.tk, 0) };
+};
+const imprimirContextoFixo = () => {
+  const { linhas, total } = contextoFixo();
+  if (!linhas.length) return;
+  for (const l of linhas) info(`${String(l.tk).padStart(6)} tk  ${l.nome}`);
+  info(`${String(total).padStart(6)} tk  loads in EVERY session, before the first word`);
+  if (total > TETO_FIXO_TK) warn(`~${total} tk of fixed context — above ~${TETO_FIXO_TK}. What is not needed at the START of a session has a home elsewhere:`);
+  const nota = linhas.find(l => l.nome === 'onde_paramos.md');
+  if (nota && nota.bytes > TETO_NOTA) {
+    warn(`onde_paramos.md is ${Math.round(nota.bytes / 1024)} KB (~${nota.tk} tk) — it is a list of pointers, not a report`);
+    info(LAYOUT_ANTIGO
+      ? '  it answers three questions and no more: where we stopped · what to do now · what is stuck.'
+      : '  one line per active US, linking to its Sobre.md. The state of the US lives in the US.');
+  }
+  if (total > TETO_FIXO_TK || (nota && nota.bytes > TETO_NOTA)) {
+    const d = (x) => path.relative(RAIZ, path.join(DOCS, x)).replace(/\\/g, '/');
+    if (LAYOUT_ANTIGO) {
+      info(`    a decision that still explains a choice  → ${d('10_Decisoes')}/<slug>.md`);
+    } else {
+      info(`    how a flow works                         → ${d('Contexto/Fluxos')}/<fluxo>.md`);
+      info(`    how the project is built, and why        → ${d('Contexto/Arquitetura')}/`);
+      info(`    the state and the decisions of one US    → its Sobre.md under ${d('Planejamento')}/`);
+    }
+    info('    a log of what was done                   → git log');
+  }
+};
 const contarNotas = (d) => { try { return fs.readdirSync(d).filter(f => f.endsWith('.md')).length; } catch { return 0; } };
 
 log('\n\x1b[1mmarvin\x1b[0m — ' + RAIZ);
@@ -242,6 +304,9 @@ if (CHECK) {
       ok('notes      ' + contarNotas(MEM) + ' visible through the agent path');
     }
   }
+
+  log('');
+  imprimirContextoFixo();
 
   // Junction de OUTRO projeto que ficou apontando para o nada. Não é problema
   // DESTE repositório — por isso avisa e não muda o código de saída —, mas é lixo
@@ -324,6 +389,16 @@ const stacks = new Map();
 })(RAIZ);
 if (stacks.size) for (const [d, t] of stacks) info(d.padEnd(40) + [...t].join(' + '));
 else warn('no stack marker found');
+
+// Há front? Lido das dependências dos package.json encontrados — é fato, não palpite.
+// Decide só se a pasta Contexto/Design/ nasce no passo 5.
+const TEM_FRONT = [...stacks.keys()].some(d => {
+  try {
+    const pj = JSON.parse(fs.readFileSync(path.join(RAIZ, d, 'package.json'), 'utf8'));
+    const deps = Object.keys({ ...pj.dependencies, ...pj.devDependencies });
+    return deps.some(x => /^(react|react-dom|vue|@angular\/core|svelte|next|nuxt|solid-js|@remix-run\/react|astro)$/.test(x));
+  } catch { return false; }
+});
 
 // ── Comandos canônicos. O passo 1 sabia QUAL manifesto existe e nunca o abria: o
 // `AGENTS.md` saía com "_(como rodar teste e build)_" para o humano preencher, sendo
@@ -502,8 +577,6 @@ const pesar = (base) => {
   return r;
 };
 
-// ~4 chars por token: estimativa, serve para comparar níveis e ver ordem de grandeza.
-const emTokens = (chars) => Math.round(chars / 4);
 const niveis = [];
 const baseGlobal = path.join(os.homedir(), '.claude');
 for (let cur = RAIZ; ; cur = path.dirname(cur)) {
@@ -540,37 +613,20 @@ if (gl && emTokens(gl[1].chars) > 2000) {
   info('    used in 0 projects  → out — it is pure weight');
 }
 
-// ── 4b. A NOTA também é contexto fixo, e era a única que ninguém contava.
+// ── 4b. Os três arquivos que carregam SEMPRE — e o total.
 //
-// O passo 4 media agente, skill e command e parava ali. Mas a memória carrega em TODA
-// sessão pela junction, e é o arquivo que mais cresce — porque a tentação de acrescentar
-// "o que esta sessão produziu" é permanente. Este repositório mesmo chegou a 314 linhas
-// com quatro seções de changelog dentro, sendo que o cabeçalho da própria nota diz que
-// o histórico é o `git log`.
+// O passo 4 media agente, skill e command e parava ali. A primeira versão deste bloco
+// media só a nota, porque ela é o arquivo que mais cresce. Mas o que entra em toda
+// sessão são TRÊS: a fonte, o adaptador e a nota — e medido em projetos reais o
+// AGENTS.md pesava mais que a nota em todos eles. Passamos um dia cortando o menor.
 //
-// O aviso só serve com DESTINO. "Sua nota está grande" é moralismo; "o que virou
-// histórico pertence a 10_Decisoes/" é uma ação. Por isso os dois andam juntos.
-//
-// O teto: ~6 KB. Não é número mágico — é o dobro de uma nota bem-formada de referência
-// (3,3 KB, respondendo as três perguntas e nada mais). Dobro dá folga para projeto
-// grande sem deixar changelog passar batido.
-const NOTA = path.join(DEST, 'onde_paramos.md');
-const TETO_NOTA = 6 * 1024;
-try {
-  const bytes = fs.statSync(NOTA).size;
-  const tk = emTokens(bytes);
-  info(`${''.padStart(11)}the memory note itself: ~${tk} tk — it loads in every session too`);
-  if (bytes > TETO_NOTA) {
-    warn(`onde_paramos.md is ${Math.round(bytes / 1024)} KB (~${tk} tk) — too long to load every session`);
-    info('  it answers three questions and no more: where we stopped · what to do now · what is stuck.');
-    info('  what turned into history has a destination, and it is not this file:');
-    info(`    a decision that still explains a choice  → ${path.relative(RAIZ, path.join(DOCS, '10_Decisoes')).replace(/\\/g, '/')}/<slug>.md`);
-    info('    a log of what was done                   → git log');
-  }
-} catch { /* nota ainda não existe: o passo 7b a cria */ }
+// O aviso só serve com DESTINO. "Está grande" é moralismo; "isto pertence a tal
+// arquivo" é uma ação. Por isso os dois andam juntos — em `imprimirContextoFixo`.
+log('');
+imprimirContextoFixo();
 
 // ═══════════════════════════════════════════ 5. BASE DE CONHECIMENTO EM .marvin/
-log('\n\x1b[1m5. Knowledge base (a single folder — plain markdown, no tool required)\x1b[0m');
+log('\n\x1b[1m5. Knowledge base (a single folder — plain markdown, organized as a graph)\x1b[0m');
 // DOCS foi detectado lá em cima, antes de qualquer escrita, porque o --check precisa dele.
 const novoVault = !fs.existsSync(DOCS);
 fsw.mkdirSync(DOCS, { recursive: true });
@@ -580,16 +636,31 @@ if (docsDoProduto) info('living next to ' + path.relative(RAIZ, docsDoProduto) +
 // Nenhuma config de ferramenta é escrita aqui: são só arquivos .md numa pasta, e
 // esse é o ponto. Qualquer editor abre. Quem quiser usar um app de notas por cima
 // aponta ele para esta pasta — a base não depende disso para funcionar.
-for (const d of ['10_Decisoes', '11_Sessoes', '90_Anexos', '99_Backup']) fsw.mkdirSync(path.join(DOCS, d), { recursive: true });
 
-// README de 10_Decisoes. A pasta nascia vazia e sem uma linha explicando para que serve,
-// e pasta vazia não ensina ninguém: o resultado era todo mundo empilhando histórico no
-// `onde_paramos.md` até ele virar changelog. Mesmo remédio que já vale para `agents/` e
-// `skills/` — a pasta vem com o README que diz o que entra nela.
-const decDir = path.join(DOCS, '10_Decisoes');
-const decReadme = path.join(decDir, 'README.md');
-if (!fs.existsSync(decReadme)) {
-  fsw.writeFileSync(decReadme, [
+// Escreve um arquivo só se não existir (invariante 2) e registra na saída.
+const escreverSeFaltar = (rel, conteudo) => {
+  const p = path.join(DOCS, rel);
+  if (fs.existsSync(p)) { info(rel + ' already exists'); return false; }
+  fsw.mkdirSync(path.dirname(p), { recursive: true });
+  fsw.writeFileSync(p, conteudo);
+  ok(rel);
+  return true;
+};
+
+if (LAYOUT_ANTIGO) {
+  // ── Layout por tipo de arquivo (08_Memoria/, 10_Decisoes/…). Continua funcionando
+  // onde está: a junction aponta para as notas, o /retomar lê a mesma nota. O que
+  // mudou é a organização — e mover conteúdo é decisão do humano, não do script.
+  warn('old layout: ' + path.relative(RAIZ, DEST).replace(/\\/g, '/') + ' — the base is organized as a graph since 1.2 (Contexto/ · Planejamento/ · Releases/ · Memoria/)');
+  info('  nothing was moved. To migrate: create Memoria/ next to 08_Memoria/, move the note,');
+  info('  run marvin again (the junction is re-pointed), then place the rest by hand.');
+  info('  why, and what goes where: https://github.com/Josuebmota/Marvin/blob/main/.marvin/Contexto/Arquitetura/organizacao-por-grafo.md');
+  for (const d of ['10_Decisoes', '99_Backup']) fsw.mkdirSync(path.join(DOCS, d), { recursive: true });
+
+  // README de 10_Decisoes. A pasta nascia vazia e sem uma linha explicando para que
+  // serve, e pasta vazia não ensina ninguém: o resultado era todo mundo empilhando
+  // histórico no `onde_paramos.md` até ele virar changelog.
+  escreverSeFaltar('10_Decisoes/README.md', [
   '# Decisões',
   '',
   'Uma decisão por arquivo, nome em `slug-curto.md`. **Acrescenta, nunca sobrescreve** —',
@@ -617,7 +688,7 @@ if (!fs.existsSync(decReadme)) {
   '',
   '**Quando:** <data>   ·   **Estado:** aceita | substituída por <slug>',
   '',
-  '## O problema',                                             
+  '## O problema',
   '## O que foi decidido',
   '## O que foi descartado, e por quê',
   '```',
@@ -630,8 +701,169 @@ if (!fs.existsSync(decReadme)) {
   '`10_Decisoes/privado/`, e essa linha entra no `.gitignore` — sem config, sem flag.',
   '',
   ].join('\n'));
-  ok('10_Decisoes/README.md');
-} else info('10_Decisoes/README.md already exists');
+} else {
+  // ── Organização por grafo. Dois eixos: o que o projeto É (Contexto/) e o que está
+  // sendo FEITO nele (Planejamento/). Todo nó tem um Sobre.md; ligação é link markdown,
+  // porque é o que vira aresta no grafo (passo 8b) — menção em prosa não é aresta.
+  //
+  // Cada pasta nasce com o arquivo que diz o que entra nela. Pasta vazia não ensina
+  // ninguém, e o resultado de pasta muda foi medido: relato empilhado na nota que
+  // carrega em toda sessão (18 seções num projeto real).
+  const dirs = ['Contexto/Fluxos', 'Contexto/Arquitetura', 'Planejamento/Manutencao', 'Planejamento/Novos', 'Fontes', 'Releases', 'Memoria'];
+  if (TEM_FRONT) dirs.push('Contexto/Design');
+  for (const d of dirs) fsw.mkdirSync(path.join(DOCS, d), { recursive: true });
+  info('Contexto/ (what it IS) · Planejamento/ (what is being DONE) · Fontes/ · Releases/ · Memoria/' + (TEM_FRONT ? ' · Contexto/Design/ (front detected)' : ''));
+
+  escreverSeFaltar('Contexto/Sobre.md', `---
+tipo: projeto
+---
+# ${path.basename(RAIZ)}
+
+_(três linhas: o que é, para quem, o que NÃO é)_
+
+## Fluxos
+
+_(um fluxo entra aqui quando é analisado numa atividade — não antes. Uma linha e um link:)_
+<!-- - [checkout](Fluxos/checkout.md) — cobrança e estorno -->
+
+## Arquitetura
+
+_(como foi projetado e com o quê. Decisão estrutural — a que não pertence a uma US — mora aqui.)_
+<!-- - [visao-geral](Arquitetura/visao-geral.md) -->
+${TEM_FRONT ? `
+## Design
+
+_(o design do front: telas, componentes, onde mora o Figma)_
+<!-- - [telas](Design/telas.md) -->
+` : ''}
+## Em andamento
+
+Ver [onde_paramos](../Memoria/onde_paramos.md) — só ponteiros para as US ativas.
+
+## Como esta base está organizada
+
+| Pasta | Responde | Regime |
+|---|---|---|
+| \`Contexto/\` | o que o projeto **é** | cresce quando um fluxo é analisado |
+| \`Planejamento/\` | o que está sendo **feito**: Epic → Feature → US | todo nó tem um \`Sobre.md\` |
+| \`Releases/\` | o que **subiu** para main | índice, um arquivo por versão |
+| \`Fontes/\` | apoio e o que vive fora deste repositório | |
+| \`Memoria/onde_paramos.md\` | as US **em andamento** | só ponteiros; sobrescrito |
+
+Ligação é **link markdown** — é o que vira aresta no grafo. Menção em prosa não conta.
+Nada muda de pasta ao concluir: a US ganha \`estado: concluida\` e entra numa release.
+Mudar esta organização é uma entrada no Rumo abaixo.
+
+## Rumo
+
+- **_(data)_** — base criada com esta organização.
+`);
+
+  escreverSeFaltar('Contexto/Fluxos/README.md', `# Fluxos
+
+Um arquivo por fluxo do produto (\`checkout.md\`, \`login.md\`…). **Incremental:** o fluxo
+entra quando uma atividade exige analisá-lo, e o que se descobriu fica aqui em vez de
+ser redescoberto na próxima. Link para cá a partir do [Sobre.md](../Sobre.md) e da US.
+
+Formato mínimo:
+
+\`\`\`markdown
+# Fluxo <nome>
+
+<o que ele faz, em três linhas>
+
+## Passos
+1. <passo> — \`src/<arquivo>\` — \`<função>\`
+
+## Regras que não podem quebrar
+- <invariante do fluxo>
+
+## US que passaram por aqui
+- [US-12](../../Planejamento/Novos/<Epic>/<Feature>/US-12/Sobre.md)
+\`\`\`
+`);
+
+  escreverSeFaltar('Planejamento/README.md', `# Planejamento
+
+O que está sendo **feito**, em três níveis: \`<Epic>/<Feature>/<US>/\`, cada um com o seu
+\`Sobre.md\`. \`Manutencao/\` para o que já existe; \`Novos/\` para o que ainda não.
+
+Regras:
+
+- **Decisão mora no nó que a tomou.** Da US, na US; da feature, na feature. Estrutural,
+  em \`Contexto/Arquitetura/\`.
+- **Mudar de rumo é normal e fica explícito.** Registra no *Rumo* e segue. Se preciso,
+  cancela os filhos e abre novos — a entrada fica no Rumo do pai.
+- **Nada muda de pasta.** US concluída fica onde está, com \`estado: concluida\` e a
+  evidência preenchida. Reabrir é outra release.
+- **Aresta é link.** Fluxo ligado, código tocado e pai são links/caminhos — é o que o
+  grafo lê.
+
+## O formato — um só para Epic, Feature e US
+
+\`\`\`markdown
+---
+tipo: us            # epic | feature | us
+estado: ativa       # ativa | concluida | cancelada
+pai: ../Sobre.md
+---
+# US-12 — <título em uma frase>
+
+**Por quê:** <uma linha>
+**Pronto quando:** <critério verificável>
+
+## Filhos
+<!-- Epic e Feature: links para os Sobre.md abaixo. US: não tem. -->
+
+## Fluxos ligados
+- [checkout](../../../../Contexto/Fluxos/checkout.md)
+
+## Código tocado
+- \`src/checkout/pagamento.ts\` — \`calcularEstorno\`
+
+## Time
+<!-- proposto ANTES de começar, pela regra do AGENTS.md. Base: tl · po · dev-front · dev-back · qa · scout.
+     Mais a camada da atividade (design, dba, sec, infra) quando ela pede. -->
+- tl, po, dev-back, qa, scout
+- dba — a US muda o schema de pagamentos
+
+## Skills
+<!-- procedimento que esta atividade vai repetir; vira SKILL.md na segunda vez -->
+- rodar-migracao — proposta
+
+## Rumo
+- **<data>** — aberta.
+- **<data>** — vimos que <x>; decidido <y>, descartado <z> porque <w>.
+
+## Evidência
+<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+\`\`\`
+
+*Código tocado* usa crase com o caminho a partir da raiz do repositório, e o nome da
+função depois de um traço — é assim que o grafo liga a US ao nó de código.
+`);
+
+  escreverSeFaltar('Releases/README.md', `# Releases
+
+Um arquivo por versão que subiu para main: \`<versao>.md\`. É um **índice**, não um
+relato — uma linha por US, com link e evidência. O relato já está no \`git log\`.
+
+\`\`\`markdown
+# 1.4.0 — <data>
+
+- [US-12 — título](../Planejamento/Novos/<Epic>/<Feature>/US-12/Sobre.md) — evidência: PR #88
+\`\`\`
+
+Ao entrar aqui, a US sai do \`onde_paramos.md\`. Reaberta depois? É outra release.
+`);
+
+  escreverSeFaltar('Fontes/README.md', `# Fontes
+
+Apoio e suporte: o que ajuda a trabalhar mas não é contexto nem planejamento —
+referência de API, esquema de banco, glossário, transcrição de reunião.
+\`Externas.md\` diz onde a verdade do produto vive **fora** deste repositório.
+`);
+}
 
 // vault numa pasta separada é layout antigo deste script
 const LEGADO = path.join(RAIZ, 'Obsidian');
@@ -730,8 +962,11 @@ if (ehJunction(MEM)) {
   }
 }
 
+// 00_Inicio.md era o nó raiz do layout antigo. No layout por grafo o nó raiz é
+// Contexto/Sobre.md (passo 5), e a montagem da junction já está no CLAUDE.md.
 const idx = path.join(DOCS, '00_Inicio.md');
-if (!fs.existsSync(idx)) {
+if (!LAYOUT_ANTIGO) { /* nada: Contexto/Sobre.md é a raiz */ }
+else if (!fs.existsSync(idx)) {
   fsw.writeFileSync(idx, `---
 name: inicio
 aliases: ["Início", "Home", "MOC"]
@@ -782,11 +1017,12 @@ não conteúdo.
 - [ ] Decisões que não se reabrem
 `);
   ok('00_Inicio.md');
-} else info('00_Inicio.md já existe');
+} else info('00_Inicio.md already exists');
 
 // ═══════════════════════════════════════════ 6b. FONTES EXTERNAS
 log('\n\x1b[1m6b. External sources (where user stories, tickets and specs live)\x1b[0m');
-const FONTES = path.join(DOCS, '00_Fontes_Externas.md');
+const FONTES = path.join(DOCS, LAYOUT_ANTIGO ? '00_Fontes_Externas.md' : 'Fontes/Externas.md');
+const NOME_FONTES = path.relative(DOCS, FONTES).replace(/\\/g, '/');
 const PADROES = [
   [/https?:\/\/[\w.-]*notion\.(so|site)\/\S+/gi, 'Notion'],
   [/https?:\/\/[\w.-]*atlassian\.net\/\S+/gi, 'Jira/Confluence'],
@@ -821,7 +1057,7 @@ if (encontradas.size) {
 } else info('no tool URLs found in the docs');
 
 if (fs.existsSync(FONTES)) {
-  info('00_Fontes_Externas.md already exists — not overwriting');
+  info(NOME_FONTES + ' already exists — not overwriting');
 } else {
   let respostas = null;
   if (process.stdin.isTTY) {
@@ -878,7 +1114,7 @@ achado (tem commit e data); a ferramenta externa vence para roadmap e prioridade
 Quando uma decisão for tomada **lá fora**, registre aqui **o link e a data** — e o que
 mudou em uma linha.
 `);
-  ok('00_Fontes_Externas.md' + (respostas ? ' (filled in)' : ' (blank — fill it in)'));
+  ok(NOME_FONTES + (respostas ? ' (filled in)' : ' (blank — fill it in)'));
 }
 
 // ═══════════════════════════════════════════ 7. .claude/agents
@@ -925,8 +1161,8 @@ ${(() => {
   ? `- **Um papel por fronteira, não um revisor universal.** São ${fronteiras} fronteiras aqui.
   Um único revisor que atravessa todas não segura o invariante de nenhuma — ele vira
   genérico, que é o modo de falhar deste arquivo.`
-  : `- **Comece com dois papéis:** o \`tl\` acima e **um** de implementação. O terceiro só
-  quando doer de verdade. Papel a mais é contexto fixo em toda sessão.`);
+  : `- **Uma fronteira só:** \`dev-front\` e \`dev-back\` da base do \`AGENTS.md\` podem ser um
+  \`dev\` único aqui. O resto da base (\`tl\`, \`po\`, \`qa\`, \`scout\`) vale igual.`);
 })()}
 - **Não crie papel vazio para preencher a pasta.** Um \`.md\` sem as armadilhas concretas
   deste código entra no contexto de toda sessão e não devolve nada. Genérico é pior que
@@ -1045,7 +1281,9 @@ Retome o trabalho neste projeto.
 
 1. Leia \`${path.relative(RAIZ, DEST).replace(/\\/g, '/')}/onde_paramos.md\` — é a **única**
    porta de entrada, sempre atualizada. Se não existir, leia o \`MEMORY.md\` e diga que a
-   nota canônica está faltando.
+   nota canônica está faltando.${LAYOUT_ANTIGO ? '' : `
+   Ela é uma lista de ponteiros: **siga o link** de cada US ativa e leia o \`Sobre.md\` dela —
+   o estado e o Rumo moram lá, não na nota. Não abra o resto da base sem necessidade.`}
 
 2. Confira o estado real antes de confiar no registro: \`git log --oneline -3\` e
    \`git status --short\` nos repositórios que importam. Se o registro disser que algo foi
@@ -1065,7 +1303,45 @@ $ARGUMENTS
 } else info('/retomar already exists');
 
 const ondeParamos = path.join(DEST, 'onde_paramos.md');
-if (!fs.existsSync(ondeParamos)) {
+if (fs.existsSync(ondeParamos)) {
+  info('onde_paramos.md already exists');
+} else if (!LAYOUT_ANTIGO) {
+  // A nota do layout por grafo é só ponteiro. O estado de cada US mora no Sobre.md dela
+  // e só carrega quando é seguido — é a diferença entre 1 KB e 19 KB por sessão.
+  fsw.writeFileSync(ondeParamos, `---
+name: onde-paramos
+aliases: ["onde-paramos", "ONDE PARAMOS"]
+description: "ÚNICA porta de entrada. Só ponteiros para as US em andamento — sempre sobrescrita."
+tags: [moc, entrada]
+metadata:
+  type: project
+---
+
+# ▶ ONDE PARAMOS
+
+> **Uma linha por US em andamento, com link.** O estado, as decisões e o rumo de cada
+> uma moram no \`Sobre.md\` dela — **não aqui**. Esta nota carrega em TODA sessão; o que
+> ela aponta só carrega quando é seguido. É assim que a memória fica barata.
+>
+> - Concluiu e foi validada → entra em \`Releases/<versao>.md\` com a evidência, e **sai daqui**.
+> - Duas sessões em paralelo editam **linhas diferentes**; nenhuma reescreve a outra.
+> - Criar \`onde_paramos_<data>.md\` **ou uma seção de relato aqui dentro** é o mesmo erro:
+>   o histórico já está no \`git log\`, e o porquê já está no Rumo da US.
+
+**Atualizado:** _(data)_
+
+## Em andamento
+
+_(uma por linha — link para o Sobre.md, e o próximo passo numa frase)_
+<!-- - [US-12](../Planejamento/Novos/<Epic>/<Feature>/US-12/Sobre.md) — falta o teste do estorno -->
+
+## Travado
+
+_(só o que trava TODAS as US — acesso, ambiente, decisão de fora. O que é de uma US vai no Rumo dela. Se nada, "nada".)_
+
+`);
+  ok('onde_paramos.md (pointers only — one line per active US)');
+} else {
   fsw.writeFileSync(ondeParamos, `---
 name: onde-paramos
 aliases: ["onde-paramos", "ONDE PARAMOS"]
@@ -1108,7 +1384,7 @@ _(o que não anda, e por quê — se nada, escreva "nada")_
 
 `);
   ok('onde_paramos.md (skeleton — fill it in at the end of each session)');
-} else info('onde_paramos.md already exists');
+}
 
 // ═══════════════════════════════════════════ 7c. FONTE ÚNICA + ADAPTADORES
 log('\n\x1b[1m7c. Portability — 1 source, N thin adapters\x1b[0m');
@@ -1182,9 +1458,9 @@ Relatório verde de agente não substitui ler o diff.
 
 ## Conhecimento e memória
 
-\`${relDocs}/\` é a base de conhecimento — markdown puro, arquivo real.
+\`${relDocs}/\` é a base de conhecimento — markdown puro, arquivo real${LAYOUT_ANTIGO ? '' : ', **organizada como grafo**'}.
 **Legível por qualquer ferramenta**, e por nenhuma também: é só uma pasta com \`.md\` dentro.
-
+${LAYOUT_ANTIGO ? `
 - \`${relMem}/onde_paramos.md\` — a única porta de entrada
 - \`${relDocs}/00_Fontes_Externas.md\` — o que vive fora deste repositório
 - \`${relDocs}/10_Decisoes/<slug>.md\` — **por que** escolhemos cada coisa (ver o README de lá)
@@ -1193,16 +1469,60 @@ Relatório verde de agente não substitui ler o diff.
 sobrescrito. Quando você escrever o *porquê* de uma escolha dentro dele, ele começou a virar
 changelog — e ele carrega em toda sessão. O porquê vai para \`10_Decisoes/\`; o relato do que foi
 feito já está no \`git log\`.
+` : `
+| Pasta | Responde | Regime |
+|---|---|---|
+| \`${relDocs}/Contexto/\` | o que o projeto **é** — \`Sobre.md\` é o nó raiz; \`Fluxos/\`, \`Arquitetura/\` | cresce quando um fluxo é analisado |
+| \`${relDocs}/Planejamento/\` | o que está sendo **feito**: Epic → Feature → US, cada um com \`Sobre.md\` | decisão mora no nó que a tomou |
+| \`${relDocs}/Releases/\` | o que **subiu** para main | índice, um por versão |
+| \`${relDocs}/Fontes/\` | apoio; \`Externas.md\` diz o que vive fora daqui | |
+| \`${relMem}/onde_paramos.md\` | as US **em andamento** | só ponteiros; sobrescrito |
 
+**A nota aponta; o nó guarda.** O \`onde_paramos.md\` carrega em toda sessão, por isso é uma
+lista de links — o estado, as decisões e o Rumo de cada US moram no \`Sobre.md\` dela e só
+carregam quando são seguidos. Escrever o *porquê* de uma escolha na nota é o começo de um
+changelog; o porquê vai no Rumo do nó que decidiu. O relato do que foi feito já está no \`git log\`.
+
+**Ligação é link markdown.** Fluxo ligado, código tocado, pai — é o que vira aresta no grafo
+(\`marvin --graphify\`). Menção em prosa não conta.
+`}
 **Quando registrar: no commit.** É o momento em que uma unidade de trabalho fecha, e é o
 gatilho que faz a regra ser lembrada em vez de decorada. Sem gatilho, "sempre atualizar a
 memória" não dispara nunca — ou dispara sempre, que é pior.
 
 - Commit que muda o **estado** do projeto — decisão tomada, subsistema novo, armadilha
-  descoberta, algo que travou — pede uma passada no \`onde_paramos.md\` **antes**.
+  descoberta, algo que travou — pede uma passada ${LAYOUT_ANTIGO ? 'no \`onde_paramos.md\`' : 'no \`Sobre.md\` da US (e na nota, se uma US abriu ou fechou)'} **antes**.
 - Commit de typo, formatação ou renomeação não pede nada.
 - A nota é **sobrescrita**, não acrescentada: o histórico é o \`git log\`. Criar
-  \`onde_paramos_<data>.md\` é erro.
+  \`onde_paramos_<data>.md\` **ou uma seção de relato dentro dela** é o mesmo erro.
+
+## Antes de qualquer US — mapear, montar o time, propor skills
+
+**Nenhuma US começa sem esta passada, e ela se repete a cada atividade nova.** É o que
+faz o time crescer em camadas em vez de nascer genérico.
+
+1. **Mapear o que a atividade toca:** o fluxo, a arquitetura, o código. Fluxo que ainda
+   não tem nota em \`${relDocs}/Contexto/Fluxos/\` ganha uma agora — é assim que ela cresce.
+2. **Propor o time desta atividade** e registrar na seção *Time* do \`Sobre.md\` da US.
+   A base é sempre esta; o que a atividade não usa **não é criado**:
+
+   | Papel | Dono de | Precisa de |
+   |---|---|---|
+   | \`tl\` | invariantes, diff, decisão de rumo | julgamento |
+   | \`po\` | o porquê, o critério de pronto, a prioridade | julgamento |
+   | \`dev-front\` | tela e componente | implementação |
+   | \`dev-back\` | serviço, regra, integração | implementação |
+   | \`qa\` | evidência: teste, cenário, o que ainda não foi provado | implementação |
+   | \`scout\` | achar arquivo, símbolo, uso — e só isso | recuperação |
+
+   Mais a **camada da atividade**, quando ela pede: \`design\` se há tela nova, \`dba\` se há
+   schema ou migração, \`sec\` se há auth ou dado sensível, \`infra\` se há deploy ou CI.
+3. **Atualizar os agentes em camadas:** \`.claude/agents/<papel>.md\` recebe as armadilhas
+   descobertas **nesta** atividade — acrescenta, não reescreve o que já valia. Um papel só
+   existe como arquivo depois de ter uma armadilha concreta para carregar.
+4. **Propor skills:** procedimento que esta atividade vai repetir (rodar migração, gerar
+   release, subir ambiente) entra na seção *Skills* da US como proposta — e vira
+   \`.claude/skills/<nome>/SKILL.md\` na **segunda** vez que rodar, não na primeira.
 
 ## Higiene de sessão — quando sugerir um chat novo
 
@@ -1483,16 +1803,19 @@ if (GRAPHIFY) {
     versao = execSync('graphify --version', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
   } catch {}
 
-  if (!versao) {
+  const SAIDA = path.join(RAIZ, 'graphify-out');
+  const GRAFO = path.join(SAIDA, 'graph.json');
+
+  // Sem graphify no PATH mas com grafo já construído (CI, outra máquina), o lado dos
+  // docs ainda pode ser anexado — é só JSON. Só a extração de código exige o binário.
+  if (!versao && !fs.existsSync(GRAFO)) {
     warn('graphify not found on PATH — step skipped, nothing else changed');
     info('install it in isolation (no need to go global):');
     info('  uv tool install graphifyy    ·    pipx install graphifyy');
     info('then run again with --graphify');
   } else {
-    info(versao);
-
-    const SAIDA = path.join(RAIZ, 'graphify-out');
-    const GRAFO = path.join(SAIDA, 'graph.json');
+    if (versao) info(versao);
+    else warn('graphify not found on PATH — using the existing graph.json; code will not be re-extracted');
 
     // .gitignore já existente não é reescrito pelo passo 8 — garante a linha aqui.
     const gi2 = path.join(RAIZ, '.gitignore');
@@ -1511,7 +1834,10 @@ if (GRAPHIFY) {
     };
 
     // Idempotência: grafo que já existe não é reconstruído. Rebuild é decisão do humano.
-    if (fs.existsSync(GRAFO) && !GRAPHIFY_REBUILD) {
+    let construiu = false;
+    if (!versao) {
+      /* sem binário: nada a extrair */
+    } else if (fs.existsSync(GRAFO) && !GRAPHIFY_REBUILD) {
       info('graph.json already exists — not rebuilding (running twice must not overwrite)');
       info('to rebuild after code changes:  marvin --graphify --graphify-rebuild');
     } else {
@@ -1559,32 +1885,171 @@ if (GRAPHIFY) {
           }
         }
         if (!DRY) {
-          if (fs.existsSync(GRAFO)) ok('graph built — ' + contarNos(GRAFO) + ' nodes in graphify-out/');
+          if (fs.existsSync(GRAFO)) { ok('graph built — ' + contarNos(GRAFO) + ' nodes in graphify-out/'); construiu = true; }
           else err('no graph was produced');
-        }
+        } else construiu = true;
       } catch {
         err('the graph build failed — nothing else changed');
       }
 
-      // ── Relatório e HTML. O `extract` para no graph.json DE PROPÓSITO: o report e
-      // os nomes das comunidades são passo separado, e é por isso que tanta gente
-      // acha que a instalação quebrou ao não achar o graph.html que o README do
-      // graphify mostra. Sem --graphify-label roda --no-label: determinístico,
-      // grátis, sem chave — o html sai igual, só com "Community 0/1/2" nos nomes.
-      if (DRY || fs.existsSync(GRAFO)) {
-        let modo = '--no-label';
-        if (GRAPHIFY_LABEL) {
-          let temClaude = false;
-          try { execSync('claude --version', { stdio: 'ignore' }); temClaude = true; } catch {}
-          if (temClaude) modo = '--backend claude-cli';
-          else warn('--graphify-label ignored: no `claude` on PATH — using --no-label');
+    }
+
+    // ── O lado dos docs: a base de conhecimento entra no MESMO grafo, gerada AQUI.
+    //
+    // Medido em 10/09/2026 antes de decidir: o graphify só indexa `.md` por LLM —
+    // 93 K tokens para três arquivos de amostra, não determinístico, e a aresta
+    // doc→código foi DESCARTADA por ele mesmo ("out-of-scope"). E o `merge-graphs`
+    // prefixa os ids por repositório, o que quebra qualquer aresta cruzada. Então o
+    // Marvin escreve os nós de doc e as arestas por regex e anexa direto no graph.json:
+    // zero LLM, zero custo, o mesmo resultado a cada run. É o que faz `path`,
+    // `affected` e `query` responderem "que US toca esta função" nos dois sentidos.
+    //
+    // Regras de aresta, todas lidas do markdown:
+    //   [x](caminho.md) relativo                 → references  (doc → doc)
+    //   [x](../../src/a.js) relativo a código    → touches     (doc → arquivo)
+    //   `pai:` no frontmatter                    → child_of
+    //   crase em "## Código tocado":  `src/a.js`           → touches (arquivo)
+    //                                 `src/a.js` — `fn`    → touches (função)
+    // Bloco de código e comentário HTML são ignorados: os READMEs trazem o formato
+    // como exemplo, e exemplo não é aresta.
+    //
+    // Idempotente: tudo que este bloco escreve leva `_origin: 'marvin'`, e é removido e
+    // regerado a cada run. Nó de código que não existe no grafo vira AVISO, nunca nó
+    // fantasma — função renomeada é exatamente o que a régua deve acusar.
+    let docsMudou = false;
+    if (fs.existsSync(GRAFO) && fs.existsSync(DOCS)) {
+      const idDe = (rel) => rel.replace(/\\/g, '/').replace(/\.[^./]+$/, '')
+        .replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
+      const limpar = (txt) => txt.replace(/```[\s\S]*?```/g, '').replace(/<!--[\s\S]*?-->/g, '');
+      const docs = [];
+      (function varrerDocs(dir, prof = 0) {
+        if (prof > 8) return;
+        let ents; try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+        for (const e of ents) {
+          if (e.name.startsWith('.')) continue;
+          const p = path.join(dir, e.name);
+          if (e.isDirectory()) { varrerDocs(p, prof + 1); continue; }
+          if (e.name.endsWith('.md')) docs.push(p);
         }
-        try {
-          exec('graphify cluster-only . ' + modo, { cwd: RAIZ, stdio: 'inherit' });
-          ok('GRAPH_REPORT.md and graph.html written — open the html in any browser');
-        } catch {
-          warn('the report step failed — graph.json is fine, only the html is missing');
+      })(DOCS);
+
+      let g = null;
+      try { g = JSON.parse(fs.readFileSync(GRAFO, 'utf8')); } catch {}
+      if (g && Array.isArray(g.nodes)) {
+        // `extract` escreve `edges`; depois do `cluster-only` o arquivo sai em formato
+        // networkx, com `links`. O anexo respeita o que encontrar.
+        const CHAVE = Array.isArray(g.links) ? 'links' : 'edges';
+        g.edges = g[CHAVE] || [];
+        const antes = JSON.stringify({ n: g.nodes.filter(n => n._origin === 'marvin'), e: g.edges.filter(e => e._origin === 'marvin') });
+        g.nodes = g.nodes.filter(n => n._origin !== 'marvin');
+        g.edges = g.edges.filter(e => e._origin !== 'marvin');
+        const ids = new Set(g.nodes.map(n => n.id));
+        const novosNos = [], novasArestas = [], avisos = [];
+        const relDe = (abs) => path.relative(RAIZ, abs).replace(/\\/g, '/');
+
+        for (const arq of docs) {
+          const rel = relDe(arq);
+          const id = idDe(rel);
+          let txt; try { txt = fs.readFileSync(arq, 'utf8'); } catch { continue; }
+          const fm = txt.match(/^---\n([\s\S]*?)\n---/);
+          const campo = (k) => { const m = fm && fm[1].match(new RegExp('^' + k + ':[ \\t]*(.+)$', 'm')); return m ? m[1].trim().replace(/\s+#.*$/, '') : null; };
+          const titulo = (txt.match(/^#\s+(.+)$/m) || [])[1] || path.basename(arq, '.md');
+          const no = { id, label: titulo.trim(), file_type: 'doc', source_file: rel, source_location: 'L1', _origin: 'marvin' };
+          const tipo = campo('tipo'), estado = campo('estado');
+          if (tipo) no.tipo = tipo;
+          if (estado) no.estado = estado;
+          novosNos.push(no);
+          ids.add(id);
         }
+
+        for (const arq of docs) {
+          const rel = relDe(arq);
+          const id = idDe(rel);
+          const aresta = (source, target, relation) => novasArestas.push({ source, target, relation, confidence: 'EXTRACTED',
+            source_file: rel, source_location: 'L1', weight: 1, _origin: 'marvin' });
+          let txt; try { txt = fs.readFileSync(arq, 'utf8'); } catch { continue; }
+          const corpo = limpar(txt);
+          const fm = corpo.match(/^---\n([\s\S]*?)\n---/);
+          const pai = fm && (fm[1].match(/^pai:[ \t]*(.+)$/m) || [])[1];
+          if (pai) {
+            const alvo = path.resolve(path.dirname(arq), pai.trim());
+            if (fs.existsSync(alvo)) aresta(id, idDe(relDe(alvo)), 'child_of');
+            else avisos.push(rel + ': pai → ' + pai.trim() + ' does not exist');
+          }
+          // links relativos
+          for (const m of corpo.matchAll(/\[[^\]]*\]\(([^)\s#]+)(?:#[^)]*)?\)/g)) {
+            const href = m[1];
+            if (/^[a-z]+:/i.test(href)) continue;           // http, mailto…
+            const alvo = path.resolve(path.dirname(arq), href);
+            if (!fs.existsSync(alvo)) continue;             // link quebrado é assunto de outro passo
+            const alvoRel = relDe(alvo);
+            if (alvoRel.startsWith('..')) continue;
+            const alvoId = idDe(alvoRel);
+            if (alvo.endsWith('.md') && alvoRel.startsWith(relDe(DOCS))) aresta(id, alvoId, 'references');
+            else if (ids.has(alvoId)) aresta(id, alvoId, 'touches');
+          }
+          // ## Código tocado
+          const sec = corpo.match(/^##\s+Código tocado\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
+          if (sec) {
+            for (const m of sec[1].matchAll(/^[ \t]*[-*][ \t]*`([^`]+)`(?:[ \t]*[—-]+[ \t]*`([^`]+)`)?/gm)) {
+              const arqCod = m[1].trim(), fn = m[2] && m[2].trim().replace(/\(\)$/, '');
+              const arqId = idDe(arqCod);
+              const alvoId = fn ? arqId + '_' + fn.replace(/[^A-Za-z0-9]+/g, '_').toLowerCase() : arqId;
+              if (ids.has(alvoId)) { aresta(id, alvoId, 'touches'); continue; }
+              if (!fs.existsSync(path.join(RAIZ, arqCod))) avisos.push(rel + ': `' + arqCod + '` does not exist in the repository');
+              else if (!ids.has(arqId)) avisos.push(rel + ': `' + arqCod + '` is not in the graph — rebuild it (' + (subRepos.length ? 'marvin --graphify --graphify-rebuild' : 'graphify update .') + ')');
+              else avisos.push(rel + ': `' + fn + '` is not in `' + arqCod + '` — renamed?');
+            }
+          }
+        }
+
+        g.nodes.push(...novosNos);
+        g.edges.push(...novasArestas);
+        if (CHAVE !== 'edges') { g[CHAVE] = g.edges; delete g.edges; }
+        const depois = JSON.stringify({ n: novosNos, e: novasArestas });
+        docsMudou = antes !== depois;
+        if (docsMudou) {
+          // Preserva o mtime: o check de frescor abaixo compara código com a HORA DA
+          // EXTRAÇÃO, e anexar docs não re-extraiu nada.
+          let st = null; try { st = fs.statSync(GRAFO); } catch {}
+          fsw.writeFileSync(GRAFO, JSON.stringify(g, null, 1));
+          if (!DRY && st) { try { fs.utimesSync(GRAFO, st.atime, st.mtime); } catch {} }
+        }
+        ok('knowledge base in the graph — ' + novosNos.length + ' doc node(s), ' + novasArestas.length + ' edge(s)' + (docsMudou ? '' : ' (unchanged)'));
+        if (avisos.length) {
+          warn(avisos.length + ' link(s) from docs to code did not land on a node:');
+          avisos.slice(0, 8).forEach(a => info('  ' + a));
+          if (avisos.length > 8) info('  … and ' + (avisos.length - 8) + ' more');
+        }
+        info('  try:  graphify affected "<function>"   — which US and which code depend on it');
+      }
+    }
+
+    // ── Relatório e HTML. O `extract` para no graph.json DE PROPÓSITO: o report e
+    // os nomes das comunidades são passo separado, e é por isso que tanta gente
+    // acha que a instalação quebrou ao não achar o graph.html que o README do
+    // graphify mostra. Sem --graphify-label roda --no-label: determinístico,
+    // grátis, sem chave — o html sai igual, só com "Community 0/1/2" nos nomes.
+    // Roda quando o grafo mudou — construído agora ou docs anexados — e só com o binário.
+    if (versao && (construiu || docsMudou) && (DRY || fs.existsSync(GRAFO))) {
+      let modo = '--no-label';
+      if (GRAPHIFY_LABEL) {
+        let temClaude = false;
+        try { execSync('claude --version', { stdio: 'ignore' }); temClaude = true; } catch {}
+        if (temClaude) modo = '--backend claude-cli';
+        else warn('--graphify-label ignored: no `claude` on PATH — using --no-label');
+      }
+      // Só os docs mudaram? O cluster-only reescreve o graph.json, e o check de frescor
+      // abaixo compara o código com o mtime dele — sem isto, anexar docs faria um grafo
+      // velho parecer fresco.
+      let stAntes = null;
+      if (!construiu) { try { stAntes = fs.statSync(GRAFO); } catch {} }
+      try {
+        exec('graphify cluster-only . ' + modo, { cwd: RAIZ, stdio: 'inherit' });
+        if (!DRY && stAntes) { try { fs.utimesSync(GRAFO, stAntes.atime, stAntes.mtime); } catch {} }
+        ok('GRAPH_REPORT.md and graph.html written — open the html in any browser');
+      } catch {
+        warn('the report step failed — graph.json is fine, only the html is missing');
       }
     }
 
@@ -1765,10 +2230,25 @@ const ATUALIZACOES = [
   // versão tem a pasta e nenhuma pista do que ela é — e é justamente quem já está
   // empilhando histórico no onde_paramos.md sem saber que havia outro lugar.
   { arquivo: path.relative(RAIZ, path.join(DOCS, '10_Decisoes', 'README.md')).replace(/\\/g, '/'),
-    marca: /por que escolhemos isto/i,
+    marca: /por que escolhemos isto/i, soCom: LAYOUT_ANTIGO,
     o_que: 'the decisions README — what belongs there instead of in onde_paramos.md' },
-  { arquivo: 'AGENTS.md', marca: /A nota é curta; a decisão é imutável/,
+  { arquivo: 'AGENTS.md', marca: /A nota é curta; a decisão é imutável/, soCom: LAYOUT_ANTIGO,
     o_que: 'the "note is short, decision is immutable" rule — where overflow goes' },
+  // Organização por grafo (1.2). Quem montou no layout novo por uma versão anterior a
+  // alguma seção nova fica sabendo aqui; quem está no layout antigo recebe o aviso do
+  // passo 5, não estas marcas — cobrar seção de grafo num AGENTS.md antigo seria ruído.
+  { arquivo: 'AGENTS.md', marca: /Antes de qualquer US/,
+    o_que: 'the "Antes de qualquer US" rule — map the activity, propose the team in layers, propose skills' },
+  { arquivo: 'AGENTS.md', marca: /A nota aponta; o nó guarda/, soCom: !LAYOUT_ANTIGO,
+    o_que: 'the "note points, node keeps" rule — the knowledge base as a graph' },
+  { arquivo: 'AGENTS.md', marca: /ou uma seção de relato dentro dela/, soCom: !LAYOUT_ANTIGO,
+    o_que: 'the rule naming the loophole: a report SECTION inside the note is the same error as a new file' },
+  { arquivo: path.relative(RAIZ, path.join(DOCS, 'Contexto', 'Sobre.md')).replace(/\\/g, '/'),
+    marca: /Como esta base está organizada/, soCom: !LAYOUT_ANTIGO,
+    o_que: 'the "how this base is organized" section — changing it is an entry in Rumo' },
+  { arquivo: path.relative(RAIZ, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
+    marca: /Código tocado/, soCom: !LAYOUT_ANTIGO,
+    o_que: 'the Sobre.md format for Epic/Feature/US — "Código tocado" is what links a US to code in the graph' },
   // Bloco novo em arquivo que já existe é exatamente o que este passo existe para pegar.
   // Sem esta marca, quem montou o projeto antes desta versão continua olhando para uma
   // pasta de agentes sem nenhuma pista de QUANTOS papéis o repositório dele pede.
@@ -1831,5 +2311,6 @@ log('\n\x1b[1mLeft for you to write by hand:\x1b[0m');
 log('  • AGENTS.md — real structure, invariants, traps, the team (the SOURCE)');
 log("  • .claude/agents/*.md — the roles, with the scars of THIS codebase");
 log("  • .claude/skills/*/SKILL.md — only procedures already run twice (see its README)");
-log('  • ' + relMem + '/onde_paramos.md — the current state');
+log(LAYOUT_ANTIGO ? '  • ' + relMem + '/onde_paramos.md — the current state'
+                  : '  • ' + relDocs + '/Contexto/Sobre.md — what the project IS; then one Sobre.md per US as work starts');
 log('  Companion prompt: https://github.com/Josuebmota/Marvin/blob/main/PROMPT.md\n');

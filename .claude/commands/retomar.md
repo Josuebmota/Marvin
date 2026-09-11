@@ -4,9 +4,11 @@ description: Retoma o trabalho a partir do estado corrente registrado — a port
 
 Retome o trabalho neste projeto.
 
-1. Leia `.marvin/08_Memoria/onde_paramos.md` — é a **única**
+1. Leia `.marvin/Memoria/onde_paramos.md` — é a **única**
    porta de entrada, sempre atualizada. Se não existir, leia o `MEMORY.md` e diga que a
    nota canônica está faltando.
+   Ela é uma lista de ponteiros: **siga o link** de cada US ativa e leia o `Sobre.md` dela —
+   o estado e o Rumo moram lá, não na nota. Não abra o resto da base sem necessidade.
 
 2. Confira o estado real antes de confiar no registro: `git log --oneline -3` e
    `git status --short` nos repositórios que importam. Se o registro disser que algo foi

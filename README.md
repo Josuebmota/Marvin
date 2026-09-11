@@ -43,7 +43,7 @@ pointer** with no content of its own. Divergence becomes structurally impossible
 **Memory inside the repository, via an inverted junction:**
 
 ```
-~/.claude/projects/<path>/memory  ──junction──►  .marvin/08_Memoria/
+~/.claude/projects/<path>/memory  ──junction──►  .marvin/Memoria/
 ```
 
 The tool writes to its own default path; the files are born inside the repository. Memory
@@ -61,15 +61,33 @@ only the auto-loading goes away.
 │   ├── agents/README.md        guide for writing your team
 │   ├── skills/README.md        skill vs. agent vs. command: the discriminator
 │   └── commands/retomar.md     /retomar: the entry point
-└── .marvin/                    ← knowledge base
-    ├── 00_Inicio.md
-    ├── 00_Fontes_Externas.md   where user stories, roadmap and design live
-    ├── 08_Memoria/
-    │   └── onde_paramos.md     the only door; always overwritten
-    ├── 10_Decisoes/
-    │   └── README.md           why each choice was made (append-only)
-    └── 99_Backup/
+└── .marvin/                    ← knowledge base, organized as a GRAPH
+    ├── Contexto/               what the project IS
+    │   ├── Sobre.md            root node — links to the flows
+    │   ├── Fluxos/             one .md per flow; born when a flow gets analyzed
+    │   ├── Arquitetura/        how it is built; structural decisions live here
+    │   └── Design/             only when a front-end is detected
+    ├── Planejamento/           what is being DONE: <Epic>/<Feature>/<US>/Sobre.md
+    │   ├── Manutencao/         every node has the same Sobre.md: state, parent, Rumo
+    │   └── Novos/
+    ├── Fontes/                 support; Externas.md says what lives outside the repo
+    ├── Releases/               <version>.md — index of what shipped, with evidence
+    └── Memoria/
+        └── onde_paramos.md     the only door; pointers to the active USs, nothing else
 ```
+
+Two axes: what the project **is** (`Contexto/`) and what is being **done** to it
+(`Planejamento/`). Every node is a `Sobre.md` with `estado` in the frontmatter, a link to
+its parent and a **Rumo** section — one entry per change of direction. Decisions live in
+the node that made them: a US decision in the US, a structural one in `Arquitetura/`.
+Nothing moves folders when done: the US gets `estado: concluida`, its evidence, and a line
+in `Releases/`. **Links are edges**: with `--graphify`, the knowledge base joins the code
+graph, and `graphify affected "<function>"` answers which US and which code depend on it.
+
+The generated `AGENTS.md` carries the rule that repeats **before any US**: map what the
+activity touches, propose its team in layers (`tl`, `po` · `dev-front`, `dev-back`, `qa` ·
+`scout`, plus `design`/`dba`/`sec`/`infra` when the activity asks), propose the skills it
+will repeat, and update the agents with what this activity taught — append, never rewrite.
 
 > Generated file and folder names are in Portuguese, matching the templates the script
 > ships. They are yours to rename — nothing in the script depends on the names except the
@@ -77,7 +95,7 @@ only the auto-loading goes away.
 
 ## Where the knowledge base lands — and why it isn't always `.marvin`
 
-The script **looks for an existing base by its markers** (`08_Memoria/` or `.obsidian/`),
+The script **looks for an existing base by its markers** (`Memoria/`, `08_Memoria/` or `.obsidian/`),
 not by folder name. The rule:
 
 | Situation | Result |
@@ -106,7 +124,7 @@ and goes orphaned silently:
 [System.IO.Directory]::Delete("$env:USERPROFILE\.claude\projects\<path>\memory", $false)
 git mv Docs .marvin
 New-Item -ItemType Junction -Path "$env:USERPROFILE\.claude\projects\<path>\memory" `
-         -Target "$PWD\.marvin\08_Memoria"
+         -Target "$PWD\.marvin\Memoria"
 ```
 
 Then update the references to `Docs/` in `AGENTS.md`, in the tool adapter, in
@@ -184,9 +202,12 @@ Beyond creating things, it points out problems that slip by:
 - **Canonical commands** — reads install/test/build from the manifest (`package.json`,
   `pyproject`, `go.mod`, `Cargo.toml`, `*.csproj`, `pubspec.yaml`, `Makefile`) and takes the
   **package manager from the lockfile**. An agent that guesses runs `npm install` in a pnpm repo
-- **Size of the memory note** — it loads in every session through the junction, and it is the
-  file that grows the most. Past ~6 KB the warning comes **with a destination**: the why of each
-  choice goes to `10_Decisoes/`, the log of what was done is already in `git log`
+- **What loads in every session** — `AGENTS.md`, the adapter (`CLAUDE.md`) and the memory
+  note, each measured and summed. Measured on three real projects, `AGENTS.md` weighed more
+  than the note in all of them — the earlier version measured only the note. Past ~6 KB for
+  the note, or ~6000 tokens for the three, the warning comes **with a destination**: how a
+  flow works goes to `Contexto/Fluxos/`, the state of a US goes to its `Sobre.md`, the log of
+  what was done is already in `git log`. `--check` prints the same account
 - **Leftovers from old orchestration tools** — only shows up if detected
 
 ## Flags
@@ -264,6 +285,15 @@ what calls what, type hierarchy, cross-package dependencies. That's where a grap
 `grep` — which gives you the name, but not the relationship.
 
 Without it on PATH the step warns and skips, changing nothing else.
+
+**The knowledge base joins the same graph.** graphify only indexes `.md` through an LLM
+(measured: 93 K tokens for three tiny files, non-deterministic, and it dropped the doc→code
+edge itself as "out-of-scope"). So marvin writes the doc side by regex — relative links
+become `references`, `pai:` becomes `child_of`, the backticked paths under *Código tocado*
+become `touches` on the code node — and appends it straight into `graph.json`, before the
+report step. Zero LLM, zero cost, same result every run; a function that no longer exists
+becomes a warning, never a ghost node. The payoff is the query nobody could answer before:
+`graphify affected "calcularEstorno"` → the US that touches it and the code that calls it.
 
 ### Should you use it?
 
@@ -436,7 +466,7 @@ rather than final text.
 node teste.mjs
 ```
 
-92 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
+118 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

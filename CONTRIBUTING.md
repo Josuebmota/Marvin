@@ -54,7 +54,7 @@ audit and trust.
 - **Code comments and commit messages:** Portuguese. This is the author's project and that
   isn't changing. Don't let it stop you — write your comments in English if that's what you
   have, and they'll be translated on merge.
-- **The generated templates** (`AGENTS.md`, `00_Inicio.md`, the READMEs it scaffolds) are
+- **The generated templates** (`AGENTS.md`, `Contexto/Sobre.md`, the READMEs it scaffolds) are
   Portuguese. Translating those is a real, wanted contribution, but it's a bigger change
   than it looks — open an issue first so we agree on how the two versions stay in sync.
 

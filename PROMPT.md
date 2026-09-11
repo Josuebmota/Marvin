@@ -55,8 +55,15 @@ PASSO 2 — Escreve:
       opus   → julgamento, arquitetura, revisão de diff
     SEMPRE um papel `tl` em opus que lê diff e é dono dos invariantes.
     Dentro de cada agente, escreve as armadilhas concretas que o afetam.
+    A base do time é fixa: tl, po (opus) · dev-front, dev-back, qa (sonnet) ·
+    scout (haiku). Mais a camada da atividade quando ela pede: design, dba,
+    sec, infra. Papel que a atividade não usa NÃO é criado.
 
-  • Docs/00_Inicio.md: o estado atual do projeto e as portas de entrada.
+  • A regra que se repete: ANTES de qualquer US, mapeia o que ela toca, propõe
+    o time dela e as skills que ela vai repetir, e atualiza os agentes em
+    camadas — acrescenta a armadilha nova, não reescreve o que já valia.
+
+  • .marvin/Contexto/Sobre.md: o que o projeto é, com link para cada fluxo analisado.
 
 PASSO 3 — Commit.
 
@@ -88,16 +95,17 @@ Estes são de um app financeiro real — nenhum sairia de template:
 ├── CLAUDE.md
 ├── .claude/agents/         o time (6 a 9 papéis)
 └── .marvin/                ← a base de conhecimento É esta pasta
-    ├── 00_Inicio.md
-    ├── 08_Memoria/         ← memória do Claude, arquivos reais e versionados
-    ├── 09_Arquivo_*/       arquivo morto, se houver
-    └── 99_Backup/
+    ├── Contexto/           o que o projeto É — Sobre.md é o nó raiz
+    ├── Planejamento/       o que está sendo FEITO — Epic/Feature/US, um Sobre.md por nó
+    ├── Releases/           o que subiu, com evidência
+    ├── Fontes/             apoio
+    └── Memoria/            ← memória do Claude, arquivos reais e versionados
 ```
 
 Uma junction só, invertida:
 
 ```
-~/.claude/projects/<caminho-com-hifens>/memory  ──►  .marvin/08_Memoria/
+~/.claude/projects/<caminho-com-hifens>/memory  ──►  .marvin/Memoria/
 ```
 
 **Regra dos níveis:** GLOBAL (`~/.claude/`) = capacidade · PROJETO = time · meio-termo não existe.

@@ -11,7 +11,7 @@
 **Mover a pasta do projeto quebra a memória de um jeito que parece perda de dado.** A
   junction antiga continua apontando para o caminho velho, e no caminho novo o Claude Code
   cria um `memory/` **vazio de verdade** — abre a sessão, a memória parece ter sumido, e
-  nada avisa. O conteúdo está intacto em `.marvin/08_Memoria`; o que falta é só a junction.
+  nada avisa. O conteúdo está intacto em `.marvin/Memoria` (`08_Memoria` no layout antigo); o que falta é só a junction.
 
   **O script agora resolve isso sozinho:** `marvin --check` diagnostica e sai com código
   != 0; `marvin` normal conserta, removendo o diretório vazio e recriando o link. O
@@ -25,4 +25,4 @@
   Remove **só o link** se for junction, apaga o diretório vazio se for diretório, recria e
   lista as notas. Vale limpar a junction órfã do caminho antigo também — ela sobrevive
   apontando para o vazio. Se a última linha não listar `onde_paramos.md`, pare e confira
-  `.marvin/08_Memoria` antes de mexer em mais nada.
+  `.marvin/Memoria` (ou `08_Memoria`, no layout antigo) antes de mexer em mais nada.
