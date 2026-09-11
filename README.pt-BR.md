@@ -85,7 +85,7 @@ a da US na US, a estrutural em `Arquitetura/`. Nada muda de pasta ao concluir: a
 `--graphify` a base entra no grafo do código, e `graphify affected "<função>"` responde
 que US e que código dependem dela.
 
-O `AGENTS.md` gerado carrega a regra que se repete **antes de qualquer US**: mapear o que
+O `Planejamento/README.md` gerado carrega a regra que se repete **antes de qualquer US** (o `AGENTS.md` só lembra que ela existe — regra mora onde dispara): mapear o que
 a atividade toca, propor o time dela em camadas (`tl`, `po` · `dev-front`, `dev-back`,
 `qa` · `scout`, mais `design`/`dba`/`sec`/`infra` quando a atividade pede), propor as
 skills que ela vai repetir, e atualizar os agentes com o que esta atividade ensinou —

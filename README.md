@@ -84,7 +84,7 @@ Nothing moves folders when done: the US gets `estado: concluida`, its evidence, 
 in `Releases/`. **Links are edges**: with `--graphify`, the knowledge base joins the code
 graph, and `graphify affected "<function>"` answers which US and which code depend on it.
 
-The generated `AGENTS.md` carries the rule that repeats **before any US**: map what the
+The generated `Planejamento/README.md` carries the rule that repeats **before any US** (`AGENTS.md` only points to it — a rule lives where it fires): map what the
 activity touches, propose its team in layers (`tl`, `po` · `dev-front`, `dev-back`, `qa` ·
 `scout`, plus `design`/`dba`/`sec`/`infra` when the activity asks), propose the skills it
 will repeat, and update the agents with what this activity taught — append, never rewrite.
