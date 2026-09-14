@@ -15,6 +15,7 @@ pai: ../Sobre.md
 - [US-06-hook-sessao](US-06-hook-sessao/Sobre.md)
 - [US-07-status-html](US-07-status-html/Sobre.md)
 - [US-08-tokens-gastos](US-08-tokens-gastos/Sobre.md)
+- [US-09-rede-e-auto-update](US-09-rede-e-auto-update/Sobre.md)
 
 ## Rumo
 - **10/09/2026** — aberta.

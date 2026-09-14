@@ -113,6 +113,7 @@ const ok = (s) => log('  \x1b[32m✓\x1b[0m ' + s);
 const warn = (s) => log('  \x1b[33m!\x1b[0m ' + s);
 const err = (s) => log('  \x1b[31m✗\x1b[0m ' + s);
 const info = (s) => log('    ' + s);
+const okReal = ok, infoReal = info, warnReal = warn;
 
 // ── --help / -h. Sai ANTES de qualquer coisa: um script que escreve no repo e
 // cria link no perfil do usuário não pode montar o projeto quando alguém digita
@@ -471,13 +472,103 @@ const imprimirGastos = (g, fixoTk) => {
   }
 };
 
+// ── O lado dos docs do grafo, como função: o 8b anexa ao graph.json, o --status --html
+// desenha. `ids` são os nós de código que existem (vazio sem graphify: aí só doc↔doc).
+const grafoDosDocs = (ids, subRepos = []) => {
+  const idDe = (rel) => rel.replace(/\\/g, '/').replace(/\.[^./]+$/, '')
+    .replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
+  const limpar = (txt) => txt.replace(/```[\s\S]*?```/g, '').replace(/<!--[\s\S]*?-->/g, '');
+  const docs = [];
+  (function varrerDocs(dir, prof = 0) {
+    if (prof > 8) return;
+    let ents; try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      // 99_Backup/ e historico/ ficam fora do caminho de leitura — e do grafo.
+      if (e.name.startsWith('.') || e.name === '99_Backup' || e.name === 'historico') continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) { varrerDocs(p, prof + 1); continue; }
+      if (e.name.endsWith('.md')) docs.push(p);
+    }
+  })(DOCS);
+
+  const novosNos = [], novasArestas = [], avisos = [], porNome = new Map();
+  const relDe = (abs) => path.relative(RAIZ, abs).replace(/\\/g, '/');
+
+  for (const arq of docs) {
+    const rel = relDe(arq);
+    const id = idDe(rel);
+    let txt; try { txt = fs.readFileSync(arq, 'utf8'); } catch { continue; }
+    const fm = txt.match(/^---\n([\s\S]*?)\n---/);
+    const campo = (k) => { const m = fm && fm[1].match(new RegExp('^' + k + ':[ \\t]*(.+)$', 'm')); return m ? m[1].trim().replace(/\s+#.*$/, '') : null; };
+    const titulo = (txt.match(/^#\s+(.+)$/m) || [])[1] || path.basename(arq, '.md');
+    const no = { id, label: titulo.trim(), file_type: 'doc', source_file: rel, source_location: 'L1', _origin: 'marvin' };
+    const tipo = campo('tipo'), estado = campo('estado');
+    if (tipo) no.tipo = tipo;
+    if (estado) no.estado = estado;
+    novosNos.push(no);
+    ids.add(id);
+    // [[wikilink]] resolve por nome de arquivo ou pelo `name:` do frontmatter —
+    // é como vault de notas liga, e base migrada de lá vem cheia deles.
+    porNome.set(path.basename(arq, '.md').toLowerCase(), id);
+    const nome = campo('name'); if (nome) porNome.set(nome.replace(/^["']|["']$/g, '').toLowerCase(), id);
+  }
+
+  for (const arq of docs) {
+    const rel = relDe(arq);
+    const id = idDe(rel);
+    const aresta = (source, target, relation) => novasArestas.push({ source, target, relation, confidence: 'EXTRACTED',
+      source_file: rel, source_location: 'L1', weight: 1, _origin: 'marvin' });
+    let txt; try { txt = fs.readFileSync(arq, 'utf8'); } catch { continue; }
+    const corpo = limpar(txt);
+    const fm = corpo.match(/^---\n([\s\S]*?)\n---/);
+    const pai = fm && (fm[1].match(/^pai:[ \t]*(.+)$/m) || [])[1];
+    if (pai) {
+      const alvo = path.resolve(path.dirname(arq), pai.trim());
+      if (fs.existsSync(alvo)) aresta(id, idDe(relDe(alvo)), 'child_of');
+      else avisos.push(rel + ': pai → ' + pai.trim() + ' does not exist');
+    }
+    // links relativos
+    for (const m of corpo.matchAll(/\[[^\]]*\]\(([^)\s#]+)(?:#[^)]*)?\)/g)) {
+      const href = m[1];
+      if (/^[a-z]+:/i.test(href)) continue;           // http, mailto…
+      const alvo = path.resolve(path.dirname(arq), href);
+      if (!fs.existsSync(alvo)) continue;             // link quebrado é assunto de outro passo
+      const alvoRel = relDe(alvo);
+      if (alvoRel.startsWith('..')) continue;
+      const alvoId = idDe(alvoRel);
+      if (alvo.endsWith('.md') && alvoRel.startsWith(relDe(DOCS))) aresta(id, alvoId, 'references');
+      else if (ids.has(alvoId)) aresta(id, alvoId, 'touches');
+    }
+    for (const m of corpo.matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]/g)) {
+      const alvoId = porNome.get(m[1].trim().toLowerCase());
+      if (alvoId && alvoId !== id) aresta(id, alvoId, 'references');
+    }
+    // ## Código tocado
+    const sec = corpo.match(/^##\s+Código tocado\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
+    if (sec) {
+      for (const m of sec[1].matchAll(/^[ \t]*[-*][ \t]*`([^`]+)`(?:[ \t]*[—-]+[ \t]*`([^`]+)`)?/gm)) {
+        const arqCod = m[1].trim(), fn = m[2] && m[2].trim().replace(/\(\)$/, '');
+        const arqId = idDe(arqCod);
+        const alvoId = fn ? arqId + '_' + fn.replace(/[^A-Za-z0-9]+/g, '_').toLowerCase() : arqId;
+        if (ids.has(alvoId)) { aresta(id, alvoId, 'touches'); continue; }
+        if (!fs.existsSync(path.join(RAIZ, arqCod))) avisos.push(rel + ': `' + arqCod + '` does not exist in the repository');
+        else if (!ids.has(arqId)) avisos.push(rel + ': `' + arqCod + '` is not in the graph — rebuild it (' + (subRepos.length ? 'marvin --graphify --graphify-rebuild' : 'graphify update .') + ')');
+        else avisos.push(rel + ': `' + fn + '` is not in `' + arqCod + '` — renamed?');
+      }
+    }
+  }
+
+  return { novosNos, novasArestas, avisos };
+};
+
 // ── --status --html. Um `index.html` único, regerado a cada run, com a série embutida
 // (`file://` bloqueia fetch, então nada de JSON separado lido pela página). O histórico
 // mora em `.marvin/.status/historico.jsonl`, uma linha por COMMIT — a data vem do
 // `git log -1 --format=%cI`, não de `Date.now()`, então dois runs no mesmo commit não
 // duplicam. Tudo em pasta ignorada pelo git: é derivado, e derivado envelhece em silêncio.
 // SVG pré-renderizado aqui, sem JS na página: abre sem rede, sem lib, em qualquer coisa.
-const escreverStatusHtml = (st) => {
+const escreverStatusHtml = (st, silencioso = false) => {
+  const ok = silencioso ? () => {} : okReal, info = silencioso ? () => {} : infoReal, warn = silencioso ? () => {} : warnReal;
   const dir = path.join(DOCS, '.status');
   const jsonl = path.join(dir, 'historico.jsonl');
   fsw.mkdirSync(dir, { recursive: true });
@@ -571,6 +662,92 @@ const escreverStatusHtml = (st) => {
   const tabelaModelos = Object.entries(g.porModelo).sort((a, b) => b[1].cr + b[1].in - (a[1].cr + a[1].in)).map(([m, t]) =>
     `<tr><td></td><td>${esc(m)}</td><td>${kTk(t.in)}</td><td>${kTk(t.cw)}</td><td>${kTk(t.cr)}</td><td>${kTk(t.out)}</td><td>${t.msgs}</td><td>≈ $${custoDe(t, m).toFixed(2)}</td></tr>`).join('');
 
+  // ── A rede: a base de conhecimento como grafo, colorida por estado. Nós de doc vêm do
+  // mesmo `grafoDosDocs` que o 8b anexa; nós de código entram só quando uma US os toca
+  // (o graph.json inteiro tem milhares — seria ruído). Layout de força em JS inline, sem
+  // lib, posições iniciais determinísticas (espiral), para a página abrir igual sempre.
+  const rede = (() => {
+    const GRAFO_R = path.join(RAIZ, 'graphify-out', 'graph.json');
+    let codigo = new Map();
+    try { const gj = JSON.parse(fs.readFileSync(GRAFO_R, 'utf8')); for (const n of gj.nodes || []) if (n._origin !== 'marvin') codigo.set(n.id, n); } catch {}
+    const { novosNos, novasArestas } = grafoDosDocs(new Set(codigo.keys()));
+    const relDocs = path.relative(RAIZ, DOCS).replace(/\\/g, '/');
+    const nos = new Map();
+    for (const n of novosNos) {
+      const rel = n.source_file;
+      let cat = 'doc';
+      if (n.tipo === 'epic' || n.tipo === 'feature' || n.tipo === 'us') cat = n.tipo;
+      else if (rel.startsWith(relDocs + '/Contexto/Fluxos/')) cat = 'fluxo';
+      else if (rel.startsWith(relDocs + '/Contexto/Arquitetura/')) cat = 'arquitetura';
+      else if (rel.endsWith('/Contexto/Sobre.md')) cat = 'raiz';
+      else if (rel.startsWith(relDocs + '/Releases/')) cat = 'release';
+      else if (rel.startsWith(relDocs + '/Memoria/')) cat = 'nota';
+      if (/README\.md$/.test(rel) && cat === 'doc') continue;   // READMEs de formato: não são conhecimento
+      nos.set(n.id, { id: n.id, rotulo: n.label.replace(/\s+—.*$/, '').slice(0, 40), cat, estado: n.estado || null, arq: rel });
+    }
+    const arestas = [];
+    for (const e of novasArestas) {
+      if (!nos.has(e.source)) continue;
+      if (!nos.has(e.target)) {
+        const c = codigo.get(e.target); if (!c) continue;
+        nos.set(c.id, { id: c.id, rotulo: (c.label || c.id).slice(0, 40), cat: /\(\)$/.test(c.label || '') ? 'funcao' : 'arquivo', estado: null, arq: c.source_file || '' });
+      }
+      arestas.push({ s: e.source, t: e.target, r: e.relation });
+    }
+    const grau = {}; for (const a of arestas) { grau[a.s] = (grau[a.s] || 0) + 1; grau[a.t] = (grau[a.t] || 0) + 1; }
+    return { nos: [...nos.values()].map(n => ({ ...n, grau: grau[n.id] || 0 })), arestas };
+  })();
+  const redeJson = JSON.stringify(rede).replace(/<\/script/gi, '<\\/script');
+  const redeHtml = `<h2>A rede <span class="dim">— ${rede.nos.length} nós · ${rede.arestas.length} ligações · arraste, passe o mouse, clique para abrir</span></h2>
+<div class="legenda"><span class="lg c-epic">epic</span><span class="lg c-feature">feature</span><span class="lg c-us">US</span><span class="lg c-fluxo">fluxo</span><span class="lg c-arquitetura">arquitetura</span><span class="lg c-raiz">raiz</span><span class="lg c-arquivo">arquivo</span><span class="lg c-funcao">função</span>
+<span class="dim">· anel: <span class="ok">■</span> ativa <span style="color:var(--s0)">■</span> concluída <span class="err">■</span> cancelada</span>
+<label><input type="checkbox" id="mostrarCodigo" checked> mostrar código</label></div>
+<svg id="rede" viewBox="0 0 960 560" style="background:var(--bg);border:1px solid var(--line);border-radius:6px"></svg>
+<script id="rede-dados" type="application/json">${redeJson}</script>
+<script>
+(function(){
+  var D=JSON.parse(document.getElementById('rede-dados').textContent), svg=document.getElementById('rede');
+  var W=960,H=560,N=D.nos,E=D.arestas,byId={};
+  N.forEach(function(n,i){ var a=i*2.399963, r=12*Math.sqrt(i+1); n.x=W/2+r*Math.cos(a); n.y=H/2+r*Math.sin(a); n.vx=0; n.vy=0; byId[n.id]=n; n.raio=4+Math.min(10,n.grau*1.2); });
+  E=E.filter(function(e){return byId[e.s]&&byId[e.t];});
+  var NS='http://www.w3.org/2000/svg', g=function(t,a){var el=document.createElementNS(NS,t);for(var k in a)el.setAttribute(k,a[k]);return el;};
+  var gl=g('g',{}),gn=g('g',{}); svg.appendChild(gl); svg.appendChild(gn);
+  var linhas=E.map(function(e){var l=g('line',{'class':'aresta '+e.r});gl.appendChild(l);return l;});
+  var circulos=N.map(function(n){
+    var c=g('g',{'class':'no c-'+n.cat+(n.estado?' e-'+n.estado:'')});
+    var ci=g('circle',{r:n.raio}); c.appendChild(ci);
+    var t=g('text',{dy:-n.raio-3,'text-anchor':'middle'}); t.textContent=n.rotulo; c.appendChild(t);
+    var ti=g('title',{}); ti.textContent=n.rotulo+(n.estado?' · '+n.estado:'')+'\\n'+n.arq; c.appendChild(ti);
+    c.addEventListener('mousedown',function(ev){arrasto=n;ev.preventDefault();});
+    c.addEventListener('dblclick',function(){ if(n.arq) window.location.href=n.arq.replace(/^/, '../../'); });
+    gn.appendChild(c); return c;
+  });
+  var arrasto=null, alfa=1;
+  svg.addEventListener('mousemove',function(ev){ if(!arrasto)return; var p=pt(ev); arrasto.x=p.x; arrasto.y=p.y; arrasto.vx=arrasto.vy=0; alfa=Math.max(alfa,0.3); });
+  window.addEventListener('mouseup',function(){arrasto=null;});
+  function pt(ev){ var r=svg.getBoundingClientRect(); return {x:(ev.clientX-r.left)*W/r.width, y:(ev.clientY-r.top)*H/r.height}; }
+  document.getElementById('mostrarCodigo').addEventListener('change',function(ev){ svg.classList.toggle('sem-codigo',!ev.target.checked); alfa=0.5; });
+  function passo(){
+    var i,j,a,b,dx,dy,d,f;
+    for(i=0;i<N.length;i++){a=N[i]; if(a.escondido)continue; for(j=i+1;j<N.length;j++){b=N[j]; if(b.escondido)continue; dx=b.x-a.x;dy=b.y-a.y;d=Math.sqrt(dx*dx+dy*dy)+0.1; if(d>420)continue; f=Math.min(8,5000/(d*d)); dx=dx/d*f;dy=dy/d*f;a.vx-=dx;a.vy-=dy;b.vx+=dx;b.vy+=dy;}}
+    E.forEach(function(e){a=byId[e.s];b=byId[e.t]; if(a.escondido||b.escondido)return; dx=b.x-a.x;dy=b.y-a.y;d=Math.sqrt(dx*dx+dy*dy)||1; var ideal=e.r==='touches'?80:110; f=(d-ideal)*0.04; dx=dx/d*f;dy=dy/d*f;a.vx+=dx;a.vy+=dy;b.vx-=dx;b.vy-=dy;});
+    N.forEach(function(n){ if(n===arrasto)return; n.vx+=(W/2-n.x)*0.003; n.vy+=(H/2-n.y)*0.003; n.vx*=0.55;n.vy*=0.55; n.x+=n.vx*alfa;n.y+=n.vy*alfa; n.x=Math.max(20,Math.min(W-20,n.x)); n.y=Math.max(20,Math.min(H-20,n.y)); });
+    alfa=Math.max(0.02,alfa*0.985);
+  }
+  function desenhar(){
+    var semCodigo=svg.classList.contains('sem-codigo');
+    N.forEach(function(n){ n.escondido=semCodigo&&(n.cat==='arquivo'||n.cat==='funcao'); });
+    E.forEach(function(e,i){ var a=byId[e.s],b=byId[e.t],l=linhas[i]; l.style.display=(a.escondido||b.escondido)?'none':''; l.setAttribute('x1',a.x);l.setAttribute('y1',a.y);l.setAttribute('x2',b.x);l.setAttribute('y2',b.y); });
+    N.forEach(function(n,i){ circulos[i].style.display=n.escondido?'none':''; circulos[i].setAttribute('transform','translate('+n.x+','+n.y+')'); });
+  }
+  var rodando=false;
+  function laco(){ passo(); desenhar(); if(alfa>0.03||arrasto) requestAnimationFrame(laco); else rodando=false; }
+  function acordar(){ alfa=Math.max(alfa,0.3); if(!rodando){rodando=true;laco();} }
+  svg.addEventListener('mousedown',acordar); document.getElementById('mostrarCodigo').addEventListener('change',acordar);
+  rodando=true; laco();
+})();
+</script>`;
+
   const linhaUS = (a) => `<tr class="${esc(a.estado)}"><td>${a.estado === 'ativa' ? '●' : a.estado === 'concluida' ? '✓' : '✗'}</td><td><strong>${esc(a.titulo)}</strong>${a.cadeia.length ? `<div class="dim">${esc(a.cadeia.join(' › '))}</div>` : ''}${a.proximo ? `<div>${esc(a.proximo)}</div>` : ''}${a.avisos.map(w => `<div class="warn">! ${esc(w)}</div>`).join('')}</td><td>${a.rumo ? `<span class="dim">${a.idade}d</span> ${esc(a.rumo.slice(0, 120))}` : '<span class="dim">sem Rumo datado</span>'}</td></tr>`;
   const html = `<!doctype html>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -587,6 +764,12 @@ figure{margin:12px 0 20px}figcaption{font-size:13px;margin-bottom:4px}svg{width:
 polyline{fill:none;stroke-width:2}.s0{stroke:var(--s0);fill:var(--s0)}.s1{stroke:var(--s1);fill:var(--s1)}.s2{stroke:var(--s2);fill:var(--s2)}
 polyline.s0,polyline.s1,polyline.s2{fill:none}.lg{font-size:12px;padding-left:10px;position:relative}.lg::before{content:"";position:absolute;left:0;top:6px;width:7px;height:7px;border-radius:50%;background:currentColor}
 .lg.s0{color:var(--s0)}.lg.s1{color:var(--s1)}.lg.s2{color:var(--s2)}
+.legenda{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12px;margin:6px 0}.legenda label{margin-left:auto}
+.c-epic{color:#7c3aed}.c-feature{color:#2b5f9e}.c-us{color:#c2571a}.c-fluxo{color:#0f8b8d}.c-arquitetura{color:#8a6d3b}.c-raiz{color:#111}.c-release{color:#5c8a3a}.c-nota{color:#999}.c-doc{color:#999}.c-arquivo{color:#6b6b6b}.c-funcao{color:#9a9891}
+@media(prefers-color-scheme:dark){.c-raiz{color:#eee}}
+#rede .no circle{fill:currentColor;stroke:var(--bg);stroke-width:1.5;cursor:grab}#rede .no.e-ativa circle{stroke:var(--ok);stroke-width:3}#rede .no.e-concluida circle{stroke:var(--s0);stroke-width:3}#rede .no.e-cancelada circle{stroke:var(--err);stroke-width:3}
+#rede .no text{font-size:9px;fill:var(--fg);pointer-events:none;opacity:.85}#rede .no.c-arquivo text,#rede .no.c-funcao text{opacity:.55;font-size:8px}
+#rede .aresta{stroke:var(--line);stroke-width:1.2}#rede .aresta.touches{stroke:#c2571a;opacity:.5}#rede .aresta.child_of{stroke:#7c3aed;opacity:.5}#rede .aresta.references{stroke:var(--dim);opacity:.45}
 .kpi{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0}.kpi div{border:1px solid var(--line);border-radius:6px;padding:8px 12px;min-width:120px}.kpi b{display:block;font-size:20px}
 </style>
 <h1>${esc(path.basename(RAIZ))} <span class="dim">— marvin status</span></h1>
@@ -599,6 +782,7 @@ polyline.s0,polyline.s1,polyline.s2{fill:none}.lg{font-size:12px;padding-left:10
 <div><span class="dim">grafo</span><b>${st.grafo ? st.grafo.nos + '<span class="dim"> nós · ' + st.grafo.idade + 'd</span>' : '—'}</b></div>
 <div><span class="dim">gasto estimado</span><b>$${g.custo.toFixed(2)}<span class="dim"> · ${g.total.msgs} turnos</span></b></div>
 </div>
+${redeHtml}
 <h2>Tendência <span class="dim">— ${pts.length} ponto(s), um por commit</span></h2>
 ${gContexto}${gUS}${gGrafo}${gCusto}
 <h2>Tokens gastos <span class="dim">— medido nas transcrições do Claude Code, ${g.sessoes} sessão(ões)</span></h2>
@@ -711,7 +895,7 @@ if (temFlag('--status')) {
   if (LAYOUT_ANTIGO) { if (!CURTO) warn('old layout — --status reads Planejamento/<Epic>/<Feature>/<US>/Sobre.md. Run `marvin --migrar` first.'); process.exit(CURTO ? 0 : 1); }
   const st = calcularStatus();
   imprimirStatus(st, CURTO);
-  if (HTML) { log(''); escreverStatusHtml(st); }
+  if (HTML) { if (!CURTO) log(''); escreverStatusHtml(st, CURTO); }
   if (!CURTO) log('\n' + (st.problemas ? `\x1b[33m${st.problemas} thing(s) to fix\x1b[0m` : '\x1b[32mall consistent\x1b[0m') + '\n');
   process.exit(CURTO ? 0 : st.problemas ? 1 : 0);
 }
@@ -2083,15 +2267,16 @@ $ARGUMENTS
   // ── Hook de abertura de sessão. O `--status` sai != 0 quando a nota mente, mas só quem
   // roda vê — e a nota de um projeto real chegou a 52 KB sem que ninguém rodasse. O hook
   // SessionStart do Claude Code injeta a saída no contexto: o agente não pode ignorar.
-  // `--curto` sempre sai 0 (exit != 0 em hook vira erro visível) e custa ~150 tk.
+  // `--curto` sempre sai 0 (exit != 0 em hook vira erro visível) e custa ~150 tk. O `--html`
+  // junto regera o dashboard a cada abertura de sessão, em silêncio — é assim que ele se atualiza.
   // Confiança MÉDIA: convenção de hook muda rápido — o aviso manda conferir (invariante 3).
   // settings.json que já existe é de outra pessoa: NÃO faz merge — imprime o bloco e para.
   const settings = path.join(RAIZ, '.claude', 'settings.json');
   // O comando aponta para O SCRIPT QUE MONTOU, não para `npx marvin-kb`: o npx baixa a
   // versão publicada, e uma versão que não conhece `--status` ignoraria a flag e rodaria
   // a montagem inteira a cada abertura de sessão. Mesma escolha do post-commit do 8b.
-  const comandoHook = fs.existsSync(path.join(RAIZ, 'marvin.mjs')) ? 'node marvin.mjs --status --curto'
-    : 'node "' + process.argv[1].replace(/\\/g, '/') + '" --status --curto';
+  const comandoHook = fs.existsSync(path.join(RAIZ, 'marvin.mjs')) ? 'node marvin.mjs --status --curto --html'
+    : 'node "' + process.argv[1].replace(/\\/g, '/') + '" --status --curto --html';
   const blocoHook = { hooks: { SessionStart: [{ matcher: '', hooks: [{ type: 'command', command: comandoHook }] }] } };
   if (!fs.existsSync(settings)) {
     fsw.writeFileSync(settings, JSON.stringify(blocoHook, null, 2) + '\n');
@@ -2664,22 +2849,6 @@ if (GRAPHIFY) {
     // fantasma — função renomeada é exatamente o que a régua deve acusar.
     let docsMudou = false;
     if (fs.existsSync(GRAFO) && fs.existsSync(DOCS)) {
-      const idDe = (rel) => rel.replace(/\\/g, '/').replace(/\.[^./]+$/, '')
-        .replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
-      const limpar = (txt) => txt.replace(/```[\s\S]*?```/g, '').replace(/<!--[\s\S]*?-->/g, '');
-      const docs = [];
-      (function varrerDocs(dir, prof = 0) {
-        if (prof > 8) return;
-        let ents; try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
-        for (const e of ents) {
-          // 99_Backup/ e historico/ ficam fora do caminho de leitura — e do grafo.
-          if (e.name.startsWith('.') || e.name === '99_Backup' || e.name === 'historico') continue;
-          const p = path.join(dir, e.name);
-          if (e.isDirectory()) { varrerDocs(p, prof + 1); continue; }
-          if (e.name.endsWith('.md')) docs.push(p);
-        }
-      })(DOCS);
-
       let g = null;
       try { g = JSON.parse(fs.readFileSync(GRAFO, 'utf8')); } catch {}
       if (g && Array.isArray(g.nodes)) {
@@ -2691,73 +2860,7 @@ if (GRAPHIFY) {
         g.nodes = g.nodes.filter(n => n._origin !== 'marvin');
         g.edges = g.edges.filter(e => e._origin !== 'marvin');
         const ids = new Set(g.nodes.map(n => n.id));
-        const novosNos = [], novasArestas = [], avisos = [], porNome = new Map();
-        const relDe = (abs) => path.relative(RAIZ, abs).replace(/\\/g, '/');
-
-        for (const arq of docs) {
-          const rel = relDe(arq);
-          const id = idDe(rel);
-          let txt; try { txt = fs.readFileSync(arq, 'utf8'); } catch { continue; }
-          const fm = txt.match(/^---\n([\s\S]*?)\n---/);
-          const campo = (k) => { const m = fm && fm[1].match(new RegExp('^' + k + ':[ \\t]*(.+)$', 'm')); return m ? m[1].trim().replace(/\s+#.*$/, '') : null; };
-          const titulo = (txt.match(/^#\s+(.+)$/m) || [])[1] || path.basename(arq, '.md');
-          const no = { id, label: titulo.trim(), file_type: 'doc', source_file: rel, source_location: 'L1', _origin: 'marvin' };
-          const tipo = campo('tipo'), estado = campo('estado');
-          if (tipo) no.tipo = tipo;
-          if (estado) no.estado = estado;
-          novosNos.push(no);
-          ids.add(id);
-          // [[wikilink]] resolve por nome de arquivo ou pelo `name:` do frontmatter —
-          // é como vault de notas liga, e base migrada de lá vem cheia deles.
-          porNome.set(path.basename(arq, '.md').toLowerCase(), id);
-          const nome = campo('name'); if (nome) porNome.set(nome.replace(/^["']|["']$/g, '').toLowerCase(), id);
-        }
-
-        for (const arq of docs) {
-          const rel = relDe(arq);
-          const id = idDe(rel);
-          const aresta = (source, target, relation) => novasArestas.push({ source, target, relation, confidence: 'EXTRACTED',
-            source_file: rel, source_location: 'L1', weight: 1, _origin: 'marvin' });
-          let txt; try { txt = fs.readFileSync(arq, 'utf8'); } catch { continue; }
-          const corpo = limpar(txt);
-          const fm = corpo.match(/^---\n([\s\S]*?)\n---/);
-          const pai = fm && (fm[1].match(/^pai:[ \t]*(.+)$/m) || [])[1];
-          if (pai) {
-            const alvo = path.resolve(path.dirname(arq), pai.trim());
-            if (fs.existsSync(alvo)) aresta(id, idDe(relDe(alvo)), 'child_of');
-            else avisos.push(rel + ': pai → ' + pai.trim() + ' does not exist');
-          }
-          // links relativos
-          for (const m of corpo.matchAll(/\[[^\]]*\]\(([^)\s#]+)(?:#[^)]*)?\)/g)) {
-            const href = m[1];
-            if (/^[a-z]+:/i.test(href)) continue;           // http, mailto…
-            const alvo = path.resolve(path.dirname(arq), href);
-            if (!fs.existsSync(alvo)) continue;             // link quebrado é assunto de outro passo
-            const alvoRel = relDe(alvo);
-            if (alvoRel.startsWith('..')) continue;
-            const alvoId = idDe(alvoRel);
-            if (alvo.endsWith('.md') && alvoRel.startsWith(relDe(DOCS))) aresta(id, alvoId, 'references');
-            else if (ids.has(alvoId)) aresta(id, alvoId, 'touches');
-          }
-          for (const m of corpo.matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]/g)) {
-            const alvoId = porNome.get(m[1].trim().toLowerCase());
-            if (alvoId && alvoId !== id) aresta(id, alvoId, 'references');
-          }
-          // ## Código tocado
-          const sec = corpo.match(/^##\s+Código tocado\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
-          if (sec) {
-            for (const m of sec[1].matchAll(/^[ \t]*[-*][ \t]*`([^`]+)`(?:[ \t]*[—-]+[ \t]*`([^`]+)`)?/gm)) {
-              const arqCod = m[1].trim(), fn = m[2] && m[2].trim().replace(/\(\)$/, '');
-              const arqId = idDe(arqCod);
-              const alvoId = fn ? arqId + '_' + fn.replace(/[^A-Za-z0-9]+/g, '_').toLowerCase() : arqId;
-              if (ids.has(alvoId)) { aresta(id, alvoId, 'touches'); continue; }
-              if (!fs.existsSync(path.join(RAIZ, arqCod))) avisos.push(rel + ': `' + arqCod + '` does not exist in the repository');
-              else if (!ids.has(arqId)) avisos.push(rel + ': `' + arqCod + '` is not in the graph — rebuild it (' + (subRepos.length ? 'marvin --graphify --graphify-rebuild' : 'graphify update .') + ')');
-              else avisos.push(rel + ': `' + fn + '` is not in `' + arqCod + '` — renamed?');
-            }
-          }
-        }
-
+      const { novosNos, novasArestas, avisos } = grafoDosDocs(ids, subRepos);
         g.nodes.push(...novosNos);
         g.edges.push(...novasArestas);
         if (CHAVE !== 'edges') { g[CHAVE] = g.edges; delete g.edges; }

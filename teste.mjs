@@ -842,9 +842,14 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   // opus: 10*5 + 200*25 + 1000*6.25 = 50+5000+6250 = 11300 / 1e6 = $0.0113 ; sonnet: 5*2+100*10+1000*0.2 = 1210/1e6
   checa('o custo é calculado pela tabela e declarado como estimativa', /≈ \$0\.01 total/.test(r.stdout) && /an estimate/.test(r.stdout));
   checa('a fatia do contexto fixo é dita', /fixed context is ~\d+% of it/.test(r.stdout));
+  rodar(a, '--us', 'Novos/E/F/US-1');
   rodar(a, '--status', '--html');
   const html = fs.readFileSync(path.join(a.proj, '.marvin', '.status', 'index.html'), 'utf8');
   checa('o HTML traz a tabela por modelo e o aviso de estimativa', /claude-sonnet-5/.test(html) && /estimativa/.test(html));
+  checa('o HTML desenha a rede da base — nós de doc com estado, sem lib', /id="rede-dados"/.test(html) && /"cat":"us"/.test(html) && /"estado":"ativa"/.test(html) && !/<script src=/.test(html));
+  const curto = rodar(a, '--status', '--curto', '--html');
+  checa('--curto --html regera o dashboard em silêncio (é o hook)', curto.status === 0 && !/index\.html/.test(curto.stdout) && fs.statSync(path.join(a.proj, '.marvin', '.status', 'index.html')).size > 1000);
+  checa('o hook gerado regera o HTML', /--status --curto --html/.test(fs.readFileSync(path.join(a.proj, '.claude', 'settings.json'), 'utf8')));
   limpar(a);
 }
 

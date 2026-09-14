@@ -219,7 +219,9 @@ Além de criar, ele aponta problemas que passam despercebidos:
                   a nota e os nós discordam. Rode ao abrir a sessão
    --curto        só US ativas e avisos, sem cabeçalho, sempre sai 0 — é o que o hook
                   SessionStart que o scaffold escreve em .claude/settings.json roda
-   --html         escreve também .marvin/.status/index.html e grava um ponto por commit
+   --html         escreve também .marvin/.status/index.html — a base desenhada como rede
+                  (Epic → Feature → US → fluxos → o código que tocam, colorida por estado;
+                  layout de força inline, sem lib) — e grava um ponto por commit
                   em historico.jsonl: a tendência do contexto fixo, das US, da idade do grafo.
                   Os dois leem as transcrições do Claude Code do projeto e mostram os tokens
                   de fato GASTOS, por modelo — medido — mais o custo estimado (tabela de
@@ -250,7 +252,7 @@ Regra que mora num arquivo depende de alguém lembrar. Três comandos a disparam
 
 | Quando | Comando | O que faz |
 |---|---|---|
-| abrir a sessão | hook SessionStart → `marvin --status --curto`, depois `/retomar` | lê a nota, segue os ponteiros, confere contra o `git log` |
+| abrir a sessão | hook SessionStart → `marvin --status --curto --html` (regera o dashboard também), depois `/retomar` | lê a nota, segue os ponteiros, confere contra o `git log` |
 | começar trabalho | `/us <caminho>` → `marvin --us` | cria a cadeia de `Sobre.md` e o ponteiro; o agente mapeia, propõe o time e as skills |
 | lançar | `marvin --release <v>` | escreve `Releases/<v>.md` a partir das US concluídas e as tira da nota |
 | fechar | `/fechar` | entrada no Rumo por US tocada, nota reescrita como ponteiros, agentes atualizados em camadas, `--status`, e se é hora de chat novo |
@@ -482,7 +484,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-182 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
+185 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

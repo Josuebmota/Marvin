@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node marvin.mjs --status --curto --html"
+            "command": "node marvin.mjs --status --curto"
           }
         ]
       }
