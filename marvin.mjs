@@ -152,6 +152,9 @@ Flags:
                     commit in historico.jsonl: the trend of fixed context, USs, graph age
   --us <caminho>    open a US: Novos|Manutencao/<Epic>/<Feature>/<US> — creates the
                     Sobre.md chain that is missing and adds the pointer to the note
+  --fechar          read-only: what changed in git (uncommitted + today's commits) and is
+                    in NO active US's "Código tocado" — the map is incomplete or the work
+                    leaked. /fechar runs it
   --release <v>     close the cycle: every US with estado: concluida that is in no
                     Releases/*.md goes into Releases/<v>.md (Evidência required) and
                     leaves the note. No tag, no commit — it prints the git tag to run
@@ -498,7 +501,7 @@ const grafoDosDocs = (ids, subRepos = []) => {
     const rel = relDe(arq);
     const id = idDe(rel);
     let txt; try { txt = fs.readFileSync(arq, 'utf8'); } catch { continue; }
-    const fm = txt.match(/^---\n([\s\S]*?)\n---/);
+    const fm = txt.match(/^---\r?\n([\s\S]*?)\r?\n---/);
     const campo = (k) => { const m = fm && fm[1].match(new RegExp('^' + k + ':[ \\t]*(.+)$', 'm')); return m ? m[1].trim().replace(/\s+#.*$/, '') : null; };
     const titulo = (txt.match(/^#\s+(.+)$/m) || [])[1] || path.basename(arq, '.md');
     const no = { id, label: titulo.trim(), file_type: 'doc', source_file: rel, source_location: 'L1', _origin: 'marvin' };
@@ -520,7 +523,7 @@ const grafoDosDocs = (ids, subRepos = []) => {
       source_file: rel, source_location: 'L1', weight: 1, _origin: 'marvin' });
     let txt; try { txt = fs.readFileSync(arq, 'utf8'); } catch { continue; }
     const corpo = limpar(txt);
-    const fm = corpo.match(/^---\n([\s\S]*?)\n---/);
+    const fm = corpo.match(/^---\r?\n([\s\S]*?)\r?\n---/);
     const pai = fm && (fm[1].match(/^pai:[ \t]*(.+)$/m) || [])[1];
     if (pai) {
       const alvo = path.resolve(path.dirname(arq), pai.trim());
@@ -559,6 +562,64 @@ const grafoDosDocs = (ids, subRepos = []) => {
   }
 
   return { novosNos, novasArestas, avisos };
+};
+
+// ── O grafo a serviço do Marvin. Medido em 14/09: em 23.745 turnos de agente nos quatro
+// projetos, o grafo foi consultado DUAS vezes — as duas em teste. "Consulta, nunca hook"
+// virou "nunca". A pergunta estrutural não aparece como pergunta na hora de trabalhar;
+// então quem pergunta é o script, nos momentos que ele já controla:
+//   --us       Impacto: quem chama o que a US toca, e que outras US passam por ali
+//   --status   Colisão: duas US ativas na mesma função/arquivo · Dispersão: US em N comunidades
+//   --fechar   Deriva: o diff tocou arquivo que não está no "Código tocado" de nenhuma US ativa
+// Tudo determinístico, zero LLM. O graphify fez a extração; o script liga a resposta ao nó.
+const carregarGrafo = () => {
+  const p = path.join(RAIZ, 'graphify-out', 'graph.json');
+  let g; try { g = JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
+  const nos = new Map((g.nodes || []).map(n => [n.id, n]));
+  const arestas = g.links || g.edges || [];
+  const chamadores = new Map();   // alvo → [quem chama/importa/estende]
+  const contidoEm = new Map();    // função → arquivo
+  for (const e of arestas) {
+    if (/^(calls|indirect_call|imports|imports_from|uses|extends|inherits|implements|requires)$/.test(e.relation)) {
+      if (!chamadores.has(e.target)) chamadores.set(e.target, []);
+      chamadores.get(e.target).push(e.source);
+    }
+    if (e.relation === 'contains') contidoEm.set(e.target, e.source);
+  }
+  return { nos, arestas, chamadores, contidoEm, mtime: fs.statSync(p).mtime };
+};
+// Que nós de código cada US toca — pelo mesmo parser do 8b. Devolve Map usId → {no, ids}.
+const tocadoPorUS = (grafo) => {
+  const ids = new Set(grafo ? grafo.nos.keys() : []);
+  const { novosNos, novasArestas } = grafoDosDocs(ids);
+  const us = new Map();
+  for (const n of novosNos) if (n.tipo === 'us') us.set(n.id, { no: n, ids: new Set() });
+  for (const e of novasArestas) if (e.relation === 'touches' && us.has(e.source)) us.get(e.source).ids.add(e.target);
+  return us;
+};
+const rotuloNo = (grafo, id) => { const n = grafo && grafo.nos.get(id); return n ? (n.label || id) + (n.source_file ? '  ' + n.source_file + (n.source_location ? ':' + n.source_location : '') : '') : id; };
+
+// Impacto de uma US: quem depende do que ela toca (2 níveis), e que outras US tocam o mesmo.
+const impactoDaUS = (grafo, todas, usId) => {
+  const alvo = todas.get(usId); if (!alvo || !grafo) return null;
+  const dependentes = new Map();   // id → nível
+  let fronteira = [...alvo.ids];
+  for (let nivel = 1; nivel <= 2 && fronteira.length; nivel++) {
+    const prox = [];
+    for (const id of fronteira) for (const c of grafo.chamadores.get(id) || []) {
+      if (alvo.ids.has(c) || dependentes.has(c)) continue;
+      dependentes.set(c, nivel); prox.push(c);
+    }
+    fronteira = prox;
+  }
+  const outras = [];
+  for (const [id, o] of todas) {
+    if (id === usId) continue;
+    const comum = [...o.ids].filter(x => alvo.ids.has(x) || dependentes.has(x));
+    if (comum.length) outras.push({ us: o.no, comum });
+  }
+  const comunidades = new Set([...alvo.ids].map(id => (grafo.nos.get(id) || {}).community).filter(c => c !== undefined));
+  return { tocados: [...alvo.ids], dependentes: [...dependentes], outras, comunidades: [...comunidades] };
 };
 
 // ── --status --html. Um `index.html` único, regerado a cada run, com a série embutida
@@ -831,6 +892,30 @@ const calcularStatus = () => {
   if (estranhas.length) { st.avisos.push({ nivel: 'warn', texto: `the note has ${estranhas.length} section(s) that look like a report: ${estranhas.slice(0, 3).map(s => '"' + s + '"').join(', ')}${estranhas.length > 3 ? '…' : ''} → Rumo of the US` }); st.problemas++; }
   const foraDaNota = nos.filter(n => n.tipo === 'us' && n.estado === 'ativa' && !ponteiros.some(([, , h]) => path.resolve(DEST, h) === path.resolve(n.arq)));
   if (foraDaNota.length) st.avisos.push({ nivel: 'warn', texto: `${foraDaNota.length} US marked ativa but not in the note: ${foraDaNota.map(n => n.titulo.split(' — ')[0]).join(', ')}` });
+  // ── O grafo no status: colisão e dispersão. Duas US ativas na mesma função é o conflito
+  // que duas sessões paralelas descobrem no merge — aqui ele aparece antes. US espalhada
+  // por muitas comunidades é escopo largo demais para uma US.
+  const grafoSt = carregarGrafo();
+  if (grafoSt) {
+    const todas = tocadoPorUS(grafoSt);
+    const ativas = [...todas.entries()].filter(([, t]) => t.no.estado === 'ativa' && t.ids.size);
+    const nome = (t) => t.no.label.split(' — ')[0];
+    for (let i = 0; i < ativas.length; i++) for (let j = i + 1; j < ativas.length; j++) {
+      const [, a] = ativas[i], [, b] = ativas[j];
+      const comum = [...a.ids].filter(x => b.ids.has(x));
+      if (comum.length) { st.avisos.push({ nivel: 'warn', texto: `${nome(a)} and ${nome(b)} both touch ${comum.map(x => (grafoSt.nos.get(x) || {}).label || x).slice(0, 3).join(', ')}${comum.length > 3 ? '…' : ''} — agree before the merge, not at it` }); st.problemas++; }
+    }
+    for (const [id, t] of ativas) {
+      const imp = impactoDaUS(grafoSt, todas, id);
+      for (const o of imp.outras) {
+        const outra = todas.get([...todas.keys()].find(k => todas.get(k).no === o.us));
+        if (!outra || outra.no.estado !== 'ativa') continue;
+        const direto = [...t.ids].some(x => outra.ids.has(x));
+        if (!direto) st.avisos.push({ nivel: 'warn', texto: `${nome(outra)} touches code that depends on what ${nome(t)} touches (${o.comum.length} node(s)) — one can break the other` });
+      }
+      if (imp.comunidades.length >= 4) st.avisos.push({ nivel: 'info', texto: `${nome(t)} spans ${imp.comunidades.length} communities of the graph — wide scope for one US; worth slicing?` });
+    }
+  }
   for (const e of nos.filter(n => n.tipo === 'epic')) {
     const desc = nos.filter(n => n !== e && (() => { for (let p = paiDe(n); p; p = paiDe(p)) if (p === e) return true; return false; })());
     const us = desc.filter(n => n.tipo === 'us'), feats = desc.filter(n => n.tipo === 'feature');
@@ -964,7 +1049,9 @@ _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
   const NOTA_US = path.join(DEST, 'onde_paramos.md');
   const relSobre = path.relative(DEST, path.join(DOCS, 'Planejamento', ...partes, 'Sobre.md')).replace(/\\/g, '/');
   let nota = ''; try { nota = fs.readFileSync(NOTA_US, 'utf8'); } catch {}
+  const estadoUS = (lerNo(path.join(DOCS, 'Planejamento', ...partes, 'Sobre.md')) || {}).estado;
   if (!nota) warn('onde_paramos.md not found — run marvin first');
+  else if (estadoUS && estadoUS !== 'ativa') info('onde_paramos.md — not pointed to: the US is ' + estadoUS);
   else if (nota.includes('](' + relSobre + ')')) info('onde_paramos.md already points to it');
   else {
     const linha = `- [${partes[3]}](${relSobre}) — aberta ${hoje}; próximo passo: _(uma frase)_`;
@@ -980,9 +1067,96 @@ _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
     fsw.writeFileSync(NOTA_US, nova);
     ok('onde_paramos.md — pointer added');
   }
+  // ── Impacto: o grafo responde "o que esta US vai quebrar" ANTES de codar. Só quando o
+  // "Código tocado" está preenchido — na primeira chamada ele está vazio, e o /us manda
+  // rodar de novo depois de preencher. A seção é DERIVADA e regerada a cada run; a marca
+  // no cabeçalho diz isso, para ninguém editar à mão o que o próximo run sobrescreve.
+  {
+    const usArq = path.join(DOCS, 'Planejamento', ...partes, 'Sobre.md');
+    const grafo = carregarGrafo();
+    if (!grafo) info('no graph — `marvin --graphify` gives this US an Impacto section (who depends on what it touches)');
+    else {
+      const todas = tocadoPorUS(grafo);
+      const usId = [...todas.keys()].find(id => path.resolve(RAIZ, todas.get(id).no.source_file) === path.resolve(usArq));
+      const imp = usId ? impactoDaUS(grafo, todas, usId) : null;
+      if (!imp || !imp.tocados.length) info('Impacto: fill "Código tocado" first, then run this again — the graph will say who depends on it');
+      else {
+        const linhas = ['## Impacto', '', '<!-- gerado por `marvin --us` a partir do grafo; regerado a cada run — não edite à mão -->', '',
+          `Toca ${imp.tocados.length} nó(s) de código em ${imp.comunidades.length} comunidade(s)${imp.comunidades.length >= 4 ? ' — **escopo largo**: vale fatiar?' : ''}.`, ''];
+        if (imp.dependentes.length) {
+          linhas.push(`**Quem depende do que ela toca** (${imp.dependentes.length}, até 2 níveis) — é o que o QA precisa cobrir:`);
+          for (const [id, nivel] of imp.dependentes.slice(0, 25)) linhas.push(`- ${nivel === 2 ? '  ' : ''}\`${rotuloNo(grafo, id)}\``);
+          if (imp.dependentes.length > 25) linhas.push(`- … e mais ${imp.dependentes.length - 25}`);
+        } else linhas.push('Nada depende do que ela toca — folha do grafo.');
+        linhas.push('');
+        if (imp.outras.length) {
+          linhas.push('**Outras US no mesmo código** — combine antes, não no merge:');
+          for (const o of imp.outras) linhas.push(`- [${o.us.label}](${path.relative(path.dirname(usArq), path.join(RAIZ, o.us.source_file)).replace(/\\/g, '/')}) — ${o.comum.length} nó(s) em comum`);
+        } else linhas.push('Nenhuma outra US passa por este código.');
+        linhas.push('');
+        let txt = fs.readFileSync(usArq, 'utf8');
+        const bloco = linhas.join('\n');
+        const re = /^## Impacto\s*\n[\s\S]*?(?=^## |(?![\s\S]))/m;
+        const novo = re.test(txt) ? txt.replace(re, bloco + '\n') : txt.replace(/(^## Rumo)/m, bloco + '\n$1');
+        if (novo !== txt) { fsw.writeFileSync(usArq, novo); ok('Impacto — ' + imp.dependentes.length + ' dependent(s), ' + imp.outras.length + ' other US on the same code' + (imp.outras.length ? ': ' + imp.outras.map(o => o.us.label.split(' — ')[0]).join(', ') : '')); }
+        else info('Impacto unchanged');
+      }
+    }
+  }
   log('');
   info('now the pass that the rule asks for, in ' + path.relative(RAIZ, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/') + ':');
   info('  map what it touches → fill Fluxos ligados and Código tocado · propose the team → Time · propose skills → Skills');
+  log('');
+  process.exit(0);
+}
+
+// ── --fechar. A deriva: o que mudou no git e NÃO está no "Código tocado" de nenhuma US
+// ativa. Ou o mapa da US está incompleto, ou a US vazou de escopo — os dois são coisa
+// para registrar antes de fechar, e ninguém vê sem olhar o diff contra o grafo. Lê só;
+// o /fechar chama isto e depois o --status. "Mudou" = não commitado + commits de hoje.
+if (temFlag('--fechar')) {
+  log('\x1b[1m--fechar\x1b[0m — drift between the diff and the active USs (read-only)\n');
+  if (LAYOUT_ANTIGO) { warn('old layout — run `marvin --migrar` first'); process.exit(1); }
+  const git = (args) => { try { return execSync('git ' + args, { cwd: RAIZ, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); } catch { return ''; } };
+  const mudados = new Set();
+  for (const l of git('status --porcelain --untracked-files=all').split(/\r?\n/)) { const f = l.slice(3).trim().replace(/^.* -> /, ''); if (f) mudados.add(f.replace(/\\/g, '/')); }
+  for (const l of git('log --since=midnight --name-only --format=').split(/\r?\n/)) if (l.trim()) mudados.add(l.trim());
+  const EXT_CODIGO_F = /\.(js|mjs|cjs|jsx|ts|tsx|py|go|rs|java|kt|rb|php|cs|c|h|cpp|hpp|swift|scala|ex|exs|lua|sh|sql)$/i;
+  const codigoMudado = [...mudados].filter(f => EXT_CODIGO_F.test(f) && !f.startsWith(path.relative(RAIZ, DOCS).replace(/\\/g, '/') + '/'));
+  if (!mudados.size) { ok('nothing changed since midnight and nothing uncommitted'); process.exit(0); }
+  info(mudados.size + ' file(s) changed (uncommitted + commits since midnight), ' + codigoMudado.length + ' of them code');
+  const grafo = carregarGrafo();
+  const todas = tocadoPorUS(grafo);
+  // Conta a US ativa E a que foi concluída HOJE (último Rumo datado de hoje): o trabalho
+  // de hoje não vira "deriva" só porque a release já saiu.
+  const hojeStr = (() => { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); })();
+  const concluidaHoje = (t) => { const n = lerNo(path.join(RAIZ, t.no.source_file)); const u = n && n.rumo.length ? n.rumo[n.rumo.length - 1].data : null; return !!u && String(u.getDate()).padStart(2, '0') + '/' + String(u.getMonth() + 1).padStart(2, '0') + '/' + u.getFullYear() === hojeStr; };
+  const ativas = [...todas.values()].filter(t => t.no.estado === 'ativa' || (t.no.estado === 'concluida' && concluidaHoje(t)));
+  // arquivos que cada US ativa declara: pelo nó do grafo (source_file) ou, sem grafo, pela crase
+  const arquivosDe = (t) => { const s = new Set(); for (const id of t.ids) { const n = grafo && grafo.nos.get(id); if (n && n.source_file) s.add(n.source_file.replace(/\\/g, '/')); } return s; };
+  const cobertos = new Map();
+  for (const t of ativas) for (const f of arquivosDe(t)) cobertos.set(f, t);
+  const fora = codigoMudado.filter(f => !cobertos.has(f));
+  const dentro = codigoMudado.filter(f => cobertos.has(f));
+  if (dentro.length) { ok(dentro.length + ' changed file(s) are in an active US:'); dentro.forEach(f => info('  ' + f + '  → ' + cobertos.get(f).no.label.split(' — ')[0])); }
+  if (!ativas.length) warn('no active US with "Código tocado" — the diff belongs to nobody on record');
+  if (fora.length) {
+    warn(fora.length + ' changed code file(s) are in NO active US — the map is incomplete, or the work leaked out of scope:');
+    fora.slice(0, 15).forEach(f => {
+      // dica: alguma US ativa depende deste arquivo (2 níveis)? então provavelmente é dela.
+      let dica = '';
+      if (grafo) {
+        const idArq = f.replace(/\.[^./]+$/, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
+        for (const t of ativas) { const imp = impactoDaUS(grafo, todas, [...todas.keys()].find(k => todas.get(k) === t)); if (imp && imp.dependentes.some(([id]) => id === idArq || (grafo.contidoEm.get(id) === idArq))) { dica = '  (depends on what ' + t.no.label.split(' — ')[0] + ' touches — hers?)'; break; } }
+      }
+      info('  ' + f + dica);
+    });
+    if (fora.length > 15) info('  … and ' + (fora.length - 15) + ' more');
+    info('add them to "Código tocado" of the US that did it, or open the US that was missing (marvin --us)');
+    log('');
+    process.exit(1);
+  }
+  ok('every changed code file is declared by an active US');
   log('');
   process.exit(0);
 }
@@ -2226,6 +2400,8 @@ se eu passei só o nome, pergunte em qual Epic e Feature ela entra (liste os que
      mais a camada da atividade (design, dba, sec, infra) se ela pede. Escreva em *Time*.
    - **Propor skills**: procedimento que a US vai repetir vai em *Skills* como proposta.
    - **Por quê** e **Pronto quando** — se eu não disse, pergunte; não invente.
+   - Com o *Código tocado* preenchido, rode \`marvin --us <caminho>\` **de novo**: o grafo escreve a
+     seção *Impacto* — quem depende do que a US toca, e que outras US passam por ali.
 
 3. Me mostre o \`Sobre.md\` preenchido e a linha da nota. **Não comece a implementar.**
 `);
@@ -2254,7 +2430,9 @@ Feche a sessão. O par do \`/retomar\`: nada do que foi descoberto hoje pode fic
 4. Armadilha nova que um papel sofreu hoje → o \`.md\` daquele agente em \`.claude/agents/\`,
    acrescentando. Procedimento que rodou pela **segunda** vez → skill.
 
-5. Rode \`marvin --status\` e me mostre. Se acusar algo, conserte antes de fechar.
+5. Rode \`marvin --fechar\` — ele cruza o diff com o *Código tocado* das US ativas e acusa o que
+   mudou sem dono. Corrija o *Código tocado* (ou abra a US que faltava) e rode \`marvin --us <caminho>\`
+   de novo: o *Impacto* é regerado. Depois \`marvin --status\` — se acusar algo, conserte antes de fechar.
 
 6. Diga se é hora de um chat novo — a regra está no rodapé do \`/retomar\` — e, se for, **qual
    seria a primeira frase** dele.
@@ -3098,6 +3276,10 @@ const ATUALIZACOES = [
   // Organização por grafo (1.2). Quem montou no layout novo por uma versão anterior a
   // alguma seção nova fica sabendo aqui; quem está no layout antigo recebe o aviso do
   // passo 5, não estas marcas — cobrar seção de grafo num AGENTS.md antigo seria ruído.
+  { arquivo: '.claude/commands/fechar.md', marca: /--fechar/, soCom: !LAYOUT_ANTIGO,
+    o_que: 'the `marvin --fechar` step — drift between the diff and the active USs' },
+  { arquivo: '.claude/commands/us.md', marca: /Impacto/, soCom: !LAYOUT_ANTIGO,
+    o_que: 'the second `marvin --us` run that writes the Impacto section from the graph' },
   { arquivo: '.claude/settings.json', marca: /--status --curto/, soCom: !LAYOUT_ANTIGO,
     o_que: 'the SessionStart hook running `marvin --status --curto` (the note cannot lie unnoticed)' },
   { arquivo: 'AGENTS.md', marca: /Antes de qualquer US/,

@@ -853,6 +853,50 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
+// ── 9z. o grafo a nosso favor. Medido: em 23.745 turnos o agente consultou o grafo duas
+//     vezes. Então o script pergunta: Impacto no --us, colisão no --status, deriva no --fechar.
+//     Grafo sintético no formato do graphify — o teste não precisa do binário.
+{
+  const a = arena('grafo-favor');
+  fs.mkdirSync(path.join(a.proj, 'src'), { recursive: true });
+  fs.writeFileSync(path.join(a.proj, 'src', 'pag.js'), 'export function cobrar(){}' + NLQ);
+  fs.writeFileSync(path.join(a.proj, 'src', 'ui.js'), 'export function tela(){}' + NLQ);
+  rodar(a);   // com git
+  const git = (...args) => spawnSync('git', args, { cwd: a.proj, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
+  // src/ commitado ONTEM: --fechar conta "commits desde a meia-noite", e o commit base não é trabalho de hoje
+  git('add', '-A'); spawnSync('git', ['commit', '-q', '-m', 'base'], { cwd: a.proj, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t', GIT_AUTHOR_DATE: '2020-01-01T00:00:00', GIT_COMMITTER_DATE: '2020-01-01T00:00:00' } });
+  const saida = path.join(a.proj, 'graphify-out'); fs.mkdirSync(saida, { recursive: true });
+  fs.writeFileSync(path.join(saida, 'graph.json'), JSON.stringify({ directed: true, nodes: [
+    { id: 'src_pag', label: 'pag.js', file_type: 'code', source_file: 'src/pag.js', community: 0, _origin: 'ast' },
+    { id: 'src_pag_cobrar', label: 'cobrar()', file_type: 'code', source_file: 'src/pag.js', source_location: 'L1', community: 0, _origin: 'ast' },
+    { id: 'src_ui', label: 'ui.js', file_type: 'code', source_file: 'src/ui.js', community: 1, _origin: 'ast' },
+    { id: 'src_ui_tela', label: 'tela()', file_type: 'code', source_file: 'src/ui.js', source_location: 'L1', community: 1, _origin: 'ast' }],
+    edges: [{ source: 'src_pag', target: 'src_pag_cobrar', relation: 'contains' }, { source: 'src_ui', target: 'src_ui_tela', relation: 'contains' },
+            { source: 'src_ui_tela', target: 'src_pag_cobrar', relation: 'calls' }] }));
+  const abrir = (u, toca) => { rodar(a, '--us', 'Novos/E/F/' + u); const p = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E', 'F', u, 'Sobre.md'); fs.writeFileSync(p, fs.readFileSync(p, 'utf8').replace(/_\(crase com o caminho[^\n]*\n/, toca.map(x => '- ' + x).join(NLQ) + NLQ)); return p; };
+  const usA = abrir('US-A', ['`src/pag.js` — `cobrar`']);
+  const r1 = rodar(a, '--us', 'Novos/E/F/US-A');
+  const sobreA = fs.readFileSync(usA, 'utf8');
+  checa('--us de novo escreve o Impacto a partir do grafo', /Impacto —/.test(r1.stdout) && /## Impacto/.test(sobreA) && /tela\(\)/.test(sobreA), r1.stdout.slice(-400));
+  checa('o Impacto é marcado como derivado', /gerado por `marvin --us`/.test(sobreA));
+  rodar(a, '--us', 'Novos/E/F/US-A');
+  checa('rodar de novo não duplica a seção', (fs.readFileSync(usA, 'utf8').match(/## Impacto/g) || []).length === 1);
+  abrir('US-B', ['`src/pag.js` — `cobrar`']);
+  const s1 = rodar(a, '--status');
+  checa('--status acusa duas US ativas na mesma função', s1.status !== 0 && /US-A and US-B both touch cobrar/.test(s1.stdout), s1.stdout.slice(-600));
+  // deriva: arquivo mudado que nenhuma US declara
+  fs.writeFileSync(path.join(a.proj, 'src', 'novo.js'), 'export const x = 1;' + NLQ);
+  fs.appendFileSync(path.join(a.proj, 'src', 'pag.js'), '// mudou' + NLQ);
+  const f1 = rodar(a, '--fechar');
+  checa('--fechar acusa o arquivo mudado sem US e sai != 0', f1.status !== 0 && /src\/novo\.js/.test(f1.stdout) && /in NO active US/.test(f1.stdout), f1.stdout.slice(-500));
+  checa('--fechar reconhece o arquivo coberto por uma US', /src\/pag\.js\s+→ US-[AB]/.test(f1.stdout));
+  fs.unlinkSync(path.join(a.proj, 'src', 'novo.js'));
+  const f2 = rodar(a, '--fechar');
+  checa('sem deriva, --fechar sai 0', f2.status === 0 && /every changed code file is declared/.test(f2.stdout), f2.stdout.slice(-300));
+  checa('/fechar chama o --fechar e /us pede a segunda rodada', /--fechar/.test(fs.readFileSync(path.join(a.proj, '.claude', 'commands', 'fechar.md'), 'utf8')) && /Impacto/.test(fs.readFileSync(path.join(a.proj, '.claude', 'commands', 'us.md'), 'utf8')));
+  limpar(a);
+}
+
 // ── 9. adaptador do Copilot — caminho conferido na documentação oficial
 {
   const a = arena('copilot');

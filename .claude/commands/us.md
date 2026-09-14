@@ -18,5 +18,7 @@ se eu passei só o nome, pergunte em qual Epic e Feature ela entra (liste os que
      mais a camada da atividade (design, dba, sec, infra) se ela pede. Escreva em *Time*.
    - **Propor skills**: procedimento que a US vai repetir vai em *Skills* como proposta.
    - **Por quê** e **Pronto quando** — se eu não disse, pergunte; não invente.
+   - Com o *Código tocado* preenchido, rode `marvin --us <caminho>` **de novo**: o grafo escreve a
+     seção *Impacto* — quem depende do que a US toca, e que outras US passam por ali.
 
 3. Me mostre o `Sobre.md` preenchido e a linha da nota. **Não comece a implementar.**

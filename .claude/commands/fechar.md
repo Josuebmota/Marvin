@@ -18,7 +18,9 @@ Feche a sessão. O par do `/retomar`: nada do que foi descoberto hoje pode ficar
 4. Armadilha nova que um papel sofreu hoje → o `.md` daquele agente em `.claude/agents/`,
    acrescentando. Procedimento que rodou pela **segunda** vez → skill.
 
-5. Rode `marvin --status` e me mostre. Se acusar algo, conserte antes de fechar.
+5. Rode `marvin --fechar` — ele cruza o diff com o *Código tocado* das US ativas e acusa o que
+   mudou sem dono. Corrija o *Código tocado* (ou abra a US que faltava) e rode `marvin --us <caminho>`
+   de novo: o *Impacto* é regerado. Depois `marvin --status` — se acusar algo, conserte antes de fechar.
 
 6. Diga se é hora de um chat novo — a regra está no rodapé do `/retomar` — e, se for, **qual
    seria a primeira frase** dele.

@@ -233,6 +233,9 @@ Beyond creating things, it points out problems that slip by:
                   price table) and how much of each turn is the fixed context
 --us <path>       opens a US: Novos|Manutencao/<Epic>/<Feature>/<US>. Creates the
                   Sobre.md chain that is missing and adds the pointer to the note
+--fechar          read-only: what changed in git (uncommitted + today's commits) and is
+                  in NO active US's "Código tocado" — the map is incomplete or the work
+                  leaked. /fechar runs it
 --release <v>     closes the cycle: every US with estado: concluida that is in no
                   Releases/*.md goes into Releases/<v>.md (Evidência required) and
                   leaves the note. No tag, no commit — it prints the git tag to run
@@ -263,6 +266,20 @@ A rule that lives in a file depends on someone remembering it. Three commands fi
 | closing | `/fechar` | Rumo entry per US touched, note rewritten as pointers, agents updated in layers, `--status`, and whether it is time for a new chat |
 
 `/retomar` and `/fechar` are the pair; `--status` is the ruler between them.
+
+### The graph, working for you
+
+Measured on four real projects: in 23,745 agent turns the graph was queried **twice** — both in
+tests. "Query, never hook" had become "never": a structural question does not show up as a
+question while you work. So the script asks, at the moments it already owns:
+
+| When | What the graph answers |
+|---|---|
+| `marvin --us` (second run, with *Código tocado* filled) | **Impacto** — who depends on what the US touches (2 levels), and which other USs go through the same code. Written into the US as a derived section |
+| `marvin --status` | **Collision** — two active USs touching the same function, or one touching code that depends on the other's. **Spread** — a US across 4+ communities |
+| `marvin --fechar` | **Drift** — code that changed today and is in no active US's *Código tocado* |
+
+All deterministic, no LLM. graphify did the extraction; marvin ties the answer to the node.
 
 ### After moving or renaming the project folder
 
@@ -498,7 +515,7 @@ rather than final text.
 node teste.mjs
 ```
 
-185 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
+193 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

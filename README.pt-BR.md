@@ -228,6 +228,9 @@ Além de criar, ele aponta problemas que passam despercebidos:
                   preços datada) e quanto de cada turno é o contexto fixo
 --us <caminho>    abre uma US: Novos|Manutencao/<Epic>/<Feature>/<US>. Cria a cadeia de
                   Sobre.md que falta e põe o ponteiro na nota
+--fechar          só leitura: o que mudou no git (não commitado + commits de hoje) e NÃO
+                  está no "Código tocado" de nenhuma US ativa — o mapa está incompleto ou o
+                  trabalho vazou. O /fechar roda
 --release <v>     fecha o ciclo: toda US com estado: concluida que não está em nenhum
                   Releases/*.md entra em Releases/<v>.md (Evidência obrigatória) e sai
                   da nota. Sem tag, sem commit — imprime o git tag para você rodar
@@ -258,6 +261,20 @@ Regra que mora num arquivo depende de alguém lembrar. Três comandos a disparam
 | fechar | `/fechar` | entrada no Rumo por US tocada, nota reescrita como ponteiros, agentes atualizados em camadas, `--status`, e se é hora de chat novo |
 
 `/retomar` e `/fechar` são o par; o `--status` é a régua entre os dois.
+
+### O grafo trabalhando a favor
+
+Medido em quatro projetos reais: em 23.745 turnos de agente o grafo foi consultado **duas**
+vezes — as duas em teste. "Consulta, nunca hook" tinha virado "nunca": pergunta estrutural não
+aparece como pergunta na hora de trabalhar. Então o script pergunta, nos momentos que ele já controla:
+
+| Quando | O que o grafo responde |
+|---|---|
+| `marvin --us` (segunda rodada, com *Código tocado* preenchido) | **Impacto** — quem depende do que a US toca (2 níveis) e que outras US passam pelo mesmo código. Escrito na US como seção derivada |
+| `marvin --status` | **Colisão** — duas US ativas na mesma função, ou uma tocando código que depende do que a outra toca. **Dispersão** — US em 4+ comunidades |
+| `marvin --fechar` | **Deriva** — código que mudou hoje e não está no *Código tocado* de nenhuma US ativa |
+
+Tudo determinístico, zero LLM. O graphify fez a extração; o marvin liga a resposta ao nó.
 
 ### Depois de mover ou renomear a pasta do projeto
 
@@ -484,7 +501,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-185 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
+193 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:
