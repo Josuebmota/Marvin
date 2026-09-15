@@ -5,7 +5,7 @@ description: "ÚNICA porta de entrada do Marvin. Só ponteiros para as US em and
 tags: [moc, entrada]
 metadata:
   type: project
-  atualizado: 2026-09-10
+  atualizado: 2026-09-14
 ---
 
 # ▶ ONDE PARAMOS
@@ -19,11 +19,11 @@ metadata:
 > - Criar `onde_paramos_<data>.md` **ou uma seção de relato aqui dentro** é o mesmo erro:
 >   o histórico já está no `git log`, e o porquê já está no Rumo da US.
 
-**Atualizado:** 11/09/2026
+**Atualizado:** 14/09/2026
 
 ## Em andamento
 
-- [US-03 — publicar no npm](../Planejamento/Manutencao/publicacao/npm/US-03-publicar-1-1-1/Sobre.md) — agora é o **v1.3.0** (`Releases/1.2.0.md` + `1.3.0.md` fechados pelo `--release`); travada pelo token expirado; o conserto está nas Skills dela
+- [US-03 — publicar no npm](../Planejamento/Manutencao/publicacao/npm/US-03-publicar-1-1-1/Sobre.md) — alvo é o **v1.5.0**; push feito em 14/09, falta só `npm login` + `npm publish` (credencial — Josué roda)
 
 ## Travado
 
