@@ -24,7 +24,7 @@ metadata:
 ## Em andamento
 
 
-- nenhuma US aberta. [1.6.2](../Releases/1.6.2.md) fecha a US-13 (worktree) em 15/09/2026 — tag feita, publish é do humano (skill `publicar-no-npm`). Próximo passo: nenhum registrado — abrir US pelo `/us` quando houver.
+- nenhuma US aberta. [1.6.2](../Releases/1.6.2.md) publicada em 15/09/2026 (confirmada com `--prefer-online`); fechou a US-13 (worktree). Próximo passo: nenhum registrado — abrir US pelo `/us` quando houver.
 
 ## Travado
 
