@@ -22,6 +22,7 @@
  *   9. o adaptador do Copilot nasce no caminho da documentação oficial
  *  10. os comandos canônicos saem do MANIFESTO — e o gerenciador, do lockfile
  *  11. a nota promete três perguntas e entrega três, com destino para o transbordo
+ *  12. git worktree: o hook acusa memória desligada antes do marvin rodar ali (precisa de git)
  *
  * HERMÉTICO: cada caso roda com HOME e USERPROFILE apontando para um diretório
  * temporário. Sem isso o teste criaria junctions no perfil real de quem rodasse —
@@ -969,6 +970,38 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const f2 = rodar(a, '--fechar');
   checa('sem deriva, --fechar sai 0', f2.status === 0 && /every changed code file is declared/.test(f2.stdout), f2.stdout.slice(-300));
   checa('/fechar chama o --fechar e /us pede a segunda rodada', /--fechar/.test(fs.readFileSync(path.join(a.proj, '.claude', 'commands', 'fechar.md'), 'utf8')) && /Impacto/.test(fs.readFileSync(path.join(a.proj, '.claude', 'commands', 'us.md'), 'utf8')));
+  limpar(a);
+}
+
+// ── 9aa. git worktree (US-13). A memória segue o cwd: na worktree o Claude Code cria um
+//     diretório real e vazio, e nada avisa. O hook (--status --curto, roda em TODA sessão)
+//     tem que acusar ANTES do marvin rodar ali; depois, cala. Rodar marvin na worktree
+//     monta a junction dela — as notas andam com o branch. Precisa de git no PATH.
+{
+  const a = arena('worktree');
+  const temGit = spawnSync('git', ['--version']).status === 0;
+  // sem git, o total da suíte cai 5 e o último bloco reprovaria os READMEs: fica declarado, não fingido
+  if (!temGit) { console.log('  (git ausente — pulando o caso da worktree: 5 checks a menos, os READMEs vão acusar)'); }
+  else {
+    const git = (...args) => spawnSync('git', args, { cwd: a.proj, encoding: 'utf8',
+      env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
+    rodar(a, '--no-questions');                       // monta o principal, com .git
+    git('add', '-A'); git('commit', '-q', '-m', 'base');
+    const wt = path.join(a.base, 'wt');
+    git('worktree', 'add', '-q', wt, '-b', 'ramo');
+    const w = { proj: wt, lar: a.lar };
+    checa('a worktree tem .git como ARQUIVO', fs.statSync(path.join(wt, '.git')).isFile());
+    const antes = rodar(w, '--status', '--curto');
+    checa('o hook acusa memória desligada na worktree e ainda sai 0', antes.status === 0 && /DESLIGADA.*git worktree/.test(antes.stdout), antes.stdout.slice(-300));
+    const r = rodar(w, '--no-questions');
+    checa('marvin na worktree diz que é worktree e monta a junction DELA', /git worktree/.test(r.stdout) && /junction created/.test(r.stdout));
+    const memWt = path.join(a.lar, '.claude', 'projects', wt.replace(/[:\\/]/g, '-'), 'memory');
+    checa('a junction aponta para o .marvin/Memoria da worktree, não do principal',
+          fs.lstatSync(memWt).isSymbolicLink() && path.resolve(fs.readlinkSync(memWt)) === path.resolve(wt, '.marvin', 'Memoria'));
+    const depois = rodar(w, '--status', '--curto');
+    checa('depois de montar, o hook cala', depois.status === 0 && !/DESLIGADA/.test(depois.stdout));
+    git('worktree', 'remove', '--force', wt);
+  }
   limpar(a);
 }
 

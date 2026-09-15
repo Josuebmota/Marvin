@@ -21,3 +21,4 @@ escrita passa por `fsw`/`exec` (dry-run honesto) e é guardada por `existsSync` 
 
 ## US que passaram por aqui
 - [US-11](../../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-11-ferramentas-opcionais/Sobre.md)
+- [US-13](../../Planejamento/Manutencao/memoria/junction/US-13-worktree/Sobre.md) — worktree: o hook acusa memória desligada

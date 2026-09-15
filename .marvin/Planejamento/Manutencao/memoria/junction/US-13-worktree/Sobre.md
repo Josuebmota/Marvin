@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-13 — Sessão numa git worktree escreve memória num diretório vazio, sem aviso
@@ -66,4 +66,11 @@ Nada depende do que ela toca — folha do grafo.
   passo 6 + o `--status --curto` do hook chamar a checagem do `--check` sem sair != 0.
   Descartado: apontar para a raiz principal — mistura branches no mesmo checkout.
 
+- **15/09/2026** — hipótese confirmada: `marvin` na worktree já monta a junction certa e `--check`
+  acusa; só o hook calava. A US encolheu para: `WORKTREE` (`.git` é arquivo), aviso no passo 6, e
+  o `--status --curto` imprimindo "memória DESLIGADA" quando o vault existe e MEM não é junction —
+  sem mudar o exit 0. po confirmou: junction aponta para a worktree, não para a raiz principal.
+  Ressalva do tl aceita: sem git no PATH o 9aa pula e os READMEs acusam — declarado no cabeçalho.
+
 ## Evidência
+- 215 verdes em 15/09/2026 (caso 9aa: worktree real com `git worktree add`, HOME isolado); `tl` aprovou o diff — nenhuma escrita nova, hook segue saindo 0.

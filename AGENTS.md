@@ -84,7 +84,9 @@ adaptador ausente.
   Receita manual, para quando o problema é na junction de OUTRO projeto:
   [`Contexto/Arquitetura/junction-quebrada.md`](.marvin/Contexto/Arquitetura/junction-quebrada.md).
 - **O caminho da memória é derivado do `cwd`** (`:`, `\` e `/` viram `-`). Rodar de um
-  subdiretório monta a junction no lugar errado.
+  subdiretório monta a junction no lugar errado. **Git worktree é outro `cwd`**: tem memória
+  própria, que anda com o branch. Sem rodar `marvin` lá, o Claude Code cria um diretório real
+  e vazio — o hook `--status --curto` acusa "memória DESLIGADA" (US-13, 15/09).
 - **O `--dry-run` só é honesto porque toda escrita passa por `fsw`/`exec`.** Escrita nova
   que chame `fs.writeFileSync` direto faz o dry-run mentir em silêncio.
 - **A tabela `ATUALIZACOES` (passo 10) é mantida à mão.** Seção nova em template gerado

@@ -249,6 +249,11 @@ const DOCS = CANDIDATOS.find(ehVault) || path.join(RAIZ, '.marvin');
 // mover é decisão do humano (invariante 1). O passo 5 avisa; nada mais.
 const LAYOUT_ANTIGO = fs.existsSync(path.join(DOCS, '08_Memoria')) && !fs.existsSync(path.join(DOCS, 'Memoria'));
 const DEST = path.join(DOCS, LAYOUT_ANTIGO ? '08_Memoria' : 'Memoria');
+// Worktree: `.git` é ARQUIVO (`gitdir: …`), não pasta. A memória segue o cwd, então cada
+// worktree tem a sua — e ela anda com o branch, de propósito (US-13). O que não pode é a
+// sessão abrir lá sem ninguém ter rodado `marvin`: aí o Claude Code cria um diretório real
+// e vazio no caminho novo, e a memória some em silêncio. O hook --status --curto acusa.
+const WORKTREE = (() => { try { return fs.statSync(path.join(RAIZ, '.git')).isFile(); } catch { return false; } })();
 const ehJunction = (p) => { try { return fs.lstatSync(p).isSymbolicLink(); } catch { return false; } };
 
 // ── O que carrega em TODA sessão, sem ninguém pedir: a fonte (AGENTS.md), o adaptador
@@ -994,6 +999,11 @@ if (temFlag('--status')) {
   if (LAYOUT_ANTIGO) { if (!CURTO) warn('old layout — --status reads Planejamento/<Epic>/<Feature>/<US>/Sobre.md. Run `marvin --migrar` first.'); process.exit(CURTO ? 0 : 1); }
   const st = calcularStatus();
   imprimirStatus(st, CURTO);
+  // A sessão abriu num caminho sem junction (worktree, clone novo, pasta movida): tudo
+  // que o agente escrever em memória cai num diretório real e não chega ao repositório.
+  // Aviso aqui porque é o único lugar que roda em TODA sessão; --check é sob demanda.
+  if (fs.existsSync(DOCS) && !ehJunction(MEM))
+    log('  ! memória DESLIGADA deste repositório' + (WORKTREE ? ' (git worktree)' : '') + ' — rode `marvin` daqui antes de escrever qualquer nota; `marvin --check` explica');
   if (HTML) { if (!CURTO) log(''); escreverStatusHtml(st, CURTO); }
   if (!CURTO) log('\n' + (st.problemas ? `\x1b[33m${st.problemas} thing(s) to fix\x1b[0m` : '\x1b[32mall consistent\x1b[0m') + '\n');
   process.exit(CURTO ? 0 : st.problemas ? 1 : 0);
@@ -2046,6 +2056,7 @@ if (fs.existsSync(LEGADO) && path.resolve(LEGADO) !== path.resolve(DOCS)) {
 
 // ═══════════════════════════════════════════ 6. MEMÓRIA — junction invertida
 log('\n\x1b[1m6. Memory (inverted junction — the step that versions it)\x1b[0m');
+if (WORKTREE) info('git worktree — this checkout gets its own junction; notes written here travel with this branch');
 // DEST, ehJunction e contarNotas moram lá em cima — o --check usa os três.
 
 if (ehJunction(MEM)) {
