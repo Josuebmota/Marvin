@@ -1339,15 +1339,6 @@ if (temFlag('--migrar')) {
   process.exit(0);
 }
 
-// ═══════════════════════════════════════════ 1. STACK
-log('\x1b[1m1. Stack detected\x1b[0m');
-const MARCA = {
-  'package.json': 'Node/JS', 'tsconfig.json': 'TypeScript', 'requirements.txt': 'Python',
-  'pyproject.toml': 'Python', 'go.mod': 'Go', 'Cargo.toml': 'Rust',
-  'pom.xml': 'Java/Maven', 'build.gradle': 'Gradle', 'Gemfile': 'Ruby', 'composer.json': 'PHP',
-};
-const IGNORAR = new Set(['node_modules', 'dist', 'build', 'bin', 'obj', '__pycache__', '.git', 'venv', '.venv']);
-
 // ── 0b. Ferramentas opcionais: o registro `.marvin/ferramentas.md`.
 //
 // Ninguém descobre flag que só existe no --help. Então, sem `--graphify`, o script
@@ -1423,6 +1414,15 @@ quem consegue ler o que a ferramenta produz — nem tudo é de todo agente.
     ok(REGISTRO_REL + (reg ? ' updated' : ''));
   }
 }
+
+// ═══════════════════════════════════════════ 1. STACK
+log('\x1b[1m1. Stack detected\x1b[0m');
+const MARCA = {
+  'package.json': 'Node/JS', 'tsconfig.json': 'TypeScript', 'requirements.txt': 'Python',
+  'pyproject.toml': 'Python', 'go.mod': 'Go', 'Cargo.toml': 'Rust',
+  'pom.xml': 'Java/Maven', 'build.gradle': 'Gradle', 'Gemfile': 'Ruby', 'composer.json': 'PHP',
+};
+const IGNORAR = new Set(['node_modules', 'dist', 'build', 'bin', 'obj', '__pycache__', '.git', 'venv', '.venv']);
 
 // ── Sub-repos ignorados: o caso em que o grafo nascia inútil EM SILÊNCIO.
 // Num monorepo cada sub-repositório costuma estar no .gitignore da raiz, porque é

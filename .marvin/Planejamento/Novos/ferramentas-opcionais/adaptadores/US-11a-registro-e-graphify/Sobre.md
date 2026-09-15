@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-11a — o registro `ferramentas.md`, com o graphify como primeiro adaptador
@@ -50,7 +50,9 @@ Nada depende do que ela toca — folha do grafo.
 ## Rumo
 - **15/09/2026** — aberta, fatiada da US-11. Formato do registro: `ferramenta · usa · alcance · data`. Alcance do graphify: saída JSON/markdown, qualquer agente lê; só o hook é do Claude, e não é usado.
 
-- **15/09/2026** — implementada: bloco 0b em `marvin.mjs` (antes do passo 1, porque `SUBREPOS` e o `CLAUDE.md` gerado dependem de `GRAPHIFY` já decidido; `GRAPHIFY` virou `let`). Flags `--use=<x>` (alias `--usar=`) e `--no-questions` (`--sem-perguntas`). Registro é tabela markdown com frontmatter; `--use` reescreve só a coluna *usa*. Sem TTY assume `não` e avisa. Marca em `ATUALIZACOES` cobra o ponteiro no `AGENTS.md`. Pegou um bug antes do commit: `--use` em projeto sem registro não criava a linha — virou caso de teste. 9 verificações novas (202). Falta: validar a pergunta num terminal real (não roda no teste) e fechar com evidência.
+- **15/09/2026** — implementada: bloco 0b em `marvin.mjs` (antes do passo 1, porque `SUBREPOS` e o `CLAUDE.md` gerado dependem de `GRAPHIFY` já decidido; `GRAPHIFY` virou `let`). Flags `--use=<x>` (alias `--usar=`) e `--no-questions` (`--sem-perguntas`). Registro é tabela markdown com frontmatter; `--use` reescreve só a coluna *usa*. Sem TTY assume `não` e avisa. Marca em `ATUALIZACOES` cobra o ponteiro no `AGENTS.md`. Pegou um bug antes do commit: `--use` em projeto sem registro não criava a linha — virou caso de teste. 9 verificações novas (202).
+- **15/09/2026** — validada num projeto real com TTY (ver Evidência). A pergunta saía **embaixo** do cabeçalho "1. Stack detected" — o bloco foi movido para antes dele. A *data* do registro é a do último commit do projeto (reproduzível, como no `--release`), não "hoje" — decisão mantida por causa do "sem `Date.now()`". Concluída; entra na release junto com a 11b.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs` — 202 verificações verdes em 15/09/2026 (commit `e7cd8e9` + a reordenação).
+- Rodada real num projeto Python com graphify 0.9.37 no PATH e `.marvin/` já montado: `marvin` sem flag perguntou `[y/N]`, `y` → `✓ .marvin/ferramentas.md` com `| graphify | sim | … |`; passo 8b rodou sem `--graphify` e não reconstruiu o grafo. Segunda rodada sem TTY: não perguntou, não reescreveu, 8b rodou pelo registro. `--dry-run` sem TTY: avisou "no interactive terminal — recording `não`" e não escreveu.
