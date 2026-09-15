@@ -23,7 +23,8 @@ metadata:
 
 ## Em andamento
 
-- [US-14-codigo-em-ingles](../Planejamento/Manutencao/codigo/ingles/US-14-codigo-em-ingles/Sobre.md) — aberta 15/09/2026; próximo passo: bloco 1 — comentários de `marvin.mjs` e `teste.mjs` para inglês, um commit, `dev-back`
+- [US-15-status-html-legivel](../Planejamento/Novos/organizacao-por-grafo/script/US-15-status-html-legivel/Sobre.md) — planejada 15/09/2026, **vai antes da US-14**; próximo passo: nota do fluxo `status-html` + primeira dobra (Corrigir + 4 stat cards), `design` + `dev-back`
+- [US-14-codigo-em-ingles](../Planejamento/Manutencao/codigo/ingles/US-14-codigo-em-ingles/Sobre.md) — aberta 15/09/2026; **parada até a US-15 fechar**; depois, bloco 1 — comentários de `marvin.mjs` e `teste.mjs` para inglês, um commit, `dev-back`
 
 - nenhuma US aberta. [1.6.2](../Releases/1.6.2.md) publicada em 15/09/2026 (confirmada com `--prefer-online`); fechou a US-13 (worktree). Próximo passo: nenhum registrado — abrir US pelo `/us` quando houver.
 

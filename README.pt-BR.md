@@ -26,6 +26,11 @@ npx marvin-kb --tools=claude,codex
 Não é um framework, não roda nada em background, não tem dependência. É um script Node
 de ~1810 linhas que cria uma estrutura e sai da frente.
 
+> **Por que existe.** Não para inventar nada — ferramenta que faz isso já existe, e em
+> versões mais maduras. O Marvin é um projeto de aprendizado: em tese não faz sentido
+> construir o que o mercado já entrega; na prática, é construindo que se entende por que as
+> coisas são do jeito que são. Use se servir; roube as ideias se não servir.
+
 | | |
 |---|---|
 | 🧭 **Uma fonte de verdade** | todo conteúdo durável no `AGENTS.md`; cada ferramenta ganha um ponteiro de 15 linhas |
