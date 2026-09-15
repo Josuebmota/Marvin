@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Marvin: um M feito de nós e arestas — a base é um grafo, a nota aponta, o nó guarda -->
+  <rect width="128" height="128" rx="28" fill="#0d1117"/>
+  <g stroke="#8b949e" stroke-width="5" stroke-linecap="round" fill="none">
+    <path d="M28 96 V40 L64 76 L100 40 V96"/>
+  </g>
+  <g fill="#3fb950">
+    <circle cx="28" cy="40" r="9"/>
+    <circle cx="100" cy="40" r="9"/>
+    <circle cx="64" cy="76" r="9"/>
+  </g>
+  <g fill="#c9d1d9">
+    <circle cx="28" cy="96" r="7"/>
+    <circle cx="100" cy="96" r="7"/>
+  </g>
+</svg>

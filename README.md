@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/logo.svg" width="96" alt="Marvin">
+
 # Marvin
 
 **One `AGENTS.md`, N thin adapters, memory versioned inside the repo.**<br>

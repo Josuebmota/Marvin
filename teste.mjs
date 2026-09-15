@@ -45,6 +45,7 @@ const AQUI = path.dirname(fileURLToPath(import.meta.url));
 const SCRIPT = path.join(AQUI, 'marvin.mjs');
 const NLQ = String.fromCharCode(10);
 
+let pulados = 0;  // checks que um bloco deixou de rodar por falta de ferramenta — o README conta a suíte inteira
 let passou = 0, falhou = 0;
 const verde = (s) => '\x1b[32m' + s + '\x1b[0m';
 const vermelho = (s) => '\x1b[31m' + s + '\x1b[0m';
@@ -464,7 +465,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const temGraphify = spawnSync('graphify', ['--version'], { encoding: 'utf8', shell: true }).status === 0;
   const temGit = spawnSync('git', ['--version'], { encoding: 'utf8' }).status === 0;
   if (!temGraphify || !temGit) {
-    console.log('  - 9f pulado: precisa de git e graphify no PATH');
+    console.log('  - 9f pulado: precisa de git e graphify no PATH (4 checks)'); pulados += 4;
   } else {
     const a = arena('githook');
     spawnSync('git', ['init', '-q', '.'], { cwd: a.proj });
@@ -779,7 +780,10 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   fs.writeFileSync(path.join(m, '00_Fontes_Externas.md'), '# fontes' + NLQ);
   fs.writeFileSync(path.join(m, '00_Inicio.md'), '# inicio' + NLQ);
   rodar(a, '--no-git');   // monta no layout antigo: junction → 08_Memoria
-  checa('cenário: junction aponta para 08_Memoria', (() => { try { return /08_Memoria$/.test(fs.readlinkSync(caminhoMemoria(a.lar, a.proj))); } catch { return false; } })());
+  // readlinkSync de junction pode vir com separador no fim (aconteceu no windows-latest do CI,
+  // não na máquina local): resolve antes de olhar o nome, em vez de regex no texto cru.
+  const alvoLink = () => { try { return path.basename(path.resolve(fs.readlinkSync(caminhoMemoria(a.lar, a.proj)))); } catch { return ''; } };
+  checa('cenário: junction aponta para 08_Memoria', alvoLink() === '08_Memoria', 'alvo: ' + alvoLink());
   const d = rodar(a, '--migrar', '--dry-run');
   checa('--migrar --dry-run não move nada', fs.existsSync(path.join(m, '08_Memoria', 'onde_paramos.md')) && !fs.existsSync(path.join(m, 'Memoria')));
   const r = rodar(a, '--migrar');
@@ -793,7 +797,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
         /\.marvin\/Memoria\/onde_paramos\.md/.test(fs.readFileSync(path.join(m, 'Contexto', 'Arquitetura', 'x.md'), 'utf8')));
   checa('--migrar diz o que ficou para o humano', /left for you/.test(r.stdout) && /the note/.test(r.stdout));
   const r2 = rodar(a, '--no-git');
-  checa('o run seguinte reponta a junction para Memoria/', (() => { try { return /Memoria$/.test(fs.readlinkSync(caminhoMemoria(a.lar, a.proj))) && !/08_Memoria$/.test(fs.readlinkSync(caminhoMemoria(a.lar, a.proj))); } catch { return false; } })(), r2.stdout.slice(-300));
+  checa('o run seguinte reponta a junction para Memoria/', alvoLink() === 'Memoria', 'alvo: ' + alvoLink() + ' | ' + r2.stdout.slice(-300));
   checa('e cria os templates do layout novo', fs.existsSync(path.join(m, 'Contexto', 'Sobre.md')) && fs.existsSync(path.join(m, 'Planejamento', 'README.md')));
   checa('--migrar de novo: nada a migrar, sai 0', rodar(a, '--migrar').status === 0);
   limpar(a);
@@ -981,7 +985,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const a = arena('worktree');
   const temGit = spawnSync('git', ['--version']).status === 0;
   // sem git, o total da suíte cai 5 e o último bloco reprovaria os READMEs: fica declarado, não fingido
-  if (!temGit) { console.log('  (git ausente — pulando o caso da worktree: 5 checks a menos, os READMEs vão acusar)'); }
+  if (!temGit) { console.log('  - 9aa pulado: precisa de git no PATH (5 checks)'); pulados += 5; }
   else {
     const git = (...args) => spawnSync('git', args, { cwd: a.proj, encoding: 'utf8',
       env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
@@ -1024,9 +1028,10 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
 // funcionou; a régua funciona.
 //
 // Roda por último de propósito: só aqui `passou + falhou` é o total da suíte. O `+ 2`
-// conta as duas asserções deste bloco, que ainda não rodaram.
+// conta as duas asserções deste bloco, que ainda não rodaram. `pulados` entra porque o número
+// no README é o da suíte inteira — no CI o 9f pula (sem graphify) e o total não pode cair.
 {
-  const total = passou + falhou + 2;
+  const total = passou + falhou + pulados + 2;
   const alvos = [['README.md', /([0-9]+) checks, no dependencies/],
                  ['README.pt-BR.md', /([0-9]+) verificações, zero dependência/]];
   for (const [arq, re] of alvos) {
