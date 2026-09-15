@@ -23,6 +23,8 @@ metadata:
 
 ## Em andamento
 
+- [US-13-worktree](../Planejamento/Manutencao/memoria/junction/US-13-worktree/Sobre.md) — aberta 15/09/2026; próximo passo: confirmar a hipótese do Rumo (rodar `marvin` numa worktree de verdade) antes de codar
+
 - nenhuma US aberta. [1.6.0](../Releases/1.6.0.md) publicada em 15/09/2026 (confirmada com `--prefer-online`). Próximo passo: nenhum registrado — abrir US pelo `/us` quando houver.
 
 ## Travado
