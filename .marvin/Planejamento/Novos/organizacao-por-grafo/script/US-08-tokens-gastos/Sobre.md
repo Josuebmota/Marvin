@@ -39,4 +39,4 @@ Nenhuma outra US passa por este código.
 - **11/09/2026** — pedida e feita. Dedupe por id de mensagem (a mesma resposta é gravada 3× enquanto streama); subagentes contam à parte. Achado que muda a leitura: neste repo o contexto fixo é ~1% do que cada turno relê — a conversa longa é o custo, não o arquivo grande. A regra de higiene de sessão ganhou um número.
 
 ## Evidência
-- teste 9y (dedupe, modelo, subagente, custo, fatia); aqui: 5 sessões, 1.020 turnos, 305M cache-read, ≈ $231.
+- teste 9y (dedupe, modelo, subagente, custo, fatia); aqui: medido em 5 sessões reais deste repo.
