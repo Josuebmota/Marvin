@@ -5,7 +5,7 @@ description: "ÚNICA porta de entrada do Marvin. Só ponteiros para as US em and
 tags: [moc, entrada]
 metadata:
   type: project
-  atualizado: 2026-09-14
+  atualizado: 2026-09-15
 ---
 
 # ▶ ONDE PARAMOS
@@ -19,12 +19,13 @@ metadata:
 > - Criar `onde_paramos_<data>.md` **ou uma seção de relato aqui dentro** é o mesmo erro:
 >   o histórico já está no `git log`, e o porquê já está no Rumo da US.
 
-**Atualizado:** 14/09/2026
+**Atualizado:** 15/09/2026
 
 ## Em andamento
 
-- [US-03 — publicar no npm](../Planejamento/Manutencao/publicacao/npm/US-03-publicar-1-1-1/Sobre.md) — alvo é o **v1.5.0**; push feito em 14/09, falta só `npm login` + `npm publish` (credencial — Josué roda)
+- [US-11a-registro-e-graphify](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-11a-registro-e-graphify/Sobre.md) — aberta 15/09/2026; próximo passo: implementar detecção + pergunta com TTY + `ferramentas.md`
+- [US-11b-ponytail-e-papeis](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-11b-ponytail-e-papeis/Sobre.md) — aberta 15/09/2026; próximo passo: depois da 11a — detecção instalado/ativo e seção no AGENTS.md
 
 ## Travado
 
-nada que trave todas — o token do npm trava só a US-03.
+nada.

@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-03 — Publicar o 1.1.1 (ou já o 1.2.0)
@@ -18,7 +18,7 @@ _(nenhum)_
 - tl
 
 ## Skills
-- publicar-no-npm — proposta: `npm login` (navegador + security key, sem `--otp`) → `npm whoami` → `npm publish` → `git push --follow-tags`. Vira skill na segunda vez.
+- [publicar-no-npm](../../../../../../.claude/skills/publicar-no-npm/SKILL.md) — virou skill em 15/09/2026, na segunda rodada.
 
 ## Rumo
 - **10/09/2026** — **travada:** o token do npm expirou. `npm whoami` devolve 401 e o `publish`
@@ -28,6 +28,10 @@ _(nenhum)_
   `npm view marvin-kb time` confirma). Alvo agora é o **1.5.0**: `git push --follow-tags` feito
   (`main` + `v1.1.1` + `v1.5.0`), testes verdes, `npm pack --dry-run` com 7 arquivos. Falta só
   `npm login` → `npm publish`, que é do Josué (credencial). Pronto quando `npm view` devolver 1.5.0.
+- **15/09/2026** — **concluída.** Login feito pelo Josué; o primeiro `publish` foi dado como feito mas o
+  registry não tinha a versão (sem a linha `+ marvin-kb@1.5.0`, não publicou); o segundo saiu. Duas
+  armadilhas foram para a skill: `npm view` sem `--prefer-online` responde do cache, e o `publish` com
+  token expirado devolve 404, não 401. Descartado fechar pelo relato — só `npm view` fecha.
 
 ## Evidência
-_(vazio)_
+- `npm view marvin-kb version --prefer-online` → `1.5.0` (15/09/2026); `git push --follow-tags` → `main` + `v1.1.1` + `v1.5.0` em `origin` (14/09).
