@@ -79,7 +79,8 @@ const SEM_GIT = temFlag('--no-git', '--sem-git');
 const DRY = temFlag('--dry-run');
 // Opcional e nunca obrigatório: gera o grafo de código do graphify para consulta
 // estrutural. NÃO instala hook — ver o passo 8b para o porquê.
-const GRAPHIFY = temFlag('--graphify');
+// `let`: sem a flag, a decisão sai do registro `.marvin/ferramentas.md` (bloco 0b).
+let GRAPHIFY = temFlag('--graphify');
 // Nomeia as comunidades usando o `claude` do PATH (backend claude-cli do graphify,
 // que não pede chave). Fora do padrão de propósito: esse backend é forçado a UMA
 // chamada por vez, então num grafo de ~130 comunidades o run vira minutos e consome
@@ -97,6 +98,11 @@ const GRAPHIFY_GIT_HOOK = temFlag('--graphify-git-hook');
 // Só diagnostica a montagem e sai com código != 0 se ela estiver quebrada.
 // Não escreve nada — nem no repositório, nem no perfil.
 const CHECK = temFlag('--check');
+// --use=graphify  [alias: --usar=]  flipa o registro para `sim` sem perguntar.
+// --no-questions  [alias: --sem-perguntas]  assume `não` mesmo com terminal (CI, script).
+const argUsar = process.argv.find(a => a.startsWith('--use=') || a.startsWith('--usar='));
+const USAR = new Set((argUsar ? argUsar.split('=').slice(1).join('=') : '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
+const SEM_PERGUNTAS = temFlag('--no-questions', '--sem-perguntas');
 
 // --tools=claude,codex,cursor  (default: claude)   [alias: --ferramentas=]
 // Rodar de novo com outra lista ACRESCENTA o adaptador que falta; nada é removido.
@@ -136,7 +142,9 @@ Flags:
   --dry-run         print everything it would do, write nothing
   --no-git          skip git init and .gitignore
   --clean-legacy    remove leftovers from old orchestration tools
-  --graphify        build a code graph for structural queries (needs graphify on PATH)
+  --graphify        build a code graph for structural queries (needs graphify on PATH).
+                    Without the flag marvin asks once (only with a terminal) and records
+                    the answer in .marvin/ferramentas.md; later runs read the record.
                     indexes gitignored sub-repos separately and merges them, so a
                     monorepo does not end up with a graph missing all of its code
   --graphify-label  name the graph communities using the \`claude\` CLI on PATH.
@@ -144,6 +152,8 @@ Flags:
   --graphify-rebuild  rebuild an existing graph (the default never overwrites one)
   --graphify-git-hook  write .git/hooks/post-commit so the graph refreshes itself.
                     Never overwrites a post-commit you already have
+  --use=<tool>      record \`sim\` for an optional tool without asking (alias: --usar=)
+  --no-questions    assume \`não\` for every optional tool, even with a terminal
   --status          dashboard, read-only: active USs with their last Rumo, progress per
                     Epic, last release, fixed context, graph age. Exits non-zero when the
                     note and the nodes disagree. Run it when you open a session
@@ -1337,6 +1347,82 @@ const MARCA = {
   'pom.xml': 'Java/Maven', 'build.gradle': 'Gradle', 'Gemfile': 'Ruby', 'composer.json': 'PHP',
 };
 const IGNORAR = new Set(['node_modules', 'dist', 'build', 'bin', 'obj', '__pycache__', '.git', 'venv', '.venv']);
+
+// ── 0b. Ferramentas opcionais: o registro `.marvin/ferramentas.md`.
+//
+// Ninguém descobre flag que só existe no --help. Então, sem `--graphify`, o script
+// detecta o binário no PATH e PERGUNTA — uma vez, só com terminal; sem TTY assume
+// `não` e avisa. A resposta vai para o registro, e daí em diante ele manda: rodar de
+// novo não pergunta (invariante 2). `--use=graphify` flipa o registro depois. O
+// registro é o lugar de "este projeto usa X" que faltava — qualquer agente lê.
+// Mora antes do passo 1 porque SUBREPOS (logo abaixo) e o CLAUDE.md gerado dependem
+// de GRAPHIFY já estar decidido.
+const REGISTRO = path.join(DOCS, 'ferramentas.md');
+const REGISTRO_REL = path.relative(RAIZ, REGISTRO).replace(/\\/g, '/');
+const FERR_OPCIONAIS = [
+  { nome: 'graphify', bin: 'graphify --version', instalar: 'uv tool install graphifyy  ·  pipx install graphifyy',
+    alcance: 'saída JSON/markdown em graphify-out/ — qualquer agente lê; só o hook é do Claude, e não é usado' },
+];
+{
+  let reg = ''; try { reg = fs.readFileSync(REGISTRO, 'utf8'); } catch {}
+  const linhaReg = (f) => reg.match(new RegExp('^\\|\\s*' + f + '\\s*\\|\\s*(sim|n[aã]o)\\s*\\|', 'mi'));
+  // Data do último commit — reproduzível, como no --release; sem git, fica para o humano.
+  let dataReg = '_(data)_';
+  try { dataReg = execSync('git log -1 --format=%cs', { cwd: RAIZ, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || dataReg; } catch {}
+  const novas = [];
+  for (const f of FERR_OPCIONAIS) {
+    const m = linhaReg(f.nome);
+    let usa;
+    if (USAR.has(f.nome)) {
+      usa = true;
+      if (!m) novas.push('| ' + f.nome + ' | sim | ' + f.alcance + ' | ' + dataReg + ' |');
+      else if (!/^sim$/i.test(m[1])) {
+        fsw.writeFileSync(REGISTRO, reg.replace(m[0], m[0].replace(m[1], 'sim')));
+        ok(REGISTRO_REL + ': ' + f.nome + ' → sim');
+      }
+    } else if (m) {
+      usa = /^sim$/i.test(m[1]);
+    } else {
+      let noPath = false;
+      try { execSync(f.bin, { stdio: 'ignore' }); noPath = true; } catch {}
+      if (!noPath) {
+        usa = false;
+        info(f.nome + ' not on PATH — recording `não`. To adopt it later:  ' + f.instalar + '  then  marvin --use=' + f.nome);
+      } else if (SEM_PERGUNTAS || !process.stdin.isTTY) {
+        usa = false;
+        warn(f.nome + ' is on PATH but ' + (SEM_PERGUNTAS ? '--no-questions' : 'no interactive terminal') + ' — recording `não`. Flip it with  marvin --use=' + f.nome);
+      } else {
+        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+        const r = (await rl.question('  ' + f.nome + ' is on PATH. Use it in this project? [y/N] ')).trim();
+        await rl.close();
+        usa = /^[ys]/i.test(r);
+      }
+      novas.push('| ' + f.nome + ' | ' + (usa ? 'sim' : 'não') + ' | ' + f.alcance + ' | ' + dataReg + ' |');
+    }
+    if (f.nome === 'graphify' && usa) GRAPHIFY = true;
+  }
+  if (novas.length) {
+    if (reg) fsw.appendFileSync(REGISTRO, novas.join('\n') + '\n');
+    else {
+      fsw.mkdirSync(DOCS, { recursive: true });
+      fsw.writeFileSync(REGISTRO, `---
+name: ferramentas
+description: Ferramentas opcionais que ESTE projeto usa — e o que cada uma alcança
+tags: [referencia]
+---
+# Ferramentas opcionais
+
+Registro de "este projeto usa X". O \`marvin\` pergunta uma vez e escreve aqui; para
+mudar, edite a coluna **usa** ou rode \`marvin --use=<ferramenta>\`. **Alcance** diz
+quem consegue ler o que a ferramenta produz — nem tudo é de todo agente.
+
+| ferramenta | usa | alcance | data |
+|---|---|---|---|
+` + novas.join('\n') + '\n');
+    }
+    ok(REGISTRO_REL + (reg ? ' updated' : ''));
+  }
+}
 
 // ── Sub-repos ignorados: o caso em que o grafo nascia inútil EM SILÊNCIO.
 // Num monorepo cada sub-repositório costuma estar no .gitignore da raiz, porque é
@@ -2640,6 +2726,7 @@ feito já está no \`git log\`.
 - \`${relDocs}/Contexto/Sobre.md\` — o nó raiz: o que o projeto é, e a tabela de como a base é organizada
 - \`${relDocs}/Planejamento/\` — Epic → Feature → US, cada um com \`Sobre.md\`; decisão mora no nó que a tomou
 - \`${relMem}/onde_paramos.md\` — as US **em andamento**; só ponteiros; sobrescrito
+- \`${relDocs}/ferramentas.md\` — quais ferramentas opcionais ESTE projeto usa (graphify…) e o que cada uma alcança
 
 **A nota aponta; o nó guarda.** O \`onde_paramos.md\` carrega em toda sessão, por isso é uma
 lista de links — o estado, as decisões e o Rumo de cada US moram no \`Sobre.md\` dela e só
@@ -3312,6 +3399,10 @@ const ATUALIZACOES = [
   // é uma linha, e a ausência dela não aparece até o dia em que aparece.
   { arquivo: '.gitignore', marca: /^\.env\s*$/m,
     o_que: 'the secrets block (.env, *.pem, *.key, **/credentials/)' },
+  // O registro nasce sozinho (bloco 0b) — mas o AGENTS.md gerado antes dele não aponta
+  // para lá, e registro que ninguém lê é o mesmo que nenhum.
+  { arquivo: 'AGENTS.md', marca: /ferramentas\.md/, soCom: !LAYOUT_ANTIGO,
+    o_que: 'the pointer to .marvin/ferramentas.md — which optional tools THIS project uses' },
 ];
 
 const faltando = ATUALIZACOES.filter(a => {
@@ -3349,9 +3440,10 @@ if (DRY) {
 // derivado e envelhece em silêncio, então empurrá-lo seria contrariar o resto do script.
 if (!GRAPHIFY) {
   log('\n\x1b[1mOptional, and never required:\x1b[0m');
-  log('  --graphify builds a code graph for STRUCTURAL questions — what calls what,');
+  log('  graphify builds a code graph for STRUCTURAL questions — what calls what,');
   log('  type hierarchy, cross-package deps. For finding a file, grep is cheaper.');
   log('  It needs graphify on PATH:  uv tool install graphifyy  ·  pipx install graphifyy');
+  log('  then  marvin --use=graphify  (recorded in ' + REGISTRO_REL + ').');
   log('  Read the trade-offs in the README first — a stale graph answers with confidence.');
 }
 

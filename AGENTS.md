@@ -17,6 +17,7 @@ trabalhar com agentes de IA. Documentação de uso: [README.md](README.md).
 | `PROMPT.md` | o prompt que guia a escrita dos agentes (o script não escreve) |
 | `README.md` / `README.pt-BR.md` | documentação pública, inglês e português |
 | `.github/workflows/teste.yml` | CI: `node teste.mjs` em Linux, Windows e macOS |
+| `.marvin/ferramentas.md` | registro das ferramentas opcionais que ESTE repo usa (graphify: sim) e o alcance de cada uma |
 
 ## Comandos canônicos
 

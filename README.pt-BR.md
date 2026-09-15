@@ -182,6 +182,21 @@ Os de confiança média/baixa saem com aviso no topo mandando conferir a conven�
 
 Rodar de novo com outra lista **acrescenta** o que falta; nada é removido.
 
+### Ferramentas opcionais — o registro `.marvin/ferramentas.md`
+
+Algumas ferramentas não são adaptador: são coisas que o projeto *escolhe* usar. O marvin
+detecta no PATH, pergunta **uma vez** (só com terminal — sem ele registra `não` e avisa) e
+escreve a resposta em `.marvin/ferramentas.md`. As próximas execuções leem o registro em
+vez de perguntar. `--use=<ferramenta>` flipa para `sim`; `--no-questions` registra `não`
+mesmo com terminal.
+
+| Ferramenta | O que produz | Alcance |
+|---|---|---|
+| `graphify` | `graphify-out/graph.json` — o grafo de código, ver [abaixo](#--graphify--consulta-sem-hook) | **qualquer agente** lê o JSON/markdown; só o hook é do Claude, e ele não é instalado |
+
+*Alcance* é a coluna que importa: diz quem consegue consumir o que a ferramenta produz.
+Ferramenta cuja saída só um agente lê é decisão, não padrão.
+
 ## Diagnóstico
 
 Além de criar, ele aponta problemas que passam despercebidos:
@@ -246,6 +261,8 @@ Além de criar, ele aponta problemas que passam despercebidos:
 --graphify-rebuild  refaz um grafo que já existe (o padrão nunca sobrescreve)
 --graphify-git-hook  escreve .git/hooks/post-commit para o grafo se atualizar sozinho.
                   Nunca sobrescreve um post-commit que já existe
+--use=<ferramenta>  registra `sim` para uma ferramenta opcional sem perguntar (alias: --usar=)
+--no-questions    registra `não` para toda ferramenta opcional, mesmo com terminal
 --help, -h        uso; sai sem escrever nada
 ```
 
@@ -501,7 +518,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-193 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
+202 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

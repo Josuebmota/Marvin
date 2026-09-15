@@ -23,7 +23,7 @@ metadata:
 
 ## Em andamento
 
-- [US-11a-registro-e-graphify](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-11a-registro-e-graphify/Sobre.md) — aberta 15/09/2026; próximo passo: implementar detecção + pergunta com TTY + `ferramentas.md`
+- [US-11a-registro-e-graphify](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-11a-registro-e-graphify/Sobre.md) — aberta 15/09/2026; implementada 15/09 (202 verificações verdes); próximo passo: validar a pergunta num terminal real, evidência, fechar
 - [US-11b-ponytail-e-papeis](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-11b-ponytail-e-papeis/Sobre.md) — aberta 15/09/2026; próximo passo: depois da 11a — detecção instalado/ativo e seção no AGENTS.md
 
 ## Travado

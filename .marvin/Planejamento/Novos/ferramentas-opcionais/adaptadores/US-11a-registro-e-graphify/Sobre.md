@@ -50,5 +50,7 @@ Nada depende do que ela toca — folha do grafo.
 ## Rumo
 - **15/09/2026** — aberta, fatiada da US-11. Formato do registro: `ferramenta · usa · alcance · data`. Alcance do graphify: saída JSON/markdown, qualquer agente lê; só o hook é do Claude, e não é usado.
 
+- **15/09/2026** — implementada: bloco 0b em `marvin.mjs` (antes do passo 1, porque `SUBREPOS` e o `CLAUDE.md` gerado dependem de `GRAPHIFY` já decidido; `GRAPHIFY` virou `let`). Flags `--use=<x>` (alias `--usar=`) e `--no-questions` (`--sem-perguntas`). Registro é tabela markdown com frontmatter; `--use` reescreve só a coluna *usa*. Sem TTY assume `não` e avisa. Marca em `ATUALIZACOES` cobra o ponteiro no `AGENTS.md`. Pegou um bug antes do commit: `--use` em projeto sem registro não criava a linha — virou caso de teste. 9 verificações novas (202). Falta: validar a pergunta num terminal real (não roda no teste) e fechar com evidência.
+
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->

@@ -186,6 +186,20 @@ adapter at all.
 
 Running again with a different list **adds** what's missing; nothing is removed.
 
+### Optional tools — the `.marvin/ferramentas.md` record
+
+Some tools are not adapters but things a project *chooses* to use. marvin detects them
+on PATH, asks **once** (only with a terminal — without one it records `não` and warns),
+and writes the answer to `.marvin/ferramentas.md`. Later runs read the record instead of
+asking. Flip it with `--use=<tool>`; `--no-questions` records `não` even with a terminal.
+
+| Tool | What it produces | Reach |
+|---|---|---|
+| `graphify` | `graphify-out/graph.json` — the code graph, see [below](#--graphify--queries-no-hook) | **any agent** reads the JSON/markdown; only the hook is Claude-specific, and it is not installed |
+
+*Reach* is the column that matters: it says who can consume what the tool produces.
+A tool whose output only one agent reads is a decision, not a default.
+
 ## Diagnostics
 
 Beyond creating things, it points out problems that slip by:
@@ -251,6 +265,8 @@ Beyond creating things, it points out problems that slip by:
 --graphify-rebuild  rebuilds an existing graph (the default never overwrites one)
 --graphify-git-hook  writes .git/hooks/post-commit so the graph refreshes itself.
                   Never overwrites a post-commit you already have
+--use=<tool>      records `sim` for an optional tool without asking (alias: --usar=)
+--no-questions    records `não` for every optional tool, even with a terminal
 --help, -h        usage; exits without writing
 ```
 
@@ -515,7 +531,7 @@ rather than final text.
 node teste.mjs
 ```
 
-193 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
+202 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

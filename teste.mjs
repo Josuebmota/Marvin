@@ -345,12 +345,48 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
 {
   const a = arena('grafomencao');
   const r = rodar(a, '--no-git');
-  checa('a saída normal menciona o --graphify', /--graphify/.test(r.stdout));
+  checa('a saída normal menciona o graphify e o --use', /--use=graphify/.test(r.stdout));
   checa('a menção ensina como instalar', /graphifyy/.test(r.stdout));
   const r2 = rodar(a, '--no-git', '--graphify');
   checa('a menção some quando o --graphify já foi usado',
         !/Optional, and never required/.test(r2.stdout));
   limpar(a);
+}
+
+// ── 9e. o registro .marvin/ferramentas.md (US-11a)
+// O teste roda sem TTY, então a pergunta nunca aparece: é o ramo "assume não e avisa".
+// Com graphify no PATH da máquina o aviso é "no interactive terminal"; sem, "not on
+// PATH" — os dois registram `não`. Os casos que importam para o disco alheio: nasce uma
+// vez, não duplica, --use flipa sem reescrever o resto, --dry-run não escreve.
+{
+  const a = arena('registro');
+  const reg = path.join(a.proj, '.marvin', 'ferramentas.md');
+  const r0 = rodar(a, '--no-git', '--dry-run');
+  checa('--dry-run não escreve o registro', !fs.existsSync(reg) && /ferramentas\.md/.test(r0.stdout));
+  const r = rodar(a, '--no-git');
+  checa('sem TTY o registro nasce com `não` e avisa',
+        fs.existsSync(reg) && /^\| graphify \| não \|/m.test(fs.readFileSync(reg, 'utf8'))
+        && /(no interactive terminal|not on PATH)/.test(r.stdout), r.stdout.slice(-400));
+  const antes = fs.readFileSync(reg, 'utf8');
+  rodar(a, '--no-git');
+  checa('rodar de novo não pergunta nem duplica a linha', fs.readFileSync(reg, 'utf8') === antes);
+  checa('sem TTY nada trava esperando resposta', !/Use it in this project/.test(r.stdout));
+  const r3 = rodar(a, '--no-git', '--use=graphify', '--dry-run');
+  checa('--use no dry-run anuncia e não escreve', fs.readFileSync(reg, 'utf8') === antes && /graphify → sim/.test(r3.stdout));
+  rodar(a, '--no-git', '--use=graphify');
+  const depois = fs.readFileSync(reg, 'utf8');
+  checa('--use=graphify flipa a linha para `sim`', /^\| graphify \| sim \|/m.test(depois));
+  checa('o flip muda só a coluna usa', depois.replace('| sim |', '| não |') === antes);
+  checa('a marca do AGENTS.md aponta para o registro',
+        /ferramentas\.md/.test(fs.readFileSync(path.join(a.proj, 'AGENTS.md'), 'utf8')));
+  limpar(a);
+  // --use num projeto SEM registro tem que criar a linha, não só flipar (pegou em 15/09).
+  const b = arena('registro-use');
+  rodar(b, '--no-git', '--use=graphify');
+  const regB = path.join(b.proj, '.marvin', 'ferramentas.md');
+  checa('--use=graphify sem registro cria a linha com `sim`',
+        fs.existsSync(regB) && /^\| graphify \| sim \|/m.test(fs.readFileSync(regB, 'utf8')));
+  limpar(b);
 }
 
 // ── 9e. monorepo: o sub-repo ignorado pela raiz chega ao CLAUDE.md gerado
