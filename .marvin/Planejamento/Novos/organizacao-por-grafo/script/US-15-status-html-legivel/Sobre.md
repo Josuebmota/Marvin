@@ -40,7 +40,7 @@ Padrão dos 4 cards de resumo clicáveis vem de dashboard financeiro de mercado.
 (a força já existe); qualquer fonte ou asset externo.
 
 ## Fluxos ligados
-- [`status-html`](../../../../Contexto/Fluxos/status-html.md) _(nota do fluxo nasce no início desta US)_
+- [`status-html`](../../../../Contexto/Fluxos/status-html.md) — nota criada em 15/09/2026
 
 ## Código tocado
 - `marvin.mjs` — `escreverStatusHtml`: o template inteiro (CSS, ordem das seções, cards,

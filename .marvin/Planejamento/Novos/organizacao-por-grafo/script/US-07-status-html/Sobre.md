@@ -15,7 +15,7 @@ commit não duplicam; sem `--html` o jsonl não nasce; gráficos: contexto fixo 
 concluídas (contadas dos nós, não da nota), idade do grafo (gravar o mtime ISO, não dias); abre sem rede.
 
 ## Fluxos ligados
-_(nenhum)_
+- [`status-html`](../../../../Contexto/Fluxos/status-html.md) — nota escrita depois, na US-15
 
 ## Código tocado
 - `marvin.mjs` — `contextoFixo`
