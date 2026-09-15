@@ -23,6 +23,7 @@ metadata:
 
 ## Em andamento
 
+- [US-14-codigo-em-ingles](../Planejamento/Manutencao/codigo/ingles/US-14-codigo-em-ingles/Sobre.md) — aberta 15/09/2026; próximo passo: bloco 1 — comentários de `marvin.mjs` e `teste.mjs` para inglês, um commit, `dev-back`
 
 - nenhuma US aberta. [1.6.2](../Releases/1.6.2.md) publicada em 15/09/2026 (confirmada com `--prefer-online`); fechou a US-13 (worktree). Próximo passo: nenhum registrado — abrir US pelo `/us` quando houver.
 
