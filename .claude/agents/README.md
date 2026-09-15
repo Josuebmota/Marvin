@@ -34,6 +34,20 @@ Detectado aqui: **Node/JS**.
 > num arquivo só, que cabem inteiras na cabeça de quem lê. Papel aqui seria contexto fixo
 > pago em toda sessão sem devolver nada — exatamente o que o passo 4 acusa nos outros.
 
+### Ponytail: em que papel entra
+
+Este projeto usa o ponytail (`.marvin/ferramentas.md`). A escada dele vale para quem
+**implementa** sem convenção escrita — não para quem lê diff ou decide requisito. Sugestão,
+não regra; o corpo de cada agente é seu. Aqui, `tl` e `po` existem e **não** o carregam:
+
+| papel | ponytail | por quê |
+|---|---|---|
+| `dev-back` / `dev-front` | **sim** | implementação: o menor diff que funciona |
+| `qa` | talvez | o "um check executável" dele conflita com suíte real |
+| `tl` | **não** | lê diff; precisa do porquê, não do mais curto |
+| `po` | **não** | questiona requisito — a escada começa depois disso |
+| `scout` | **não** | recuperação em haiku; não escreve código |
+
 ## Subagente NÃO tem memória
 
 Cada um nasce com contexto limpo: não vê a conversa, não vê a memória do

@@ -23,7 +23,7 @@ metadata:
 
 ## Em andamento
 
-- [US-11b-ponytail-e-papeis](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-11b-ponytail-e-papeis/Sobre.md) — aberta 15/09/2026; 11a concluída 15/09 (registro + graphify prontos); próximo passo: ponytail como segunda linha do registro — detecção instalado/ativo e seção no AGENTS.md; release das duas juntas
+- nenhuma US aberta. Próximo passo: publicar a [1.6.0](../Releases/1.6.0.md) (11a + 11b, fechadas 15/09) pela skill `publicar-no-npm` — bump do `package.json`, tag, publish.
 
 ## Travado
 

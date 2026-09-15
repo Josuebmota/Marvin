@@ -389,6 +389,45 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(b);
 }
 
+// ── 9e2. ponytail: instalado ≠ ativo, e ausente não falha em silêncio (US-11b)
+// O plugin mora no HOME (~/.claude/plugins/installed_plugins.json, ~/.claude/.ponytail-active),
+// e o HOME aqui é o `lar` da arena — então o teste planta os dois arquivos e não depende
+// da máquina. Sem TTY nunca pergunta: o que se confere é a MENSAGEM de estado e o registro.
+{
+  const a = arena('ponytail');
+  const r0 = rodar(a, '--no-git');
+  checa('ponytail ausente registra `não` e ensina a instalar',
+        /^\| ponytail \| não \|/m.test(fs.readFileSync(path.join(a.proj, '.marvin', 'ferramentas.md'), 'utf8'))
+        && /ponytail not found[\s\S]*marketplace add DietrichGebert\/ponytail/.test(r0.stdout), r0.stdout.slice(-400));
+  checa('ausente: nada de ponytail no AGENTS.md nem no agents/README',
+        !/ponytail/i.test(fs.readFileSync(path.join(a.proj, 'AGENTS.md'), 'utf8'))
+        && !/ponytail/i.test(fs.readFileSync(path.join(a.proj, '.claude', 'agents', 'README.md'), 'utf8')));
+  limpar(a);
+
+  const b = arena('ponytail-inst');
+  const cl = path.join(b.lar, '.claude', 'plugins'); fs.mkdirSync(cl, { recursive: true });
+  fs.writeFileSync(path.join(cl, 'installed_plugins.json'), '{"version":2,"plugins":{"ponytail@ponytail":[{"scope":"user"}]}}');
+  const r1 = rodar(b, '--no-git');
+  checa('instalado sem .ponytail-active avisa "NOT active"', /ponytail is installed but NOT active/.test(r1.stdout), r1.stdout.slice(-400));
+  limpar(b);
+
+  const c = arena('ponytail-ativo');
+  const cl2 = path.join(c.lar, '.claude', 'plugins'); fs.mkdirSync(cl2, { recursive: true });
+  fs.writeFileSync(path.join(cl2, 'installed_plugins.json'), '{"plugins":{"ponytail@ponytail":[]}}');
+  fs.writeFileSync(path.join(c.lar, '.claude', '.ponytail-active'), 'full\n');
+  const r2 = rodar(c, '--no-git', '--dry-run');
+  checa('ativo: a mensagem traz o nível', /ponytail is installed and active \(full\)/.test(r2.stdout), r2.stdout.slice(-400));
+  checa('o dry-run não cria o registro', !fs.existsSync(path.join(c.proj, '.marvin', 'ferramentas.md')));
+  rodar(c, '--no-git', '--use=ponytail');
+  const ag = fs.readFileSync(path.join(c.proj, 'AGENTS.md'), 'utf8');
+  const rd = fs.readFileSync(path.join(c.proj, '.claude', 'agents', 'README.md'), 'utf8');
+  checa('--use=ponytail: AGENTS.md ganha a seção com selo baixa e o que ele não substitui',
+        /## Ferramentas[\s\S]*confiança \*\*baixa\*\*[\s\S]*não substitui/.test(ag));
+  checa('--use=ponytail: agents/README sugere a tabela de papéis', /Ponytail: em que papel entra[\s\S]*\| `tl` \| \*\*não\*\*/.test(rd));
+  checa('o registro guarda o alcance por plataforma', /\| ponytail \| sim \| .*Claude Code\/Codex/.test(fs.readFileSync(path.join(c.proj, '.marvin', 'ferramentas.md'), 'utf8')));
+  limpar(c);
+}
+
 // ── 9e. monorepo: o sub-repo ignorado pela raiz chega ao CLAUDE.md gerado
 // Num monorepo o grafo nascia inútil EM SILÊNCIO: a raiz ignora os sub-repositórios,
 // o graphify respeita o .gitignore, e sobrava um grafo sem o código do produto dentro.

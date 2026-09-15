@@ -193,6 +193,7 @@ mesmo com terminal.
 | Ferramenta | O que produz | Alcance |
 |---|---|---|
 | `graphify` | `graphify-out/graph.json` — o grafo de código, ver [abaixo](#--graphify--consulta-sem-hook) | **qualquer agente** lê o JSON/markdown; só o hook é do Claude, e ele não é instalado |
+| `ponytail` | escada de simplicidade para quem *implementa* — seção `## Ferramentas` no `AGENTS.md` (confiança **baixa**: instalado e lido, não medido) e tabela de papéis no `.claude/agents/README.md` (dev sim; `tl`/`po`/`scout` não) | plugin com hooks no **Claude Code, Codex e Copilot CLI** (cada um com o seu install; o marvin detecta só o do Claude, distinguindo *instalado* — `~/.claude/plugins/installed_plugins.json` — de *ativo* — `~/.claude/.ponytail-active`); no Cursor, os hooks (`~/.cursor/hooks.json`) ou o arquivo de regra, nenhum gerado; o resto copia o arquivo de regra do repositório do ponytail |
 
 *Alcance* é a coluna que importa: diz quem consegue consumir o que a ferramenta produz.
 Ferramenta cuja saída só um agente lê é decisão, não padrão.
@@ -518,7 +519,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-202 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
+210 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

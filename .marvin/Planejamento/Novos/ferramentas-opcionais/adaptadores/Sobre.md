@@ -1,6 +1,6 @@
 ---
 tipo: feature
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # adaptadores
@@ -15,3 +15,4 @@ pai: ../Sobre.md
 
 ## Rumo
 - **15/09/2026** — aberta com a US-11. No mesmo dia o Impacto acusou escopo largo (6 nós, 4 comunidades); **US-11 cancelada e fatiada** em 11a (registro + graphify) e 11b (ponytail + papéis). O Sobre.md da 11 fica como registro das decisões comuns.
+- **15/09/2026** — 11a e 11b concluídas no mesmo dia; `adaptador-de-ferramenta` virou skill na segunda vez. Feature fechada; a publicação 1.6.0 é da `publicar-no-npm`, não desta.

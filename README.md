@@ -196,6 +196,7 @@ asking. Flip it with `--use=<tool>`; `--no-questions` records `não` even with a
 | Tool | What it produces | Reach |
 |---|---|---|
 | `graphify` | `graphify-out/graph.json` — the code graph, see [below](#--graphify--queries-no-hook) | **any agent** reads the JSON/markdown; only the hook is Claude-specific, and it is not installed |
+| `ponytail` | a simplicity ladder for whoever *implements* — a `## Ferramentas` section in `AGENTS.md` (confidence **low**: installed and read, not measured) and a role table in `.claude/agents/README.md` (dev yes; `tl`/`po`/`scout` no) | plugin with hooks in **Claude Code, Codex and Copilot CLI** (each has its own install; marvin detects only the Claude one, telling *installed* — `~/.claude/plugins/installed_plugins.json` — from *active* — `~/.claude/.ponytail-active`); Cursor takes its hooks (`~/.cursor/hooks.json`) or its rule file, neither generated; everyone else copies the rule file from the ponytail repo |
 
 *Reach* is the column that matters: it says who can consume what the tool produces.
 A tool whose output only one agent reads is a decision, not a default.
@@ -531,7 +532,7 @@ rather than final text.
 node teste.mjs
 ```
 
-202 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
+210 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

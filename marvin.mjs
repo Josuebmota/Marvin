@@ -81,6 +81,9 @@ const DRY = temFlag('--dry-run');
 // estrutural. NÃO instala hook — ver o passo 8b para o porquê.
 // `let`: sem a flag, a decisão sai do registro `.marvin/ferramentas.md` (bloco 0b).
 let GRAPHIFY = temFlag('--graphify');
+// Ponytail (plugin do Claude Code): não tem flag própria — só o registro decide (bloco
+// 0b, `--use=ponytail`). Liga a seção no AGENTS.md e a tabela de papéis no agents/README.
+let PONYTAIL = false;
 // Nomeia as comunidades usando o `claude` do PATH (backend claude-cli do graphify,
 // que não pede chave). Fora do padrão de propósito: esse backend é forçado a UMA
 // chamada por vez, então num grafo de ~130 comunidades o run vira minutos e consome
@@ -1350,9 +1353,38 @@ if (temFlag('--migrar')) {
 // de GRAPHIFY já estar decidido.
 const REGISTRO = path.join(DOCS, 'ferramentas.md');
 const REGISTRO_REL = path.relative(RAIZ, REGISTRO).replace(/\\/g, '/');
+// `detecta()` devolve false ou o estado encontrado (string) — vai para a mensagem.
+// Ponytail não é binário no PATH: é plugin do Claude Code. INSTALADO mora em
+// ~/.claude/plugins/installed_plugins.json; ATIVO nesta máquina é o arquivo
+// ~/.claude/.ponytail-active (o hook de SessionStart escreve o nível lá). Instalado
+// sem estar ativo é a metade que engana: o plugin existe e não faz nada.
+const CLAUDE_HOME = path.join(os.homedir(), '.claude');
+const noPath = (cmd) => { try { execSync(cmd, { stdio: 'ignore' }); return 'on PATH'; } catch { return false; } };
+const detectaPonytail = () => {
+  let instalado = false;
+  try { instalado = /ponytail/i.test(fs.readFileSync(path.join(CLAUDE_HOME, 'plugins', 'installed_plugins.json'), 'utf8')); } catch {}
+  if (!instalado) return false;
+  let nivel = ''; try { nivel = fs.readFileSync(path.join(CLAUDE_HOME, '.ponytail-active'), 'utf8').trim(); } catch {}
+  return nivel ? 'installed and active (' + nivel + ')' : 'installed but NOT active — run /ponytail in a Claude session';
+};
+// Alcance do ponytail depende de ONDE ele carrega (README do plugin, 4.10.0): plugin com
+// hooks no Claude Code, Codex e Copilot CLI — cada um com o SEU install; no Cursor, hooks
+// em ~/.cursor/hooks.json (`node scripts/cursor-hooks.js install`) OU o arquivo de regra;
+// no resto, arquivo de regra copiado do repositório dele. A DETECÇÃO lê só ~/.claude:
+// instalado só pelo codex/copilot sai como "not found" e grava `não` — com a instrução
+// de instalar, então não é silêncio; `--use=ponytail` flipa.
+const alcancePonytail = () => {
+  const p = [];
+  if (FERRAMENTAS.some(f => ['claude', 'codex', 'copilot'].includes(f))) p.push('plugin com hooks no Claude Code/Codex/Copilot CLI (install próprio em cada um; aqui só o do Claude é detectado)');
+  if (FERRAMENTAS.includes('cursor')) p.push('no Cursor, hooks em ~/.cursor/hooks.json ou a regra .mdc do repositório dele — nenhum dos dois é gerado, confira');
+  if (FERRAMENTAS.some(f => !['claude', 'codex', 'copilot', 'cursor'].includes(f))) p.push('no resto, só o arquivo de regra copiado do repositório dele');
+  return 'escada de simplicidade para quem IMPLEMENTA — ' + p.join('; ') + '. Confiança baixa: não medido';
+};
 const FERR_OPCIONAIS = [
-  { nome: 'graphify', bin: 'graphify --version', instalar: 'uv tool install graphifyy  ·  pipx install graphifyy',
+  { nome: 'graphify', detecta: () => noPath('graphify --version'), instalar: 'uv tool install graphifyy  ·  pipx install graphifyy',
     alcance: 'saída JSON/markdown em graphify-out/ — qualquer agente lê; só o hook é do Claude, e não é usado' },
+  { nome: 'ponytail', detecta: detectaPonytail, instalar: 'claude plugin marketplace add DietrichGebert/ponytail  ·  claude plugin install ponytail',
+    get alcance() { return alcancePonytail(); } },
 ];
 {
   let reg = ''; try { reg = fs.readFileSync(REGISTRO, 'utf8'); } catch {}
@@ -1374,23 +1406,23 @@ const FERR_OPCIONAIS = [
     } else if (m) {
       usa = /^sim$/i.test(m[1]);
     } else {
-      let noPath = false;
-      try { execSync(f.bin, { stdio: 'ignore' }); noPath = true; } catch {}
-      if (!noPath) {
+      const estado = f.detecta();
+      if (!estado) {
         usa = false;
-        info(f.nome + ' not on PATH — recording `não`. To adopt it later:  ' + f.instalar + '  then  marvin --use=' + f.nome);
+        info(f.nome + ' not found — recording `não`. To adopt it later:  ' + f.instalar + '  then  marvin --use=' + f.nome);
       } else if (SEM_PERGUNTAS || !process.stdin.isTTY) {
         usa = false;
-        warn(f.nome + ' is on PATH but ' + (SEM_PERGUNTAS ? '--no-questions' : 'no interactive terminal') + ' — recording `não`. Flip it with  marvin --use=' + f.nome);
+        warn(f.nome + ' is ' + estado + ' but ' + (SEM_PERGUNTAS ? '--no-questions' : 'no interactive terminal') + ' — recording `não`. Flip it with  marvin --use=' + f.nome);
       } else {
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-        const r = (await rl.question('  ' + f.nome + ' is on PATH. Use it in this project? [y/N] ')).trim();
+        const r = (await rl.question('  ' + f.nome + ' is ' + estado + '. Use it in this project? [y/N] ')).trim();
         await rl.close();
         usa = /^[ys]/i.test(r);
       }
       novas.push('| ' + f.nome + ' | ' + (usa ? 'sim' : 'não') + ' | ' + f.alcance + ' | ' + dataReg + ' |');
     }
     if (f.nome === 'graphify' && usa) GRAPHIFY = true;
+    if (f.nome === 'ponytail' && usa) PONYTAIL = true;
   }
   if (novas.length) {
     if (reg) fsw.appendFileSync(REGISTRO, novas.join('\n') + '\n');
@@ -2303,6 +2335,21 @@ ${(() => {
 - **Não crie papel vazio para preencher a pasta.** Um \`.md\` sem as armadilhas concretas
   deste código entra no contexto de toda sessão e não devolve nada. Genérico é pior que
   ausente — é por isso que o marvin gera esta pasta e não os agentes.
+${PONYTAIL ? `
+### Ponytail: em que papel entra
+
+Este projeto usa o ponytail (\`${REGISTRO_REL}\`). A escada dele vale para quem
+**implementa** sem convenção escrita — não para quem lê diff ou decide requisito. Sugestão,
+não regra; o corpo de cada agente é seu:
+
+| papel | ponytail | por quê |
+|---|---|---|
+| \`dev-back\` / \`dev-front\` | **sim** | implementação: o menor diff que funciona |
+| \`qa\` | talvez | o "um check executável" dele conflita com suíte real |
+| \`tl\` | **não** | lê diff; precisa do porquê, não do mais curto |
+| \`po\` | **não** | questiona requisito — a escada começa depois disso |
+| \`scout\` | **não** | recuperação em haiku; não escreve código |
+` : ''}
 
 ## Subagente NÃO tem memória
 
@@ -2750,7 +2797,16 @@ atividade toca, propor o time dela em camadas (\`tl\`, \`po\` · \`dev-front\`, 
 \`scout\`, mais a camada da atividade), propor as skills que ela vai repetir. A regra inteira
 mora lá porque é lá que ela dispara — aqui só o lembrete.
 
-## Higiene de sessão
+${PONYTAIL ? `## Ferramentas
+
+**Ponytail** (confiança **baixa** — plugin instalado e README lido, não medido): escada de
+simplicidade que faz o agente parar no primeiro degrau que resolve (não existir → reutilizar →
+stdlib → …). Vale para quem **implementa**. Ele **não substitui**: os invariantes deste arquivo,
+o \`tl\` lendo diff, o \`po\` questionando requisito, nem a suíte de testes — o "um check" dele
+é o piso, não o teto. Quais papéis o carregam: \`.claude/agents/README.md\`. Ativo nesta máquina
+= \`~/.claude/.ponytail-active\`; instalado sem ativo não faz nada.
+
+` : ''}## Higiene de sessão
 
 Contexto acumulado custa em **toda** requisição. Quando sugerir um chat novo, e o que dizer
 ao sugerir, está no rodapé de \`/retomar\` (\`.claude/commands/retomar.md\`) — é o comando que
@@ -3403,6 +3459,11 @@ const ATUALIZACOES = [
   // para lá, e registro que ninguém lê é o mesmo que nenhum.
   { arquivo: 'AGENTS.md', marca: /ferramentas\.md/, soCom: !LAYOUT_ANTIGO,
     o_que: 'the pointer to .marvin/ferramentas.md — which optional tools THIS project uses' },
+  // Ponytail só entra quando o registro diz `sim` — cobrar a seção de quem não usa é ruído.
+  { arquivo: 'AGENTS.md', marca: /## Ferramentas[\s\S]*?\*\*Ponytail\*\*/, soCom: PONYTAIL,
+    o_que: 'the "Ferramentas" section on ponytail — what it does not replace (appears with --use=ponytail)' },
+  { arquivo: '.claude/agents/README.md', marca: /Ponytail: em que papel entra/, soCom: PONYTAIL,
+    o_que: 'the ponytail role table — which roles carry the ladder (dev yes, tl/po/scout no)' },
 ];
 
 const faltando = ATUALIZACOES.filter(a => {

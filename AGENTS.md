@@ -17,7 +17,7 @@ trabalhar com agentes de IA. Documentação de uso: [README.md](README.md).
 | `PROMPT.md` | o prompt que guia a escrita dos agentes (o script não escreve) |
 | `README.md` / `README.pt-BR.md` | documentação pública, inglês e português |
 | `.github/workflows/teste.yml` | CI: `node teste.mjs` em Linux, Windows e macOS |
-| `.marvin/ferramentas.md` | registro das ferramentas opcionais que ESTE repo usa (graphify: sim) e o alcance de cada uma |
+| `.marvin/ferramentas.md` | registro das ferramentas opcionais que ESTE repo usa (graphify: sim, ponytail: sim) e o alcance de cada uma |
 
 ## Comandos canônicos
 
@@ -145,6 +145,15 @@ script e a documentação. Quem instala roda a ferramenta e gera os seus.
   página do GitHub. Desligado em `~/.claude/settings.json` (`"includeCoAuthoredBy": false`);
   se reaparecer, é outra máquina ou outro perfil commitando sem o ajuste
 - Antes de fechar: `git status --short` e uma justificativa por arquivo novo
+
+## Ferramentas
+
+**Ponytail** (confiança **baixa** — plugin instalado e README lido, não medido): escada de
+simplicidade que faz o agente parar no primeiro degrau que resolve (não existir → reutilizar →
+stdlib → …). Vale para quem **implementa**. Ele **não substitui**: os invariantes deste arquivo,
+o `tl` lendo diff, o `po` questionando requisito, nem o `teste.mjs` — o "um check" dele é o
+piso, não o teto. Quais papéis o carregam: `.claude/agents/README.md`. Ativo nesta máquina =
+`~/.claude/.ponytail-active`; instalado sem ativo não faz nada. Registro: `.marvin/ferramentas.md`.
 
 ## Higiene de sessão
 
