@@ -53,7 +53,7 @@ npm whoami && npm publish
 ```
 
 Sucesso é a linha `+ marvin-kb@<versao>`. **Se ela não apareceu, não publicou** — em 15/09
-o primeiro `publish` foi dado como feito e o registry não tinha a versão. Depois:
+o primeiro `publish` foi dado como feito e o registry não tinha a versão — e na 1.6.0, no mesmo dia, de novo: o humano rodou duas vezes, só a segunda subiu. Depois:
 
 ```bash
 npm view marvin-kb version --prefer-online

@@ -23,7 +23,7 @@ metadata:
 
 ## Em andamento
 
-- nenhuma US aberta. Próximo passo: publicar a [1.6.0](../Releases/1.6.0.md) (11a + 11b, fechadas 15/09) pela skill `publicar-no-npm` — bump do `package.json`, tag, publish.
+- nenhuma US aberta. [1.6.0](../Releases/1.6.0.md) publicada em 15/09/2026 (confirmada com `--prefer-online`). Próximo passo: nenhum registrado — abrir US pelo `/us` quando houver.
 
 ## Travado
 
