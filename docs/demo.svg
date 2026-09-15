@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="714" viewBox="0 0 820 714" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13">
+<rect width="820" height="714" rx="10" fill="#0d1117" stroke="#30363d"/>
+<circle cx="22" cy="20" r="6" fill="#ff5f56"/><circle cx="42" cy="20" r="6" fill="#ffbd2e"/><circle cx="62" cy="20" r="6" fill="#27c93f"/>
+<text x="410" y="25" text-anchor="middle" fill="#8b949e" font-size="12">marvin — dry run</text>
+<text x="18" y="70" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity=".55" xml:space="preserve">$ npx marvin-kb --tools=claude,codex</tspan></text>
+<text x="18" y="90" xml:space="preserve"></text>
+<text x="18" y="110" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="bold" opacity="1" xml:space="preserve">marvin</tspan><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve"> — ~/dev/acme</tspan></text>
+<text x="18" y="130" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve">agent memory: ~/.claude/projects/-dev-acme/memory</tspan></text>
+<text x="18" y="150" xml:space="preserve"></text>
+<text x="18" y="170" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="bold" opacity="1" xml:space="preserve">1. Stack detected</tspan></text>
+<text x="18" y="190" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve">    .                                       Node/JS</tspan></text>
+<text x="18" y="210" xml:space="preserve"></text>
+<text x="18" y="230" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="bold" opacity="1" xml:space="preserve">1b. Canonical commands (read from the manifest, not guessed)</tspan></text>
+<text x="18" y="250" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve">    Install    npm install                       </tspan><tspan fill="#c9d1d9" font-weight="normal" opacity=".55" xml:space="preserve">no lockfile — npm is the default</tspan></text>
+<text x="18" y="270" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve">    Test       npm run test                      </tspan><tspan fill="#c9d1d9" font-weight="normal" opacity=".55" xml:space="preserve">package.json &gt; scripts.test</tspan></text>
+<text x="18" y="290" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve">    Build      npm run build                     </tspan><tspan fill="#c9d1d9" font-weight="normal" opacity=".55" xml:space="preserve">package.json &gt; scripts.build</tspan></text>
+<text x="18" y="310" xml:space="preserve"></text>
+<text x="18" y="330" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="bold" opacity="1" xml:space="preserve">4. Fixed context — what loads in every session</tspan></text>
+<text x="18" y="350" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve">     16 agents   21 skills   26 commands  ~ 2451 tk  ⟵ paid in EVERY project  ~/.claude (GLOBAL)</tspan></text>
+<text x="18" y="370" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve">  </tspan><tspan fill="#d29922" font-weight="normal" opacity="1" xml:space="preserve">!</tspan><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve"> the GLOBAL level alone costs ~2451 tokens in every session of every project</tspan></text>
+<text x="18" y="390" xml:space="preserve"></text>
+<text x="18" y="410" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="bold" opacity="1" xml:space="preserve">5. Knowledge base (a single folder — plain markdown, organized as a graph)</tspan></text>
+<text x="18" y="430" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve">    vault: .marvin  (created now)</tspan></text>
+<text x="18" y="450" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve">  </tspan><tspan fill="#3fb950" font-weight="normal" opacity="1" xml:space="preserve">✓</tspan><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve"> Contexto/Sobre.md</tspan></text>
+<text x="18" y="470" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve">  </tspan><tspan fill="#3fb950" font-weight="normal" opacity="1" xml:space="preserve">✓</tspan><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve"> Planejamento/README.md</tspan></text>
+<text x="18" y="490" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve">  </tspan><tspan fill="#3fb950" font-weight="normal" opacity="1" xml:space="preserve">✓</tspan><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve"> Releases/README.md</tspan></text>
+<text x="18" y="510" xml:space="preserve"></text>
+<text x="18" y="530" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="bold" opacity="1" xml:space="preserve">6. Memory (inverted junction — the step that versions it)</tspan></text>
+<text x="18" y="550" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve">  </tspan><tspan fill="#3fb950" font-weight="normal" opacity="1" xml:space="preserve">✓</tspan><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve"> junction created: profile → .marvin/Memoria</tspan></text>
+<text x="18" y="570" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve">  </tspan><tspan fill="#3fb950" font-weight="normal" opacity="1" xml:space="preserve">✓</tspan><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve"> check: 0 notes visible through the agent path</tspan></text>
+<text x="18" y="590" xml:space="preserve"></text>
+<text x="18" y="610" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="bold" opacity="1" xml:space="preserve">7c. Portability — 1 source, N thin adapters</tspan></text>
+<text x="18" y="630" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve">  </tspan><tspan fill="#3fb950" font-weight="normal" opacity="1" xml:space="preserve">✓</tspan><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve"> AGENTS.md — the source (fill it in; it is the only place with content)</tspan></text>
+<text x="18" y="650" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve">  </tspan><tspan fill="#3fb950" font-weight="normal" opacity="1" xml:space="preserve">✓</tspan><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve"> claude   — CLAUDE.md</tspan></text>
+<text x="18" y="670" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve">  </tspan><tspan fill="#3fb950" font-weight="normal" opacity="1" xml:space="preserve">✓</tspan><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve"> codex    — reads AGENTS.md natively — no adapter needed</tspan></text>
+<text x="18" y="690" xml:space="preserve"><tspan fill="#c9d1d9" font-weight="normal" opacity="1" xml:space="preserve">    not generated: copilot, cursor, aider, zed, opencode</tspan></text>
+</svg>

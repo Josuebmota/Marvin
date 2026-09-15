@@ -1,18 +1,36 @@
+<div align="center">
+
 # Marvin
 
+**One `AGENTS.md`, N thin adapters, memory versioned inside the repo.**<br>
+Scaffolds a project's knowledge base for working with AI agents — and survives switching tools.
+
+[![npm](https://img.shields.io/npm/v/marvin-kb?color=cb3837&logo=npm)](https://www.npmjs.com/package/marvin-kb)
+[![tests](https://github.com/Josuebmota/Marvin/actions/workflows/teste.yml/badge.svg)](https://github.com/Josuebmota/Marvin/actions/workflows/teste.yml)
+![node](https://img.shields.io/badge/node-%E2%89%A518-339933?logo=node.js&logoColor=white)
+![deps](https://img.shields.io/badge/dependencies-0-success)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 **English** · [Português](README.pt-BR.md)
-
-[![teste](https://github.com/Josuebmota/Marvin/actions/workflows/teste.yml/badge.svg)](https://github.com/Josuebmota/Marvin/actions/workflows/teste.yml)
-
-Scaffolds a project's **knowledge base** for working with AI agents — in a way that
-survives switching tools and switching LLMs.
-
-Not a framework. Nothing runs in the background. No dependencies. It's a ~1810-line Node
-script that creates a structure and gets out of the way.
 
 ```bash
 npx marvin-kb --tools=claude,codex
 ```
+
+<img src="docs/demo.svg" alt="marvin running on a fresh Node project" width="820">
+
+</div>
+
+Not a framework. Nothing runs in the background. No dependencies. It's a ~1810-line Node
+script that creates a structure and gets out of the way.
+
+| | |
+|---|---|
+| 🧭 **One source of truth** | all durable content in `AGENTS.md`; each tool gets a 15-line pointer |
+| 🧠 **Memory in git** | an inverted junction makes the agent's memory land inside `.marvin/` |
+| 🔁 **Idempotent** | run it twice, nothing duplicates or gets overwritten |
+| 🔍 **Diagnostics** | fixed-context cost per session, empty "services", junk in the root, canonical commands read from the manifest |
+| 🔌 **Optional tools** | `graphify` code graph and `ponytail`, recorded in `.marvin/ferramentas.md` — never required |
 
 > **The package is `marvin-kb`, the command is `marvin`.** `marvin` was already taken on
 > npm, so `npx marvin` would fetch someone else's package — use `npx marvin-kb`. After
@@ -23,6 +41,25 @@ Or clone it and run the file directly — it's a single script with no dependenc
 ```bash
 node /path/to/marvin/marvin.mjs --tools=claude,codex
 ```
+
+<details>
+<summary><b>Table of contents</b></summary>
+
+- [The problem](#the-problem)
+- [How it solves it](#how-it-solves-it)
+- [What it creates](#what-it-creates)
+- [Where the knowledge base lands](#where-the-knowledge-base-lands--and-why-it-isnt-always-marvin)
+- [What it deliberately does NOT do](#what-it-deliberately-does-not-do)
+- [Agent, skill, or command?](#agent-skill-or-command)
+- [Tools](#tools)
+- [Diagnostics](#diagnostics)
+- [Flags](#flags)
+- [Upgrading a project that's already set up](#upgrading-a-project-thats-already-set-up)
+- [`--graphify`](#--graphify--queries-no-hook)
+- [Related: Anthropic's `claude-code-setup`](#related-anthropics-claude-code-setup)
+- [Requirements](#requirements) · [Tests](#tests) · [Contributing](#contributing) · [License](#license)
+
+</details>
 
 ## The problem
 
@@ -227,6 +264,9 @@ Beyond creating things, it points out problems that slip by:
 
 ## Flags
 
+<details>
+<summary><b>Every flag, with what it does</b></summary>
+
 ```
 --tools=<list>    adapters to generate. default: claude
                   valid: claude, codex, copilot, cursor, aider, zed, opencode
@@ -329,6 +369,8 @@ The older Portuguese names (`--ferramentas=`, `--limpar-legado`, `--sem-git`) st
 aliases. Renaming a flag without an alias would break anyone with a script already wired
 up — which is exactly the problem the script now handles.
 
+</details>
+
 ## Upgrading a project that's already set up
 
 Every write is guarded by `if (!fs.existsSync(...))` — that's what makes the script
@@ -351,6 +393,9 @@ what calls what, type hierarchy, cross-package dependencies. That's where a grap
 `grep` — which gives you the name, but not the relationship.
 
 Without it on PATH the step warns and skips, changing nothing else.
+
+<details>
+<summary><b>How the graph is built, what it answers, and why there is no hook</b></summary>
 
 **The knowledge base joins the same graph.** graphify only indexes `.md` through an LLM
 (measured: 93 K tokens for three tiny files, non-deterministic, and it dropped the doc→code
@@ -485,6 +530,8 @@ it's stale — the check the original hook lacks. A warning, never an order.
 > benchmark — not the 71× advertised — and that 9.3× is against *reading the entire
 > repository*. Against targeted `grep`, the graph only pays off on structural questions:
 > locating a file costs it ~1,650 tokens versus ~18 for a glob.
+
+</details>
 
 ## Related: Anthropic's `claude-code-setup`
 
