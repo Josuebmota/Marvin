@@ -103,8 +103,9 @@ const GRAPHIFY_GIT_HOOK = temFlag('--graphify-git-hook');
 const CHECK = temFlag('--check');
 // --use=graphify  [alias: --usar=]  flipa o registro para `sim` sem perguntar.
 // --no-questions  [alias: --sem-perguntas]  assume `não` mesmo com terminal (CI, script).
-const argUsar = process.argv.find(a => a.startsWith('--use=') || a.startsWith('--usar='));
-const USAR = new Set((argUsar ? argUsar.split('=').slice(1).join('=') : '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
+// aceita --use=a,b e também --use=a --use=b — a flag repetida era engolida pelo find (15/09)
+const USAR = new Set(process.argv.filter(a => a.startsWith('--use=') || a.startsWith('--usar='))
+  .flatMap(a => a.split('=').slice(1).join('=').split(',')).map(s => s.trim().toLowerCase()).filter(Boolean));
 const SEM_PERGUNTAS = temFlag('--no-questions', '--sem-perguntas');
 
 // --tools=claude,codex,cursor  (default: claude)   [alias: --ferramentas=]
