@@ -778,7 +778,7 @@ const escreverStatusHtml = (st, silencioso = false) => {
     return { nos: [...nos.values()].map(n => ({ ...n, grau: grau[n.id] || 0 })), arestas };
   })();
   const redeJson = JSON.stringify(rede).replace(/<\/script/gi, '<\\/script');
-  const redeHtml = `<h2>A rede <span class="dim">— ${rede.nos.length} nós · ${rede.arestas.length} ligações · arraste, passe o mouse, clique para abrir</span></h2>
+  const redeHtml = `<details class="rede" id="rede-sec"><summary>A rede <span class="dim">— ${rede.nos.length} nós · ${rede.arestas.length} ligações · arraste, passe o mouse, clique para abrir</span></summary>
 <div class="legenda"><span class="lg c-epic">epic</span><span class="lg c-feature">feature</span><span class="lg c-us">US</span><span class="lg c-fluxo">fluxo</span><span class="lg c-arquitetura">arquitetura</span><span class="lg c-raiz">raiz</span><span class="lg c-arquivo">arquivo</span><span class="lg c-funcao">função</span>
 <span class="dim">· anel: <span class="ok">■</span> ativa <span style="color:var(--s0)">■</span> concluída <span class="err">■</span> cancelada</span>
 <label><input type="checkbox" id="mostrarCodigo" checked> mostrar código</label></div>
@@ -826,56 +826,70 @@ const escreverStatusHtml = (st, silencioso = false) => {
   svg.addEventListener('mousedown',acordar); document.getElementById('mostrarCodigo').addEventListener('change',acordar);
   rodando=true; laco();
 })();
-</script>`;
+</script></details>`;
 
-  const linhaUS = (a) => `<tr class="${esc(a.estado)}"><td>${a.estado === 'ativa' ? '●' : a.estado === 'concluida' ? '✓' : '✗'}</td><td><strong>${esc(a.titulo)}</strong>${a.cadeia.length ? `<div class="dim">${esc(a.cadeia.join(' › '))}</div>` : ''}${a.proximo ? `<div>${esc(a.proximo)}</div>` : ''}${a.avisos.map(w => `<div class="warn">! ${esc(w)}</div>`).join('')}</td><td>${a.rumo ? `<span class="dim">${a.idade}d</span> ${esc(a.rumo.slice(0, 120))}` : '<span class="dim">sem Rumo datado</span>'}</td></tr>`;
+  const linhaUS = (a) => `<tr class="${esc(a.estado)}"><td><span class="badge ${esc(a.estado)}">${esc(a.estado)}</span></td><td><strong>${esc(a.titulo)}</strong>${a.cadeia.length ? `<div class="dim">${esc(a.cadeia.join(' › '))}</div>` : ''}${a.proximo ? `<div>${esc(a.proximo.replace(/\*\*|`/g, ''))}</div>` : ''}${a.avisos.map(w => `<div class="warn">! ${esc(w)}</div>`).join('')}</td><td>${a.rumo ? `<span class="dim">${a.idade}d</span> ${esc(a.rumo.slice(0, 120))}` : '<span class="dim">sem Rumo datado</span>'}</td></tr>`;
+  // primeira dobra: o ponto anterior dá o delta dos cards; a lista Corrigir junta os avisos
+  // da página com os de cada US (com link para o arquivo) — é o motivo de abrir a página
+  const ant = pts.length > 1 ? pts[pts.length - 2] : null;
+  const delta = (a, b, uni, bom, fmt = (v) => String(v)) => { if (a == null || b == null) return '<span class="delta">—</span>'; const d = +(b - a).toFixed(2); const cls = d > 0 ? 'up' : d < 0 ? 'down' : ''; return `<span class="delta ${cls}${bom ? ' bom' : ''}">${d === 0 ? '= igual' : (d > 0 ? '▲ +' : '▼ −') + fmt(Math.abs(d)) + uni} desde o último commit</span>`; };
+  const card = (rot, val, sub, href) => `<a class="card" href="${href}"><span class="rot">${esc(rot)}</span><span class="val">${val}</span><span class="delta-wrap">${sub}</span></a>`;
+  const linkArq = (abs) => abs ? `<a href="${esc(path.relative(dir, abs).replace(/\\/g, '/'))}">${esc(path.basename(path.dirname(abs)))}</a>` : '';
+  const itens = [...st.avisos.filter(w => w.nivel !== 'info').map(w => `<li>${esc(w.texto)}</li>`), ...st.ativas.flatMap(a => a.avisos.map(w => `<li>${linkArq(a.arq)} — ${esc(w)}</li>`))];
+  const corrigir = itens.length ? `<section class="corrigir" id="corrigir"><h2>Corrigir <span class="dim">— ${itens.length} item(ns)</span></h2><ul>${itens.join('')}</ul></section>` : '<p class="tudo-ok">✓ tudo consistente — nada a corrigir</p>';
   const html = `<!doctype html>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(path.basename(RAIZ))} — marvin status</title>
 <style>
-:root{color-scheme:light dark;--fg:#1a1a1a;--bg:#fafaf7;--dim:#6b6b6b;--line:#e2e0d8;--ok:#2f7d4f;--warn:#b3641c;--err:#b23a3a;--s0:#2b5f9e;--s1:#c2571a;--s2:#5c8a3a}
-@media(prefers-color-scheme:dark){:root{--fg:#e8e6df;--bg:#161615;--dim:#9a9891;--line:#2c2b28}}
-body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,sans-serif;padding:24px;max-width:1080px}
-h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:28px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+:root{color-scheme:light dark;--s1:.25rem;--s2:.5rem;--s3:1rem;--s4:1.25rem;--s5:1.5rem;--f0:.75rem;--f1:1rem;--f2:1.1rem;--f3:1.25rem;--f5:2rem;--r:6px;--ease:cubic-bezier(.25,0,.3,1);
+--fg:#1f2328;--bg:#ffffff;--bg2:#f6f8fa;--dim:#59636e;--line:#d1d9e0;--ok:#1a7f37;--warn:#9a6700;--err:#cf222e;--acc:#1a7f37;--s0:#0969da;--s1c:#bc4c00;--s2c:#1a7f37;--sombra:0 1px 2px rgba(0,0,0,.06),0 2px 6px rgba(0,0,0,.05)}
+@media(prefers-color-scheme:dark){:root{--fg:#e6edf3;--bg:#0d1117;--bg2:#161b22;--dim:#8d96a0;--line:#30363d;--ok:#3fb950;--warn:#d29922;--err:#f85149;--acc:#3fb950;--s0:#58a6ff;--s1c:#f0883e;--s2c:#3fb950;--sombra:0 1px 2px rgba(0,0,0,.4)}}
+body{margin:0 auto;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:var(--s5) var(--s4);max-width:1080px}a{color:inherit}
+h1{font-size:var(--f3);margin:0}h2{font-size:var(--f2);margin:calc(var(--s5)*1.5) 0 var(--s2);border-bottom:1px solid var(--line);padding-bottom:var(--s1)}h2 .dim{font-weight:400;font-size:var(--f0)}
+.corrigir{margin:var(--s4) 0;border:1px solid var(--err);border-left-width:4px;border-radius:var(--r);background:var(--bg2);padding:var(--s2) var(--s3)}.corrigir h2{border:0;margin:0 0 var(--s2);padding:0;color:var(--err)}.corrigir ul{margin:0;padding-left:var(--s4)}.corrigir li{margin:var(--s1) 0}.corrigir a{color:var(--s0);text-decoration:none}.corrigir a:hover{text-decoration:underline}
+.tudo-ok{margin:var(--s4) 0;color:var(--ok);font-weight:600}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--s3);margin:var(--s3) 0}
+.card{display:block;border:1px solid var(--line);border-radius:var(--r);padding:var(--s3);background:var(--bg2);box-shadow:var(--sombra);text-decoration:none;color:inherit;position:relative;transition:border-color .2s var(--ease)}.card:hover{border-color:var(--acc)}.card::after{content:"›";position:absolute;right:var(--s3);top:var(--s2);color:var(--dim);font-size:var(--f3)}
+.card .rot{font-size:var(--f0);color:var(--dim);text-transform:uppercase;letter-spacing:.04em}.card .val{display:block;font-size:var(--f5);font-weight:600;line-height:1.2;margin:var(--s1) 0;font-variant-numeric:tabular-nums}.card .val small{font-size:var(--f1);color:var(--dim);font-weight:400}
+.card .delta-wrap,.delta{font-size:var(--f0);color:var(--dim)}.delta.up{color:var(--err)}.delta.down{color:var(--ok)}.delta.up.bom{color:var(--ok)}.delta.down.bom{color:var(--err)}
+.badge{display:inline-block;font-size:var(--f0);padding:0 var(--s2);border-radius:999px;border:1px solid var(--line);color:var(--dim);line-height:1.6}.badge.ativa{color:var(--ok);border-color:var(--ok)}.badge.concluida{color:var(--s0);border-color:var(--s0)}.badge.cancelada{color:var(--err);border-color:var(--err)}
+details.rede>summary{cursor:pointer;font-size:var(--f2);font-weight:600;margin:calc(var(--s5)*1.5) 0 var(--s2);border-bottom:1px solid var(--line);padding-bottom:var(--s1)}details.rede>summary .dim{font-weight:400;font-size:var(--f0)}
 .dim{color:var(--dim)}.warn{color:var(--warn)}.err{color:var(--err)}.ok{color:var(--ok)}
 table{border-collapse:collapse;width:100%}td,th{padding:6px 8px;vertical-align:top;border-bottom:1px solid var(--line);text-align:left}td:first-child{width:1.5em}
 figure{margin:12px 0 20px}figcaption{font-size:13px;margin-bottom:4px}svg{width:100%;height:auto;display:block}
 .grid{stroke:var(--line);stroke-width:1}.tick{fill:var(--dim);font-size:10px}
-polyline{fill:none;stroke-width:2}.s0{stroke:var(--s0);fill:var(--s0)}.s1{stroke:var(--s1);fill:var(--s1)}.s2{stroke:var(--s2);fill:var(--s2)}
+polyline{fill:none;stroke-width:2}.s0{stroke:var(--s0);fill:var(--s0)}.s1{stroke:var(--s1c);fill:var(--s1c)}.s2{stroke:var(--s2c);fill:var(--s2c)}
 polyline.s0,polyline.s1,polyline.s2{fill:none}.lg{font-size:12px;padding-left:10px;position:relative}.lg::before{content:"";position:absolute;left:0;top:6px;width:7px;height:7px;border-radius:50%;background:currentColor}
-.lg.s0{color:var(--s0)}.lg.s1{color:var(--s1)}.lg.s2{color:var(--s2)}
+.lg.s0{color:var(--s0)}.lg.s1{color:var(--s1c)}.lg.s2{color:var(--s2c)}
 .legenda{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12px;margin:6px 0}.legenda label{margin-left:auto}
 .c-epic{color:#7c3aed}.c-feature{color:#2b5f9e}.c-us{color:#c2571a}.c-fluxo{color:#0f8b8d}.c-arquitetura{color:#8a6d3b}.c-raiz{color:#111}.c-release{color:#5c8a3a}.c-nota{color:#999}.c-doc{color:#999}.c-arquivo{color:#6b6b6b}.c-funcao{color:#9a9891}
 @media(prefers-color-scheme:dark){.c-raiz{color:#eee}}
 #rede .no circle{fill:currentColor;stroke:var(--bg);stroke-width:1.5;cursor:grab}#rede .no.e-ativa circle{stroke:var(--ok);stroke-width:3}#rede .no.e-concluida circle{stroke:var(--s0);stroke-width:3}#rede .no.e-cancelada circle{stroke:var(--err);stroke-width:3}
 #rede .no text{font-size:9px;fill:var(--fg);pointer-events:none;opacity:.85}#rede .no.c-arquivo text,#rede .no.c-funcao text{opacity:.55;font-size:8px}
 #rede .aresta{stroke:var(--line);stroke-width:1.2}#rede .aresta.touches{stroke:#c2571a;opacity:.5}#rede .aresta.child_of{stroke:#7c3aed;opacity:.5}#rede .aresta.references{stroke:var(--dim);opacity:.45}
-.kpi{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0}.kpi div{border:1px solid var(--line);border-radius:6px;padding:8px 12px;min-width:120px}.kpi b{display:block;font-size:20px}
 </style>
-<h1>${esc(path.basename(RAIZ))} <span class="dim">— marvin status</span></h1>
-<div class="dim">${commit ? `commit ${esc(commit)} · ${esc((data || '').slice(0, 10))}` : 'sem git'} · ${st.problemas ? `<span class="warn">${st.problemas} coisa(s) a corrigir</span>` : '<span class="ok">tudo consistente</span>'} · derivado, nunca versionado</div>
-<div class="kpi">
-<div><span class="dim">contexto fixo</span><b>${st.contexto.total} tk</b></div>
-<div><span class="dim">US ativas</span><b>${ponto.us_ativas}</b></div>
-<div><span class="dim">US concluídas</span><b>${ponto.us_concluidas}<span class="dim"> / ${ponto.us_total}</span></b></div>
-<div><span class="dim">última release</span><b>${st.release ? esc(st.release.nome) : '—'}</b></div>
-<div><span class="dim">grafo</span><b>${st.grafo ? st.grafo.nos + '<span class="dim"> nós · ' + st.grafo.idade + 'd</span>' : '—'}</b></div>
-<div><span class="dim">gasto estimado</span><b>$${g.custo.toFixed(2)}<span class="dim"> · ${g.total.msgs} turnos</span></b></div>
+<header><h1>${esc(path.basename(RAIZ))} <span class="dim">— marvin status</span></h1>
+<div class="dim">${commit ? `commit ${esc(commit)} · ${esc((data || '').slice(0, 10))}` : 'sem git'}${ant ? ` · anterior ${esc(ant.commit)} (${esc((ant.data || '').slice(0, 10))})` : ''} · derivado, nunca versionado</div></header>
+${corrigir}
+<div class="cards">
+${card('contexto fixo', st.contexto.total + ' tk', delta(ant && ant.total, st.contexto.total, ' tk', false), '#contexto')}
+${card('US ativas', ponto.us_ativas, delta(ant && ant.us_ativas, ponto.us_ativas, '', false), '#andamento')}
+${card('US concluídas', `${ponto.us_concluidas}<small> / ${ponto.us_total}</small>`, delta(ant && ant.us_concluidas, ponto.us_concluidas, '', true), '#epics')}
+${card('gasto estimado', '$' + g.custo.toFixed(2), delta(ant && ant.custo, g.custo, '', false, (v) => '$' + v.toFixed(2)) + ` · ${g.total.msgs} turnos`, '#tokens')}
 </div>
-${redeHtml}
-<h2>Tendência <span class="dim">— ${pts.length} ponto(s), um por commit</span></h2>
+<h2 id="andamento">Em andamento <span class="dim">— ${st.release ? 'última release ' + esc(st.release.nome) : 'sem release'}${st.grafo ? ' · grafo com ' + st.grafo.nos + ' nós, ' + st.grafo.idade + 'd' : ''}</span></h2>
+<table><tr><th></th><th>US</th><th>último Rumo</th></tr>${st.ativas.map(linhaUS).join('')}</table>
+<h2 id="tendencia">Tendência <span class="dim">— ${pts.length} ponto(s), um por commit</span></h2>
 ${gContexto}${gUS}${gGrafo}${gCusto}
-<h2>Tokens gastos <span class="dim">— medido nas transcrições do Claude Code, ${g.sessoes} sessão(ões)</span></h2>
+<h2 id="tokens">Tokens gastos <span class="dim">— medido nas transcrições do Claude Code, ${g.sessoes} sessão(ões)</span></h2>
 ${barras}
 <table><tr><th></th><th>modelo</th><th>input</th><th>cache write</th><th>cache read</th><th>output</th><th>turnos</th><th>custo</th></tr>${tabelaModelos}</table>
 <p class="dim">Tokens são medidos; o custo é <strong>estimativa</strong> pela tabela de ${PRECOS_DATA} (input · output · cache write ≈ 1,25× · cache read ≈ 0,1×) — confira os preços vigentes.${fatiaFixo != null ? ` Cada turno relê ~${kTk(g.contextoMedio)} tk de contexto; o contexto fixo (${st.contexto.total} tk) é <strong>~${fatiaFixo}%</strong> disso — o resto é a conversa. Sessão longa custa mais que arquivo grande.` : ''}</p>
-<h2>Em andamento</h2>
-<table><tr><th></th><th>US</th><th>último Rumo</th></tr>${st.ativas.map(linhaUS).join('')}</table>
-${st.avisos.length ? `<p>${st.avisos.map(w => `<div class="${w.nivel}">${w.nivel === 'info' ? '' : '! '}${esc(w.texto)}</div>`).join('')}</p>` : ''}
-<h2>Epics</h2>
+<h2 id="epics">Epics</h2>
 <table>${st.epics.map(e => `<tr><td>${e.estado === 'ativa' ? '●' : e.estado === 'concluida' ? '✓' : '✗'}</td><td><strong>${esc(e.titulo)}</strong></td><td>${e.total ? `${e.concluidas}/${e.total} ${e.rotulo} concluídas${e.canceladas ? ' · ' + e.canceladas + ' cancelada(s)' : ''}${e.ativas ? ' · ' + e.ativas + ' ativa(s)' : ''}` : '<span class="dim">sem filhos</span>'}</td></tr>`).join('')}</table>
-<h2>Contexto fixo <span class="dim">— o que carrega em toda sessão</span></h2>
+<h2 id="contexto">Contexto fixo <span class="dim">— o que carrega em toda sessão</span></h2>
 <table>${st.contexto.linhas.map(l => `<tr><td></td><td>${esc(l.nome)}</td><td>${l.tk} tk</td></tr>`).join('')}<tr><td></td><td><strong>total</strong></td><td><strong>${st.contexto.total} tk</strong></td></tr></table>
+${redeHtml}
 <script type="application/json" id="historico">${JSON.stringify(pts)}</script>
 `;
   fsw.writeFileSync(path.join(dir, 'index.html'), html);
@@ -898,7 +912,7 @@ const calcularStatus = () => {
     const n = porArq.get(abs) || lerNo(abs);
     if (!n) { st.avisos.push({ nivel: 'err', texto: rotulo + ' → ' + href + '  (file not found)' }); st.problemas++; continue; }
     const ultimo = n.rumo.length ? n.rumo[n.rumo.length - 1] : null;
-    const item = { titulo: n.titulo, cadeia: cadeia(n), estado: n.estado, proximo: (resto || '').trim(),
+    const item = { titulo: n.titulo, arq: abs, cadeia: cadeia(n), estado: n.estado, proximo: (resto || '').trim(),
                    rumo: ultimo ? ultimo.texto : null, rumoData: ultimo ? ultimo.data : null, idade: ultimo ? dias(ultimo.data) : null, avisos: [] };
     if (n.estado === 'concluida') { item.avisos.push('concluida but still in the note — it belongs in Releases/<versao>.md, and out of here'); st.problemas++; }
     if (n.estado === 'concluida' && !n.comEvidencia) { item.avisos.push('concluida without Evidência'); st.problemas++; }

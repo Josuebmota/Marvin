@@ -896,6 +896,19 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   checa('commit novo: segundo ponto, e o contexto fixo cresceu', linhas().length === 2 && JSON.parse(linhas()[1]).total > JSON.parse(linhas()[0]).total);
   const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
   checa('o HTML embute a série (file:// bloqueia fetch) e desenha SVG', /<script type="application\/json" id="historico">/.test(html) && /<polyline/.test(html) && !/<script src=/.test(html));
+  // US-15: a primeira dobra responde 'o que fazer' — Corrigir (ou 'tudo consistente') e os 4 cards
+  // vêm antes de tudo; a rede é a última seção e nasce colapsada; os dois temas estão no <style>
+  const ordem = ['<div class="cards">', 'id="andamento"', 'id="tendencia"', 'id="tokens"', '<details class="rede"'].map(s => html.indexOf(s));
+  checa('HTML: Corrigir/ok antes dos cards, cards antes de tudo, rede colapsada por último', (html.indexOf('class="tudo-ok"') >= 0 || html.indexOf('class="corrigir"') >= 0) && Math.min(html.indexOf('class="tudo-ok"') < 0 ? Infinity : html.indexOf('class="tudo-ok"'), html.indexOf('class="corrigir"') < 0 ? Infinity : html.indexOf('class="corrigir"')) < ordem[0] && ordem.every((p, i) => p >= 0 && (i === 0 || p > ordem[i - 1])) && !/<details class="rede"[^>]*\sopen/.test(html));
+  checa('HTML: os cards trazem o delta desde o commit anterior', /class="delta (up|down|)/.test(html) && /desde o último commit/.test(html));
+  checa('HTML: tema claro e escuro por prefers-color-scheme, sem asset externo', html.includes(':root{color-scheme:light dark') && html.includes('@media(prefers-color-scheme:dark){:root{') && !/<link/.test(html) && !/@import/.test(html));
+  // e com problema real: US concluída ainda na nota → entra em Corrigir, com link relativo à página
+  rodar(a, '--us', 'Novos/P/F/US-01-x');
+  const usX = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'P', 'F', 'US-01-x', 'Sobre.md');
+  fs.writeFileSync(usX, fs.readFileSync(usX, 'utf8').replace('estado: ativa', 'estado: concluida'));
+  rodar(a, '--status', '--html');
+  const html2 = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
+  checa('HTML: problema vira item de Corrigir, antes dos cards, com link para o Sobre.md', /class="corrigir"/.test(html2) && html2.indexOf('class="corrigir"') < html2.indexOf('<div class="cards">') && /href="\.\.\/Planejamento\/Novos\/P\/F\/US-01-x\/Sobre\.md"/.test(html2) && /still in the note/.test(html2));
   checa('.marvin/.status/ entrou no .gitignore', /^\.marvin\/\.status\/$/m.test(fs.readFileSync(path.join(a.proj, '.gitignore'), 'utf8')));
   checa('--status --html --dry-run não escreve', (() => { const antes = linhas().length; fs.rmSync(path.join(dir, 'index.html')); rodar(a, '--status', '--html', '--dry-run'); return !fs.existsSync(path.join(dir, 'index.html')) && linhas().length === antes; })());
   limpar(a);
