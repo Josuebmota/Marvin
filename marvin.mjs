@@ -2214,7 +2214,7 @@ if (ehJunction(MEM)) {
 // 00_Inicio.md was the root node of the old layout. In the graph layout the root node is
 // Contexto/Sobre.md (step 5), and the junction setup is already in the CLAUDE.md.
 const idx = path.join(DOCS, '00_Inicio.md');
-if (!LAYOUT_ANTIGO) { /* nada: Contexto/Sobre.md é a raiz */ }
+if (!LAYOUT_ANTIGO) { /* nothing: Contexto/Sobre.md is the root */ }
 else if (!fs.existsSync(idx)) {
   fsw.writeFileSync(idx, `---
 name: inicio
@@ -2596,7 +2596,7 @@ e **qual seria a primeira frase** do chat novo.
 // /us calls `marvin --us`, which creates the Sobre.md chain and the pointer — the agent
 // only fills what takes judgment. /fechar is the pair of /retomar. Graph layout only.
 if (!LAYOUT_ANTIGO) {
-  const relDocs = path.relative(RAIZ, DOCS).replace(/\\/g, '/');   // o 7c declara o dele depois
+  const relDocs = path.relative(RAIZ, DOCS).replace(/\\/g, '/');   // 7c declares its own later
   const cmdUs = path.join(cmdDir, 'us.md');
   if (!fs.existsSync(cmdUs)) {
     fsw.writeFileSync(cmdUs, `---
@@ -2772,7 +2772,7 @@ _(o que não anda, e por quê — se nada, escreva "nada")_
   ok('onde_paramos.md (skeleton — fill it in at the end of each session)');
 }
 
-// ═══════════════════════════════════════════ 7c. FONTE ÚNICA + ADAPTADORES
+// ═══════════════════════════════════════════ 7c. SINGLE SOURCE + ADAPTERS
 log('\n\x1b[1m7c. Portability — 1 source, N thin adapters\x1b[0m');
 const relDocs = path.relative(RAIZ, DOCS).replace(/\\/g, '/');
 const relMem = path.relative(RAIZ, DEST).replace(/\\/g, '/');
@@ -2784,7 +2784,7 @@ if (ferrInvalidas.length) {
 }
 info('tools: ' + FERRAMENTAS.join(', '));
 
-// ── A FONTE. Todo conteúdo durável mora aqui e em nenhum outro lugar.
+// ── THE SOURCE. All durable content lives here and nowhere else.
 const AGENTS = path.join(RAIZ, 'AGENTS.md');
 if (!fs.existsSync(AGENTS)) {
   fsw.writeFileSync(AGENTS, `# ${NOME}
@@ -2902,7 +2902,7 @@ abre a sessão, então é onde a regra de fechar mora. **A regra que fecha:** re
   ok('AGENTS.md — the source (fill it in; it is the only place with content)');
 } else info('AGENTS.md already exists');
 
-// ── OS ADAPTADORES. Cada um aponta para a fonte; nenhum carrega conteúdo próprio.
+// ── THE ADAPTERS. Each points to the source; none carries content of its own.
 const PONTEIRO = `A fonte de verdade deste projeto é **[AGENTS.md](AGENTS.md)** — estrutura, invariantes,
 armadilhas e convenções estão lá. **Leia AGENTS.md antes de qualquer coisa.**
 Este arquivo não duplica nada: só acrescenta o que é específico desta ferramenta.
@@ -2983,7 +2983,7 @@ sobre um grafo que ele não garante fresco.
 ` : ''}`,
   },
   codex: {
-    arquivo: null, // Codex lê AGENTS.md direto — não precisa de adaptador
+    arquivo: null, // Codex reads AGENTS.md directly — needs no adapter
     confianca: 'alta',
     nota: 'reads AGENTS.md natively — no adapter needed',
   },
@@ -2992,10 +2992,10 @@ sobre um grafo que ele não garante fresco.
     confianca: 'alta',
     nota: 'reads AGENTS.md natively — no adapter needed',
   },
-  // GitHub Copilot. Caminho conferido na documentação oficial em 03/08/2026:
-  // instrução para o repositório inteiro é `.github/copilot-instructions.md`.
-  // O agente dele também lê `AGENTS.md` em qualquer lugar do repositório — mas o
-  // chat e o completion não, e é por isso que o ponteiro é gerado assim mesmo.
+  // GitHub Copilot. Path checked against the official docs on 03/08/2026:
+  // the repository-wide instruction is `.github/copilot-instructions.md`.
+  // Its agent also reads `AGENTS.md` anywhere in the repository — but chat and
+  // completion do not, which is why the pointer is generated anyway.
   copilot: {
     arquivo: '.github/copilot-instructions.md',
     confianca: 'alta',
@@ -3114,25 +3114,25 @@ if (!SEM_GIT) {
   } catch {}
 }
 
-// ═══════════════════════════════════════════ 8b. GRAFO DE CÓDIGO (só com --graphify)
+// ═══════════════════════════════════════════ 8b. CODE GRAPH (only with --graphify)
 //
-// Por que só a consulta, sem hook:
+// Why query only, no hook:
 //
-// O grafo é artefato DERIVADO. Medido em 02/08/2026 sobre um repo de 195 arquivos
-// Python: sem rebuild, `graphify query` devolve função apagada com arquivo, linha e a
-// etiqueta [EXTRACTED] — a de maior confiança dele — e ao mesmo tempo esconde o código
-// que está lá. O `graphify claude install` acrescenta um PreToolUse que responde
-// "MANDATORY: you MUST run graphify before reading" a cada Read e Grep, e o check de
-// frescor dele olha só o mtime do ARQUIVO ALVO: relaxa no arquivo que tu acabou de
-// editar e endurece em todo o resto, inclusive no Grep, que é como tu descobriria a
-// mudança. Isso é o invariante 3 ao contrário — adaptador que falha em silêncio.
+// The graph is a DERIVED artifact. Measured on 02/08/2026 on a repo of 195 Python
+// files: without a rebuild, `graphify query` returns a deleted function with file, line
+// and the [EXTRACTED] tag — its highest-confidence one — while hiding the code that is
+// there. `graphify claude install` adds a PreToolUse that answers
+// "MANDATORY: you MUST run graphify before reading" on every Read and Grep, and its
+// freshness check looks only at the mtime of the TARGET FILE: it relaxes on the file you
+// just edited and hardens on everything else, including Grep, which is how you would
+// discover the change. That is invariant 3 backwards — an adapter that fails silently.
 //
-// Então: gera o grafo, ignora no git, e compara o mtime contra a ÁRVORE INTEIRA para
-// dizer ao humano quando ele está velho. Aviso, nunca ordem.
+// So: build the graph, ignore it in git, and compare the mtime against the WHOLE TREE
+// to tell the human when it is stale. A warning, never an order.
 //
-// Ganho medido no mesmo repo: 9,3× pelo benchmark do autor (não os 71× divulgados), e
-// esse 9,3× é contra "ler o repositório inteiro". Contra Grep dirigido o grafo só ganha
-// em pergunta ESTRUTURAL; para localizar arquivo ele é mais caro.
+// Gain measured on the same repo: 9.3× by the author's benchmark (not the advertised
+// 71×), and that 9.3× is against "read the whole repository". Against a targeted Grep
+// the graph only wins on STRUCTURAL questions; to locate a file it is more expensive.
 if (GRAPHIFY) {
   log('\n\x1b[1m8b. Code graph (--graphify)\x1b[0m');
 
@@ -3144,8 +3144,8 @@ if (GRAPHIFY) {
   const SAIDA = path.join(RAIZ, 'graphify-out');
   const GRAFO = path.join(SAIDA, 'graph.json');
 
-  // Sem graphify no PATH mas com grafo já construído (CI, outra máquina), o lado dos
-  // docs ainda pode ser anexado — é só JSON. Só a extração de código exige o binário.
+  // No graphify on PATH but a graph already built (CI, another machine): the docs side
+  // can still be appended — it is just JSON. Only the code extraction needs the binary.
   if (!versao && !fs.existsSync(GRAFO)) {
     warn('graphify not found on PATH — step skipped, nothing else changed');
     info('install it in isolation (no need to go global):');
@@ -3155,7 +3155,7 @@ if (GRAPHIFY) {
     if (versao) info(versao);
     else warn('graphify not found on PATH — using the existing graph.json; code will not be re-extracted');
 
-    // .gitignore já existente não é reescrito pelo passo 8 — garante a linha aqui.
+    // An existing .gitignore is not rewritten by step 8 — the line is guaranteed here.
     const gi2 = path.join(RAIZ, '.gitignore');
     if (fs.existsSync(gi2)) {
       const txt = fs.readFileSync(gi2, 'utf8');
@@ -3166,15 +3166,15 @@ if (GRAPHIFY) {
       } else info('graphify-out/ is already in .gitignore');
     }
 
-    const subRepos = SUBREPOS;   // detectado no topo: o passo 7 também precisa dele
+    const subRepos = SUBREPOS;   // detected at the top: step 7 needs it too
     const contarNos = (g) => {
       try { return (JSON.parse(fs.readFileSync(g, 'utf8')).nodes || []).length; } catch { return 0; }
     };
 
-    // Idempotência: grafo que já existe não é reconstruído. Rebuild é decisão do humano.
+    // Idempotence: an existing graph is not rebuilt. A rebuild is the human's decision.
     let construiu = false;
     if (!versao) {
-      /* sem binário: nada a extrair */
+      /* no binary: nothing to extract */
     } else if (fs.existsSync(GRAFO) && !GRAPHIFY_REBUILD) {
       info('graph.json already exists — not rebuilding (running twice must not overwrite)');
       info('to rebuild after code changes:  marvin --graphify --graphify-rebuild');
@@ -3184,22 +3184,22 @@ if (GRAPHIFY) {
         info('so each one is indexed on its own and merged at the end:');
         subRepos.forEach(s => info('  ' + s));
       }
-      // --code-only: só AST local. Sem isso ele exige chave de LLM paga para os .md.
+      // --code-only: local AST only. Without it, it demands a paid LLM key for the .md files.
       try {
         const partes = [];
         if (!subRepos.length) {
           exec('graphify . --code-only --no-viz', { cwd: RAIZ, stdio: 'inherit' });
         } else {
-          // A saída de cada extração cai dentro de graphify-out/, que já está no
-          // .gitignore. Escrever dentro do sub-repo sujaria repositório alheio —
-          // nenhum deles tem `graphify` no .gitignore próprio.
+          // Each extraction's output lands inside graphify-out/, which is already in
+          // .gitignore. Writing inside the sub-repo would dirty someone else's repository —
+          // none of them has `graphify` in its own .gitignore.
           for (const alvo of ['.', ...subRepos]) {
             const nome = alvo === '.' ? '_root' : alvo;
             const destino = path.join(SAIDA, 'repos', nome);
-            // try POR SUB-REPO, não em volta do laço: o `graphify extract` sai com
-            // código != 0 quando o alvo não produz nó nenhum — um sub-repo ainda
-            // vazio (só LICENSE e README, o placeholder de todo monorepo) é caso
-            // comum, e derrubava o build inteiro junto: sem merge, sem backup.
+            // try PER SUB-REPO, not around the loop: `graphify extract` exits != 0
+            // when the target produces no node at all — a still-empty sub-repo (only
+            // LICENSE and README, every monorepo's placeholder) is a common case, and
+            // it took the whole build down with it: no merge, no backup.
             try {
               exec('graphify extract "' + path.join(RAIZ, alvo) + '" --code-only --out "' + destino + '"',
                    { cwd: RAIZ, stdio: 'inherit' });
@@ -3208,9 +3208,9 @@ if (GRAPHIFY) {
             if (DRY || fs.existsSync(g)) partes.push(g);
             else warn(nome + ' produced no nodes — left out of the merge');
           }
-          // Invariante 1: o grafo anterior não é apagado, vira .bak, e as duas
-          // contagens vão para a tela. Aqui MENOS nós é legítimo — o escopo mudou —
-          // então o certo é mostrar o número, não abortar como na migração.
+          // Invariant 1: the previous graph is not deleted, it becomes .bak, and both
+          // counts go to the screen. Here FEWER nodes is legitimate — the scope changed —
+          // so the right thing is to show the number, not abort as in the migration.
           if (!DRY && fs.existsSync(GRAFO)) {
             fsw.copyFileSync(GRAFO, path.join(SAIDA, 'graph.bak.json'));
             info('previous graph kept as graphify-out/graph.bak.json (' + contarNos(GRAFO) + ' nodes)');
@@ -3219,7 +3219,7 @@ if (GRAPHIFY) {
             exec('graphify merge-graphs ' + partes.map(p => '"' + p + '"').join(' ') +
                  ' --out "' + GRAFO + '"', { cwd: RAIZ, stdio: 'inherit' });
           } else if (partes.length === 1) {
-            fsw.copyFileSync(partes[0], GRAFO);   // merge-graphs exige dois
+            fsw.copyFileSync(partes[0], GRAFO);   // merge-graphs requires two
           }
         }
         if (!DRY) {
@@ -3232,35 +3232,35 @@ if (GRAPHIFY) {
 
     }
 
-    // ── O lado dos docs: a base de conhecimento entra no MESMO grafo, gerada AQUI.
+    // ── The docs side: the knowledge base enters the SAME graph, generated HERE.
     //
-    // Medido em 10/09/2026 antes de decidir: o graphify só indexa `.md` por LLM —
-    // 93 K tokens para três arquivos de amostra, não determinístico, e a aresta
-    // doc→código foi DESCARTADA por ele mesmo ("out-of-scope"). E o `merge-graphs`
-    // prefixa os ids por repositório, o que quebra qualquer aresta cruzada. Então o
-    // Marvin escreve os nós de doc e as arestas por regex e anexa direto no graph.json:
-    // zero LLM, zero custo, o mesmo resultado a cada run. É o que faz `path`,
-    // `affected` e `query` responderem "que US toca esta função" nos dois sentidos.
+    // Measured on 10/09/2026 before deciding: graphify only indexes `.md` through an LLM —
+    // 93 K tokens for three sample files, non-deterministic, and the doc→code edge was
+    // DISCARDED by itself ("out-of-scope"). And `merge-graphs` prefixes ids per
+    // repository, which breaks any cross edge. So Marvin writes the doc nodes and the
+    // edges by regex and appends them straight into graph.json: zero LLM, zero cost, the
+    // same result every run. It is what makes `path`, `affected` and `query` answer
+    // "which US touches this function" in both directions.
     //
-    // Regras de aresta, todas lidas do markdown:
-    //   [x](caminho.md) relativo                 → references  (doc → doc)
-    //   [x](../../src/a.js) relativo a código    → touches     (doc → arquivo)
-    //   `pai:` no frontmatter                    → child_of
-    //   crase em "## Código tocado":  `src/a.js`           → touches (arquivo)
-    //                                 `src/a.js` — `fn`    → touches (função)
-    // Bloco de código e comentário HTML são ignorados: os READMEs trazem o formato
-    // como exemplo, e exemplo não é aresta.
+    // Edge rules, all read from the markdown:
+    //   [x](path.md) relative                    → references  (doc → doc)
+    //   [x](../../src/a.js) relative to code     → touches     (doc → file)
+    //   `pai:` in the frontmatter                → child_of
+    //   backtick in "## Código tocado":  `src/a.js`           → touches (file)
+    //                                    `src/a.js` — `fn`    → touches (function)
+    // Code blocks and HTML comments are ignored: the READMEs carry the format as an
+    // example, and an example is not an edge.
     //
-    // Idempotente: tudo que este bloco escreve leva `_origin: 'marvin'`, e é removido e
-    // regerado a cada run. Nó de código que não existe no grafo vira AVISO, nunca nó
-    // fantasma — função renomeada é exatamente o que a régua deve acusar.
+    // Idempotent: everything this block writes carries `_origin: 'marvin'`, and is removed
+    // and regenerated every run. A code node that does not exist in the graph becomes a
+    // WARNING, never a ghost node — a renamed function is exactly what the ruler should flag.
     let docsMudou = false;
     if (fs.existsSync(GRAFO) && fs.existsSync(DOCS)) {
       let g = null;
       try { g = JSON.parse(fs.readFileSync(GRAFO, 'utf8')); } catch {}
       if (g && Array.isArray(g.nodes)) {
-        // `extract` escreve `edges`; depois do `cluster-only` o arquivo sai em formato
-        // networkx, com `links`. O anexo respeita o que encontrar.
+        // `extract` writes `edges`; after `cluster-only` the file comes out in networkx
+        // format, with `links`. The append respects whatever it finds.
         const CHAVE = Array.isArray(g.links) ? 'links' : 'edges';
         g.edges = g[CHAVE] || [];
         const antes = JSON.stringify({ n: g.nodes.filter(n => n._origin === 'marvin'), e: g.edges.filter(e => e._origin === 'marvin') });
@@ -3274,8 +3274,8 @@ if (GRAPHIFY) {
         const depois = JSON.stringify({ n: novosNos, e: novasArestas });
         docsMudou = antes !== depois;
         if (docsMudou) {
-          // Preserva o mtime: o check de frescor abaixo compara código com a HORA DA
-          // EXTRAÇÃO, e anexar docs não re-extraiu nada.
+          // Preserves the mtime: the freshness check below compares code against the
+          // EXTRACTION TIME, and appending docs re-extracted nothing.
           let st = null; try { st = fs.statSync(GRAFO); } catch {}
           fsw.writeFileSync(GRAFO, JSON.stringify(g, null, 1));
           if (!DRY && st) { try { fs.utimesSync(GRAFO, st.atime, st.mtime); } catch {} }
@@ -3290,12 +3290,12 @@ if (GRAPHIFY) {
       }
     }
 
-    // ── Relatório e HTML. O `extract` para no graph.json DE PROPÓSITO: o report e
-    // os nomes das comunidades são passo separado, e é por isso que tanta gente
-    // acha que a instalação quebrou ao não achar o graph.html que o README do
-    // graphify mostra. Sem --graphify-label roda --no-label: determinístico,
-    // grátis, sem chave — o html sai igual, só com "Community 0/1/2" nos nomes.
-    // Roda quando o grafo mudou — construído agora ou docs anexados — e só com o binário.
+    // ── Report and HTML. `extract` stops at graph.json ON PURPOSE: the report and the
+    // community names are a separate step, which is why so many people think the
+    // install broke when they cannot find the graph.html the graphify README shows.
+    // Without --graphify-label it runs --no-label: deterministic, free, no key — the
+    // html comes out the same, just with "Community 0/1/2" as names.
+    // Runs when the graph changed — built now or docs appended — and only with the binary.
     if (versao && (construiu || docsMudou) && (DRY || fs.existsSync(GRAFO))) {
       let modo = '--no-label';
       if (GRAPHIFY_LABEL) {
@@ -3304,9 +3304,9 @@ if (GRAPHIFY) {
         if (temClaude) modo = '--backend claude-cli';
         else warn('--graphify-label ignored: no `claude` on PATH — using --no-label');
       }
-      // Só os docs mudaram? O cluster-only reescreve o graph.json, e o check de frescor
-      // abaixo compara o código com o mtime dele — sem isto, anexar docs faria um grafo
-      // velho parecer fresco.
+      // Only the docs changed? cluster-only rewrites graph.json, and the freshness check
+      // below compares the code against its mtime — without this, appending docs would
+      // make a stale graph look fresh.
       let stAntes = null;
       if (!construiu) { try { stAntes = fs.statSync(GRAFO); } catch {} }
       try {
@@ -3318,7 +3318,7 @@ if (GRAPHIFY) {
       }
     }
 
-    // ── Frescor: o check que falta no hook do graphify — árvore inteira, não 1 arquivo.
+    // ── Freshness: the check graphify's hook lacks — the whole tree, not 1 file.
     if (fs.existsSync(GRAFO)) {
       const EXT_CODIGO = /\.(js|mjs|cjs|jsx|ts|tsx|py|go|rs|java|kt|rb|php|cs|c|h|cpp|hpp|swift|scala|ex|exs|lua|sh)$/i;
       const tsGrafo = fs.statSync(GRAFO).mtimeMs;
@@ -3339,20 +3339,20 @@ if (GRAPHIFY) {
         warn(novos.length + ' source file(s) newer than the graph — it is STALE');
         novos.slice(0, 5).forEach(f => info('  ' + f));
         if (novos.length > 5) info('  … e mais ' + (novos.length - 5));
-        // Num monorepo `graphify update .` re-extrai SÓ a raiz e joga fora os
-        // sub-repos — o comando certo é refazer o ciclo inteiro.
+        // In a monorepo `graphify update .` re-extracts ONLY the root and throws away the
+        // sub-repos — the right command is to redo the whole cycle.
         info(subRepos.length ? 'refresh with:  marvin --graphify --graphify-rebuild'
                              : 'refresh with:  graphify update .');
       } else ok('graph is newer than all source — it is fresh');
     }
 
-    // ── post-commit: o grafo se atualiza sozinho depois do commit (só com a flag).
-    // NÃO é o `graphify hook install`. Aquele reconstrói a RAIZ do repositório, e num
-    // monorepo a raiz é o que NÃO tem o código dentro — ele automatizaria, a cada
-    // commit, exatamente o estrago que o passo acima existe para evitar.
+    // ── post-commit: the graph refreshes itself after the commit (only with the flag).
+    // It is NOT `graphify hook install`. That one rebuilds the repository ROOT, and in a
+    // monorepo the root is what does NOT have the code inside — it would automate, on
+    // every commit, exactly the damage the step above exists to avoid.
     if (GRAPHIFY_GIT_HOOK) {
-      // Barra normal também no Windows: dentro de aspas do `sh` a barra invertida só
-      // não vira escape por sorte, e o node aceita as duas. Não depender de sorte.
+      // Forward slash on Windows too: inside `sh` quotes the backslash only avoids
+      // becoming an escape by luck, and node accepts both. Do not depend on luck.
       const comando = subRepos.length
         ? 'node "' + process.argv[1].replace(/\\/g, '/') + '" --graphify --graphify-rebuild'
         : 'graphify update .';
@@ -3386,15 +3386,15 @@ echo "[marvin] atualizando o grafo em segundo plano (log: $LOG)"
       if (!fs.existsSync(path.join(RAIZ, '.git'))) {
         warn('--graphify-git-hook skipped: this is not a git repository');
       } else if (fs.existsSync(alvo)) {
-        // Invariante 1: hook alheio não é sobrescrito. Um post-commit que já existe
-        // pode ser o CI, o lint ou o gerador de changelog de outra pessoa.
+        // Invariant 1: someone else's hook is not overwritten. An existing post-commit
+        // may be the CI, the lint or someone else's changelog generator.
         warn('a post-commit hook already exists — left untouched');
         info('  to get the refresh, add this line to it by hand:');
         info('    ' + comando);
       } else {
         fsw.mkdirSync(dirHooks, { recursive: true });
         fsw.writeFileSync(alvo, script);
-        try { if (!DRY) fs.chmodSync(alvo, 0o755); } catch {}   // no-op no Windows
+        try { if (!DRY) fs.chmodSync(alvo, 0o755); } catch {}   // no-op on Windows
         ok('.git/hooks/post-commit — the graph refreshes itself after each commit');
         info('  it runs:  ' + comando);
         info('  NOT versioned: it lives in .git/, so it does not reach the team');
@@ -3424,7 +3424,7 @@ echo "[marvin] atualizando o grafo em segundo plano (log: $LOG)"
   }
 }
 
-// ═══════════════════════════════════════════ 9. LEGADO (só se detectado)
+// ═══════════════════════════════════════════ 9. LEGACY (only if detected)
 const ORQUESTRADORES = [
   { arquivos: ['.swarm', '.claude-flow', '.hive-mind', 'agentdb.rvf', 'agentdb.rvf.lock', 'ruvector.db'],
     nome: 'claude-flow / ruflo' },
@@ -3462,49 +3462,49 @@ if (legado.length) {
   }
 }
 
-// ═══════════════════════════════════════════ 10. ATUALIZAÇÕES DESDE A MONTAGEM
+// ═══════════════════════════════════════════ 10. UPDATES SINCE THE SCAFFOLD
 //
-// O problema que este passo resolve: todo bloco de escrita é guardado por
-// `if (!fs.existsSync(...))` — é o invariante 2, e sem ele rodar duas vezes
-// duplicaria tudo. O efeito colateral é que arquivo que JÁ existe fica congelado
-// na versão que o criou. Quem montou o projeto em julho e roda a versão de agosto
-// não recebe nada: o script diz "já existe" e segue.
+// The problem this step solves: every write block is guarded by
+// `if (!fs.existsSync(...))` — that is invariant 2, and without it running twice
+// would duplicate everything. The side effect is that a file that ALREADY exists is
+// frozen at the version that created it. Whoever scaffolded the project in July and
+// runs the August version gets nothing: the script says "already exists" and moves on.
 //
-// Aqui ele confere, em cada arquivo que gera mas não sobrescreve, se os blocos que
-// versões novas acrescentaram estão presentes — e avisa os que faltam. Ele NÃO
-// reescreve: o arquivo é do humano e pode ter sido editado de propósito.
+// Here it checks, in every file it generates but does not overwrite, whether the
+// blocks newer versions added are present — and warns about the missing ones. It does
+// NOT rewrite: the file is the human's and may have been edited on purpose.
 //
-// Não existe arquivo de versão. A checagem lê o conteúdo real, porque um número de
-// versão gravado é mais um artefato derivado — e artefato derivado envelhece em
-// silêncio, que é a doença que este projeto inteiro combate.
+// There is no version file. The check reads the actual content, because a recorded
+// version number is one more derived artifact — and derived artifacts age in silence,
+// which is the disease this whole project fights.
 const ATUALIZACOES = [
   { arquivo: '.claude/skills/README.md', marca: /Skill, agente ou command/i,
     o_que: 'the skill vs. agent vs. command discriminator (and the 2x rule)' },
-  // Regra mora onde dispara (11/09): fechar sessão → /retomar; portabilidade → Sobre.md;
-  // antes da US → Planejamento/README. O AGENTS.md carrega em toda sessão e ficou só com
-  // o lembrete de uma linha. Quem montou antes tem as seções inteiras no AGENTS.md — vale.
+  // A rule lives where it fires (11/09): closing a session → /retomar; portability → Sobre.md;
+  // before a US → Planejamento/README. AGENTS.md loads in every session and kept only the
+  // one-line reminder. Whoever scaffolded before has the full sections in AGENTS.md — still valid.
   { arquivo: '.claude/commands/retomar.md', marca: /Ao fechar/,
     o_que: 'the "Ao fechar" footer — when to suggest a new chat (moved here from AGENTS.md)' },
   { arquivo: 'AGENTS.md', marca: /Higiene de sessão/i,
     o_que: 'the "Higiene de sessão" pointer' },
   { arquivo: 'CLAUDE.md', marca: /Grafo de código/i, soCom: GRAPHIFY,
     o_que: 'the "Grafo de código" section (appears with --graphify)' },
-  // Comando canônico só entra quando HÁ manifesto legível — `soCom` evita cobrar o bloco
-  // de quem monta um repo sem stack detectável e ficaria com um aviso impossível de
-  // resolver. Quem montou antes desta versão preencheu à mão (ou não preencheu).
+  // A canonical command only enters when there IS a readable manifest — `soCom` avoids
+  // demanding the block from whoever scaffolds a repo with no detectable stack and would
+  // be stuck with an impossible warning. Whoever scaffolded before this version filled it by hand (or did not).
   { arquivo: 'AGENTS.md', marca: /Comandos canônicos/, soCom: COMANDOS.length > 0,
     o_que: 'the "Comandos canônicos" table — install/test/build read from the manifest' },
-  // A pasta de decisões existia desde sempre e nascia VAZIA. Quem montou antes desta
-  // versão tem a pasta e nenhuma pista do que ela é — e é justamente quem já está
-  // empilhando histórico no onde_paramos.md sem saber que havia outro lugar.
+  // The decisions folder has always existed and was born EMPTY. Whoever scaffolded
+  // before this version has the folder and no clue what it is — and is precisely who is
+  // already piling history into onde_paramos.md without knowing there was another place.
   { arquivo: path.relative(RAIZ, path.join(DOCS, '10_Decisoes', 'README.md')).replace(/\\/g, '/'),
     marca: /por que escolhemos isto/i, soCom: LAYOUT_ANTIGO,
     o_que: 'the decisions README — what belongs there instead of in onde_paramos.md' },
   { arquivo: 'AGENTS.md', marca: /A nota é curta; a decisão é imutável/, soCom: LAYOUT_ANTIGO,
     o_que: 'the "note is short, decision is immutable" rule — where overflow goes' },
-  // Organização por grafo (1.2). Quem montou no layout novo por uma versão anterior a
-  // alguma seção nova fica sabendo aqui; quem está no layout antigo recebe o aviso do
-  // passo 5, não estas marcas — cobrar seção de grafo num AGENTS.md antigo seria ruído.
+  // Graph organization (1.2). Whoever scaffolded on the new layout with a version older
+  // than some new section finds out here; whoever is on the old layout gets step 5's
+  // warning, not these marks — demanding a graph section in an old AGENTS.md would be noise.
   { arquivo: '.claude/commands/fechar.md', marca: /--fechar/, soCom: !LAYOUT_ANTIGO,
     o_que: 'the `marvin --fechar` step — drift between the diff and the active USs' },
   { arquivo: '.claude/commands/us.md', marca: /Impacto/, soCom: !LAYOUT_ANTIGO,
@@ -3526,26 +3526,26 @@ const ATUALIZACOES = [
   { arquivo: path.relative(RAIZ, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
     marca: /Código tocado/, soCom: !LAYOUT_ANTIGO,
     o_que: 'the Sobre.md format for Epic/Feature/US — "Código tocado" is what links a US to code in the graph' },
-  // Bloco novo em arquivo que já existe é exatamente o que este passo existe para pegar.
-  // Sem esta marca, quem montou o projeto antes desta versão continua olhando para uma
-  // pasta de agentes sem nenhuma pista de QUANTOS papéis o repositório dele pede.
+  // A new block in an existing file is exactly what this step exists to catch.
+  // Without this mark, whoever scaffolded before this version keeps looking at an
+  // agents folder with no clue of HOW MANY roles their repository asks for.
   { arquivo: '.claude/agents/README.md', marca: /O que ESTE projeto sugere/,
     o_que: 'the "O que ESTE projeto sugere" section — how many roles this repo implies' },
-  // Sem esta marca, quem montou o projeto antes do --check existir nunca fica sabendo
-  // que ele existe — e é justamente quem já pode estar com a junction quebrada.
+  // Without this mark, whoever scaffolded before --check existed never learns it
+  // exists — and is precisely who may already have a broken junction.
   { arquivo: 'CLAUDE.md', marca: /--check/,
     o_que: 'the `marvin --check` note — a junction broken by a moved folder is silent' },
-  // O passo 8 só escreve o .gitignore quando ele NÃO existe, então um projeto
-  // montado por versão antiga fica sem o bloco de segredos para sempre — e sem
-  // aviso. É a pior variante da retrocompatibilidade: a que não commita `.env`
-  // é uma linha, e a ausência dela não aparece até o dia em que aparece.
+  // Step 8 only writes the .gitignore when it does NOT exist, so a project scaffolded
+  // by an old version goes without the secrets block forever — and without warning.
+  // It is the worst variant of backward compatibility: what keeps `.env` out of a
+  // commit is one line, and its absence does not show until the day it does.
   { arquivo: '.gitignore', marca: /^\.env\s*$/m,
     o_que: 'the secrets block (.env, *.pem, *.key, **/credentials/)' },
-  // O registro nasce sozinho (bloco 0b) — mas o AGENTS.md gerado antes dele não aponta
-  // para lá, e registro que ninguém lê é o mesmo que nenhum.
+  // The record is born on its own (block 0b) — but an AGENTS.md generated before it does
+  // not point there, and a record nobody reads is the same as none.
   { arquivo: 'AGENTS.md', marca: /ferramentas\.md/, soCom: !LAYOUT_ANTIGO,
     o_que: 'the pointer to .marvin/ferramentas.md — which optional tools THIS project uses' },
-  // Ponytail só entra quando o registro diz `sim` — cobrar a seção de quem não usa é ruído.
+  // Ponytail only enters when the record says `sim` — demanding the section from who does not use it is noise.
   { arquivo: 'AGENTS.md', marca: /## Ferramentas[\s\S]*?\*\*Ponytail\*\*/, soCom: PONYTAIL,
     o_que: 'the "Ferramentas" section on ponytail — what it does not replace (appears with --use=ponytail)' },
   { arquivo: '.claude/agents/README.md', marca: /Ponytail: em que papel entra/, soCom: PONYTAIL,
@@ -3555,7 +3555,7 @@ const ATUALIZACOES = [
 const faltando = ATUALIZACOES.filter(a => {
   if (a.soCom === false) return false;
   const p = path.join(RAIZ, a.arquivo);
-  if (!fs.existsSync(p)) return false; // não existe: os passos acima já criam
+  if (!fs.existsSync(p)) return false; // does not exist: the steps above already create it
   try { return !a.marca.test(fs.readFileSync(p, 'utf8')); } catch { return false; }
 });
 
@@ -3578,13 +3578,13 @@ if (DRY) {
   log('\n   run without --dry-run to apply.');
 }
 
-// O que fica para o humano. AGENTS.md primeiro, e o CLAUDE.md fora da lista de
-// propósito: ele é ponteiro e já foi gerado. Mandar escrever estrutura e invariantes
-// nele seria ensinar o oposto da arquitetura montada aqui.
-// O --graphify não é sugerido em lugar nenhum durante a execução normal, e recurso que
-// só existe no --help é recurso que ninguém descobre. A menção fica DEPOIS do que
-// importa, é uma linha, e manda ler as ressalvas antes de adotar: o grafo é artefato
-// derivado e envelhece em silêncio, então empurrá-lo seria contrariar o resto do script.
+// What is left to the human. AGENTS.md first, and CLAUDE.md off the list on purpose:
+// it is a pointer and has already been generated. Telling them to write structure and
+// invariants in it would teach the opposite of the architecture built here.
+// --graphify is suggested nowhere during the normal run, and a feature that only exists
+// in --help is a feature nobody discovers. The mention comes AFTER what matters, is one
+// line, and says to read the caveats before adopting: the graph is a derived artifact
+// and ages in silence, so pushing it would contradict the rest of the script.
 if (!GRAPHIFY) {
   log('\n\x1b[1mOptional, and never required:\x1b[0m');
   log('  graphify builds a code graph for STRUCTURAL questions — what calls what,');

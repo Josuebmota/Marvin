@@ -1,38 +1,37 @@
 #!/usr/bin/env node
 /**
- * Smoke test do marvin. Zero dependência:
+ * marvin's smoke test. Zero dependencies:
  *
  *     node teste.mjs
  *
- * O que ele cobre — e por que só isto:
+ * What it covers — and why only this:
  *
- * O marvin escreve no repositório dos outros E cria um link no perfil do usuário.
- * Esses são os dois lugares onde um erro custa caro, então o teste cobre os
- * invariantes que protegem os dois, e não a formatação da saída.
+ * marvin writes into other people's repositories AND creates a link in the user's
+ * profile. Those are the two places where a mistake is expensive, so the test covers
+ * the invariants that protect both, not the formatting of the output.
  *
- *   1. --help não escreve nada          (flag que todo mundo digita primeiro)
- *   2. --dry-run não escreve nada       (a promessa do dry-run)
- *   3. execução real cria a estrutura
- *   4. rodar 2× não duplica             (invariante 2 — idempotência)
- *   5. memória existente é copiada, conferida, e só então o perfil vira link
- *                                       (invariante 1 — nunca destruir sem conferir)
- *   6. projeto dentro da home não conta o nível global duas vezes  (regressão)
- *   7. junction quebrada por mudança de pasta é CONSERTADA, não só avisada
- *   8. --check acusa a montagem quebrada e não escreve nada
- *   9. o adaptador do Copilot nasce no caminho da documentação oficial
- *  10. os comandos canônicos saem do MANIFESTO — e o gerenciador, do lockfile
- *  11. a nota promete três perguntas e entrega três, com destino para o transbordo
- *  12. git worktree: o hook acusa memória desligada antes do marvin rodar ali (precisa de git)
+ *   1. --help writes nothing            (the flag everyone types first)
+ *   2. --dry-run writes nothing         (the dry-run promise)
+ *   3. a real run creates the structure
+ *   4. running 2× does not duplicate    (invariant 2 — idempotence)
+ *   5. existing memory is copied, verified, and only then the profile becomes a link
+ *                                       (invariant 1 — never destroy without checking)
+ *   6. a project inside the home does not count the global level twice  (regression)
+ *   7. a junction broken by a moved folder is FIXED, not just reported
+ *   8. --check reports the broken mount and writes nothing
+ *   9. the Copilot adapter is born at the path from the official docs
+ *  10. the canonical commands come from the MANIFEST — and the manager, from the lockfile
+ *  11. the note promises three questions and delivers three, with a destination for the overflow
+ *  12. git worktree: the hook reports memory disconnected before marvin runs there (needs git)
  *
- * HERMÉTICO: cada caso roda com HOME e USERPROFILE apontando para um diretório
- * temporário. Sem isso o teste criaria junctions no perfil real de quem rodasse —
- * que é exatamente o dano que o marvin toma cuidado para não causar.
+ * HERMETIC: every case runs with HOME and USERPROFILE pointing at a temporary
+ * directory. Without that the test would create junctions in the real profile of
+ * whoever ran it — exactly the damage marvin takes care not to cause.
  *
- * LACUNA CONHECIDA: o ramo de ABORTO da migração (copiou menos do que a origem)
- * não é testado. Forçar uma cópia parcial exige mock de fs ou permissão de
- * diretório, e as duas coisas trariam dependência ou comportamento específico de
- * plataforma. Está anotado aqui em vez de simulado — teste que finge cobrir é
- * pior que lacuna declarada.
+ * KNOWN GAP: the ABORT branch of the migration (copied fewer than the source) is not
+ * tested. Forcing a partial copy requires an fs mock or directory permissions, and
+ * both would bring a dependency or platform-specific behavior. It is noted here
+ * instead of faked — a test that pretends to cover is worse than a declared gap.
  */
 
 import fs from 'node:fs';
@@ -45,7 +44,7 @@ const AQUI = path.dirname(fileURLToPath(import.meta.url));
 const SCRIPT = path.join(AQUI, 'marvin.mjs');
 const NLQ = String.fromCharCode(10);
 
-let pulados = 0;  // checks que um bloco deixou de rodar por falta de ferramenta — o README conta a suíte inteira
+let pulados = 0;  // checks a block skipped for lack of a tool — the README counts the whole suite
 let passou = 0, falhou = 0;
 const verde = (s) => '\x1b[32m' + s + '\x1b[0m';
 const vermelho = (s) => '\x1b[31m' + s + '\x1b[0m';
@@ -56,14 +55,14 @@ function checa(descricao, condicao, detalhe = '') {
 }
 
 /**
- * Cria um par (projeto, home falso) isolado e devolve os caminhos.
+ * Creates an isolated (project, fake home) pair and returns the paths.
  *
- * O `realpathSync` não é decoração. No macOS `os.tmpdir()` devolve `/var/folders/…`,
- * que é um SYMLINK para `/private/var/folders/…`. O `process.cwd()` do processo filho
- * já vem resolvido, então o marvin deriva a chave da memória de `/private/var/…`
- * enquanto o teste a procuraria em `/var/…` — dois caminhos para o mesmo diretório,
- * e o teste falhando por olhar no lugar errado. Linux (`/tmp`) e Windows não têm essa
- * indireção, e foi por isso que só o macOS acusou.
+ * `realpathSync` is not decoration. On macOS `os.tmpdir()` returns `/var/folders/…`,
+ * which is a SYMLINK to `/private/var/folders/…`. The child process's `process.cwd()`
+ * already comes resolved, so marvin derives the memory key from `/private/var/…`
+ * while the test would look for it in `/var/…` — two paths to the same directory,
+ * and the test failing for looking in the wrong place. Linux (`/tmp`) and Windows have
+ * no such indirection, which is why only macOS flagged it.
  */
 function arena(nome) {
   const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'marvin-teste-' + nome + '-')));
@@ -75,7 +74,7 @@ function arena(nome) {
   return { base, proj, lar };
 }
 
-/** Roda o marvin com HOME/USERPROFILE redirecionados. */
+/** Runs marvin with HOME/USERPROFILE redirected. */
 function rodar({ proj, lar }, ...flags) {
   return spawnSync(process.execPath, [SCRIPT, ...flags], {
     cwd: proj,
@@ -84,7 +83,7 @@ function rodar({ proj, lar }, ...flags) {
   });
 }
 
-/** Conta arquivos, ignorando o package.json que a arena planta. */
+/** Counts files, ignoring the package.json the arena plants. */
 function arquivos(dir) {
   const achados = [];
   (function anda(d) {
@@ -98,14 +97,14 @@ function arquivos(dir) {
   return achados.filter(f => f !== 'package.json');
 }
 
-/** O caminho de memória que o marvin derivaria para este projeto. */
+/** The memory path marvin would derive for this project. */
 const caminhoMemoria = (lar, proj) =>
   path.join(lar, '.claude', 'projects', proj.replace(/[:\\/]/g, '-'), 'memory');
 
 /**
- * Remove a arena. O link tem que sair como LINK: rm -rf numa junction do Windows
- * pode seguir o link e apagar o destino — é a armadilha do AGENTS.md, e o teste
- * seria um jeito ridículo de descobri-la.
+ * Removes the arena. The link has to go as a LINK: rm -rf on a Windows junction can
+ * follow the link and delete the target — it is the AGENTS.md trap, and the test
+ * would be a ridiculous way to discover it.
  */
 function limpar({ base, lar, proj }) {
   const mem = caminhoMemoria(lar, proj);
@@ -113,7 +112,7 @@ function limpar({ base, lar, proj }) {
     if (fs.lstatSync(mem).isSymbolicLink()) {
       try { fs.unlinkSync(mem); } catch { fs.rmdirSync(mem); }
     }
-  } catch { /* não existe: nada a desfazer */ }
+  } catch { /* does not exist: nothing to undo */ }
   try { fs.rmSync(base, { recursive: true, force: true }); } catch {}
 }
 
@@ -121,7 +120,7 @@ function limpar({ base, lar, proj }) {
 console.log('\n\x1b[1mmarvin — smoke test\x1b[0m');
 console.log('node ' + process.version + ' · ' + process.platform + '\n');
 
-// ── 1. --help não escreve nada
+// ── 1. --help writes nothing
 {
   const a = arena('help');
   const r = rodar(a, '--help');
@@ -133,13 +132,13 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 2. --dry-run não escreve nada
+// ── 2. --dry-run writes nothing
 {
   const a = arena('dry');
   const r = rodar(a, '--dry-run');
   checa('--dry-run sai com código 0', r.status === 0, 'saiu ' + r.status);
-  // Casa a estrutura do plano, não uma palavra específica: assim a asserção
-  // sobrevive a uma reescrita de texto sem virar falso negativo.
+  // Matches the plan's structure, not a specific word: that way the assertion
+  // survives a text rewrite without becoming a false negative.
   checa('--dry-run lista o plano', /create file\s+AGENTS\.md/.test(r.stdout),
         'não achou a linha do AGENTS.md no plano');
   checa('--dry-run não cria arquivo', arquivos(a.proj).length === 0,
@@ -149,7 +148,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 3. execução real cria a estrutura
+// ── 3. a real run creates the structure
 {
   const a = arena('real');
   const r = rodar(a, '--no-git');
@@ -171,13 +170,12 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const mem = caminhoMemoria(a.lar, a.proj);
   let ehLink = false;
   try { ehLink = fs.lstatSync(mem).isSymbolicLink(); } catch {}
-  // O detalhe existe para o CI: quando este falha numa plataforma que não está na
-  // sua frente, saber QUAL caminho foi conferido é a diferença entre diagnosticar
-  // e adivinhar.
+  // The detail exists for CI: when this fails on a platform that is not in front of
+  // you, knowing WHICH path was checked is the difference between diagnosing and guessing.
   checa('perfil vira link para o repositório', ehLink, 'conferido em ' + mem);
 
   if (ehLink) {
-    // A prova real: escrever pelo caminho do agente tem que cair no repositório.
+    // The real proof: writing through the agent's path has to land in the repository.
     fs.writeFileSync(path.join(mem, 'prova.md'), '# prova\n');
     checa('escrita pelo perfil aparece dentro do repo',
           fs.existsSync(path.join(a.proj, '.marvin', 'Memoria', 'prova.md')));
@@ -185,7 +183,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 4. rodar 2× não duplica (invariante 2)
+// ── 4. running 2× does not duplicate (invariant 2)
 {
   const a = arena('idem');
   rodar(a, '--no-git');
@@ -202,7 +200,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 5. migração de memória (invariante 1)
+// ── 5. memory migration (invariant 1)
 {
   const a = arena('migra');
   const mem = caminhoMemoria(a.lar, a.proj);
@@ -227,18 +225,18 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 6. projeto DENTRO da home não conta o nível global duas vezes
-// Regressão: a subida da árvore encontrava ~/.claude e o somava, e logo depois
-// o nível GLOBAL era somado de novo — dobrando o total exibido. Apareceu rodando
-// num diretório temporário sob o perfil do usuário, não num teste.
+// ── 6. a project INSIDE the home does not count the global level twice
+// Regression: the tree climb found ~/.claude and added it, and right after the
+// GLOBAL level was added again — doubling the displayed total. It showed up running
+// in a temporary directory under the user profile, not in a test.
 {
-  // realpath pelo mesmo motivo da arena — ver o comentário lá.
+  // realpath for the same reason as the arena — see the comment there.
   const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'marvin-teste-home-')));
   const lar = path.join(base, 'lar');
-  const proj = path.join(lar, 'projeto');   // <- projeto ABAIXO da home
+  const proj = path.join(lar, 'projeto');   // <- project BELOW the home
   fs.mkdirSync(proj, { recursive: true });
   fs.writeFileSync(path.join(proj, 'package.json'), '{"name":"cobaia"}\n');
-  // um .claude global com um agente, para o nível GLOBAL ter peso mensurável
+  // a global .claude with one agent, so the GLOBAL level has measurable weight
   const agentesGlobais = path.join(lar, '.claude', 'agents');
   fs.mkdirSync(agentesGlobais, { recursive: true });
   fs.writeFileSync(path.join(agentesGlobais, 'x.md'), '---\ndescription: um agente global qualquer\n---\n');
@@ -247,21 +245,21 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const linhas = r.stdout.split('\n').filter(l => /\bagents\b.*\bskills\b.*\bcommands\b/.test(l));
   const globais = linhas.filter(l => /GLOBAL/.test(l));
   checa('nível GLOBAL aparece uma vez só', globais.length === 1, 'apareceu ' + globais.length + 'x');
-  // A asserção precisa ser exatamente a regressão: a home falsa não pode
-  // aparecer como nível próprio. Contar linhas não serve — no Windows o tmpdir
-  // fica DENTRO do perfil real, então a subida acha `~/.claude` de verdade, e
-  // listá-lo é o comportamento correto (é a detecção de níveis empilhados).
+  // The assertion has to be exactly the regression: the fake home cannot show up
+  // as a level of its own. Counting lines does not work — on Windows the tmpdir is
+  // INSIDE the real profile, so the climb finds the real `~/.claude`, and listing
+  // it is the correct behavior (it is the stacked-levels detection).
   const homeDuplicada = linhas.filter(l => !/GLOBAL/.test(l) && l.trimEnd().endsWith(lar));
   checa('a home não é listada como nível separado', homeDuplicada.length === 0,
         homeDuplicada.join(' | '));
   limpar({ base, lar, proj });
 }
 
-// ── 7. junction quebrada por mudança de pasta é CONSERTADA
-// Regressão real, e a mais provável de todas: mover ou renomear a pasta do projeto
-// deixa o caminho da memória existindo como diretório DE VERDADE e vazio — é o que o
-// Claude Code cria no caminho novo. Isso derrubava o symlink com EEXIST e mesmo assim
-// o script saía 0: a memória ficava desligada do repositório parecendo montada.
+// ── 7. a junction broken by a moved folder is FIXED
+// A real regression, and the most likely of all: moving or renaming the project folder
+// leaves the memory path existing as a REAL, empty directory — it is what Claude Code
+// creates at the new path. That knocked the symlink down with EEXIST and the script
+// still exited 0: the memory was disconnected from the repository while looking mounted.
 {
   const a = arena('quebrada');
   rodar(a, '--no-git');
@@ -284,7 +282,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 8. --check: diagnostica, não escreve, e o código de saída é a mensagem
+// ── 8. --check: diagnoses, writes nothing, and the exit code is the message
 {
   const a = arena('check');
   const r0 = rodar(a, '--check');
@@ -308,10 +306,10 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 9c. o plano do dry-run não inventa trabalho
-// Num projeto já montado o marvin não faria nada, e era isso que o plano precisava
-// dizer. Ele listava 9 "create dir" de pastas existentes — mkdir recursive em
-// diretório que já existe não cria nada — e a mensagem "nothing to do" nunca aparecia.
+// ── 9c. the dry-run plan does not invent work
+// On an already scaffolded project marvin would do nothing, and that is what the plan
+// needed to say. It listed 9 "create dir" for existing folders — mkdir recursive on an
+// existing directory creates nothing — and the "nothing to do" message never showed.
 {
   const a = arena('planolimpo');
   rodar(a, '--no-git');
@@ -323,9 +321,9 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 9b. o --check é anunciado onde a pessoa vai procurar, e o passo 10 cobra quem
-// montou antes dele existir. Flag que só aparece no --help é flag que ninguém usa —
-// e quem mais precisa dela é justamente quem montou o projeto na versão anterior.
+// ── 9b. --check is announced where the person will look, and step 10 nags whoever
+// scaffolded before it existed. A flag that only shows in --help is a flag nobody uses —
+// and who needs it most is precisely who scaffolded the project on the previous version.
 {
   const a = arena('anuncio');
   rodar(a, '--no-git');
@@ -333,7 +331,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   checa('o CLAUDE.md gerado ensina o marvin --check', /--check/.test(claude));
   checa('o 00_Inicio.md do layout antigo não nasce mais', !fs.existsSync(path.join(a.proj, '.marvin', '00_Inicio.md')));
 
-  // Simula projeto montado por versão antiga: CLAUDE.md sem a seção.
+  // Simulates a project scaffolded by an old version: CLAUDE.md without the section.
   fs.writeFileSync(path.join(a.proj, 'CLAUDE.md'), '# projeto\n\nAponta para AGENTS.md.\n');
   const r = rodar(a, '--no-git');
   checa('o passo 10 cobra o CLAUDE.md que não tem a nota', /--check/.test(r.stdout) &&
@@ -341,9 +339,9 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 9d. o --graphify é mencionado na saída normal, e some quando já está em uso
-// Mesma doença do --check: recurso que só existe no --help ninguém descobre. A menção
-// tem que ser uma linha, depois do que importa, e mandar ler as ressalvas antes.
+// ── 9d. --graphify is mentioned in the normal output, and goes away once in use
+// Same disease as --check: a feature that only exists in --help nobody discovers. The
+// mention has to be one line, after what matters, and say to read the caveats first.
 {
   const a = arena('grafomencao');
   const r = rodar(a, '--no-git');
@@ -355,11 +353,11 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 9e. o registro .marvin/ferramentas.md (US-11a)
-// O teste roda sem TTY, então a pergunta nunca aparece: é o ramo "assume não e avisa".
-// Com graphify no PATH da máquina o aviso é "no interactive terminal"; sem, "not on
-// PATH" — os dois registram `não`. Os casos que importam para o disco alheio: nasce uma
-// vez, não duplica, --use flipa sem reescrever o resto, --dry-run não escreve.
+// ── 9e. the .marvin/ferramentas.md record (US-11a)
+// The test runs without a TTY, so the question never shows: it is the "assume não and
+// warn" branch. With graphify on the machine's PATH the warning is "no interactive
+// terminal"; without, "not on PATH" — both record `não`. The cases that matter for
+// someone else's disk: born once, no duplicates, --use flips without rewriting the rest, --dry-run writes nothing.
 {
   const a = arena('registro');
   const reg = path.join(a.proj, '.marvin', 'ferramentas.md');
@@ -382,7 +380,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   checa('a marca do AGENTS.md aponta para o registro',
         /ferramentas\.md/.test(fs.readFileSync(path.join(a.proj, 'AGENTS.md'), 'utf8')));
   limpar(a);
-  // --use num projeto SEM registro tem que criar a linha, não só flipar (pegou em 15/09).
+  // --use on a project WITHOUT a record has to create the line, not just flip it (caught on 15/09).
   const b = arena('registro-use');
   rodar(b, '--no-git', '--use=graphify');
   const regB = path.join(b.proj, '.marvin', 'ferramentas.md');
@@ -391,10 +389,10 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(b);
 }
 
-// ── 9e2. ponytail: instalado ≠ ativo, e ausente não falha em silêncio (US-11b)
-// O plugin mora no HOME (~/.claude/plugins/installed_plugins.json, ~/.claude/.ponytail-active),
-// e o HOME aqui é o `lar` da arena — então o teste planta os dois arquivos e não depende
-// da máquina. Sem TTY nunca pergunta: o que se confere é a MENSAGEM de estado e o registro.
+// ── 9e2. ponytail: installed ≠ active, and absent does not fail silently (US-11b)
+// The plugin lives in HOME (~/.claude/plugins/installed_plugins.json, ~/.claude/.ponytail-active),
+// and HOME here is the arena's `lar` — so the test plants both files and does not depend
+// on the machine. Without a TTY it never asks: what is checked is the state MESSAGE and the record.
 {
   const a = arena('ponytail');
   const r0 = rodar(a, '--no-git');
@@ -430,12 +428,12 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(c);
 }
 
-// ── 9e. monorepo: o sub-repo ignorado pela raiz chega ao CLAUDE.md gerado
-// Num monorepo o grafo nascia inútil EM SILÊNCIO: a raiz ignora os sub-repositórios,
-// o graphify respeita o .gitignore, e sobrava um grafo sem o código do produto dentro.
-// Medido num monorepo real: 2.783 de 2.854 nós vinham de `.claude/` e zero do produto.
-// O teste NÃO precisa do graphify instalado — o CI não tem. A detecção mora no topo do
-// script e quem escreve o aviso é o passo 7, que roda antes do passo 8b desistir.
+// ── 9e. monorepo: the sub-repo ignored by the root reaches the generated CLAUDE.md
+// In a monorepo the graph was born useless IN SILENCE: the root ignores the sub-repos,
+// graphify respects .gitignore, and what was left was a graph without the product code.
+// Measured in a real monorepo: 2,783 of 2,854 nodes came from `.claude/` and zero from the product.
+// The test does NOT need graphify installed — CI does not have it. Detection lives at the
+// top of the script and the warning is written by step 7, which runs before step 8b gives up.
 {
   const temGit = spawnSync('git', ['--version'], { encoding: 'utf8' }).status === 0;
   if (!temGit) {
@@ -456,11 +454,11 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   }
 }
 
-// ── 9f. --graphify-git-hook: escreve o post-commit e NUNCA sobrescreve um que já existe
-// O grafo envelhece a cada commit e não avisa; o hook fecha essa lacuna. Mas post-commit
-// é lugar disputado — pode já ter lint, changelog ou CI de outra pessoa. Sobrescrever ali
-// é destruir trabalho alheio, que é o invariante 1 aplicado fora da memória.
-// Pula sem graphify no PATH: o bloco mora depois da checagem de versão, e o CI não o tem.
+// ── 9f. --graphify-git-hook: writes the post-commit and NEVER overwrites an existing one
+// The graph ages with every commit and does not warn; the hook closes that gap. But
+// post-commit is contested ground — it may already have someone's lint, changelog or CI.
+// Overwriting there is destroying someone else's work, which is invariant 1 applied outside memory.
+// Skips without graphify on PATH: the block lives after the version check, and CI does not have it.
 {
   const temGraphify = spawnSync('graphify', ['--version'], { encoding: 'utf8', shell: true }).status === 0;
   const temGit = spawnSync('git', ['--version'], { encoding: 'utf8' }).status === 0;
@@ -485,8 +483,8 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   }
 }
 
-// ── 9g. comandos canônicos: lidos do manifesto, nunca adivinhados. O gerenciador sai
-//     do LOCKFILE — é o erro que mais custa (npm install num projeto pnpm suja o lock).
+// ── 9g. canonical commands: read from the manifest, never guessed. The manager comes
+//     from the LOCKFILE — it is the most expensive mistake (npm install in a pnpm project dirties the lock).
 {
   const a = arena('cmd');
   fs.writeFileSync(path.join(a.proj, 'package.json'),
@@ -495,19 +493,19 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const r = rodar(a, '--no-git');
   const md = fs.readFileSync(path.join(a.proj, 'AGENTS.md'), 'utf8');
   checa('o AGENTS.md ganha a tabela de comandos canônicos', /## Comandos canônicos/.test(md));
-  // Asserção na LINHA DA TABELA, não em substring solta: `pnpm install` contém
-  // `npm install`, e a própria prosa do bloco cita o npm como exemplo do erro.
+  // Assertion on the TABLE ROW, not a loose substring: `pnpm install` contains
+  // `npm install`, and the block's own prose cites npm as the example of the mistake.
   checa('o gerenciador vem do lockfile, não do palpite',
         /| Instalar | `pnpm install` |/.test(md));
   checa('o script do package.json vira comando', /pnpm run test/.test(md));
-  // A origem é o que impede o bloco de envelhecer em silêncio quando o manifesto muda.
+  // The origin is what keeps the block from aging silently when the manifest changes.
   checa('cada linha declara de onde saiu', /package.json > scripts.test/.test(md));
   checa('a lacuna manual some quando o script preencheu', !/como rodar teste e build/.test(md));
   checa('a saída anuncia o passo 1b', /1b. Canonical commands/.test(r.stdout));
   limpar(a);
 }
 
-// ── 9h. sem manifesto legível o script NÃO inventa comando — a lacuna manual continua.
+// ── 9h. without a readable manifest the script does NOT invent a command — the manual gap stays.
 {
   const a = arena('cmd-vazio');
   fs.rmSync(path.join(a.proj, 'package.json'));
@@ -517,8 +515,8 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   checa('sem manifesto, a lacuna manual permanece', /como rodar teste e build/.test(md));
   limpar(a);
 }
-// ── 9i. a nota é contexto fixo e tem teto. O aviso só serve com DESTINO — por isso o
-//     teste cobre as duas metades: que ele mede, e que ele diz para onde vai o transbordo.
+// ── 9i. the note is fixed context and has a ceiling. The warning is only useful with a
+//     DESTINATION — so the test covers both halves: that it measures, and that it says where the overflow goes.
 {
   const a = arena('nota');
   rodar(a, '--no-git');
@@ -529,7 +527,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   checa('e a conta fecha com o total do que carrega sempre', /loads in EVERY session/.test(curta.stdout));
   checa('nota recém-criada não dispara aviso', !/not a report/.test(curta.stdout));
 
-  // 12 KB: o dobro do teto, para o teste não depender do valor exato.
+  // 12 KB: twice the ceiling, so the test does not depend on the exact value.
   fs.appendFileSync(nota, '#'.repeat(12 * 1024));
   const longa = rodar(a, '--dry-run');
   checa('nota longa é acusada', /not a report/.test(longa.stdout));
@@ -538,9 +536,9 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 9j. LAYOUT ANTIGO (08_Memoria/, 10_Decisoes/): continua detectado, a junction vai
-//     para onde as notas ESTÃO, nada é movido, e o script avisa. A pasta de decisões
-//     nasce explicada — vazia, ela não ensina ninguém.
+// ── 9j. OLD LAYOUT (08_Memoria/, 10_Decisoes/): still detected, the junction goes to
+//     where the notes ARE, nothing is moved, and the script warns. The decisions folder
+//     is born explained — empty, it teaches nobody.
 {
   const a = arena('dec');
   fs.mkdirSync(path.join(a.proj, '.marvin', '08_Memoria'), { recursive: true });
@@ -561,9 +559,9 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   checa('o AGENTS.md ensina para onde vai o transbordo da nota', /A nota é curta; a decisão é imutável/.test(md));
   limpar(a);
 }
-// ── 9k. a nota promete três perguntas e entrega três. Ela entregava QUATRO, e a quarta
-//     ("Contexto que economiza tempo") duplicava o `## Armadilhas` do AGENTS.md por
-//     desenho — era 41% da nota deste repositório e a única seção sem teto.
+// ── 9k. the note promises three questions and delivers three. It delivered FOUR, and the
+//     fourth ("Contexto que economiza tempo") duplicated AGENTS.md's `## Armadilhas` by
+//     design — it was 41% of this repository's note and the only section without a ceiling.
 {
   const a = arena('tres');
   rodar(a, '--no-git');
@@ -572,28 +570,28 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   checa('a nota gerada tem exatamente duas seções', secoes.length === 2, 'tem: ' + secoes.join(' | '));
   checa('e são: em andamento · travado', /## Em andamento/.test(nota) && /## Travado/.test(nota));
   checa('a seção que duplicava o AGENTS.md saiu', !/Contexto que economiza tempo/.test(nota));
-  // O cabeçalho tem que dizer PARA ONDE vai cada coisa — sem destino, o "seja breve" é
-  // conselho vazio. E tem que NOMEAR a brecha: todo mundo obedeceu "não crie arquivo
-  // novo" criando seção nova dentro do mesmo arquivo (18 delas num projeto real).
+  // The header has to say WHERE each thing goes — without a destination, "be brief" is
+  // empty advice. And it has to NAME the loophole: everyone obeyed "do not create a new
+  // file" by creating a new section inside the same file (18 of them in a real project).
   checa('o cabeçalho manda o estado da US para o Sobre.md dela', /Sobre\.md/.test(nota) && /não aqui/.test(nota));
   checa('o cabeçalho nomeia a brecha: seção de relato é o mesmo erro', /seção de relato/.test(nota));
   checa('o cabeçalho manda a US concluída para Releases', /Releases\/<versao>\.md/.test(nota));
   checa('o cabeçalho manda o histórico para o git log', /git log/.test(nota));
   limpar(a);
 }
-// ── 9l. junction ÓRFÃ (aponta para pasta que não existe mais) é REPONTADA, não só
-//     avisada. Renomear o vault cai exatamente aqui, e o script só avisava — duas
-//     ocorrências reais em projetos de verdade no mesmo dia trouxeram este ramo.
+// ── 9l. an ORPHAN junction (points to a folder that no longer exists) is REPOINTED, not
+//     just reported. Renaming the vault lands exactly here, and the script only warned —
+//     two real occurrences in real projects on the same day brought this branch.
 {
   const a = arena('orfa');
   rodar(a, '--no-git');
   const mem = caminhoMemoria(a.lar, a.proj);
   const vault = path.join(a.proj, '.marvin');
   fs.writeFileSync(path.join(vault, 'Memoria', 'prova.md'), '# prova' + NLQ);
-  // Simula o rename: o alvo da junction deixa de existir, o conteúdo vai para outro nome.
+  // Simulates the rename: the junction target stops existing, the content goes to another name.
   fs.renameSync(vault, path.join(a.proj, '.docs'));
   fs.renameSync(path.join(a.proj, '.docs'), vault);
-  // Aponta a junction para um caminho morto, como o rename faria.
+  // Points the junction at a dead path, as the rename would.
   try { fs.unlinkSync(mem); } catch {}
   fs.symlinkSync(path.join(a.proj, '.docs', 'Memoria'), mem, 'junction');
 
@@ -610,8 +608,8 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 9m. o ponteiro que a pessoa vê tem que servir para quem instalou pelo npm. O
-//     caminho do clone só serve para quem clonou — e a via principal virou o pacote.
+// ── 9m. the pointer the person sees has to work for whoever installed through npm. The
+//     clone path only works for whoever cloned — and the main route became the package.
 {
   const a = arena('ponteiro');
   const h = rodar(a, '--help');
@@ -624,9 +622,9 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
         r.stdout.includes('github.com/Josuebmota/Marvin/blob/main/PROMPT.md'));
   limpar(a);
 }
-// ── 9o. o ramo novo do passo 6 PASSA pelo shim: o --dry-run tem que ANUNCIAR o
-//     conserto da órfã e não executá-lo. Escrita nova que chame fs direto faz o
-//     dry-run mentir em silêncio — é armadilha declarada no AGENTS.md.
+// ── 9o. step 6's new branch GOES THROUGH the shim: --dry-run has to ANNOUNCE the
+//     orphan fix and not execute it. A new write that calls fs directly makes the
+//     dry-run lie silently — it is a trap declared in AGENTS.md.
 {
   const a = arena('dry-orfa');
   rodar(a, '--no-git');
@@ -645,9 +643,9 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
         'aponta para ' + alvo);
   limpar(a);
 }
-// ── 9p. organização por grafo: cada pasta nasce com o arquivo que diz o que entra nela,
-//     o AGENTS.md carrega a regra que se repete antes de toda US, e Design/ só nasce
-//     quando há front — lido do package.json, não adivinhado.
+// ── 9p. graph organization: every folder is born with the file that says what goes in
+//     it, AGENTS.md carries the rule repeated before every US, and Design/ is only born
+//     when there is a front end — read from package.json, not guessed.
 {
   const a = arena('grafo');
   fs.writeFileSync(path.join(a.proj, 'package.json'), '{"name":"x","dependencies":{"react":"18"}}');
@@ -675,10 +673,10 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a); limpar(b);
 }
 
-// ── 9q. o lado dos docs no grafo é gerado pelo marvin, por regex, e anexado direto no
-//     graph.json — medido em 10/09: o graphify só indexa .md por LLM e descarta a
-//     aresta doc→código. Este teste não precisa do graphify: com graph.json presente,
-//     o anexo roda mesmo sem o binário. Com o binário, o resultado tem que ser o mesmo.
+// ── 9q. the docs side of the graph is generated by marvin, by regex, and appended
+//     straight into graph.json — measured on 10/09: graphify only indexes .md through an
+//     LLM and discards the doc→code edge. This test does not need graphify: with graph.json
+//     present, the append runs even without the binary. With the binary, the result has to be the same.
 {
   const a = arena('docgrafo');
   fs.mkdirSync(path.join(a.proj, 'src'), { recursive: true });
@@ -692,7 +690,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
     '## Código tocado', '- `src/pag.js` — `estornar`', '- `src/pag.js` — `sumiu`', ''].join(NLQ));
   fs.writeFileSync(path.join(us, '..', 'Sobre.md'), '---' + NLQ + 'tipo: feature' + NLQ + '---' + NLQ + '# F1' + NLQ);
   fs.writeFileSync(path.join(a.proj, '.marvin', 'Contexto', 'Fluxos', 'pag.md'), '# Fluxo pag' + NLQ + '[US-1](../../Planejamento/Novos/E1/F1/US-1/Sobre.md)' + NLQ);
-  // grafo de código como o `graphify extract --code-only` escreve — ids previsíveis
+  // code graph as `graphify extract --code-only` writes it — predictable ids
   const saida = path.join(a.proj, 'graphify-out');
   fs.mkdirSync(saida, { recursive: true });
   const grafo = { directed: true, nodes: [
@@ -720,9 +718,9 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 9r. --us: o gatilho físico da regra "antes de qualquer US". Cria a cadeia de Sobre.md
-//     que falta, acrescenta o filho no pai que já existe, põe o ponteiro na nota — e rodar
-//     de novo não duplica nada. /us e /fechar nascem no 7b.
+// ── 9r. --us: the physical trigger of the "before any US" rule. Creates the missing
+//     Sobre.md chain, adds the child to the existing parent, puts the pointer in the note
+//     — and running again duplicates nothing. /us and /fechar are born in 7b.
 {
   const a = arena('us');
   rodar(a, '--no-git');
@@ -745,28 +743,28 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   checa('--us duas vezes não duplica o ponteiro', antes === depois && (depois.match(/^- \[US-02-total\]/gm) || []).length === 1);
   checa('--us com caminho errado sai != 0 e não cria nada', rodar(a, '--us', 'Errado/x').status !== 0 && !fs.existsSync(path.join(a.proj, '.marvin', 'Planejamento', 'Errado')));
 
-  // ── 9s. --status: lê os nós, confere contra a nota, e o código de saída é a mensagem.
+  // ── 9s. --status: reads the nodes, checks against the note, and the exit code is the message.
   const s1 = rodar(a, '--status');
   checa('--status sai 0 quando nota e nós concordam', s1.status === 0, s1.stdout.slice(-400));
   checa('--status lista as US com a cadeia Epic › Feature', /US-01-parcial/.test(s1.stdout) && /Pagamentos › Estorno/.test(s1.stdout));
   checa('--status mostra o progresso por Epic', /0\/2 US concluídas/.test(s1.stdout));
   checa('--status traz a conta do contexto fixo', /loads in EVERY session/.test(s1.stdout));
   checa('--status não escreve nada', fs.readFileSync(path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md'), 'utf8') === depois);
-  // US concluída que continua na nota: a brecha mais comum depois de fechar uma entrega.
+  // A concluded US still in the note: the most common loophole after closing a delivery.
   const usArq = path.join(P, 'Estorno', 'US-01-parcial', 'Sobre.md');
   fs.writeFileSync(usArq, fs.readFileSync(usArq, 'utf8').replace('estado: ativa', 'estado: concluida'));
   const s2 = rodar(a, '--status');
   checa('--status acusa US concluída que ainda está na nota', s2.status !== 0 && /still in the note/.test(s2.stdout));
   checa('--status acusa concluída sem Evidência', /without Evidência/.test(s2.stdout));
-  // Seção de relato dentro da nota: a brecha que o texto nomeia e o status pega.
+  // A report section inside the note: the loophole the text names and the status catches.
   fs.appendFileSync(path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md'), NLQ + '## Última rodada' + NLQ + NLQ + 'fizemos muita coisa' + NLQ);
   const s3 = rodar(a, '--status');
   checa('--status acusa seção de relato na nota', /look like a report/.test(s3.stdout));
   limpar(a);
 }
 
-// ── 9t. --migrar: layout antigo → grafo, com backup conferido antes de mover, links
-//     reescritos, e o que exige julgamento listado em vez de adivinhado.
+// ── 9t. --migrar: old layout → graph, with the backup verified before moving, links
+//     rewritten, and what takes judgment listed instead of guessed.
 {
   const a = arena('migrar');
   const m = path.join(a.proj, '.marvin');
@@ -779,9 +777,9 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   fs.writeFileSync(path.join(m, '10_Decisoes', 'README.md'), '# Decisões' + NLQ);
   fs.writeFileSync(path.join(m, '00_Fontes_Externas.md'), '# fontes' + NLQ);
   fs.writeFileSync(path.join(m, '00_Inicio.md'), '# inicio' + NLQ);
-  rodar(a, '--no-git');   // monta no layout antigo: junction → 08_Memoria
-  // readlinkSync de junction pode vir com separador no fim (aconteceu no windows-latest do CI,
-  // não na máquina local): resolve antes de olhar o nome, em vez de regex no texto cru.
+  rodar(a, '--no-git');   // scaffolds on the old layout: junction → 08_Memoria
+  // readlinkSync on a junction may come with a trailing separator (it happened on CI's
+  // windows-latest, not on the local machine): resolve before looking at the name, instead of a regex on raw text.
   const alvoLink = () => { try { return path.basename(path.resolve(fs.readlinkSync(caminhoMemoria(a.lar, a.proj)))); } catch { return ''; } };
   checa('cenário: junction aponta para 08_Memoria', alvoLink() === '08_Memoria', 'alvo: ' + alvoLink());
   const d = rodar(a, '--migrar', '--dry-run');
@@ -803,8 +801,8 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 9u. o passo 3 distingue backup declarado de lixo de shell. `firestore.rules.bak` num
-//     repo real era chamado de "malformed shell command" — aviso que ensina errado.
+// ── 9u. step 3 tells a declared backup from shell junk. `firestore.rules.bak` in a real
+//     repo was called "malformed shell command" — a warning that teaches the wrong thing.
 {
   const a = arena('backup');
   fs.writeFileSync(path.join(a.proj, 'firestore.rules.bak'), 'x' + NLQ);
@@ -816,9 +814,9 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 9v. --release fecha o ciclo. Invariante 1 no lugar mais perigoso do script: ele REMOVE
-//     linhas da nota — só a linha cuja US entrou, com contagem conferida, e o release escrito
-//     antes. Sem Evidência não escreve nada; rodar de novo recusa; dry-run não toca o disco.
+// ── 9v. --release closes the cycle. Invariant 1 in the script's most dangerous spot: it
+//     REMOVES lines from the note — only the line whose US went in, with the count checked,
+//     and the release written first. Without Evidência it writes nothing; running again refuses; dry-run does not touch the disk.
 {
   const a = arena('release');
   rodar(a, '--no-git');
@@ -826,7 +824,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const P = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E', 'F');
   const marcar = (u, evid) => { const p = path.join(P, u, 'Sobre.md'); let s = fs.readFileSync(p, 'utf8').replace('estado: ativa', 'estado: concluida'); if (evid) s = s.replace(/## Evidência[\s\S]*$/, '## Evidência' + NLQ + '- ' + evid + NLQ); fs.writeFileSync(p, s); };
   marcar('US-01-a', 'PR #1 verde');
-  marcar('US-02-b', null);   // concluída SEM evidência
+  marcar('US-02-b', null);   // concluded WITHOUT evidence
   const nota = path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md');
   const antes = fs.readFileSync(nota, 'utf8');
   const r0 = rodar(a, '--release', '1.0.0');
@@ -848,9 +846,9 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 9w. --status --curto é saída de hook: sem cabeçalho, sem cor, e SEMPRE sai 0 — em hook,
-//     exit != 0 vira erro visível e derruba a sessão. O 7b gera o hook; settings.json alheio
-//     é intocado byte a byte.
+// ── 9w. --status --curto is hook output: no header, no color, and ALWAYS exits 0 — in a
+//     hook, exit != 0 becomes a visible error and takes the session down. 7b generates the
+//     hook; someone else's settings.json is untouched byte for byte.
 {
   const a = arena('curto');
   rodar(a, '--no-git');
@@ -865,7 +863,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   checa('--status --curto acusa a mesma coisa e sai 0', c.status === 0 && /still in the note/.test(c.stdout));
   checa('--curto não tem cabeçalho nem cor', !/agent memory/.test(c.stdout) && !/\x1b\[/.test(c.stdout));
   checa('--curto cabe no orçamento do hook (≤ 200 tk)', Buffer.byteLength(c.stdout) / 4 <= 200, Buffer.byteLength(c.stdout) + ' bytes');
-  // settings.json alheio
+  // someone else's settings.json
   const alheio = '{\n  "permissions": { "allow": ["Bash(ls)"] }\n}\n';
   fs.writeFileSync(settings, alheio);
   const r = rodar(a, '--no-git');
@@ -874,12 +872,12 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 9x. --status --html: a única forma do --status que escreve — e só em .marvin/.status/,
-//     ignorada pelo git. Um ponto por COMMIT (data do git, não Date.now()): dois runs no mesmo
-//     commit não duplicam. Sem --html o jsonl não nasce. O HTML abre sem rede: JSON inline.
+// ── 9x. --status --html: the only form of --status that writes — and only in .marvin/.status/,
+//     git-ignored. One point per COMMIT (git date, not Date.now()): two runs on the same
+//     commit do not duplicate. Without --html the jsonl is not born. The HTML opens offline: inline JSON.
 {
   const a = arena('html');
-  rodar(a);   // com git init
+  rodar(a);   // with git init
   const git = (...args) => spawnSync('git', args, { cwd: a.proj, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
   git('add', '-A'); git('commit', '-q', '-m', 'um');
   const dir = path.join(a.proj, '.marvin', '.status');
@@ -896,13 +894,13 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   checa('commit novo: segundo ponto, e o contexto fixo cresceu', linhas().length === 2 && JSON.parse(linhas()[1]).total > JSON.parse(linhas()[0]).total);
   const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
   checa('o HTML embute a série (file:// bloqueia fetch) e desenha SVG', /<script type="application\/json" id="historico">/.test(html) && /<polyline/.test(html) && !/<script src=/.test(html));
-  // US-15: a primeira dobra responde 'o que fazer' — Corrigir (ou 'tudo consistente') e os 4 cards
-  // vêm antes de tudo; a rede é a última seção e nasce colapsada; os dois temas estão no <style>
+  // US-15: the first fold answers 'what to do' — Corrigir (or 'tudo consistente') and the 4 cards
+  // come before everything; the network is the last section and is born collapsed; both themes are in the <style>
   const ordem = ['<div class="cards">', 'id="andamento"', 'id="tendencia"', 'id="tokens"', '<details class="rede"'].map(s => html.indexOf(s));
   checa('HTML: Corrigir/ok antes dos cards, cards antes de tudo, rede colapsada por último', (html.indexOf('class="tudo-ok"') >= 0 || html.indexOf('class="corrigir"') >= 0) && Math.min(html.indexOf('class="tudo-ok"') < 0 ? Infinity : html.indexOf('class="tudo-ok"'), html.indexOf('class="corrigir"') < 0 ? Infinity : html.indexOf('class="corrigir"')) < ordem[0] && ordem.every((p, i) => p >= 0 && (i === 0 || p > ordem[i - 1])) && !/<details class="rede"[^>]*\sopen/.test(html));
   checa('HTML: os cards trazem o delta desde o commit anterior', /class="delta (up|down|)/.test(html) && /desde o último commit/.test(html));
   checa('HTML: tema claro e escuro por prefers-color-scheme, sem asset externo', html.includes(':root{color-scheme:light dark') && html.includes('@media(prefers-color-scheme:dark){:root:not([data-theme=light]){') && html.includes(':root[data-theme=dark]{') && html.includes('id="tema"') && !/<link/.test(html) && !/@import/.test(html));
-  // e com problema real: US concluída ainda na nota → entra em Corrigir, com link relativo à página
+  // and with a real problem: a concluded US still in the note → enters Corrigir, with a link relative to the page
   rodar(a, '--us', 'Novos/P/F/US-01-x');
   const usX = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'P', 'F', 'US-01-x', 'Sobre.md');
   fs.writeFileSync(usX, fs.readFileSync(usX, 'utf8').replace('estado: ativa', 'estado: concluida'));
@@ -914,9 +912,9 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 9y. tokens gastos: lidos das transcrições, deduplicados por id de mensagem (a mesma
-//     resposta é gravada mais de uma vez enquanto streama), por modelo, subagente à parte.
-//     O custo é estimativa e a saída diz isso.
+// ── 9y. tokens spent: read from the transcripts, deduplicated by message id (the same
+//     reply is recorded more than once while streaming), per model, subagent apart.
+//     The cost is an estimate and the output says so.
 {
   const a = arena('gastos');
   rodar(a, '--no-git');
@@ -925,7 +923,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   fs.writeFileSync(path.join(dir, 's1.jsonl'), [
     JSON.stringify({ type: 'user', message: { role: 'user', content: 'oi' } }),
     linha('msg_1', 'claude-opus-5', { input_tokens: 10, cache_creation_input_tokens: 1000, cache_read_input_tokens: 0, output_tokens: 50 }),
-    linha('msg_1', 'claude-opus-5', { input_tokens: 10, cache_creation_input_tokens: 1000, cache_read_input_tokens: 0, output_tokens: 200 }),   // mesma msg, usage final
+    linha('msg_1', 'claude-opus-5', { input_tokens: 10, cache_creation_input_tokens: 1000, cache_read_input_tokens: 0, output_tokens: 200 }),   // same msg, final usage
     linha('msg_2', 'claude-sonnet-5', { input_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 1000, output_tokens: 100 }, { isSidechain: true }),
     ''].join(NLQ));
   const r = rodar(a, '--status');
@@ -946,17 +944,17 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 9z. o grafo a nosso favor. Medido: em 23.745 turnos o agente consultou o grafo duas
-//     vezes. Então o script pergunta: Impacto no --us, colisão no --status, deriva no --fechar.
-//     Grafo sintético no formato do graphify — o teste não precisa do binário.
+// ── 9z. the graph in our favor. Measured: in 23,745 turns the agent queried the graph
+//     twice. So the script asks: Impacto in --us, collision in --status, drift in --fechar.
+//     Synthetic graph in graphify's format — the test does not need the binary.
 {
   const a = arena('grafo-favor');
   fs.mkdirSync(path.join(a.proj, 'src'), { recursive: true });
   fs.writeFileSync(path.join(a.proj, 'src', 'pag.js'), 'export function cobrar(){}' + NLQ);
   fs.writeFileSync(path.join(a.proj, 'src', 'ui.js'), 'export function tela(){}' + NLQ);
-  rodar(a);   // com git
+  rodar(a);   // with git
   const git = (...args) => spawnSync('git', args, { cwd: a.proj, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
-  // src/ commitado ONTEM: --fechar conta "commits desde a meia-noite", e o commit base não é trabalho de hoje
+  // src/ committed YESTERDAY: --fechar counts "commits since midnight", and the base commit is not today's work
   git('add', '-A'); spawnSync('git', ['commit', '-q', '-m', 'base'], { cwd: a.proj, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t', GIT_AUTHOR_DATE: '2020-01-01T00:00:00', GIT_COMMITTER_DATE: '2020-01-01T00:00:00' } });
   const saida = path.join(a.proj, 'graphify-out'); fs.mkdirSync(saida, { recursive: true });
   fs.writeFileSync(path.join(saida, 'graph.json'), JSON.stringify({ directed: true, nodes: [
@@ -977,7 +975,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   abrir('US-B', ['`src/pag.js` — `cobrar`']);
   const s1 = rodar(a, '--status');
   checa('--status acusa duas US ativas na mesma função', s1.status !== 0 && /US-A and US-B both touch cobrar/.test(s1.stdout), s1.stdout.slice(-600));
-  // deriva: arquivo mudado que nenhuma US declara
+  // drift: a changed file no US declares
   fs.writeFileSync(path.join(a.proj, 'src', 'novo.js'), 'export const x = 1;' + NLQ);
   fs.appendFileSync(path.join(a.proj, 'src', 'pag.js'), '// mudou' + NLQ);
   const f1 = rodar(a, '--fechar');
@@ -990,19 +988,19 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 9aa. git worktree (US-13). A memória segue o cwd: na worktree o Claude Code cria um
-//     diretório real e vazio, e nada avisa. O hook (--status --curto, roda em TODA sessão)
-//     tem que acusar ANTES do marvin rodar ali; depois, cala. Rodar marvin na worktree
-//     monta a junction dela — as notas andam com o branch. Precisa de git no PATH.
+// ── 9aa. git worktree (US-13). Memory follows the cwd: in the worktree Claude Code creates
+//     a real, empty directory, and nothing warns. The hook (--status --curto, runs in EVERY
+//     session) has to flag it BEFORE marvin runs there; after, it goes quiet. Running marvin
+//     in the worktree mounts its junction — the notes travel with the branch. Needs git on PATH.
 {
   const a = arena('worktree');
   const temGit = spawnSync('git', ['--version']).status === 0;
-  // sem git, o total da suíte cai 5 e o último bloco reprovaria os READMEs: fica declarado, não fingido
+  // without git, the suite total drops by 5 and the last block would fail the READMEs: declared, not faked
   if (!temGit) { console.log('  - 9aa pulado: precisa de git no PATH (5 checks)'); pulados += 5; }
   else {
     const git = (...args) => spawnSync('git', args, { cwd: a.proj, encoding: 'utf8',
       env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
-    rodar(a, '--no-questions');                       // monta o principal, com .git
+    rodar(a, '--no-questions');                       // scaffolds the main one, with .git
     git('add', '-A'); git('commit', '-q', '-m', 'base');
     const wt = path.join(a.base, 'wt');
     git('worktree', 'add', '-q', wt, '-b', 'ramo');
@@ -1022,7 +1020,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── 9. adaptador do Copilot — caminho conferido na documentação oficial
+// ── 9. Copilot adapter — path checked against the official docs
 {
   const a = arena('copilot');
   rodar(a, '--no-git', '--tools=claude,copilot');
@@ -1033,16 +1031,16 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   limpar(a);
 }
 
-// ── ÚLTIMO. O número de verificações afirmado nos READMEs bate com o real.
+// ── LAST. The number of checks claimed in the READMEs matches the real one.
 //
-// Ele já desincronizou TRÊS vezes neste repositório: 26 quando eram 28, 48 quando eram
-// 73, 73 quando eram 87. É número derivado escrito à mão em arquivo durável — a doença
-// que este projeto inteiro combate, acontecendo na documentação dele. Lembrar não
-// funcionou; a régua funciona.
+// It has drifted THREE times in this repository: 26 when there were 28, 48 when there
+// were 73, 73 when there were 87. It is a derived number written by hand in a durable
+// file — the disease this whole project fights, happening in its own documentation.
+// Remembering did not work; the ruler does.
 //
-// Roda por último de propósito: só aqui `passou + falhou` é o total da suíte. O `+ 2`
-// conta as duas asserções deste bloco, que ainda não rodaram. `pulados` entra porque o número
-// no README é o da suíte inteira — no CI o 9f pula (sem graphify) e o total não pode cair.
+// Runs last on purpose: only here is `passou + falhou` the suite total. The `+ 2` counts
+// this block's two assertions, which have not run yet. `pulados` is included because the
+// number in the README is the whole suite's — on CI 9f skips (no graphify) and the total cannot drop.
 {
   const total = passou + falhou + pulados + 2;
   const alvos = [['README.md', /([0-9]+) checks, no dependencies/],

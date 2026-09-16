@@ -76,12 +76,13 @@ Nada depende do que ela toca — folha do grafo.
 - [US-07 — `--status --html`: a série histórica](../../../../Novos/organizacao-por-grafo/script/US-07-status-html/Sobre.md) — 1 nó(s) em comum
 - [US-10 — O grafo a nosso favor: Impacto, colisão, deriva](../../../../Novos/organizacao-por-grafo/script/US-10-grafo-a-nosso-favor/Sobre.md) — 1 nó(s) em comum
 
-## Rumo
-- **15/09/2026** — aberta. Contra a convenção anterior do `AGENTS.md`, por decisão do `po`
-  reafirmada depois da objeção: custo é um diff de arquivo inteiro sem ganho para quem usa,
-  e risco de regressão em script que escreve no disco alheio. Mitigação: blocos, `tl` no diff,
-  `--dry-run` idêntico como critério. Descartado: manter português com nota no README para
-  contribuidor — o `po` quer padrão único.
+$1- **16/09/2026** — bloco 1 (comentários) feito: 493 linhas em `marvin.mjs`, 147 em `teste.mjs`, mais os
+  `/* */` e os de fim de linha. Método: pares antes/depois num JSON aplicados por script que exige
+  ocorrência única e troca por função (a armadilha do `$'` do tl.md). Prova de que só comentário mudou:
+  os dois arquivos com comentários removidos são idênticos ao `d27b1c0`; `--dry-run` byte a byte igual;
+  219 verdes. Strings de saída em português que apareceram no caminho (`info('README.md já existe')`,
+  `memória DESLIGADA` do hook, cabeçalhos do `--status` texto) ficam para o bloco 3 — são visíveis ao usuário.
+  Próximo: bloco 2, identificadores locais, um commit por ~500 linhas.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
