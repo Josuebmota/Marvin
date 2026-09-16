@@ -82,7 +82,23 @@ $1- **16/09/2026** — bloco 1 (comentários) feito: 493 linhas em `marvin.mjs`,
   os dois arquivos com comentários removidos são idênticos ao `d27b1c0`; `--dry-run` byte a byte igual;
   219 verdes. Strings de saída em português que apareceram no caminho (`info('README.md já existe')`,
   `memória DESLIGADA` do hook, cabeçalhos do `--status` texto) ficam para o bloco 3 — são visíveis ao usuário.
-  Próximo: bloco 2, identificadores locais, um commit por ~500 linhas.
+  $1- **16/09/2026** — bloco 2 (identificadores) feito num passe só, não por região: renomear um binding global
+  atravessa o arquivo inteiro, então "um commit por ~500 linhas" não fatiava nada de útil. O que fatiou o
+  risco foi a ferramenta: [`renomear/`](renomear/) — lexer mínimo que classifica cada caractere como código /
+  comentário / string / texto de template / regex, e o renomeador só toca **binding em região de código**:
+  nunca `.prop`, nunca chave de objeto, e `{ nome }` abreviado vira `{ nome: name }` — o formato dos dados
+  (`st.*`, `historico.jsonl`, o JSON da rede no HTML) não muda. 1.647 trocas, 300 nomes (`mapa.json`).
+  Três bugs do lexer pegos pelo `teste.mjs`, não por leitura: `${x}` visto como shorthand; `...nomes` visto
+  como `.prop`; comentário terminando em "." antes do identificador visto como `.prop`.
+  **Prova:** 41 arquivos gerados pelo script antigo e pelo novo, byte a byte iguais — scaffold com os 7
+  adaptadores, `--us`, `--status` (texto, `--curto`, `--html`: `index.html` + `historico.jsonl`), `--check`,
+  `--fechar`, `--dry-run`, `--help`, neste repo e num projeto limpo. 219 verdes.
+  **Ficou em português, de propósito, para o bloco 3:** chaves de objeto (`st.ativas`, `ponto.us_ativas`,
+  `no.rotulo`…) — são formato de dado; as da rede e do `historico.jsonl` são saída, e mudar exige o teste
+  junto. `us`, `rumo`, `sobre` são vocabulário do domínio (nome de seção e de arquivo) e ficam.
+- **16/09/2026** — bloco 3 encurtado por decisão do `po` ("caminho mais rápido"): `teste.mjs` renomeado com a mesma
+  ferramenta (760 trocas), convenção do `AGENTS.md` trocada. **Chaves de objeto ficam em português** — são formato
+  de dado, e as do `historico.jsonl` já estão gravadas em três projetos. Escopo fechado aqui.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->

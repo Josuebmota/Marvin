@@ -68,20 +68,20 @@ import os from 'node:os';
 import { execSync } from 'node:child_process';
 import readline from 'node:readline/promises';
 
-const RAIZ = process.cwd();
+const ROOT = process.cwd();
 
 // Flags in English (the repo is public). The old Portuguese names still work as
 // aliases: renaming a flag without an alias would break whoever already has a script
 // or a shell alias built — exactly the backward compatibility step 10 defends.
-const temFlag = (...nomes) => nomes.some(n => process.argv.includes(n));
-const LIMPAR = temFlag('--clean-legacy', '--limpar-legado', '--limpar-ruflo');
-const SEM_GIT = temFlag('--no-git', '--sem-git');
+const hasFlag = (...names) => names.some(n => process.argv.includes(n));
+const CLEAN = hasFlag('--clean-legacy', '--limpar-legado', '--limpar-ruflo');
+const NO_GIT = hasFlag('--no-git', '--sem-git');
 // Shows everything it would do and writes nothing — no file, no junction, no git init.
-const DRY = temFlag('--dry-run');
+const DRY = hasFlag('--dry-run');
 // Optional and never required: builds graphify's code graph for structural queries.
 // Does NOT install a hook — see step 8b for why.
 // `let`: without the flag, the decision comes from the `.marvin/ferramentas.md` record (block 0b).
-let GRAPHIFY = temFlag('--graphify');
+let GRAPHIFY = hasFlag('--graphify');
 // Ponytail (Claude Code plugin): has no flag of its own — only the record decides (block
 // 0b, `--use=ponytail`). Turns on the section in AGENTS.md and the roles table in agents/README.
 let PONYTAIL = false;
@@ -89,37 +89,37 @@ let PONYTAIL = false;
 // asks for no key). Off by default on purpose: that backend is forced to ONE call at a
 // time, so on a graph of ~130 communities the run takes minutes and burns the subscription
 // quota of whoever ran it. Spending time and quota without asking is not a default.
-const GRAPHIFY_LABEL = temFlag('--graphify-label');
+const GRAPHIFY_LABEL = hasFlag('--graphify-label');
 // Rebuilds the graph even if it already exists. Without it, running twice does not
 // rebuild (invariant 2). It exists because in a monorepo `graphify update .` does NOT
 // work: it re-extracts only the root, and the root is exactly what has no code inside.
-const GRAPHIFY_REBUILD = temFlag('--graphify-rebuild');
+const GRAPHIFY_REBUILD = hasFlag('--graphify-rebuild');
 // Writes `.git/hooks/post-commit` so the graph refreshes itself after the commit.
 // Does NOT use `graphify hook install`: that one rebuilds the repository ROOT, which in
 // a monorepo is precisely the path that drops the sub-repos from the graph — it would automate the bug.
 // Off by default because a hook lives in `.git/`, is not versioned and fires invisibly.
-const GRAPHIFY_GIT_HOOK = temFlag('--graphify-git-hook');
+const GRAPHIFY_GIT_HOOK = hasFlag('--graphify-git-hook');
 // Only diagnoses the mount and exits non-zero if it is broken.
 // Writes nothing — neither in the repository nor in the profile.
-const CHECK = temFlag('--check');
+const CHECK = hasFlag('--check');
 // --use=graphify  [alias: --usar=]  flips the record to `sim` without asking.
 // --no-questions  [alias: --sem-perguntas]  assumes `não` even with a terminal (CI, script).
 // accepts --use=a,b and also --use=a --use=b — the repeated flag was swallowed by find (15/09)
-const USAR = new Set(process.argv.filter(a => a.startsWith('--use=') || a.startsWith('--usar='))
+const USE = new Set(process.argv.filter(a => a.startsWith('--use=') || a.startsWith('--usar='))
   .flatMap(a => a.split('=').slice(1).join('=').split(',')).map(s => s.trim().toLowerCase()).filter(Boolean));
-const SEM_PERGUNTAS = temFlag('--no-questions', '--sem-perguntas');
+const NO_QUESTIONS = hasFlag('--no-questions', '--sem-perguntas');
 
 // --tools=claude,codex,cursor  (default: claude)   [alias: --ferramentas=]
 // Running again with a different list ADDS the missing adapter; nothing is removed.
-const FERRAMENTAS_VALIDAS = ['claude', 'codex', 'copilot', 'cursor', 'aider', 'zed', 'opencode'];
-const argFerr = process.argv.find(a => a.startsWith('--tools=') || a.startsWith('--ferramentas='));
-const FERRAMENTAS = (argFerr ? argFerr.split('=').slice(1).join('=') : 'claude')
+const VALID_TOOLS = ['claude', 'codex', 'copilot', 'cursor', 'aider', 'zed', 'opencode'];
+const argTools = process.argv.find(a => a.startsWith('--tools=') || a.startsWith('--ferramentas='));
+const TOOLS = (argTools ? argTools.split('=').slice(1).join('=') : 'claude')
   .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-const ferrInvalidas = FERRAMENTAS.filter(f => !FERRAMENTAS_VALIDAS.includes(f));
+const invalidTools = TOOLS.filter(f => !VALID_TOOLS.includes(f));
 
 // --curto is hook output: no header and no color — it goes straight into the agent's context.
-const CURTO_HOOK = process.argv.includes('--curto');
-const log = (s = '') => console.log(CURTO_HOOK ? String(s).replace(/\x1b\[[0-9;]*m/g, '') : s);
+const SHORT_HOOK = process.argv.includes('--curto');
+const log = (s = '') => console.log(SHORT_HOOK ? String(s).replace(/\x1b\[[0-9;]*m/g, '') : s);
 const ok = (s) => log('  \x1b[32m✓\x1b[0m ' + s);
 const warn = (s) => log('  \x1b[33m!\x1b[0m ' + s);
 const err = (s) => log('  \x1b[31m✗\x1b[0m ' + s);
@@ -129,7 +129,7 @@ const okReal = ok, infoReal = info, warnReal = warn;
 // ── --help / -h. Exits BEFORE anything else: a script that writes to the repo and
 // creates a link in the user's profile cannot scaffold the project when someone types
 // the flag everyone uses to "see what this does".
-if (temFlag('--help', '-h')) {
+if (hasFlag('--help', '-h')) {
   log(`
 marvin — scaffolds a project's knowledge base for working with AI agents.
 
@@ -140,7 +140,7 @@ Run it FROM the project root:
 
 Flags:
   --tools=<list>    adapters to generate. Default: claude
-                    valid: ${FERRAMENTAS_VALIDAS.join(', ')}
+                    valid: ${VALID_TOOLS.join(', ')}
                     running again with a different list ADDS what is missing
   --check           diagnose the memory mount and exit non-zero if it is broken.
                     Writes nothing. Use it after moving or renaming the project
@@ -196,10 +196,10 @@ Docs: README.md (English) · README.pt-BR.md (Português)
 // ── --dry-run. Every operation that CHANGES the disk goes through `fsw` / `exec`;
 // reads stay on `fs` directly. A new write that bypasses this makes the dry-run
 // lie — and a dry-run that lies is worse than having no dry-run.
-const plano = [];
+const plan = [];
 const rel = (p) => {
   const s = String(p);
-  const r = path.relative(RAIZ, s);
+  const r = path.relative(ROOT, s);
   if (!r) return '.';                 // the project directory itself
   if (r.startsWith('..')) return s;   // OUTSIDE the project: absolute is more honest than ../../..
   return r;
@@ -210,24 +210,24 @@ const fsw = !DRY ? fs : {
   // false lines — on an already scaffolded project the dry-run announced 9 operations
   // and the "nothing to do" message was unreachable. A plan that exaggerates has the
   // same disease as a plan that hides: both make you stop reading.
-  mkdirSync:      (p) => { if (!fs.existsSync(p)) plano.push('create dir    ' + rel(p)); },
-  writeFileSync:  (p) => plano.push('create file   ' + rel(p)),
-  appendFileSync: (p) => plano.push('append to     ' + rel(p)),
-  cpSync:         (a, b) => plano.push('copy          ' + a + '  →  ' + rel(b)),
-  rmSync:         (p) => plano.push('REMOVE        ' + p),
+  mkdirSync:      (p) => { if (!fs.existsSync(p)) plan.push('create dir    ' + rel(p)); },
+  writeFileSync:  (p) => plan.push('create file   ' + rel(p)),
+  appendFileSync: (p) => plan.push('append to     ' + rel(p)),
+  cpSync:         (a, b) => plan.push('copy          ' + a + '  →  ' + rel(b)),
+  rmSync:         (p) => plan.push('REMOVE        ' + p),
   // Only the LINK, never the content — the distinction AGENTS.md repeats and the plan
   // has to show in those words, otherwise whoever reads the dry-run gets scared.
-  unlinkSync:     (p) => plano.push('remove link   ' + p + '  (only the link)'),
-  symlinkSync:    (alvo, link) => plano.push('junction      ' + link + '  →  ' + rel(alvo)),
-  copyFileSync:   (a, b) => plano.push('copy          ' + rel(a) + '  →  ' + rel(b)),
+  unlinkSync:     (p) => plan.push('remove link   ' + p + '  (only the link)'),
+  symlinkSync:    (target, link) => plan.push('junction      ' + link + '  →  ' + rel(target)),
+  copyFileSync:   (a, b) => plan.push('copy          ' + rel(a) + '  →  ' + rel(b)),
 };
 const exec = (cmd, opts) => {
-  if (DRY) { plano.push('run           ' + cmd); return ''; }
+  if (DRY) { plan.push('run           ' + cmd); return ''; }
   return execSync(cmd, opts);
 };
 
 // native memory: cwd with : \ / turned into -
-const MEM = path.join(os.homedir(), '.claude', 'projects', RAIZ.replace(/[:\\/]/g, '-'), 'memory');
+const MEM = path.join(os.homedir(), '.claude', 'projects', ROOT.replace(/[:\\/]/g, '-'), 'memory');
 
 // ── Where the vault and the memory live. READ-ONLY, and it sits up here because
 // --check needs both before any write happens.
@@ -237,25 +237,25 @@ const MEM = path.join(os.homedir(), '.claude', 'projects', RAIZ.replace(/[:\\/]/
 // the opposite. `.docs` stays on the list so a project scaffolded by the old version
 // keeps being recognized — detection is by marker, not by name, which is why changing
 // the default does NOT require migrating anyone (invariant 2).
-const CANDIDATOS = ['.marvin', '.docs', 'Docs', 'docs', 'doc'].map(d => path.join(RAIZ, d));
+const CANDIDATES = ['.marvin', '.docs', 'Docs', 'docs', 'doc'].map(d => path.join(ROOT, d));
 // `.obsidian` still counts as a READ marker: the script no longer writes Obsidian
 // config, but whoever already had a vault of theirs in one of these folders keeps
 // being reused instead of getting a second knowledge base next to it.
-const ehVault = (d) => fs.existsSync(path.join(d, 'Memoria')) || fs.existsSync(path.join(d, '08_Memoria'))
+const isVault = (d) => fs.existsSync(path.join(d, 'Memoria')) || fs.existsSync(path.join(d, '08_Memoria'))
   || fs.existsSync(path.join(d, '.obsidian'));
-const DOCS = CANDIDATOS.find(ehVault) || path.join(RAIZ, '.marvin');
+const DOCS = CANDIDATES.find(isVault) || path.join(ROOT, '.marvin');
 // Old layout: folders numbered by type (08_Memoria/, 10_Decisoes/). Since the graph
 // organization the memory lives in Memoria/. A project scaffolded before keeps working
 // where it is — the junction points to where the notes ARE, and moving is the human's
 // decision (invariant 1). Step 5 warns; nothing more.
-const LAYOUT_ANTIGO = fs.existsSync(path.join(DOCS, '08_Memoria')) && !fs.existsSync(path.join(DOCS, 'Memoria'));
-const DEST = path.join(DOCS, LAYOUT_ANTIGO ? '08_Memoria' : 'Memoria');
+const OLD_LAYOUT = fs.existsSync(path.join(DOCS, '08_Memoria')) && !fs.existsSync(path.join(DOCS, 'Memoria'));
+const DEST = path.join(DOCS, OLD_LAYOUT ? '08_Memoria' : 'Memoria');
 // Worktree: `.git` is a FILE (`gitdir: …`), not a folder. Memory follows the cwd, so each
 // worktree has its own — and it travels with the branch, on purpose (US-13). What cannot
 // happen is a session opening there before anyone ran `marvin`: then Claude Code creates a
 // real, empty directory at the new path and memory vanishes silently. The --status --curto hook flags it.
-const WORKTREE = (() => { try { return fs.statSync(path.join(RAIZ, '.git')).isFile(); } catch { return false; } })();
-const ehJunction = (p) => { try { return fs.lstatSync(p).isSymbolicLink(); } catch { return false; } };
+const WORKTREE = (() => { try { return fs.statSync(path.join(ROOT, '.git')).isFile(); } catch { return false; } })();
+const isJunction = (p) => { try { return fs.lstatSync(p).isSymbolicLink(); } catch { return false; } };
 
 // ── What loads in EVERY session, unasked: the source (AGENTS.md), the adapter
 // (CLAUDE.md, which does @AGENTS.md) and the note (through the junction). Measured in
@@ -263,63 +263,63 @@ const ehJunction = (p) => { try { return fs.lstatSync(p).isSymbolicLink(); } cat
 // and the old ruler only measured the note. The ceiling is for what loads by itself; the
 // rest of the base grows freely and costs zero per session. ~4 chars per token: an
 // estimate, good for order of magnitude. Lives up here because --check prints the same math.
-const emTokens = (chars) => Math.round(chars / 4);
-const TETO_NOTA = 6 * 1024;      // twice a well-formed reference note (3.3 KB)
-const TETO_FIXO_TK = 6000;       // the three combined; above this the session starts heavy
+const toTokens = (chars) => Math.round(chars / 4);
+const NOTE_CEILING = 6 * 1024;      // twice a well-formed reference note (3.3 KB)
+const FIXED_TK_CEILING = 6000;       // the three combined; above this the session starts heavy
 // Five sources, not three — the second measurement (11/09) found two the first one ignored:
 // MEMORY.md (the memory index, which Claude Code loads whole through the junction) and the
 // GLOBAL level (~/.claude/CLAUDE.md + rules/**/*.md), which enters EVERY project. In a
 // real project those were 2,900 invisible tk out of 11,700.
-const contextoFixo = () => {
+const fixedContext = () => {
   const globalDir = path.join(os.homedir(), '.claude');
-  const arqs = [['AGENTS.md', path.join(RAIZ, 'AGENTS.md')],
-                ['CLAUDE.md', path.join(RAIZ, 'CLAUDE.md')],
+  const files = [['AGENTS.md', path.join(ROOT, 'AGENTS.md')],
+                ['CLAUDE.md', path.join(ROOT, 'CLAUDE.md')],
                 ['onde_paramos.md', path.join(DEST, 'onde_paramos.md')],
                 ['MEMORY.md (memory index)', path.join(DEST, 'MEMORY.md')],
                 ['~/.claude/CLAUDE.md (GLOBAL)', path.join(globalDir, 'CLAUDE.md')]];
-  const linhas = [];
-  for (const [nome, p] of arqs) {
+  const lines = [];
+  for (const [name, p] of files) {
     let bytes = 0; try { bytes = fs.statSync(p).size; } catch { continue; }
-    linhas.push({ nome, bytes, tk: emTokens(bytes) });
+    lines.push({ nome: name, bytes, tk: toTokens(bytes) });
   }
   // rules/**/*.md: read in every session of every project — EXCEPT those with `paths:`
   // in the frontmatter, which only enter when a matching file is touched. Counting those
   // would inflate the bill with what does not load; the ruler is only worth it if fair.
-  let regras = 0, nRegras = 0, nCond = 0;
-  (function varrer(d, prof = 0) {
-    if (prof > 4) return;
-    let ents; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
-    for (const e of ents) {
+  let rules = 0, nRules = 0, nCond = 0;
+  (function walk(d, depth = 0) {
+    if (depth > 4) return;
+    let entries; try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
       const q = path.join(d, e.name);
-      if (e.isDirectory()) { varrer(q, prof + 1); continue; }
+      if (e.isDirectory()) { walk(q, depth + 1); continue; }
       if (!e.name.endsWith('.md')) continue;
       let txt = ''; try { txt = fs.readFileSync(q, 'utf8'); } catch { continue; }
       const fm = txt.match(/^---\r?\n([\s\S]*?)\r?\n---/);
       if (fm && /^paths:/m.test(fm[1])) { nCond++; continue; }
-      regras += Buffer.byteLength(txt); nRegras++;
+      rules += Buffer.byteLength(txt); nRules++;
     }
   })(path.join(globalDir, 'rules'));
-  if (nRegras) linhas.push({ nome: `~/.claude/rules/**/*.md (GLOBAL, ${nRegras} always-on${nCond ? `; ${nCond} path-scoped not counted` : ''})`, bytes: regras, tk: emTokens(regras) });
-  return { linhas, total: linhas.reduce((a, l) => a + l.tk, 0) };
+  if (nRules) lines.push({ nome: `~/.claude/rules/**/*.md (GLOBAL, ${nRules} always-on${nCond ? `; ${nCond} path-scoped not counted` : ''})`, bytes: rules, tk: toTokens(rules) });
+  return { linhas: lines, total: lines.reduce((a, l) => a + l.tk, 0) };
 };
-const imprimirContextoFixo = () => {
-  const { linhas, total } = contextoFixo();
-  if (!linhas.length) return;
-  for (const l of linhas) info(`${String(l.tk).padStart(6)} tk  ${l.nome}`);
+const printFixedContext = () => {
+  const { linhas: lines, total } = fixedContext();
+  if (!lines.length) return;
+  for (const l of lines) info(`${String(l.tk).padStart(6)} tk  ${l.nome}`);
   info(`${String(total).padStart(6)} tk  loads in EVERY session, before the first word`);
-  const globalTk = linhas.filter(l => /GLOBAL/.test(l.nome)).reduce((a, l) => a + l.tk, 0);
+  const globalTk = lines.filter(l => /GLOBAL/.test(l.nome)).reduce((a, l) => a + l.tk, 0);
   if (globalTk > 1000) warn(`~${globalTk} tk of that is GLOBAL — paid in every session of EVERY project. Rules you do not use there are the cheapest cut you have.`);
-  if (total > TETO_FIXO_TK) warn(`~${total} tk of fixed context — above ~${TETO_FIXO_TK}. What is not needed at the START of a session has a home elsewhere:`);
-  const nota = linhas.find(l => l.nome === 'onde_paramos.md');
-  if (nota && nota.bytes > TETO_NOTA) {
-    warn(`onde_paramos.md is ${Math.round(nota.bytes / 1024)} KB (~${nota.tk} tk) — it is a list of pointers, not a report`);
-    info(LAYOUT_ANTIGO
+  if (total > FIXED_TK_CEILING) warn(`~${total} tk of fixed context — above ~${FIXED_TK_CEILING}. What is not needed at the START of a session has a home elsewhere:`);
+  const note = lines.find(l => l.nome === 'onde_paramos.md');
+  if (note && note.bytes > NOTE_CEILING) {
+    warn(`onde_paramos.md is ${Math.round(note.bytes / 1024)} KB (~${note.tk} tk) — it is a list of pointers, not a report`);
+    info(OLD_LAYOUT
       ? '  it answers three questions and no more: where we stopped · what to do now · what is stuck.'
       : '  one line per active US, linking to its Sobre.md. The state of the US lives in the US.');
   }
-  if (total > TETO_FIXO_TK || (nota && nota.bytes > TETO_NOTA)) {
-    const d = (x) => path.relative(RAIZ, path.join(DOCS, x)).replace(/\\/g, '/');
-    if (LAYOUT_ANTIGO) {
+  if (total > FIXED_TK_CEILING || (note && note.bytes > NOTE_CEILING)) {
+    const d = (x) => path.relative(ROOT, path.join(DOCS, x)).replace(/\\/g, '/');
+    if (OLD_LAYOUT) {
       info(`    a decision that still explains a choice  → ${d('10_Decisoes')}/<slug>.md`);
     } else {
       info(`    how a flow works                         → ${d('Contexto/Fluxos')}/<fluxo>.md`);
@@ -329,10 +329,10 @@ const imprimirContextoFixo = () => {
     info('    a log of what was done                   → git log');
   }
 };
-const contarNotas = (d) => { try { return fs.readdirSync(d).filter(f => f.endsWith('.md')).length; } catch { return 0; } };
+const countNotes = (d) => { try { return fs.readdirSync(d).filter(f => f.endsWith('.md')).length; } catch { return 0; } };
 
-if (!CURTO_HOOK) {
-  log('\n\x1b[1mmarvin\x1b[0m — ' + RAIZ);
+if (!SHORT_HOOK) {
+  log('\n\x1b[1mmarvin\x1b[0m — ' + ROOT);
   log('agent memory: ' + MEM + '\n');
 }
 
@@ -345,94 +345,94 @@ if (!CURTO_HOOK) {
 // reads. This way it works in a hook, in CI and in a shell alias.
 if (CHECK) {
   log('\x1b[1mcheck\x1b[0m — read-only: nothing is written in this mode\n');
-  let problemas = 0;
-  const falha = (s) => { err(s); problemas++; };
+  let problems = 0;
+  const fail = (s) => { err(s); problems++; };
 
-  if (fs.existsSync(DOCS)) ok('vault      ' + path.relative(RAIZ, DOCS));
-  else falha('vault      not found — run marvin without --check to create it');
+  if (fs.existsSync(DOCS)) ok('vault      ' + path.relative(ROOT, DOCS));
+  else fail('vault      not found — run marvin without --check to create it');
 
   if (!fs.existsSync(MEM)) {
-    falha('junction   missing — the agent memory path does not exist');
-    info('the notes, if there are any, are in ' + path.relative(RAIZ, DEST));
-  } else if (!ehJunction(MEM)) {
-    falha('junction   it is a REAL directory, not a link:');
+    fail('junction   missing — the agent memory path does not exist');
+    info('the notes, if there are any, are in ' + path.relative(ROOT, DEST));
+  } else if (!isJunction(MEM)) {
+    fail('junction   it is a REAL directory, not a link:');
     info(MEM);
     info('this is what a moved or renamed project folder leaves behind.');
     info('memory written there does NOT reach this repository.');
     info('run marvin without --check to fix it.');
   } else {
-    const alvo = fs.readlinkSync(MEM);
-    if (path.resolve(alvo) !== path.resolve(DEST)) {
-      falha('junction   points somewhere else: ' + alvo);
+    const target = fs.readlinkSync(MEM);
+    if (path.resolve(target) !== path.resolve(DEST)) {
+      fail('junction   points somewhere else: ' + target);
       info('expected: ' + DEST);
     } else if (!fs.existsSync(DEST)) {
-      falha('junction   its target is gone: ' + path.relative(RAIZ, DEST));
+      fail('junction   its target is gone: ' + path.relative(ROOT, DEST));
     } else {
-      ok('junction   profile → ' + path.relative(RAIZ, DEST));
-      ok('notes      ' + contarNotas(MEM) + ' visible through the agent path');
+      ok('junction   profile → ' + path.relative(ROOT, DEST));
+      ok('notes      ' + countNotes(MEM) + ' visible through the agent path');
     }
   }
 
   log('');
-  imprimirContextoFixo();
+  printFixedContext();
 
   // A junction from ANOTHER project left pointing at nothing. Not a problem of THIS
   // repository — hence it warns and does not change the exit code —, but it is junk
   // in the profile nobody will look at again, and it drops off the radar precisely
   // when the project moves.
-  const orfas = [];
+  const orphans = [];
   try {
-    const projetos = path.join(os.homedir(), '.claude', 'projects');
-    for (const e of fs.readdirSync(projetos, { withFileTypes: true })) {
+    const projects = path.join(os.homedir(), '.claude', 'projects');
+    for (const e of fs.readdirSync(projects, { withFileTypes: true })) {
       if (!e.isDirectory()) continue;
-      const m = path.join(projetos, e.name, 'memory');
-      if (!ehJunction(m)) continue;
-      let alvo; try { alvo = fs.readlinkSync(m); } catch { continue; }
-      if (!fs.existsSync(alvo)) orfas.push([m, alvo]);
+      const m = path.join(projects, e.name, 'memory');
+      if (!isJunction(m)) continue;
+      let target; try { target = fs.readlinkSync(m); } catch { continue; }
+      if (!fs.existsSync(target)) orphans.push([m, target]);
     }
   } catch {}
-  if (orfas.length) {
+  if (orphans.length) {
     log('');
-    warn(orfas.length + ' orphan junction(s) in the profile — the target no longer exists:');
-    orfas.forEach(([m, a]) => info(m + '\n      → ' + a));
+    warn(orphans.length + ' orphan junction(s) in the profile — the target no longer exists:');
+    orphans.forEach(([m, a]) => info(m + '\n      → ' + a));
     info('remove ONLY the link — rm -rf on a junction can follow it and delete the target:');
     info('  [System.IO.Directory]::Delete("<path>", $false)   (PowerShell)');
   }
 
-  log('\n' + (problemas
-    ? '\x1b[31m' + problemas + ' problem(s)\x1b[0m — the memory is NOT wired to this repository'
+  log('\n' + (problems
+    ? '\x1b[31m' + problems + ' problem(s)\x1b[0m — the memory is NOT wired to this repository'
     : '\x1b[32mall good\x1b[0m — memory is wired into the repository') + '\n');
-  process.exit(problemas ? 1 : 0);
+  process.exit(problems ? 1 : 0);
 }
 
 // ── Reading nodes. Every Sobre.md has frontmatter (tipo, estado, pai), a title and a
 // Rumo section with "- **dd/mm/yyyy** — …" entries. That is all --status and --us need.
-const lerNo = (arq) => {
-  let txt; try { txt = fs.readFileSync(arq, 'utf8'); } catch { return null; }
+const readNode = (file) => {
+  let txt; try { txt = fs.readFileSync(file, 'utf8'); } catch { return null; }
   const fm = txt.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  const campo = (k) => { const m = fm && fm[1].match(new RegExp('^' + k + ':[ \\t]*(.+)$', 'm')); return m ? m[1].trim().replace(/\s+#.*$/, '') : null; };
-  const titulo = ((txt.match(/^#\s+(.+)$/m) || [])[1] || path.basename(path.dirname(arq))).trim();
+  const field = (k) => { const m = fm && fm[1].match(new RegExp('^' + k + ':[ \\t]*(.+)$', 'm')); return m ? m[1].trim().replace(/\s+#.*$/, '') : null; };
+  const title = ((txt.match(/^#\s+(.+)$/m) || [])[1] || path.basename(path.dirname(file))).trim();
   const rumo = [...txt.matchAll(/^- \*\*(\d{2})\/(\d{2})\/(\d{4})[^*]*\*\*[ —-]*(.*)$/gm)]
     .map(m => ({ data: new Date(+m[3], +m[2] - 1, +m[1]), texto: m[4].trim() }));
-  const evidencia = (txt.match(/^##\s+Evidência\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m) || [])[1] || '';
-  const evidenciaLimpa = evidencia.replace(/<!--[\s\S]*?-->/g, '').replace(/_\([^)]*\)_/g, '').trim();
-  return { arq, tipo: campo('tipo'), estado: campo('estado'), pai: campo('pai'), titulo, rumo,
-           evidencia: evidenciaLimpa, comEvidencia: /\S/.test(evidenciaLimpa) };
+  const evidence = (txt.match(/^##\s+Evidência\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m) || [])[1] || '';
+  const cleanEvidence = evidence.replace(/<!--[\s\S]*?-->/g, '').replace(/_\([^)]*\)_/g, '').trim();
+  return { arq: file, tipo: field('tipo'), estado: field('estado'), pai: field('pai'), titulo: title, rumo,
+           evidencia: cleanEvidence, comEvidencia: /\S/.test(cleanEvidence) };
 };
-const nosDoPlanejamento = () => {
-  const nos = [];
-  (function varrer(d, prof = 0) {
-    if (prof > 8) return;
-    let ents; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
-    for (const e of ents) {
+const planningNodes = () => {
+  const nodes = [];
+  (function walk(d, depth = 0) {
+    if (depth > 8) return;
+    let entries; try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
       const p = path.join(d, e.name);
-      if (e.isDirectory()) varrer(p, prof + 1);
-      else if (e.name === 'Sobre.md') { const n = lerNo(p); if (n && n.tipo) nos.push(n); }
+      if (e.isDirectory()) walk(p, depth + 1);
+      else if (e.name === 'Sobre.md') { const n = readNode(p); if (n && n.tipo) nodes.push(n); }
     }
   })(path.join(DOCS, 'Planejamento'));
-  return nos;
+  return nodes;
 };
-const dias = (d) => Math.floor((Date.now() - d.getTime()) / 86400000);  // display only; --status writes nothing
+const days = (d) => Math.floor((Date.now() - d.getTime()) / 86400000);  // display only; --status writes nothing
 
 // ── Tokens SPENT, per model — read from the Claude Code transcripts. 4b measures what
 // loads; this measures what was paid. The data is fact: every agent reply sits in
@@ -442,146 +442,146 @@ const dias = (d) => Math.floor((Date.now() - d.getTime()) / 86400000);  // displ
 // Dedupe by message id: the same reply is recorded more than once while streaming
 // (3× per id in this repository), and the last one has the complete usage. Sub-agents
 // (`isSidechain`) count — they were paid for — and show up separately.
-const PRECOS_DATA = '2026-09';   // USD per million tokens: input · output · cache write · cache read
-const PRECOS = [
+const PRICES_DATE = '2026-09';   // USD per million tokens: input · output · cache write · cache read
+const PRICES = [
   [/fable|mythos/, { in: 10, out: 50, cw: 12.5, cr: 1 }],
   [/opus/,         { in: 5,  out: 25, cw: 6.25, cr: 0.5 }],
   [/sonnet/,       { in: 2,  out: 10, cw: 2.5,  cr: 0.2 }],
   [/haiku/,        { in: 1,  out: 5,  cw: 1.25, cr: 0.1 }],
 ];
-const precoDe = (modelo) => (PRECOS.find(([re]) => re.test(modelo)) || PRECOS[1])[1];
-const custoDe = (t, modelo) => { const p = precoDe(modelo); return (t.in * p.in + t.out * p.out + t.cw * p.cw + t.cr * p.cr) / 1e6; };
-const calcularGastos = () => {
+const priceOf = (model) => (PRICES.find(([re]) => re.test(model)) || PRICES[1])[1];
+const costOf = (t, model) => { const p = priceOf(model); return (t.in * p.in + t.out * p.out + t.cw * p.cw + t.cr * p.cr) / 1e6; };
+const computeSpend = () => {
   const dir = path.dirname(MEM);   // ~/.claude/projects/<slug>/
-  let arqs = []; try { arqs = fs.readdirSync(dir).filter(f => f.endsWith('.jsonl')); } catch {}
-  const porId = new Map();
-  for (const f of arqs) {
+  let files = []; try { files = fs.readdirSync(dir).filter(f => f.endsWith('.jsonl')); } catch {}
+  const byId = new Map();
+  for (const f of files) {
     let txt; try { txt = fs.readFileSync(path.join(dir, f), 'utf8'); } catch { continue; }
-    for (const linha of txt.split('\n')) {
-      if (!linha.includes('"usage"')) continue;
-      let o; try { o = JSON.parse(linha); } catch { continue; }
+    for (const line of txt.split('\n')) {
+      if (!line.includes('"usage"')) continue;
+      let o; try { o = JSON.parse(line); } catch { continue; }
       const m = o.message; if (!m || !m.usage || o.type !== 'assistant') continue;
       const u = m.usage;
-      porId.set(m.id || o.uuid, { modelo: m.model || '?', dia: (o.timestamp || '').slice(0, 10), sessao: o.sessionId || f, sub: !!o.isSidechain,
+      byId.set(m.id || o.uuid, { modelo: m.model || '?', dia: (o.timestamp || '').slice(0, 10), sessao: o.sessionId || f, sub: !!o.isSidechain,
         in: u.input_tokens || 0, out: u.output_tokens || 0, cw: u.cache_creation_input_tokens || 0, cr: u.cache_read_input_tokens || 0 });
     }
   }
   const zero = () => ({ in: 0, out: 0, cw: 0, cr: 0, msgs: 0 });
-  const soma = (a, b) => { a.in += b.in; a.out += b.out; a.cw += b.cw; a.cr += b.cr; a.msgs++; };
-  const total = zero(), sub = zero(), porModelo = {}, porDia = {}, sessoes = new Set();
-  let contextoAcum = 0;
-  for (const r of porId.values()) {
-    soma(total, r); if (r.sub) soma(sub, r);
-    (porModelo[r.modelo] = porModelo[r.modelo] || zero()); soma(porModelo[r.modelo], r);
-    (porDia[r.dia] = porDia[r.dia] || zero()); soma(porDia[r.dia], r);
-    sessoes.add(r.sessao);
-    contextoAcum += r.in + r.cw + r.cr;
+  const add = (a, b) => { a.in += b.in; a.out += b.out; a.cw += b.cw; a.cr += b.cr; a.msgs++; };
+  const total = zero(), sub = zero(), byModel = {}, byDay = {}, sessions = new Set();
+  let contextSum = 0;
+  for (const r of byId.values()) {
+    add(total, r); if (r.sub) add(sub, r);
+    (byModel[r.modelo] = byModel[r.modelo] || zero()); add(byModel[r.modelo], r);
+    (byDay[r.dia] = byDay[r.dia] || zero()); add(byDay[r.dia], r);
+    sessions.add(r.sessao);
+    contextSum += r.in + r.cw + r.cr;
   }
-  let custo = 0; for (const [m, t] of Object.entries(porModelo)) custo += custoDe(t, m);
-  const contextoMedio = total.msgs ? Math.round(contextoAcum / total.msgs) : 0;
-  return { total, sub, porModelo, porDia, sessoes: sessoes.size, custo, contextoMedio, transcricoes: arqs.length };
+  let cost = 0; for (const [m, t] of Object.entries(byModel)) cost += costOf(t, m);
+  const avgContext = total.msgs ? Math.round(contextSum / total.msgs) : 0;
+  return { total, sub, porModelo: byModel, porDia: byDay, sessoes: sessions.size, custo: cost, contextoMedio: avgContext, transcricoes: files.length };
 };
 const kTk = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n);
-const imprimirGastos = (g, fixoTk) => {
+const printSpend = (g, fixedTk) => {
   log('\n\x1b[1mTokens spent\x1b[0m  (from the Claude Code transcripts of this project — measured, not estimated)');
   if (!g.total.msgs) { info('none found in ' + path.dirname(MEM)); return; }
   info(`${g.sessoes} session(s), ${g.total.msgs} model turns` + (g.sub.msgs ? ` (${g.sub.msgs} by subagents)` : ''));
   for (const [m, t] of Object.entries(g.porModelo).sort((a, b) => b[1].cr + b[1].in - (a[1].cr + a[1].in)))
-    info(`${m.padEnd(18)} ${kTk(t.in).padStart(6)} in  ${kTk(t.cw).padStart(6)} cache-write  ${kTk(t.cr).padStart(7)} cache-read  ${kTk(t.out).padStart(6)} out  ≈ $${custoDe(t, m).toFixed(2)}`);
-  info(`≈ $${g.custo.toFixed(2)} total at ${PRECOS_DATA} list prices — an estimate; check the current price table`);
-  if (fixoTk && g.contextoMedio) {
-    const fatia = Math.min(100, Math.round(100 * fixoTk / g.contextoMedio));
-    info(`each turn re-reads ~${kTk(g.contextoMedio)} tk of context; the fixed context is ~${fatia}% of it — that is what the 4b measures, paid every turn`);
+    info(`${m.padEnd(18)} ${kTk(t.in).padStart(6)} in  ${kTk(t.cw).padStart(6)} cache-write  ${kTk(t.cr).padStart(7)} cache-read  ${kTk(t.out).padStart(6)} out  ≈ $${costOf(t, m).toFixed(2)}`);
+  info(`≈ $${g.custo.toFixed(2)} total at ${PRICES_DATE} list prices — an estimate; check the current price table`);
+  if (fixedTk && g.contextoMedio) {
+    const share = Math.min(100, Math.round(100 * fixedTk / g.contextoMedio));
+    info(`each turn re-reads ~${kTk(g.contextoMedio)} tk of context; the fixed context is ~${share}% of it — that is what the 4b measures, paid every turn`);
   }
 };
 
 // ── The docs side of the graph, as a function: 8b appends it to graph.json, --status --html
 // draws it. `ids` are the code nodes that exist (empty without graphify: then only doc↔doc).
-const grafoDosDocs = (ids, subRepos = []) => {
-  const idDe = (rel) => rel.replace(/\\/g, '/').replace(/\.[^./]+$/, '')
+const docsGraph = (ids, subRepos = []) => {
+  const idOf = (rel) => rel.replace(/\\/g, '/').replace(/\.[^./]+$/, '')
     .replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
-  const limpar = (txt) => txt.replace(/```[\s\S]*?```/g, '').replace(/<!--[\s\S]*?-->/g, '');
+  const strip = (txt) => txt.replace(/```[\s\S]*?```/g, '').replace(/<!--[\s\S]*?-->/g, '');
   const docs = [];
-  (function varrerDocs(dir, prof = 0) {
-    if (prof > 8) return;
-    let ents; try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
-    for (const e of ents) {
+  (function walkDocs(dir, depth = 0) {
+    if (depth > 8) return;
+    let entries; try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
       // 99_Backup/ and historico/ stay out of the read path — and out of the graph.
       if (e.name.startsWith('.') || e.name === '99_Backup' || e.name === 'historico') continue;
       const p = path.join(dir, e.name);
-      if (e.isDirectory()) { varrerDocs(p, prof + 1); continue; }
+      if (e.isDirectory()) { walkDocs(p, depth + 1); continue; }
       if (e.name.endsWith('.md')) docs.push(p);
     }
   })(DOCS);
 
-  const novosNos = [], novasArestas = [], avisos = [], porNome = new Map();
-  const relDe = (abs) => path.relative(RAIZ, abs).replace(/\\/g, '/');
+  const newNodes = [], newEdges = [], warnings = [], byName = new Map();
+  const relOf = (abs) => path.relative(ROOT, abs).replace(/\\/g, '/');
 
-  for (const arq of docs) {
-    const rel = relDe(arq);
-    const id = idDe(rel);
-    let txt; try { txt = fs.readFileSync(arq, 'utf8'); } catch { continue; }
+  for (const file of docs) {
+    const rel = relOf(file);
+    const id = idOf(rel);
+    let txt; try { txt = fs.readFileSync(file, 'utf8'); } catch { continue; }
     const fm = txt.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-    const campo = (k) => { const m = fm && fm[1].match(new RegExp('^' + k + ':[ \\t]*(.+)$', 'm')); return m ? m[1].trim().replace(/\s+#.*$/, '') : null; };
-    const titulo = (txt.match(/^#\s+(.+)$/m) || [])[1] || path.basename(arq, '.md');
-    const no = { id, label: titulo.trim(), file_type: 'doc', source_file: rel, source_location: 'L1', _origin: 'marvin' };
-    const tipo = campo('tipo'), estado = campo('estado');
-    if (tipo) no.tipo = tipo;
-    if (estado) no.estado = estado;
-    novosNos.push(no);
+    const field = (k) => { const m = fm && fm[1].match(new RegExp('^' + k + ':[ \\t]*(.+)$', 'm')); return m ? m[1].trim().replace(/\s+#.*$/, '') : null; };
+    const title = (txt.match(/^#\s+(.+)$/m) || [])[1] || path.basename(file, '.md');
+    const node = { id, label: title.trim(), file_type: 'doc', source_file: rel, source_location: 'L1', _origin: 'marvin' };
+    const type = field('tipo'), state = field('estado');
+    if (type) node.tipo = type;
+    if (state) node.estado = state;
+    newNodes.push(node);
     ids.add(id);
     // [[wikilink]] resolves by file name or by the frontmatter `name:` —
     // that is how a notes vault links, and a base migrated from one is full of them.
-    porNome.set(path.basename(arq, '.md').toLowerCase(), id);
-    const nome = campo('name'); if (nome) porNome.set(nome.replace(/^["']|["']$/g, '').toLowerCase(), id);
+    byName.set(path.basename(file, '.md').toLowerCase(), id);
+    const name = field('name'); if (name) byName.set(name.replace(/^["']|["']$/g, '').toLowerCase(), id);
   }
 
-  for (const arq of docs) {
-    const rel = relDe(arq);
-    const id = idDe(rel);
-    const aresta = (source, target, relation) => novasArestas.push({ source, target, relation, confidence: 'EXTRACTED',
+  for (const file of docs) {
+    const rel = relOf(file);
+    const id = idOf(rel);
+    const edge = (source, target, relation) => newEdges.push({ source, target, relation, confidence: 'EXTRACTED',
       source_file: rel, source_location: 'L1', weight: 1, _origin: 'marvin' });
-    let txt; try { txt = fs.readFileSync(arq, 'utf8'); } catch { continue; }
-    const corpo = limpar(txt);
-    const fm = corpo.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-    const pai = fm && (fm[1].match(/^pai:[ \t]*(.+)$/m) || [])[1];
-    if (pai) {
-      const alvo = path.resolve(path.dirname(arq), pai.trim());
-      if (fs.existsSync(alvo)) aresta(id, idDe(relDe(alvo)), 'child_of');
-      else avisos.push(rel + ': pai → ' + pai.trim() + ' does not exist');
+    let txt; try { txt = fs.readFileSync(file, 'utf8'); } catch { continue; }
+    const body = strip(txt);
+    const fm = body.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    const parent = fm && (fm[1].match(/^pai:[ \t]*(.+)$/m) || [])[1];
+    if (parent) {
+      const target = path.resolve(path.dirname(file), parent.trim());
+      if (fs.existsSync(target)) edge(id, idOf(relOf(target)), 'child_of');
+      else warnings.push(rel + ': pai → ' + parent.trim() + ' does not exist');
     }
     // relative links
-    for (const m of corpo.matchAll(/\[[^\]]*\]\(([^)\s#]+)(?:#[^)]*)?\)/g)) {
+    for (const m of body.matchAll(/\[[^\]]*\]\(([^)\s#]+)(?:#[^)]*)?\)/g)) {
       const href = m[1];
       if (/^[a-z]+:/i.test(href)) continue;           // http, mailto…
-      const alvo = path.resolve(path.dirname(arq), href);
-      if (!fs.existsSync(alvo)) continue;             // a broken link is another step's business
-      const alvoRel = relDe(alvo);
-      if (alvoRel.startsWith('..')) continue;
-      const alvoId = idDe(alvoRel);
-      if (alvo.endsWith('.md') && alvoRel.startsWith(relDe(DOCS))) aresta(id, alvoId, 'references');
-      else if (ids.has(alvoId)) aresta(id, alvoId, 'touches');
+      const target = path.resolve(path.dirname(file), href);
+      if (!fs.existsSync(target)) continue;             // a broken link is another step's business
+      const targetRel = relOf(target);
+      if (targetRel.startsWith('..')) continue;
+      const targetId = idOf(targetRel);
+      if (target.endsWith('.md') && targetRel.startsWith(relOf(DOCS))) edge(id, targetId, 'references');
+      else if (ids.has(targetId)) edge(id, targetId, 'touches');
     }
-    for (const m of corpo.matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]/g)) {
-      const alvoId = porNome.get(m[1].trim().toLowerCase());
-      if (alvoId && alvoId !== id) aresta(id, alvoId, 'references');
+    for (const m of body.matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]/g)) {
+      const targetId = byName.get(m[1].trim().toLowerCase());
+      if (targetId && targetId !== id) edge(id, targetId, 'references');
     }
     // ## Código tocado
-    const sec = corpo.match(/^##\s+Código tocado\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
-    if (sec) {
-      for (const m of sec[1].matchAll(/^[ \t]*[-*][ \t]*`([^`]+)`(?:[ \t]*[—-]+[ \t]*`([^`]+)`)?/gm)) {
-        const arqCod = m[1].trim(), fn = m[2] && m[2].trim().replace(/\(\)$/, '');
-        const arqId = idDe(arqCod);
-        const alvoId = fn ? arqId + '_' + fn.replace(/[^A-Za-z0-9]+/g, '_').toLowerCase() : arqId;
-        if (ids.has(alvoId)) { aresta(id, alvoId, 'touches'); continue; }
-        if (!fs.existsSync(path.join(RAIZ, arqCod))) avisos.push(rel + ': `' + arqCod + '` does not exist in the repository');
-        else if (!ids.has(arqId)) avisos.push(rel + ': `' + arqCod + '` is not in the graph — rebuild it (' + (subRepos.length ? 'marvin --graphify --graphify-rebuild' : 'graphify update .') + ')');
-        else avisos.push(rel + ': `' + fn + '` is not in `' + arqCod + '` — renamed?');
+    const section = body.match(/^##\s+Código tocado\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
+    if (section) {
+      for (const m of section[1].matchAll(/^[ \t]*[-*][ \t]*`([^`]+)`(?:[ \t]*[—-]+[ \t]*`([^`]+)`)?/gm)) {
+        const codeFile = m[1].trim(), fn = m[2] && m[2].trim().replace(/\(\)$/, '');
+        const fileId = idOf(codeFile);
+        const targetId = fn ? fileId + '_' + fn.replace(/[^A-Za-z0-9]+/g, '_').toLowerCase() : fileId;
+        if (ids.has(targetId)) { edge(id, targetId, 'touches'); continue; }
+        if (!fs.existsSync(path.join(ROOT, codeFile))) warnings.push(rel + ': `' + codeFile + '` does not exist in the repository');
+        else if (!ids.has(fileId)) warnings.push(rel + ': `' + codeFile + '` is not in the graph — rebuild it (' + (subRepos.length ? 'marvin --graphify --graphify-rebuild' : 'graphify update .') + ')');
+        else warnings.push(rel + ': `' + fn + '` is not in `' + codeFile + '` — renamed?');
       }
     }
   }
 
-  return { novosNos, novasArestas, avisos };
+  return { novosNos: newNodes, novasArestas: newEdges, avisos: warnings };
 };
 
 // ── The graph in Marvin's service. Measured on 14/09: in 23,745 agent turns across the four
@@ -592,54 +592,54 @@ const grafoDosDocs = (ids, subRepos = []) => {
 //   --status   Collision: two active USs on the same function/file · Dispersion: US across N communities
 //   --fechar   Drift: the diff touched a file that is in no active US's "Código tocado"
 // All deterministic, zero LLM. graphify did the extraction; the script ties the answer to the node.
-const carregarGrafo = () => {
-  const p = path.join(RAIZ, 'graphify-out', 'graph.json');
+const loadGraph = () => {
+  const p = path.join(ROOT, 'graphify-out', 'graph.json');
   let g; try { g = JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
-  const nos = new Map((g.nodes || []).map(n => [n.id, n]));
-  const arestas = g.links || g.edges || [];
-  const chamadores = new Map();   // target → [who calls/imports/extends it]
-  const contidoEm = new Map();    // function → file
-  for (const e of arestas) {
+  const nodes = new Map((g.nodes || []).map(n => [n.id, n]));
+  const edges = g.links || g.edges || [];
+  const callers = new Map();   // target → [who calls/imports/extends it]
+  const containedIn = new Map();    // function → file
+  for (const e of edges) {
     if (/^(calls|indirect_call|imports|imports_from|uses|extends|inherits|implements|requires)$/.test(e.relation)) {
-      if (!chamadores.has(e.target)) chamadores.set(e.target, []);
-      chamadores.get(e.target).push(e.source);
+      if (!callers.has(e.target)) callers.set(e.target, []);
+      callers.get(e.target).push(e.source);
     }
-    if (e.relation === 'contains') contidoEm.set(e.target, e.source);
+    if (e.relation === 'contains') containedIn.set(e.target, e.source);
   }
-  return { nos, arestas, chamadores, contidoEm, mtime: fs.statSync(p).mtime };
+  return { nos: nodes, arestas: edges, chamadores: callers, contidoEm: containedIn, mtime: fs.statSync(p).mtime };
 };
 // Which code nodes each US touches — through the same parser as 8b. Returns Map usId → {no, ids}.
-const tocadoPorUS = (grafo) => {
-  const ids = new Set(grafo ? grafo.nos.keys() : []);
-  const { novosNos, novasArestas } = grafoDosDocs(ids);
+const touchedByUS = (graph) => {
+  const ids = new Set(graph ? graph.nos.keys() : []);
+  const { novosNos: newNodes, novasArestas: newEdges } = docsGraph(ids);
   const us = new Map();
-  for (const n of novosNos) if (n.tipo === 'us') us.set(n.id, { no: n, ids: new Set() });
-  for (const e of novasArestas) if (e.relation === 'touches' && us.has(e.source)) us.get(e.source).ids.add(e.target);
+  for (const n of newNodes) if (n.tipo === 'us') us.set(n.id, { no: n, ids: new Set() });
+  for (const e of newEdges) if (e.relation === 'touches' && us.has(e.source)) us.get(e.source).ids.add(e.target);
   return us;
 };
-const rotuloNo = (grafo, id) => { const n = grafo && grafo.nos.get(id); return n ? (n.label || id) + (n.source_file ? '  ' + n.source_file + (n.source_location ? ':' + n.source_location : '') : '') : id; };
+const nodeLabel = (graph, id) => { const n = graph && graph.nos.get(id); return n ? (n.label || id) + (n.source_file ? '  ' + n.source_file + (n.source_location ? ':' + n.source_location : '') : '') : id; };
 
 // Impact of a US: who depends on what it touches (2 levels), and which other USs touch the same.
-const impactoDaUS = (grafo, todas, usId) => {
-  const alvo = todas.get(usId); if (!alvo || !grafo) return null;
-  const dependentes = new Map();   // id → level
-  let fronteira = [...alvo.ids];
-  for (let nivel = 1; nivel <= 2 && fronteira.length; nivel++) {
-    const prox = [];
-    for (const id of fronteira) for (const c of grafo.chamadores.get(id) || []) {
-      if (alvo.ids.has(c) || dependentes.has(c)) continue;
-      dependentes.set(c, nivel); prox.push(c);
+const usImpact = (graph, all, usId) => {
+  const target = all.get(usId); if (!target || !graph) return null;
+  const dependents = new Map();   // id → level
+  let frontier = [...target.ids];
+  for (let level = 1; level <= 2 && frontier.length; level++) {
+    const next = [];
+    for (const id of frontier) for (const c of graph.chamadores.get(id) || []) {
+      if (target.ids.has(c) || dependents.has(c)) continue;
+      dependents.set(c, level); next.push(c);
     }
-    fronteira = prox;
+    frontier = next;
   }
-  const outras = [];
-  for (const [id, o] of todas) {
+  const others = [];
+  for (const [id, o] of all) {
     if (id === usId) continue;
-    const comum = [...o.ids].filter(x => alvo.ids.has(x) || dependentes.has(x));
-    if (comum.length) outras.push({ us: o.no, comum });
+    const shared = [...o.ids].filter(x => target.ids.has(x) || dependents.has(x));
+    if (shared.length) others.push({ us: o.no, comum: shared });
   }
-  const comunidades = new Set([...alvo.ids].map(id => (grafo.nos.get(id) || {}).community).filter(c => c !== undefined));
-  return { tocados: [...alvo.ids], dependentes: [...dependentes], outras, comunidades: [...comunidades] };
+  const communities = new Set([...target.ids].map(id => (graph.nos.get(id) || {}).community).filter(c => c !== undefined));
+  return { tocados: [...target.ids], dependentes: [...dependents], outras: others, comunidades: [...communities] };
 };
 
 // ── --status --html. A single `index.html`, regenerated every run, with the series embedded
@@ -648,14 +648,14 @@ const impactoDaUS = (grafo, todas, usId) => {
 // `git log -1 --format=%cI`, not from `Date.now()`, so two runs on the same commit do not
 // duplicate. All in a git-ignored folder: it is derived, and derived ages silently.
 // SVG pre-rendered here, no JS on the page: opens with no network, no lib, on anything.
-const escreverStatusHtml = (st, silencioso = false) => {
-  const ok = silencioso ? () => {} : okReal, info = silencioso ? () => {} : infoReal, warn = silencioso ? () => {} : warnReal;
+const writeStatusHtml = (st, quiet = false) => {
+  const ok = quiet ? () => {} : okReal, info = quiet ? () => {} : infoReal, warn = quiet ? () => {} : warnReal;
   const dir = path.join(DOCS, '.status');
   const jsonl = path.join(dir, 'historico.jsonl');
   fsw.mkdirSync(dir, { recursive: true });
   // .gitignore: the same discipline as graphify-out/
-  const relStatus = path.relative(RAIZ, dir).replace(/\\/g, '/') + '/';
-  const gi = path.join(RAIZ, '.gitignore');
+  const relStatus = path.relative(ROOT, dir).replace(/\\/g, '/') + '/';
+  const gi = path.join(ROOT, '.gitignore');
   if (fs.existsSync(gi)) {
     const txt = fs.readFileSync(gi, 'utf8');
     if (!txt.split(/\r?\n/).some(l => l.trim() === relStatus || l.trim() === relStatus.replace(/\/$/, ''))) {
@@ -666,29 +666,29 @@ const escreverStatusHtml = (st, silencioso = false) => {
   // the series
   let commit = null, data = null;
   try {
-    const out = execSync('git log -1 --format=%h%x09%cI', { cwd: RAIZ, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    const out = execSync('git log -1 --format=%h%x09%cI', { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
     [commit, data] = out.split('\t');
   } catch {}
-  let serie = [];
-  try { serie = fs.readFileSync(jsonl, 'utf8').split(/\r?\n/).filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean); } catch {}
+  let history = [];
+  try { history = fs.readFileSync(jsonl, 'utf8').split(/\r?\n/).filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean); } catch {}
   const tk = Object.fromEntries(st.contexto.linhas.map(l => [l.nome.replace(/\s.*$/, ''), l.tk]));
-  const ponto = { commit, data, total: st.contexto.total, tk, us_ativas: st.ativas.filter(a => a.estado === 'ativa').length,
+  const point = { commit, data, total: st.contexto.total, tk, us_ativas: st.ativas.filter(a => a.estado === 'ativa').length,
                   us_concluidas: st.nos.concluidas, us_total: st.nos.us, problemas: st.problemas,
                   grafo_nos: st.grafo ? st.grafo.nos : null, grafo_mtime: st.grafo ? st.grafo.mtime : null,
                   gasto_tk: st.gastos.total.in + st.gastos.total.cw + st.gastos.total.cr + st.gastos.total.out, custo: +st.gastos.custo.toFixed(2), turnos: st.gastos.total.msgs };
   if (!commit) warn('no git here — the series is not recorded (the page is built from what exists)');
-  else if (serie.length && serie[serie.length - 1].commit === commit) info('historico.jsonl — this commit is already recorded (' + serie.length + ' point(s))');
+  else if (history.length && history[history.length - 1].commit === commit) info('historico.jsonl — this commit is already recorded (' + history.length + ' point(s))');
   else {
-    serie.push(ponto);
-    if (serie.length > 500) serie = serie.slice(-500);
-    fsw.writeFileSync(jsonl, serie.map(p => JSON.stringify(p)).join('\n') + '\n');
-    ok('historico.jsonl — point recorded for ' + commit + ' (' + serie.length + ' total)');
+    history.push(point);
+    if (history.length > 500) history = history.slice(-500);
+    fsw.writeFileSync(jsonl, history.map(p => JSON.stringify(p)).join('\n') + '\n');
+    ok('historico.jsonl — point recorded for ' + commit + ' (' + history.length + ' total)');
   }
-  const pts = serie.length ? serie : [ponto];
+  const pts = history.length ? history : [point];
 
   // charts: pre-rendered polyline. One function, several uses.
   const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const grafico = (titulo, series, fmt = (v) => v) => {
+  const chart = (title, series, fmt = (v) => v) => {
     const W = 640, H = 200, PL = 46, PR = 12, PT = 18, PB = 28;
     const n = pts.length;
     const vals = series.flatMap(s => s.v).filter(v => v !== null && v !== undefined);
@@ -696,7 +696,7 @@ const escreverStatusHtml = (st, silencioso = false) => {
     const x = (i) => n < 2 ? (PL + W - PR) / 2 : PL + (i / (n - 1)) * (W - PL - PR);
     const y = (v) => PT + (1 - (v - min) / (max - min)) * (H - PT - PB);
     const ticks = [0, 0.5, 1].map(f => min + f * (max - min));
-    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(titulo)}">`;
+    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">`;
     for (const t of ticks) svg += `<line x1="${PL}" y1="${y(t).toFixed(1)}" x2="${W - PR}" y2="${y(t).toFixed(1)}" class="grid"/><text x="${PL - 6}" y="${(y(t) + 4).toFixed(1)}" class="tick" text-anchor="end">${esc(fmt(Math.round(t)))}</text>`;
     series.forEach((s, k) => {
       const p = s.v.map((v, i) => v === null || v === undefined ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`).filter(Boolean);
@@ -707,54 +707,54 @@ const escreverStatusHtml = (st, silencioso = false) => {
     if (n) svg += `<text x="${PL}" y="${H - 8}" class="tick">${esc(rot(0))}</text>`;
     if (n > 1) svg += `<text x="${W - PR}" y="${H - 8}" class="tick" text-anchor="end">${esc(rot(n - 1))}</text>`;
     svg += '</svg>';
-    const legenda = series.map((s, k) => `<span class="lg s${k}">${esc(s.nome)}</span>`).join(' ');
-    return `<figure><figcaption>${esc(titulo)} ${legenda}</figcaption>${svg}</figure>`;
+    const legend = series.map((s, k) => `<span class="lg s${k}">${esc(s.nome)}</span>`).join(' ');
+    return `<figure><figcaption>${esc(title)} ${legend}</figcaption>${svg}</figure>`;
   };
-  const idadeGrafo = (p) => p.grafo_mtime && p.data ? Math.max(0, Math.round((new Date(p.data) - new Date(p.grafo_mtime)) / 86400000)) : null;
-  const gContexto = grafico('Contexto fixo por commit (tk)', [
+  const graphAge = (p) => p.grafo_mtime && p.data ? Math.max(0, Math.round((new Date(p.data) - new Date(p.grafo_mtime)) / 86400000)) : null;
+  const gContext = chart('Contexto fixo por commit (tk)', [
     { nome: 'total', v: pts.map(p => p.total) },
     { nome: 'AGENTS.md', v: pts.map(p => p.tk && p.tk['AGENTS.md'] != null ? p.tk['AGENTS.md'] : null) },
     { nome: 'nota', v: pts.map(p => p.tk && p.tk['onde_paramos.md'] != null ? p.tk['onde_paramos.md'] : null) },
   ]);
-  const gUS = grafico('US ativas × concluídas', [
+  const gUS = chart('US ativas × concluídas', [
     { nome: 'ativas (na nota)', v: pts.map(p => p.us_ativas) },
     { nome: 'concluídas (nos nós)', v: pts.map(p => p.us_concluidas) },
   ]);
-  const gGrafo = grafico('Idade do grafo no commit (dias)', [{ nome: 'dias desde a extração', v: pts.map(idadeGrafo) }]);
-  const gCusto = grafico('Custo acumulado por commit (USD, estimado)', [{ nome: 'USD', v: pts.map(p => p.custo == null ? null : p.custo) }]);
+  const gGraph = chart('Idade do grafo no commit (dias)', [{ nome: 'dias desde a extração', v: pts.map(graphAge) }]);
+  const gCost = chart('Custo acumulado por commit (USD, estimado)', [{ nome: 'USD', v: pts.map(p => p.custo == null ? null : p.custo) }]);
   // per day: what was read (in + cache) and what was written — from the transcript, not the series
-  const dias = Object.keys(st.gastos.porDia).filter(Boolean).sort();
+  const days = Object.keys(st.gastos.porDia).filter(Boolean).sort();
   const g = st.gastos;
-  const barras = (() => {
-    if (!dias.length) return '';
+  const bars = (() => {
+    if (!days.length) return '';
     const W = 640, H = 200, PL = 46, PR = 12, PT = 18, PB = 28;
-    const vals = dias.map(d => g.porDia[d].in + g.porDia[d].cw + g.porDia[d].cr);
+    const vals = days.map(d => g.porDia[d].in + g.porDia[d].cw + g.porDia[d].cr);
     const max = Math.max(1, ...vals);
-    const bw = (W - PL - PR) / dias.length;
+    const bw = (W - PL - PR) / days.length;
     const y = (v) => PT + (1 - v / max) * (H - PT - PB);
     let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="tokens lidos por dia">`;
     [0, 0.5, 1].forEach(f => { svg += `<line x1="${PL}" y1="${y(f * max).toFixed(1)}" x2="${W - PR}" y2="${y(f * max).toFixed(1)}" class="grid"/><text x="${PL - 6}" y="${(y(f * max) + 4).toFixed(1)}" class="tick" text-anchor="end">${kTk(Math.round(f * max))}</text>`; });
-    dias.forEach((d, i) => { const v = vals[i]; svg += `<rect x="${(PL + i * bw + 1).toFixed(1)}" y="${y(v).toFixed(1)}" width="${Math.max(1, bw - 2).toFixed(1)}" height="${(H - PB - y(v)).toFixed(1)}" class="s0"><title>${esc(d)}: ${kTk(v)} lidos · ${kTk(g.porDia[d].out)} escritos · ${g.porDia[d].msgs} turnos</title></rect>`; });
-    svg += `<text x="${PL}" y="${H - 8}" class="tick">${esc(dias[0])}</text>`;
-    if (dias.length > 1) svg += `<text x="${W - PR}" y="${H - 8}" class="tick" text-anchor="end">${esc(dias[dias.length - 1])}</text>`;
+    days.forEach((d, i) => { const v = vals[i]; svg += `<rect x="${(PL + i * bw + 1).toFixed(1)}" y="${y(v).toFixed(1)}" width="${Math.max(1, bw - 2).toFixed(1)}" height="${(H - PB - y(v)).toFixed(1)}" class="s0"><title>${esc(d)}: ${kTk(v)} lidos · ${kTk(g.porDia[d].out)} escritos · ${g.porDia[d].msgs} turnos</title></rect>`; });
+    svg += `<text x="${PL}" y="${H - 8}" class="tick">${esc(days[0])}</text>`;
+    if (days.length > 1) svg += `<text x="${W - PR}" y="${H - 8}" class="tick" text-anchor="end">${esc(days[days.length - 1])}</text>`;
     return `<figure><figcaption>Tokens lidos por dia (input + cache) <span class="lg s0">passe o mouse para ver o dia</span></figcaption>${svg}</svg></figure>`;
   })();
-  const fatiaFixo = g.contextoMedio ? Math.min(100, Math.round(100 * st.contexto.total / g.contextoMedio)) : null;
-  const tabelaModelos = Object.entries(g.porModelo).sort((a, b) => b[1].cr + b[1].in - (a[1].cr + a[1].in)).map(([m, t]) =>
-    `<tr><td></td><td>${esc(m)}</td><td>${kTk(t.in)}</td><td>${kTk(t.cw)}</td><td>${kTk(t.cr)}</td><td>${kTk(t.out)}</td><td>${t.msgs}</td><td>≈ $${custoDe(t, m).toFixed(2)}</td><td>${t.msgs ? '$' + (custoDe(t, m) / t.msgs).toFixed(3) : '—'}</td></tr>`).join('');
+  const fixedShare = g.contextoMedio ? Math.min(100, Math.round(100 * st.contexto.total / g.contextoMedio)) : null;
+  const modelsTable = Object.entries(g.porModelo).sort((a, b) => b[1].cr + b[1].in - (a[1].cr + a[1].in)).map(([m, t]) =>
+    `<tr><td></td><td>${esc(m)}</td><td>${kTk(t.in)}</td><td>${kTk(t.cw)}</td><td>${kTk(t.cr)}</td><td>${kTk(t.out)}</td><td>${t.msgs}</td><td>≈ $${costOf(t, m).toFixed(2)}</td><td>${t.msgs ? '$' + (costOf(t, m) / t.msgs).toFixed(3) : '—'}</td></tr>`).join('');
 
   // ── The network: the knowledge base as a graph, colored by state. Doc nodes come from
   // the same `grafoDosDocs` that 8b appends; code nodes enter only when a US touches them
   // (the whole graph.json has thousands — it would be noise). Force layout in inline JS, no
   // lib, deterministic initial positions (spiral), so the page always opens the same.
-  const rede = (() => {
-    const GRAFO_R = path.join(RAIZ, 'graphify-out', 'graph.json');
-    let codigo = new Map();
-    try { const gj = JSON.parse(fs.readFileSync(GRAFO_R, 'utf8')); for (const n of gj.nodes || []) if (n._origin !== 'marvin') codigo.set(n.id, n); } catch {}
-    const { novosNos, novasArestas } = grafoDosDocs(new Set(codigo.keys()));
-    const relDocs = path.relative(RAIZ, DOCS).replace(/\\/g, '/');
-    const nos = new Map();
-    for (const n of novosNos) {
+  const network = (() => {
+    const GRAPH_R = path.join(ROOT, 'graphify-out', 'graph.json');
+    let code = new Map();
+    try { const gj = JSON.parse(fs.readFileSync(GRAPH_R, 'utf8')); for (const n of gj.nodes || []) if (n._origin !== 'marvin') code.set(n.id, n); } catch {}
+    const { novosNos: newNodes, novasArestas: newEdges } = docsGraph(new Set(code.keys()));
+    const relDocs = path.relative(ROOT, DOCS).replace(/\\/g, '/');
+    const nodes = new Map();
+    for (const n of newNodes) {
       const rel = n.source_file;
       let cat = 'doc';
       if (n.tipo === 'epic' || n.tipo === 'feature' || n.tipo === 'us') cat = n.tipo;
@@ -764,27 +764,27 @@ const escreverStatusHtml = (st, silencioso = false) => {
       else if (rel.startsWith(relDocs + '/Releases/')) cat = 'release';
       else if (rel.startsWith(relDocs + '/Memoria/')) cat = 'nota';
       if (/README\.md$/.test(rel) && cat === 'doc') continue;   // format READMEs: not knowledge
-      nos.set(n.id, { id: n.id, rotulo: n.label.replace(/\s+—.*$/, '').slice(0, 40), cat, estado: n.estado || null, arq: rel });
+      nodes.set(n.id, { id: n.id, rotulo: n.label.replace(/\s+—.*$/, '').slice(0, 40), cat, estado: n.estado || null, arq: rel });
     }
-    const arestas = [];
-    for (const e of novasArestas) {
-      if (!nos.has(e.source)) continue;
-      if (!nos.has(e.target)) {
-        const c = codigo.get(e.target); if (!c) continue;
-        nos.set(c.id, { id: c.id, rotulo: (c.label || c.id).slice(0, 40), cat: /\(\)$/.test(c.label || '') ? 'funcao' : 'arquivo', estado: null, arq: c.source_file || '' });
+    const edges = [];
+    for (const e of newEdges) {
+      if (!nodes.has(e.source)) continue;
+      if (!nodes.has(e.target)) {
+        const c = code.get(e.target); if (!c) continue;
+        nodes.set(c.id, { id: c.id, rotulo: (c.label || c.id).slice(0, 40), cat: /\(\)$/.test(c.label || '') ? 'funcao' : 'arquivo', estado: null, arq: c.source_file || '' });
       }
-      arestas.push({ s: e.source, t: e.target, r: e.relation });
+      edges.push({ s: e.source, t: e.target, r: e.relation });
     }
-    const grau = {}; for (const a of arestas) { grau[a.s] = (grau[a.s] || 0) + 1; grau[a.t] = (grau[a.t] || 0) + 1; }
-    return { nos: [...nos.values()].map(n => ({ ...n, grau: grau[n.id] || 0 })), arestas };
+    const degree = {}; for (const a of edges) { degree[a.s] = (degree[a.s] || 0) + 1; degree[a.t] = (degree[a.t] || 0) + 1; }
+    return { nos: [...nodes.values()].map(n => ({ ...n, grau: degree[n.id] || 0 })), arestas: edges };
   })();
-  const redeJson = JSON.stringify(rede).replace(/<\/script/gi, '<\\/script');
-  const redeHtml = `<details class="rede" id="rede-sec"><summary>A rede <span class="dim">— ${rede.nos.length} nós · ${rede.arestas.length} ligações · arraste · passe o mouse · duplo clique abre o arquivo em outra aba</span></summary>
+  const networkJson = JSON.stringify(network).replace(/<\/script/gi, '<\\/script');
+  const networkHtml = `<details class="rede" id="rede-sec"><summary>A rede <span class="dim">— ${network.nos.length} nós · ${network.arestas.length} ligações · arraste · passe o mouse · duplo clique abre o arquivo em outra aba</span></summary>
 <div class="legenda"><span class="lg c-epic">epic</span><span class="lg c-feature">feature</span><span class="lg c-us">US</span><span class="lg c-fluxo">fluxo</span><span class="lg c-arquitetura">arquitetura</span><span class="lg c-raiz">raiz</span><span class="lg c-arquivo">arquivo</span><span class="lg c-funcao">função</span>
 <span class="dim">· anel: <span class="ok">■</span> ativa <span style="color:var(--s0)">■</span> concluída <span class="err">■</span> cancelada</span>
 <label><input type="checkbox" id="mostrarCodigo" checked> mostrar código</label></div>
 <svg id="rede" viewBox="0 0 960 560"><defs><radialGradient id="cerebro" cx="50%" cy="50%" r="70%"><stop offset="0" stop-color="var(--acc)" stop-opacity=".10"/><stop offset=".6" stop-color="var(--acc)" stop-opacity=".03"/><stop offset="1" stop-color="var(--bg)" stop-opacity="0"/></radialGradient></defs><rect width="960" height="560" fill="url(#cerebro)"/></svg>
-<script id="rede-dados" type="application/json">${redeJson}</script>
+<script id="rede-dados" type="application/json">${networkJson}</script>
 <script>
 (function(){
   var D=JSON.parse(document.getElementById('rede-dados').textContent), svg=document.getElementById('rede');
@@ -843,32 +843,32 @@ const escreverStatusHtml = (st, silencioso = false) => {
 })();
 </script></details>`;
 
-  const linhaUS = (a) => `<tr class="${esc(a.estado)}"><td><span class="badge ${esc(a.estado)}">${esc(a.estado)}</span></td><td><strong>${esc(a.titulo)}</strong>${a.cadeia.length ? `<div class="dim">${esc(a.cadeia.join(' › '))}</div>` : ''}${a.proximo ? `<div>${esc(a.proximo.replace(/\*\*|`/g, ''))}</div>` : ''}${a.avisos.map(w => `<div class="warn">! ${esc(w)}</div>`).join('')}</td><td>${a.rumo ? `<span class="dim">${a.idade}d</span> ${esc(a.rumo.slice(0, 120))}` : '<span class="dim">sem Rumo datado</span>'}</td></tr>`;
+  const usRow = (a) => `<tr class="${esc(a.estado)}"><td><span class="badge ${esc(a.estado)}">${esc(a.estado)}</span></td><td><strong>${esc(a.titulo)}</strong>${a.cadeia.length ? `<div class="dim">${esc(a.cadeia.join(' › '))}</div>` : ''}${a.proximo ? `<div>${esc(a.proximo.replace(/\*\*|`/g, ''))}</div>` : ''}${a.avisos.map(w => `<div class="warn">! ${esc(w)}</div>`).join('')}</td><td>${a.rumo ? `<span class="dim">${a.idade}d</span> ${esc(a.rumo.slice(0, 120))}` : '<span class="dim">sem Rumo datado</span>'}</td></tr>`;
   // first fold: the previous point gives the cards' delta; the Corrigir list joins the page
   // warnings with each US's (linking to the file) — it is the reason to open the page
-  const ant = pts.length > 1 ? pts[pts.length - 2] : null;
-  const delta = (a, b, uni, bom, fmt = (v) => String(v)) => { if (a == null || b == null) return '<span class="delta">—</span>'; const d = +(b - a).toFixed(2); const cls = d > 0 ? 'up' : d < 0 ? 'down' : ''; return `<span class="delta ${cls}${bom ? ' bom' : ''}">${d === 0 ? '= igual' : (d > 0 ? '▲ +' : '▼ −') + fmt(Math.abs(d)) + uni} desde o último commit</span>`; };
+  const prev = pts.length > 1 ? pts[pts.length - 2] : null;
+  const delta = (a, b, uni, good, fmt = (v) => String(v)) => { if (a == null || b == null) return '<span class="delta">—</span>'; const d = +(b - a).toFixed(2); const cls = d > 0 ? 'up' : d < 0 ? 'down' : ''; return `<span class="delta ${cls}${good ? ' bom' : ''}">${d === 0 ? '= igual' : (d > 0 ? '▲ +' : '▼ −') + fmt(Math.abs(d)) + uni} desde o último commit</span>`; };
   const card = (rot, val, sub, href) => `<a class="card" href="${href}"><span class="rot">${esc(rot)}</span><span class="val">${val}</span><span class="delta-wrap">${sub}</span></a>`;
-  const linkArq = (abs) => abs ? `<a href="${esc(path.relative(dir, abs).replace(/\\/g, '/'))}">${esc(path.basename(path.dirname(abs)))}</a>` : '';
-  const itens = [...st.avisos.filter(w => w.nivel !== 'info').map(w => `<li>${esc(w.texto)}</li>`), ...st.ativas.flatMap(a => a.avisos.map(w => `<li>${linkArq(a.arq)} — ${esc(w)}</li>`))];
-  const corrigir = itens.length ? `<section class="corrigir" id="corrigir"><h2>Corrigir <span class="dim">— ${itens.length} item(ns)</span></h2><ul>${itens.join('')}</ul></section>` : '<p class="tudo-ok">✓ tudo consistente — nada a corrigir</p>';
-  const ESCURO = '--fg:#f6f4f2;--fg2:#b4b1af;--dim:#93908d;--bg:#1c1b1a;--bg2:#252423;--bg3:#302e2d;--line:#3a3938;--ok:#3fb950;--warn:#d4a72c;--err:#ff6b5b;--acc:#3fb950;--acc2:#2c5a34;--s0:#4d9cff;--s1c:#ff7d36;--s2c:#3fb950;--grade:rgba(255,255,255,.05);--c-epic:#7c85ff;--c-feature:#4d9cff;--c-us:#ff7d36;--c-fluxo:#26f2d5;--c-arq:#cfcc3a;--c-release:#8dff55';
-  const relRaiz = (abs) => path.relative(RAIZ, abs).replace(/\\/g, '/');   // the same `arq` the network node carries
-  const arvoreHtml = (() => {
-    const filhos = (pai) => st.arvore.filter(n => n.pai === pai);
+  const fileLink = (abs) => abs ? `<a href="${esc(path.relative(dir, abs).replace(/\\/g, '/'))}">${esc(path.basename(path.dirname(abs)))}</a>` : '';
+  const items = [...st.avisos.filter(w => w.nivel !== 'info').map(w => `<li>${esc(w.texto)}</li>`), ...st.ativas.flatMap(a => a.avisos.map(w => `<li>${fileLink(a.arq)} — ${esc(w)}</li>`))];
+  const fixList = items.length ? `<section class="corrigir" id="corrigir"><h2>Corrigir <span class="dim">— ${items.length} item(ns)</span></h2><ul>${items.join('')}</ul></section>` : '<p class="tudo-ok">✓ tudo consistente — nada a corrigir</p>';
+  const DARK = '--fg:#f6f4f2;--fg2:#b4b1af;--dim:#93908d;--bg:#1c1b1a;--bg2:#252423;--bg3:#302e2d;--line:#3a3938;--ok:#3fb950;--warn:#d4a72c;--err:#ff6b5b;--acc:#3fb950;--acc2:#2c5a34;--s0:#4d9cff;--s1c:#ff7d36;--s2c:#3fb950;--grade:rgba(255,255,255,.05);--c-epic:#7c85ff;--c-feature:#4d9cff;--c-us:#ff7d36;--c-fluxo:#26f2d5;--c-arq:#cfcc3a;--c-release:#8dff55';
+  const relRoot = (abs) => path.relative(ROOT, abs).replace(/\\/g, '/');   // the same `arq` the network node carries
+  const treeHtml = (() => {
+    const children = (parent) => st.arvore.filter(n => n.pai === parent);
     const badge = (n) => `<span class="badge ${esc(n.estado || '')}">${esc(n.estado || '?')}</span>`;
     const rumo = (n) => n.rumo ? `<span class="dim">${n.rumo.idade}d</span> ${esc(n.rumo.texto.slice(0, 140))}` : '<span class="dim">sem Rumo datado</span>';
-    const linha = (n) => `<span class="no-arv">${badge(n)} <a href="${esc(path.relative(dir, n.arq).replace(/\\/g, '/'))}" target="_blank"><strong>${esc(n.titulo)}</strong></a> <button class="foca" type="button" data-arq="${esc(relRaiz(n.arq))}" title="focar na rede">◎</button><span class="rumo">${rumo(n)}</span></span>`;
-    const ramo = (n, prof) => {
-      const fs_ = filhos(n.arq);
-      const aberto = n.estado === 'ativa' || fs_.some(c => c.estado === 'ativa');
-      if (!fs_.length) return `<li class="p${prof}">${linha(n)}</li>`;
-      return `<li class="p${prof}"><details${aberto ? ' open' : ''}><summary>${linha(n)}</summary><ul>${fs_.map(c => ramo(c, prof + 1)).join('')}</ul></details></li>`;
+    const line = (n) => `<span class="no-arv">${badge(n)} <a href="${esc(path.relative(dir, n.arq).replace(/\\/g, '/'))}" target="_blank"><strong>${esc(n.titulo)}</strong></a> <button class="foca" type="button" data-arq="${esc(relRoot(n.arq))}" title="focar na rede">◎</button><span class="rumo">${rumo(n)}</span></span>`;
+    const branch = (n, depth) => {
+      const kids = children(n.arq);
+      const isOpen = n.estado === 'ativa' || kids.some(c => c.estado === 'ativa');
+      if (!kids.length) return `<li class="p${depth}">${line(n)}</li>`;
+      return `<li class="p${depth}"><details${isOpen ? ' open' : ''}><summary>${line(n)}</summary><ul>${kids.map(c => branch(c, depth + 1)).join('')}</ul></details></li>`;
     };
-    const raizes = st.arvore.filter(n => n.tipo === 'epic');
-    return raizes.length ? `<ul class="arvore">${raizes.map(e => ramo(e, 0)).join('')}</ul>` : '<p class="dim">sem Planejamento</p>';
+    const roots = st.arvore.filter(n => n.tipo === 'epic');
+    return roots.length ? `<ul class="arvore">${roots.map(e => branch(e, 0)).join('')}</ul>` : '<p class="dim">sem Planejamento</p>';
   })();
-  const maoSvg = (() => {
+  const handSvg = (() => {
     const A = ['..#######..', '.#########.', '.#########.', '.#########.', '..#######..', '..#.#.#.#..', '..#.#.#.#..', '.#..#..#.#.'];
     const B = ['..#######..', '.#########.', '.#########.', '.#########.', '..#######..', '..#.#.#.#..', '.#..#.#..#.', '#...#.#...#'];
     const q = (rows, cls) => `<g class="${cls}">${rows.flatMap((r, y) => [...r].map((c, x) => c === '#' ? `<rect x="${x}" y="${y}" width="1" height="1"/>` : '')).join('')}</g>`;
@@ -877,11 +877,11 @@ const escreverStatusHtml = (st, silencioso = false) => {
   const html = `<!doctype html>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <script>(function(){try{var t=localStorage.getItem('marvin-tema');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
-<title>${esc(path.basename(RAIZ))} — marvin status</title>
+<title>${esc(path.basename(ROOT))} — marvin status</title>
 <style>
 :root{color-scheme:light dark;--s1:.25rem;--s2:.5rem;--s3:.75rem;--s4:1rem;--s5:1.5rem;--s6:2rem;--s7:3rem;--f0:.75rem;--f1:.875rem;--f2:1rem;--f3:1.25rem;--f5:2.5rem;--r:.25rem;--mono:ui-monospace,"Cascadia Mono","JetBrains Mono",Menlo,Consolas,monospace;
 --fg:#1c1b1a;--fg2:#484543;--dim:#615e5b;--bg:#f6f4f2;--bg2:#ffffff;--bg3:#edeae6;--line:#d5d3d1;--ok:#1a7f37;--warn:#9a6700;--err:#cf222e;--acc:#1a7f37;--acc2:#bfe3c6;--s0:#0969da;--s1c:#c2571a;--s2c:#1a7f37;--grade:rgba(0,0,0,.05);--c-epic:#5b63d6;--c-feature:#0969da;--c-us:#c2571a;--c-fluxo:#0f8b8d;--c-arq:#8a6d3b;--c-release:#3f8f2a}
-@media(prefers-color-scheme:dark){:root:not([data-theme=light]){${ESCURO}}}:root[data-theme=dark]{${ESCURO}}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){${DARK}}}:root[data-theme=dark]{${DARK}}
 .ui,.tema,.card .rot,.badge,h2 .dim,th,.tick,figcaption,.legenda,.delta,.card .delta-wrap{font-family:var(--mono);font-size:var(--f0);font-weight:600;text-transform:uppercase;letter-spacing:.01em}
 .mao{position:relative;height:26px;margin:0 0 var(--s2)}.mao svg{position:absolute;bottom:0;left:0;width:33px;height:24px;fill:var(--fg2);animation:anda 48s linear infinite}.mao .qb{opacity:0}.mao svg .qa,.mao svg .qb{animation:passo .5s steps(1) infinite}.mao svg .qb{animation-delay:.25s}
 @keyframes passo{0%,49%{opacity:1}50%,100%{opacity:0}}@keyframes anda{0%{left:0;transform:scaleX(1)}49.5%{left:calc(100% - 33px);transform:scaleX(1)}50%{transform:scaleX(-1)}99.5%{left:0;transform:scaleX(-1)}100%{transform:scaleX(1)}}
@@ -918,33 +918,33 @@ polyline.s0,polyline.s1,polyline.s2{fill:none}.lg{font-size:12px;padding-left:10
 #rede .aresta{stroke:var(--line);stroke-width:1.2}#rede .aresta.touches{stroke:#c2571a;opacity:.5}#rede .aresta.child_of{stroke:#7c3aed;opacity:.5}#rede .aresta.references{stroke:var(--dim);opacity:.45}
 </style>
 <button class="tema" id="tema" title="tema: automático / claro / escuro">◐ tema</button>
-<div class="mao" aria-hidden="true">${maoSvg}</div>
-<header><h1>${esc(path.basename(RAIZ))} <span class="dim">— marvin status</span></h1>
-<div class="dim">${commit ? `commit ${esc(commit)} · ${esc((data || '').slice(0, 10))}` : 'sem git'}${ant ? ` · anterior ${esc(ant.commit)} (${esc((ant.data || '').slice(0, 10))})` : ''} · derivado, nunca versionado</div></header>
-${corrigir}
+<div class="mao" aria-hidden="true">${handSvg}</div>
+<header><h1>${esc(path.basename(ROOT))} <span class="dim">— marvin status</span></h1>
+<div class="dim">${commit ? `commit ${esc(commit)} · ${esc((data || '').slice(0, 10))}` : 'sem git'}${prev ? ` · anterior ${esc(prev.commit)} (${esc((prev.data || '').slice(0, 10))})` : ''} · derivado, nunca versionado</div></header>
+${fixList}
 <div class="cards">
-${card('contexto fixo', st.contexto.total + ' tk', delta(ant && ant.total, st.contexto.total, ' tk', false), '#contexto')}
-${card('US ativas', ponto.us_ativas, delta(ant && ant.us_ativas, ponto.us_ativas, '', false), '#andamento')}
-${card('US concluídas', `${ponto.us_concluidas}<small> / ${ponto.us_total}</small>`, delta(ant && ant.us_concluidas, ponto.us_concluidas, '', true), '#epics')}
-${card('equivalente na API', '$' + g.custo.toFixed(2), delta(ant && ant.custo, g.custo, '', false, (v) => '$' + v.toFixed(2)) + ` · ${g.total.msgs} turnos`, '#tokens')}
+${card('contexto fixo', st.contexto.total + ' tk', delta(prev && prev.total, st.contexto.total, ' tk', false), '#contexto')}
+${card('US ativas', point.us_ativas, delta(prev && prev.us_ativas, point.us_ativas, '', false), '#andamento')}
+${card('US concluídas', `${point.us_concluidas}<small> / ${point.us_total}</small>`, delta(prev && prev.us_concluidas, point.us_concluidas, '', true), '#epics')}
+${card('equivalente na API', '$' + g.custo.toFixed(2), delta(prev && prev.custo, g.custo, '', false, (v) => '$' + v.toFixed(2)) + ` · ${g.total.msgs} turnos`, '#tokens')}
 </div>
 <h2 id="andamento">Em andamento <span class="dim">— ${st.release ? 'última release ' + esc(st.release.nome) : 'sem release'}${st.grafo ? ' · grafo com ' + st.grafo.nos + ' nós, ' + st.grafo.idade + 'd' : ''}</span></h2>
-<table><tr><th></th><th>US</th><th>último Rumo</th></tr>${st.ativas.map(linhaUS).join('')}</table>
+<table><tr><th></th><th>US</th><th>último Rumo</th></tr>${st.ativas.map(usRow).join('')}</table>
 <h2 id="tendencia">Tendência <span class="dim">— ${pts.length} ponto(s), um por commit</span></h2>
 <div class="tendencia">
 <input type="radio" name="tend" id="tend0" checked><input type="radio" name="tend" id="tend1"><input type="radio" name="tend" id="tend2"><input type="radio" name="tend" id="tend3">
 <div class="abas"><label for="tend0">contexto fixo</label><label for="tend1">US</label><label for="tend2">idade do grafo</label><label for="tend3">custo</label></div>
-<div class="f0">${gContexto}</div><div class="f1">${gUS}</div><div class="f2">${gGrafo}</div><div class="f3">${gCusto}</div>
+<div class="f0">${gContext}</div><div class="f1">${gUS}</div><div class="f2">${gGraph}</div><div class="f3">${gCost}</div>
 </div>
-<h2 id="tokens">Tokens gastos <span class="dim">— medido nas transcrições do Claude Code, ${g.sessoes} sessão(ões) · ${g.total.msgs ? '$' + (g.custo / g.total.msgs).toFixed(3) + ' por turno' : ''}${dias.length ? ' · $' + (g.custo / dias.length).toFixed(2) + ' por dia (' + dias.length + ' dia(s))' : ''}</span></h2>
-${barras}
-<table><tr><th></th><th>modelo</th><th>input</th><th>cache write</th><th>cache read</th><th>output</th><th>turnos</th><th>custo</th><th>por turno</th></tr>${tabelaModelos}</table>
-<p class="dim">Tokens são medidos nas transcrições; o valor é o que os mesmos tokens <strong>custariam na API</strong>, pela tabela de ${PRECOS_DATA} (input · output · cache write ≈ 1,25× · cache read ≈ 0,1×) — confira os preços vigentes. Num plano fixo (Max) o gasto real é a mensalidade — este número diz o quanto ele rende.${fatiaFixo != null ? ` Cada turno relê ~${kTk(g.contextoMedio)} tk de contexto; o contexto fixo (${st.contexto.total} tk) é <strong>~${fatiaFixo}%</strong> disso — o resto é a conversa. Sessão longa custa mais que arquivo grande.` : ''}</p>
+<h2 id="tokens">Tokens gastos <span class="dim">— medido nas transcrições do Claude Code, ${g.sessoes} sessão(ões) · ${g.total.msgs ? '$' + (g.custo / g.total.msgs).toFixed(3) + ' por turno' : ''}${days.length ? ' · $' + (g.custo / days.length).toFixed(2) + ' por dia (' + days.length + ' dia(s))' : ''}</span></h2>
+${bars}
+<table><tr><th></th><th>modelo</th><th>input</th><th>cache write</th><th>cache read</th><th>output</th><th>turnos</th><th>custo</th><th>por turno</th></tr>${modelsTable}</table>
+<p class="dim">Tokens são medidos nas transcrições; o valor é o que os mesmos tokens <strong>custariam na API</strong>, pela tabela de ${PRICES_DATE} (input · output · cache write ≈ 1,25× · cache read ≈ 0,1×) — confira os preços vigentes. Num plano fixo (Max) o gasto real é a mensalidade — este número diz o quanto ele rende.${fixedShare != null ? ` Cada turno relê ~${kTk(g.contextoMedio)} tk de contexto; o contexto fixo (${st.contexto.total} tk) é <strong>~${fixedShare}%</strong> disso — o resto é a conversa. Sessão longa custa mais que arquivo grande.` : ''}</p>
 <h2 id="epics">Planejamento <span class="dim">— ${st.epics.length} epic(s) · clique para abrir · ◎ foca na rede</span></h2>
-${arvoreHtml}
+${treeHtml}
 <h2 id="contexto">Contexto fixo <span class="dim">— o que carrega em toda sessão</span></h2>
 <table>${st.contexto.linhas.map(l => `<tr><td></td><td>${esc(l.nome)}</td><td>${l.tk} tk</td></tr>`).join('')}<tr><td></td><td><strong>total</strong></td><td><strong>${st.contexto.total} tk</strong></td></tr></table>
-${redeHtml}
+${networkHtml}
 <script>(function(){var b=document.getElementById('tema'),r=document.documentElement,ordem=['','light','dark'],rot={'':'◐ tema: auto',light:'☀ tema: claro',dark:'☾ tema: escuro'};function pinta(){b.textContent=rot[r.getAttribute('data-theme')||''];}b.addEventListener('click',function(){var t=ordem[(ordem.indexOf(r.getAttribute('data-theme')||'')+1)%3];if(t)r.setAttribute('data-theme',t);else r.removeAttribute('data-theme');try{t?localStorage.setItem('marvin-tema',t):localStorage.removeItem('marvin-tema');}catch(e){}pinta();});pinta();})();</script>
 <script type="application/json" id="historico">${JSON.stringify(pts)}</script>
 `;
@@ -954,89 +954,89 @@ ${redeHtml}
 
 // Computation separate from printing: the text, the hook's `--curto` and `--html` read the
 // same structure. Nothing here writes.
-const calcularStatus = () => {
-  const nos = nosDoPlanejamento();
-  const porArq = new Map(nos.map(n => [path.resolve(n.arq), n]));
-  const paiDe = (n) => n.pai ? porArq.get(path.resolve(path.dirname(n.arq), n.pai)) || null : null;
-  const cadeia = (n) => { const c = []; for (let p = paiDe(n); p; p = paiDe(p)) c.unshift(p.titulo); return c; };
-  const st = { ativas: [], avisos: [], problemas: 0, epics: [], release: null, contexto: contextoFixo(), grafo: null, gastos: calcularGastos(),
-               nos: { us: nos.filter(n => n.tipo === 'us').length, concluidas: nos.filter(n => n.tipo === 'us' && n.estado === 'concluida').length } };
-  let nota = ''; try { nota = fs.readFileSync(path.join(DEST, 'onde_paramos.md'), 'utf8'); } catch {}
-  const ponteiros = [...nota.matchAll(/^- \[([^\]]+)\]\(([^)]+)\)(?:\s*[—-]+\s*(.*))?$/gm)];
-  for (const [, rotulo, href, resto] of ponteiros) {
+const computeStatus = () => {
+  const nodes = planningNodes();
+  const byFile = new Map(nodes.map(n => [path.resolve(n.arq), n]));
+  const parentOf = (n) => n.pai ? byFile.get(path.resolve(path.dirname(n.arq), n.pai)) || null : null;
+  const chain = (n) => { const c = []; for (let p = parentOf(n); p; p = parentOf(p)) c.unshift(p.titulo); return c; };
+  const st = { ativas: [], avisos: [], problemas: 0, epics: [], release: null, contexto: fixedContext(), grafo: null, gastos: computeSpend(),
+               nos: { us: nodes.filter(n => n.tipo === 'us').length, concluidas: nodes.filter(n => n.tipo === 'us' && n.estado === 'concluida').length } };
+  let note = ''; try { note = fs.readFileSync(path.join(DEST, 'onde_paramos.md'), 'utf8'); } catch {}
+  const pointers = [...note.matchAll(/^- \[([^\]]+)\]\(([^)]+)\)(?:\s*[—-]+\s*(.*))?$/gm)];
+  for (const [, label, href, rest] of pointers) {
     const abs = path.resolve(DEST, href);
-    const n = porArq.get(abs) || lerNo(abs);
-    if (!n) { st.avisos.push({ nivel: 'err', texto: rotulo + ' → ' + href + '  (file not found)' }); st.problemas++; continue; }
-    const ultimo = n.rumo.length ? n.rumo[n.rumo.length - 1] : null;
-    const item = { titulo: n.titulo, arq: abs, cadeia: cadeia(n), estado: n.estado, proximo: (resto || '').trim(),
-                   rumo: ultimo ? ultimo.texto : null, rumoData: ultimo ? ultimo.data : null, idade: ultimo ? dias(ultimo.data) : null, avisos: [] };
+    const n = byFile.get(abs) || readNode(abs);
+    if (!n) { st.avisos.push({ nivel: 'err', texto: label + ' → ' + href + '  (file not found)' }); st.problemas++; continue; }
+    const last = n.rumo.length ? n.rumo[n.rumo.length - 1] : null;
+    const item = { titulo: n.titulo, arq: abs, cadeia: chain(n), estado: n.estado, proximo: (rest || '').trim(),
+                   rumo: last ? last.texto : null, rumoData: last ? last.data : null, idade: last ? days(last.data) : null, avisos: [] };
     if (n.estado === 'concluida') { item.avisos.push('concluida but still in the note — it belongs in Releases/<versao>.md, and out of here'); st.problemas++; }
     if (n.estado === 'concluida' && !n.comEvidencia) { item.avisos.push('concluida without Evidência'); st.problemas++; }
     if (item.idade !== null && item.idade > 14 && n.estado === 'ativa') item.avisos.push(item.idade + ' days without a Rumo entry — stalled, or done and not recorded?');
     st.ativas.push(item);
   }
-  if (!ponteiros.length) st.avisos.push({ nivel: 'info', texto: 'the note has no "- [US](path)" lines' });
-  const secoes = [...nota.matchAll(/^##\s+(.+)$/gm)].map(m => m[1].trim());
-  const estranhas = secoes.filter(s => !/^(Em andamento|Travado|Estado|Próxima|Depende|Primeira frase)/i.test(s));
-  if (estranhas.length) { st.avisos.push({ nivel: 'warn', texto: `the note has ${estranhas.length} section(s) that look like a report: ${estranhas.slice(0, 3).map(s => '"' + s + '"').join(', ')}${estranhas.length > 3 ? '…' : ''} → Rumo of the US` }); st.problemas++; }
-  const foraDaNota = nos.filter(n => n.tipo === 'us' && n.estado === 'ativa' && !ponteiros.some(([, , h]) => path.resolve(DEST, h) === path.resolve(n.arq)));
-  if (foraDaNota.length) st.avisos.push({ nivel: 'warn', texto: `${foraDaNota.length} US marked ativa but not in the note: ${foraDaNota.map(n => n.titulo.split(' — ')[0]).join(', ')}` });
+  if (!pointers.length) st.avisos.push({ nivel: 'info', texto: 'the note has no "- [US](path)" lines' });
+  const sections = [...note.matchAll(/^##\s+(.+)$/gm)].map(m => m[1].trim());
+  const odd = sections.filter(s => !/^(Em andamento|Travado|Estado|Próxima|Depende|Primeira frase)/i.test(s));
+  if (odd.length) { st.avisos.push({ nivel: 'warn', texto: `the note has ${odd.length} section(s) that look like a report: ${odd.slice(0, 3).map(s => '"' + s + '"').join(', ')}${odd.length > 3 ? '…' : ''} → Rumo of the US` }); st.problemas++; }
+  const notInNote = nodes.filter(n => n.tipo === 'us' && n.estado === 'ativa' && !pointers.some(([, , h]) => path.resolve(DEST, h) === path.resolve(n.arq)));
+  if (notInNote.length) st.avisos.push({ nivel: 'warn', texto: `${notInNote.length} US marked ativa but not in the note: ${notInNote.map(n => n.titulo.split(' — ')[0]).join(', ')}` });
   // ── The graph in the status: collision and dispersion. Two active USs on the same function
   // is the conflict two parallel sessions discover at the merge — here it shows up before.
   // A US spread across many communities is too wide a scope for one US.
-  const grafoSt = carregarGrafo();
-  if (grafoSt) {
-    const todas = tocadoPorUS(grafoSt);
-    const ativas = [...todas.entries()].filter(([, t]) => t.no.estado === 'ativa' && t.ids.size);
-    const nome = (t) => t.no.label.split(' — ')[0];
-    for (let i = 0; i < ativas.length; i++) for (let j = i + 1; j < ativas.length; j++) {
-      const [, a] = ativas[i], [, b] = ativas[j];
-      const comum = [...a.ids].filter(x => b.ids.has(x));
-      if (comum.length) { st.avisos.push({ nivel: 'warn', texto: `${nome(a)} and ${nome(b)} both touch ${comum.map(x => (grafoSt.nos.get(x) || {}).label || x).slice(0, 3).join(', ')}${comum.length > 3 ? '…' : ''} — agree before the merge, not at it` }); st.problemas++; }
+  const graphSt = loadGraph();
+  if (graphSt) {
+    const all = touchedByUS(graphSt);
+    const active = [...all.entries()].filter(([, t]) => t.no.estado === 'ativa' && t.ids.size);
+    const name = (t) => t.no.label.split(' — ')[0];
+    for (let i = 0; i < active.length; i++) for (let j = i + 1; j < active.length; j++) {
+      const [, a] = active[i], [, b] = active[j];
+      const shared = [...a.ids].filter(x => b.ids.has(x));
+      if (shared.length) { st.avisos.push({ nivel: 'warn', texto: `${name(a)} and ${name(b)} both touch ${shared.map(x => (graphSt.nos.get(x) || {}).label || x).slice(0, 3).join(', ')}${shared.length > 3 ? '…' : ''} — agree before the merge, not at it` }); st.problemas++; }
     }
-    for (const [id, t] of ativas) {
-      const imp = impactoDaUS(grafoSt, todas, id);
+    for (const [id, t] of active) {
+      const imp = usImpact(graphSt, all, id);
       for (const o of imp.outras) {
-        const outra = todas.get([...todas.keys()].find(k => todas.get(k).no === o.us));
-        if (!outra || outra.no.estado !== 'ativa') continue;
-        const direto = [...t.ids].some(x => outra.ids.has(x));
-        if (!direto) st.avisos.push({ nivel: 'warn', texto: `${nome(outra)} touches code that depends on what ${nome(t)} touches (${o.comum.length} node(s)) — one can break the other` });
+        const other = all.get([...all.keys()].find(k => all.get(k).no === o.us));
+        if (!other || other.no.estado !== 'ativa') continue;
+        const direct = [...t.ids].some(x => other.ids.has(x));
+        if (!direct) st.avisos.push({ nivel: 'warn', texto: `${name(other)} touches code that depends on what ${name(t)} touches (${o.comum.length} node(s)) — one can break the other` });
       }
-      if (imp.comunidades.length >= 4) st.avisos.push({ nivel: 'info', texto: `${nome(t)} spans ${imp.comunidades.length} communities of the graph — wide scope for one US; worth slicing?` });
+      if (imp.comunidades.length >= 4) st.avisos.push({ nivel: 'info', texto: `${name(t)} spans ${imp.comunidades.length} communities of the graph — wide scope for one US; worth slicing?` });
     }
   }
-  st.arvore = nos.map(n => ({ arq: n.arq, tipo: n.tipo, estado: n.estado, titulo: n.titulo, pai: paiDe(n) ? paiDe(n).arq : null,
-                               rumo: n.rumo.length ? { texto: n.rumo[n.rumo.length - 1].texto, idade: dias(n.rumo[n.rumo.length - 1].data) } : null, comEvidencia: n.comEvidencia }));
-  for (const e of nos.filter(n => n.tipo === 'epic')) {
-    const desc = nos.filter(n => n !== e && (() => { for (let p = paiDe(n); p; p = paiDe(p)) if (p === e) return true; return false; })());
+  st.arvore = nodes.map(n => ({ arq: n.arq, tipo: n.tipo, estado: n.estado, titulo: n.titulo, pai: parentOf(n) ? parentOf(n).arq : null,
+                               rumo: n.rumo.length ? { texto: n.rumo[n.rumo.length - 1].texto, idade: days(n.rumo[n.rumo.length - 1].data) } : null, comEvidencia: n.comEvidencia }));
+  for (const e of nodes.filter(n => n.tipo === 'epic')) {
+    const desc = nodes.filter(n => n !== e && (() => { for (let p = parentOf(n); p; p = parentOf(p)) if (p === e) return true; return false; })());
     const us = desc.filter(n => n.tipo === 'us'), feats = desc.filter(n => n.tipo === 'feature');
-    const conta = us.length ? us : feats;
-    const c = (s) => conta.filter(n => n.estado === s).length;
-    st.epics.push({ titulo: e.titulo, estado: e.estado, rotulo: us.length ? 'US' : 'features', total: conta.length, concluidas: c('concluida'), canceladas: c('cancelada'), ativas: c('ativa') });
+    const count = us.length ? us : feats;
+    const c = (s) => count.filter(n => n.estado === s).length;
+    st.epics.push({ titulo: e.titulo, estado: e.estado, rotulo: us.length ? 'US' : 'features', total: count.length, concluidas: c('concluida'), canceladas: c('cancelada'), ativas: c('ativa') });
   }
   const rel = path.join(DOCS, 'Releases');
   let releases = []; try { releases = fs.readdirSync(rel).filter(f => f.endsWith('.md') && f !== 'README.md').sort(); } catch {}
   if (releases.length) { const u = releases[releases.length - 1]; st.release = { nome: u.replace(/\.md$/, ''), us: (fs.readFileSync(path.join(rel, u), 'utf8').match(/^- \[/gm) || []).length }; }
-  const GRAFO_ST = path.join(RAIZ, 'graphify-out', 'graph.json');
-  if (fs.existsSync(GRAFO_ST)) {
-    let n = 0, d = 0; try { const g = JSON.parse(fs.readFileSync(GRAFO_ST, 'utf8')); n = (g.nodes || []).length; d = (g.nodes || []).filter(x => x._origin === 'marvin').length; } catch {}
-    const mtime = fs.statSync(GRAFO_ST).mtime;
-    st.grafo = { nos: n, docs: d, mtime: mtime.toISOString(), idade: dias(mtime) };
+  const GRAPH_ST = path.join(ROOT, 'graphify-out', 'graph.json');
+  if (fs.existsSync(GRAPH_ST)) {
+    let n = 0, d = 0; try { const g = JSON.parse(fs.readFileSync(GRAPH_ST, 'utf8')); n = (g.nodes || []).length; d = (g.nodes || []).filter(x => x._origin === 'marvin').length; } catch {}
+    const mtime = fs.statSync(GRAPH_ST).mtime;
+    st.grafo = { nos: n, docs: d, mtime: mtime.toISOString(), idade: days(mtime) };
   }
   return st;
 };
 
-const marcaEstado = (e) => e === 'ativa' ? '\x1b[32m●\x1b[0m' : e === 'concluida' ? '\x1b[34m✓\x1b[0m' : '\x1b[31m✗\x1b[0m';
-const imprimirStatus = (st, curto) => {
+const stateMark = (e) => e === 'ativa' ? '\x1b[32m●\x1b[0m' : e === 'concluida' ? '\x1b[34m✓\x1b[0m' : '\x1b[31m✗\x1b[0m';
+const printStatus = (st, short) => {
   log('\x1b[1mEm andamento\x1b[0m  (onde_paramos.md → Sobre.md)');
   for (const a of st.ativas) {
-    log(`  ${marcaEstado(a.estado)} ${a.titulo}${a.cadeia.length ? '   \x1b[2m(' + a.cadeia.join(' › ') + ')\x1b[0m' : ''}`);
+    log(`  ${stateMark(a.estado)} ${a.titulo}${a.cadeia.length ? '   \x1b[2m(' + a.cadeia.join(' › ') + ')\x1b[0m' : ''}`);
     if (a.proximo) info('  ' + a.proximo);
-    if (!curto) info(a.rumo ? `  last Rumo: ${a.idade}d ago — ${a.rumo.slice(0, 90)}${a.rumo.length > 90 ? '…' : ''}` : '  no dated Rumo entry');
+    if (!short) info(a.rumo ? `  last Rumo: ${a.idade}d ago — ${a.rumo.slice(0, 90)}${a.rumo.length > 90 ? '…' : ''}` : '  no dated Rumo entry');
     a.avisos.forEach(w => warn('  ' + w));
   }
   for (const w of st.avisos) (w.nivel === 'err' ? err : w.nivel === 'warn' ? warn : info)(w.texto);
-  if (curto) return;
+  if (short) return;
   if (st.epics.length) {
     log('\n\x1b[1mEpics\x1b[0m');
     for (const e of st.epics) {
@@ -1048,8 +1048,8 @@ const imprimirStatus = (st, curto) => {
   log('\n\x1b[1mReleases\x1b[0m');
   info(st.release ? `last: ${st.release.nome} — ${st.release.us} US` : 'none yet');
   log('\n\x1b[1mFixed context\x1b[0m');
-  imprimirContextoFixo();
-  imprimirGastos(st.gastos, st.contexto.total);
+  printFixedContext();
+  printSpend(st.gastos, st.contexto.total);
   log('\n\x1b[1mGraph\x1b[0m');
   info(st.grafo ? `${st.grafo.nos} nodes (${st.grafo.docs} from the knowledge base) — extracted ${st.grafo.idade}d ago` + (st.grafo.idade > 7 ? '  → marvin --graphify --graphify-rebuild' : '') : 'none — marvin --graphify builds it');
 };
@@ -1066,20 +1066,20 @@ const imprimirStatus = (st, curto) => {
 //             the only form of --status that writes, and only that. The text is a photo;
 //             "measurement" is a film: without the series nobody can answer "did the fixed
 //             context grow since the release?".
-if (temFlag('--status')) {
-  const CURTO = temFlag('--curto'), HTML = temFlag('--html');
-  if (!CURTO) log('\x1b[1mstatus\x1b[0m — ' + (HTML ? 'writes .marvin/.status/ only' : 'read-only') + '\n');
-  if (LAYOUT_ANTIGO) { if (!CURTO) warn('old layout — --status reads Planejamento/<Epic>/<Feature>/<US>/Sobre.md. Run `marvin --migrar` first.'); process.exit(CURTO ? 0 : 1); }
-  const st = calcularStatus();
-  imprimirStatus(st, CURTO);
+if (hasFlag('--status')) {
+  const SHORT = hasFlag('--curto'), HTML = hasFlag('--html');
+  if (!SHORT) log('\x1b[1mstatus\x1b[0m — ' + (HTML ? 'writes .marvin/.status/ only' : 'read-only') + '\n');
+  if (OLD_LAYOUT) { if (!SHORT) warn('old layout — --status reads Planejamento/<Epic>/<Feature>/<US>/Sobre.md. Run `marvin --migrar` first.'); process.exit(SHORT ? 0 : 1); }
+  const st = computeStatus();
+  printStatus(st, SHORT);
   // The session opened at a path with no junction (worktree, fresh clone, moved folder):
   // everything the agent writes to memory lands in a real directory and never reaches the
   // repository. Warned here because it is the only place that runs in EVERY session; --check is on demand.
-  if (fs.existsSync(DOCS) && !ehJunction(MEM))
+  if (fs.existsSync(DOCS) && !isJunction(MEM))
     log('  ! memória DESLIGADA deste repositório' + (WORKTREE ? ' (git worktree)' : '') + ' — rode `marvin` daqui antes de escrever qualquer nota; `marvin --check` explica');
-  if (HTML) { if (!CURTO) log(''); escreverStatusHtml(st, CURTO); }
-  if (!CURTO) log('\n' + (st.problemas ? `\x1b[33m${st.problemas} thing(s) to fix\x1b[0m` : '\x1b[32mall consistent\x1b[0m') + '\n');
-  process.exit(CURTO ? 0 : st.problemas ? 1 : 0);
+  if (HTML) { if (!SHORT) log(''); writeStatusHtml(st, SHORT); }
+  if (!SHORT) log('\n' + (st.problemas ? `\x1b[33m${st.problemas} thing(s) to fix\x1b[0m` : '\x1b[32mall consistent\x1b[0m') + '\n');
+  process.exit(SHORT ? 0 : st.problemas ? 1 : 0);
 }
 
 // ── --us <Epic>/<Feature>/<US>. The physical trigger of the "before any US" rule: creates
@@ -1087,23 +1087,23 @@ if (temFlag('--status')) {
 // and puts the line in the note. Without this the rule depends on someone remembering — and
 // the US is born crooked to be fixed later. Idempotent: an existing node is not touched.
 const argUS = process.argv.find(a => a.startsWith('--us='));
-if (argUS || temFlag('--us')) {
-  const alvo = argUS ? argUS.slice(5) : process.argv[process.argv.indexOf('--us') + 1];
-  if (!alvo || alvo.startsWith('--')) { err('usage: marvin --us Novos/<Epic>/<Feature>/<US-nome>   (or Manutencao/…)'); process.exit(2); }
-  if (LAYOUT_ANTIGO) { err('old layout — run `marvin --migrar` first'); process.exit(1); }
-  const partes = alvo.replace(/\\/g, '/').replace(/^\/|\/$/g, '').split('/');
-  if (partes.length !== 4 || !['Novos', 'Manutencao'].includes(partes[0])) { err('expected 4 parts: Novos|Manutencao / <Epic> / <Feature> / <US>'); process.exit(2); }
-  log('\x1b[1m--us\x1b[0m — ' + alvo + '\n');
-  const hoje = (() => { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); })();
-  const tipos = ['epic', 'feature', 'us'];
+if (argUS || hasFlag('--us')) {
+  const target = argUS ? argUS.slice(5) : process.argv[process.argv.indexOf('--us') + 1];
+  if (!target || target.startsWith('--')) { err('usage: marvin --us Novos/<Epic>/<Feature>/<US-nome>   (or Manutencao/…)'); process.exit(2); }
+  if (OLD_LAYOUT) { err('old layout — run `marvin --migrar` first'); process.exit(1); }
+  const parts = target.replace(/\\/g, '/').replace(/^\/|\/$/g, '').split('/');
+  if (parts.length !== 4 || !['Novos', 'Manutencao'].includes(parts[0])) { err('expected 4 parts: Novos|Manutencao / <Epic> / <Feature> / <US>'); process.exit(2); }
+  log('\x1b[1m--us\x1b[0m — ' + target + '\n');
+  const today = (() => { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); })();
+  const types = ['epic', 'feature', 'us'];
   for (let i = 1; i <= 3; i++) {
-    const dir = path.join(DOCS, 'Planejamento', ...partes.slice(0, i + 1));
+    const dir = path.join(DOCS, 'Planejamento', ...parts.slice(0, i + 1));
     const sobre = path.join(dir, 'Sobre.md');
-    const tipo = tipos[i - 1], nome = partes[i];
-    if (fs.existsSync(sobre)) { info(tipo + ': ' + partes.slice(0, i + 1).join('/') + ' already exists'); continue; }
+    const type = types[i - 1], name = parts[i];
+    if (fs.existsSync(sobre)) { info(type + ': ' + parts.slice(0, i + 1).join('/') + ' already exists'); continue; }
     fsw.mkdirSync(dir, { recursive: true });
-    const cab = `---\ntipo: ${tipo}\nestado: ativa\npai: ${i === 1 ? '../../README.md' : '../Sobre.md'}\n---\n# ${nome}\n\n**Por quê:** _(uma linha)_\n**Pronto quando:** _(critério verificável)_\n`;
-    const corpo = tipo === 'us' ? `
+    const header = `---\ntipo: ${type}\nestado: ativa\npai: ${i === 1 ? '../../README.md' : '../Sobre.md'}\n---\n# ${name}\n\n**Por quê:** _(uma linha)_\n**Pronto quando:** _(critério verificável)_\n`;
+    const body = type === 'us' ? `
 ## Fluxos ligados
 _(link para ${path.relative(dir, path.join(DOCS, 'Contexto', 'Fluxos')).replace(/\\/g, '/')}/<fluxo>.md — fluxo sem nota ganha uma agora)_
 
@@ -1117,51 +1117,51 @@ _(base: tl · po · dev-front · dev-back · qa · scout; mais design/dba/sec/in
 _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
 
 ## Rumo
-- **${hoje}** — aberta.
+- **${today}** — aberta.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
 ` : `
 ## Filhos
-- [${partes[i + 1]}](${partes[i + 1]}/Sobre.md)
+- [${parts[i + 1]}](${parts[i + 1]}/Sobre.md)
 
 ## Rumo
-- **${hoje}** — aberta${tipo === 'epic' ? '' : ', com a primeira US'}.
+- **${today}** — aberta${type === 'epic' ? '' : ', com a primeira US'}.
 `;
-    fsw.writeFileSync(sobre, cab + corpo);
-    ok(tipo + ': ' + partes.slice(0, i + 1).join('/') + '/Sobre.md');
+    fsw.writeFileSync(sobre, header + body);
+    ok(type + ': ' + parts.slice(0, i + 1).join('/') + '/Sobre.md');
   }
   // Parent that already existed: adds the new child to the Filhos section, if not there.
   for (let i = 1; i <= 2; i++) {
-    const sobre = path.join(DOCS, 'Planejamento', ...partes.slice(0, i + 1), 'Sobre.md');
-    const filho = partes[i + 1];
+    const sobre = path.join(DOCS, 'Planejamento', ...parts.slice(0, i + 1), 'Sobre.md');
+    const child = parts[i + 1];
     let t; try { t = fs.readFileSync(sobre, 'utf8'); } catch { continue; }
-    if (t.includes('](' + filho + '/Sobre.md)')) continue;
-    const linha = '- [' + filho + '](' + filho + '/Sobre.md)';
-    const novo = /^##\s+Filhos\s*$/m.test(t) ? t.replace(/^(##\s+Filhos\s*\n)([\s\S]*?)(?=^##\s|(?![\s\S]))/m, (m, h, b) => h + b.replace(/\s+$/, '') + '\n' + linha + '\n\n') : t + '\n## Filhos\n' + linha + '\n';
-    fsw.writeFileSync(sobre, novo);
-    ok(partes.slice(0, i + 1).join('/') + '/Sobre.md — child added: ' + filho);
+    if (t.includes('](' + child + '/Sobre.md)')) continue;
+    const line = '- [' + child + '](' + child + '/Sobre.md)';
+    const newContent = /^##\s+Filhos\s*$/m.test(t) ? t.replace(/^(##\s+Filhos\s*\n)([\s\S]*?)(?=^##\s|(?![\s\S]))/m, (m, h, b) => h + b.replace(/\s+$/, '') + '\n' + line + '\n\n') : t + '\n## Filhos\n' + line + '\n';
+    fsw.writeFileSync(sobre, newContent);
+    ok(parts.slice(0, i + 1).join('/') + '/Sobre.md — child added: ' + child);
   }
   // The line in the note.
-  const NOTA_US = path.join(DEST, 'onde_paramos.md');
-  const relSobre = path.relative(DEST, path.join(DOCS, 'Planejamento', ...partes, 'Sobre.md')).replace(/\\/g, '/');
-  let nota = ''; try { nota = fs.readFileSync(NOTA_US, 'utf8'); } catch {}
-  const estadoUS = (lerNo(path.join(DOCS, 'Planejamento', ...partes, 'Sobre.md')) || {}).estado;
-  if (!nota) warn('onde_paramos.md not found — run marvin first');
-  else if (estadoUS && estadoUS !== 'ativa') info('onde_paramos.md — not pointed to: the US is ' + estadoUS);
-  else if (nota.includes('](' + relSobre + ')')) info('onde_paramos.md already points to it');
+  const NOTE_US = path.join(DEST, 'onde_paramos.md');
+  const relSobre = path.relative(DEST, path.join(DOCS, 'Planejamento', ...parts, 'Sobre.md')).replace(/\\/g, '/');
+  let note = ''; try { note = fs.readFileSync(NOTE_US, 'utf8'); } catch {}
+  const usState = (readNode(path.join(DOCS, 'Planejamento', ...parts, 'Sobre.md')) || {}).estado;
+  if (!note) warn('onde_paramos.md not found — run marvin first');
+  else if (usState && usState !== 'ativa') info('onde_paramos.md — not pointed to: the US is ' + usState);
+  else if (note.includes('](' + relSobre + ')')) info('onde_paramos.md already points to it');
   else {
-    const linha = `- [${partes[3]}](${relSobre}) — aberta ${hoje}; próximo passo: _(uma frase)_`;
+    const line = `- [${parts[3]}](${relSobre}) — aberta ${today}; próximo passo: _(uma frase)_`;
     // Goes at the END of the section's list; the template placeholder leaves on the first US.
-    const m = nota.match(/^##\s+Em andamento[ \t]*\r?\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
-    let nova;
+    const m = note.match(/^##\s+Em andamento[ \t]*\r?\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
+    let newText;
     if (m) {
-      const corpo = m[1].replace(/^_\(.*\)_[ \t]*$/gm, '').replace(/<!--[\s\S]*?-->[ \t]*/g, '');
-      const linhas = corpo.split(/\r?\n/).filter(l => l.startsWith('- ['));
-      const resto = corpo.split(/\r?\n/).filter(l => !l.startsWith('- [') && l.trim()).join('\n');
-      nova = nota.slice(0, m.index) + '## Em andamento\n\n' + [...linhas, linha].join('\n') + '\n' + (resto ? '\n' + resto + '\n' : '') + '\n' + nota.slice(m.index + m[0].length);
-    } else nova = nota + '\n## Em andamento\n\n' + linha + '\n';
-    fsw.writeFileSync(NOTA_US, nova);
+      const body = m[1].replace(/^_\(.*\)_[ \t]*$/gm, '').replace(/<!--[\s\S]*?-->[ \t]*/g, '');
+      const lines = body.split(/\r?\n/).filter(l => l.startsWith('- ['));
+      const rest = body.split(/\r?\n/).filter(l => !l.startsWith('- [') && l.trim()).join('\n');
+      newText = note.slice(0, m.index) + '## Em andamento\n\n' + [...lines, line].join('\n') + '\n' + (rest ? '\n' + rest + '\n' : '') + '\n' + note.slice(m.index + m[0].length);
+    } else newText = note + '\n## Em andamento\n\n' + line + '\n';
+    fsw.writeFileSync(NOTE_US, newText);
     ok('onde_paramos.md — pointer added');
   }
   // ── Impacto: the graph answers "what will this US break" BEFORE coding. Only once
@@ -1169,39 +1169,39 @@ _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
   // again after filling it. The section is DERIVED and regenerated every run; the mark in
   // the header says so, so nobody hand-edits what the next run overwrites.
   {
-    const usArq = path.join(DOCS, 'Planejamento', ...partes, 'Sobre.md');
-    const grafo = carregarGrafo();
-    if (!grafo) info('no graph — `marvin --graphify` gives this US an Impacto section (who depends on what it touches)');
+    const usFile = path.join(DOCS, 'Planejamento', ...parts, 'Sobre.md');
+    const graph = loadGraph();
+    if (!graph) info('no graph — `marvin --graphify` gives this US an Impacto section (who depends on what it touches)');
     else {
-      const todas = tocadoPorUS(grafo);
-      const usId = [...todas.keys()].find(id => path.resolve(RAIZ, todas.get(id).no.source_file) === path.resolve(usArq));
-      const imp = usId ? impactoDaUS(grafo, todas, usId) : null;
+      const all = touchedByUS(graph);
+      const usId = [...all.keys()].find(id => path.resolve(ROOT, all.get(id).no.source_file) === path.resolve(usFile));
+      const imp = usId ? usImpact(graph, all, usId) : null;
       if (!imp || !imp.tocados.length) info('Impacto: fill "Código tocado" first, then run this again — the graph will say who depends on it');
       else {
-        const linhas = ['## Impacto', '', '<!-- gerado por `marvin --us` a partir do grafo; regerado a cada run — não edite à mão -->', '',
+        const lines = ['## Impacto', '', '<!-- gerado por `marvin --us` a partir do grafo; regerado a cada run — não edite à mão -->', '',
           `Toca ${imp.tocados.length} nó(s) de código em ${imp.comunidades.length} comunidade(s)${imp.comunidades.length >= 4 ? ' — **escopo largo**: vale fatiar?' : ''}.`, ''];
         if (imp.dependentes.length) {
-          linhas.push(`**Quem depende do que ela toca** (${imp.dependentes.length}, até 2 níveis) — é o que o QA precisa cobrir:`);
-          for (const [id, nivel] of imp.dependentes.slice(0, 25)) linhas.push(`- ${nivel === 2 ? '  ' : ''}\`${rotuloNo(grafo, id)}\``);
-          if (imp.dependentes.length > 25) linhas.push(`- … e mais ${imp.dependentes.length - 25}`);
-        } else linhas.push('Nada depende do que ela toca — folha do grafo.');
-        linhas.push('');
+          lines.push(`**Quem depende do que ela toca** (${imp.dependentes.length}, até 2 níveis) — é o que o QA precisa cobrir:`);
+          for (const [id, level] of imp.dependentes.slice(0, 25)) lines.push(`- ${level === 2 ? '  ' : ''}\`${nodeLabel(graph, id)}\``);
+          if (imp.dependentes.length > 25) lines.push(`- … e mais ${imp.dependentes.length - 25}`);
+        } else lines.push('Nada depende do que ela toca — folha do grafo.');
+        lines.push('');
         if (imp.outras.length) {
-          linhas.push('**Outras US no mesmo código** — combine antes, não no merge:');
-          for (const o of imp.outras) linhas.push(`- [${o.us.label}](${path.relative(path.dirname(usArq), path.join(RAIZ, o.us.source_file)).replace(/\\/g, '/')}) — ${o.comum.length} nó(s) em comum`);
-        } else linhas.push('Nenhuma outra US passa por este código.');
-        linhas.push('');
-        let txt = fs.readFileSync(usArq, 'utf8');
-        const bloco = linhas.join('\n');
+          lines.push('**Outras US no mesmo código** — combine antes, não no merge:');
+          for (const o of imp.outras) lines.push(`- [${o.us.label}](${path.relative(path.dirname(usFile), path.join(ROOT, o.us.source_file)).replace(/\\/g, '/')}) — ${o.comum.length} nó(s) em comum`);
+        } else lines.push('Nenhuma outra US passa por este código.');
+        lines.push('');
+        let txt = fs.readFileSync(usFile, 'utf8');
+        const block = lines.join('\n');
         const re = /^## Impacto\s*\n[\s\S]*?(?=^## |(?![\s\S]))/m;
-        const novo = re.test(txt) ? txt.replace(re, bloco + '\n') : txt.replace(/(^## Rumo)/m, bloco + '\n$1');
-        if (novo !== txt) { fsw.writeFileSync(usArq, novo); ok('Impacto — ' + imp.dependentes.length + ' dependent(s), ' + imp.outras.length + ' other US on the same code' + (imp.outras.length ? ': ' + imp.outras.map(o => o.us.label.split(' — ')[0]).join(', ') : '')); }
+        const newContent = re.test(txt) ? txt.replace(re, block + '\n') : txt.replace(/(^## Rumo)/m, block + '\n$1');
+        if (newContent !== txt) { fsw.writeFileSync(usFile, newContent); ok('Impacto — ' + imp.dependentes.length + ' dependent(s), ' + imp.outras.length + ' other US on the same code' + (imp.outras.length ? ': ' + imp.outras.map(o => o.us.label.split(' — ')[0]).join(', ') : '')); }
         else info('Impacto unchanged');
       }
     }
   }
   log('');
-  info('now the pass that the rule asks for, in ' + path.relative(RAIZ, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/') + ':');
+  info('now the pass that the rule asks for, in ' + path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/') + ':');
   info('  map what it touches → fill Fluxos ligados and Código tocado · propose the team → Time · propose skills → Skills');
   log('');
   process.exit(0);
@@ -1211,44 +1211,44 @@ _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
 // tocado". Either the US map is incomplete, or the US leaked out of scope — both are things
 // to record before closing, and nobody sees them without checking the diff against the
 // graph. Read-only; /fechar calls this and then --status. "Changed" = uncommitted + today's commits.
-if (temFlag('--fechar')) {
+if (hasFlag('--fechar')) {
   log('\x1b[1m--fechar\x1b[0m — drift between the diff and the active USs (read-only)\n');
-  if (LAYOUT_ANTIGO) { warn('old layout — run `marvin --migrar` first'); process.exit(1); }
-  const git = (args) => { try { return execSync('git ' + args, { cwd: RAIZ, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); } catch { return ''; } };
-  const mudados = new Set();
-  for (const l of git('status --porcelain --untracked-files=all').split(/\r?\n/)) { const f = l.slice(3).trim().replace(/^.* -> /, ''); if (f) mudados.add(f.replace(/\\/g, '/')); }
-  for (const l of git('log --since=midnight --name-only --format=').split(/\r?\n/)) if (l.trim()) mudados.add(l.trim());
-  const EXT_CODIGO_F = /\.(js|mjs|cjs|jsx|ts|tsx|py|go|rs|java|kt|rb|php|cs|c|h|cpp|hpp|swift|scala|ex|exs|lua|sh|sql)$/i;
-  const codigoMudado = [...mudados].filter(f => EXT_CODIGO_F.test(f) && !f.startsWith(path.relative(RAIZ, DOCS).replace(/\\/g, '/') + '/'));
-  if (!mudados.size) { ok('nothing changed since midnight and nothing uncommitted'); process.exit(0); }
-  info(mudados.size + ' file(s) changed (uncommitted + commits since midnight), ' + codigoMudado.length + ' of them code');
-  const grafo = carregarGrafo();
-  const todas = tocadoPorUS(grafo);
+  if (OLD_LAYOUT) { warn('old layout — run `marvin --migrar` first'); process.exit(1); }
+  const git = (args) => { try { return execSync('git ' + args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); } catch { return ''; } };
+  const changed = new Set();
+  for (const l of git('status --porcelain --untracked-files=all').split(/\r?\n/)) { const f = l.slice(3).trim().replace(/^.* -> /, ''); if (f) changed.add(f.replace(/\\/g, '/')); }
+  for (const l of git('log --since=midnight --name-only --format=').split(/\r?\n/)) if (l.trim()) changed.add(l.trim());
+  const CODE_EXT_F = /\.(js|mjs|cjs|jsx|ts|tsx|py|go|rs|java|kt|rb|php|cs|c|h|cpp|hpp|swift|scala|ex|exs|lua|sh|sql)$/i;
+  const changedCode = [...changed].filter(f => CODE_EXT_F.test(f) && !f.startsWith(path.relative(ROOT, DOCS).replace(/\\/g, '/') + '/'));
+  if (!changed.size) { ok('nothing changed since midnight and nothing uncommitted'); process.exit(0); }
+  info(changed.size + ' file(s) changed (uncommitted + commits since midnight), ' + changedCode.length + ' of them code');
+  const graph = loadGraph();
+  const all = touchedByUS(graph);
   // Counts the active US AND the one concluded TODAY (last Rumo dated today): today's
   // work does not become "drift" just because the release already went out.
-  const hojeStr = (() => { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); })();
-  const concluidaHoje = (t) => { const n = lerNo(path.join(RAIZ, t.no.source_file)); const u = n && n.rumo.length ? n.rumo[n.rumo.length - 1].data : null; return !!u && String(u.getDate()).padStart(2, '0') + '/' + String(u.getMonth() + 1).padStart(2, '0') + '/' + u.getFullYear() === hojeStr; };
-  const ativas = [...todas.values()].filter(t => t.no.estado === 'ativa' || (t.no.estado === 'concluida' && concluidaHoje(t)));
+  const todayStr = (() => { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); })();
+  const concludedToday = (t) => { const n = readNode(path.join(ROOT, t.no.source_file)); const u = n && n.rumo.length ? n.rumo[n.rumo.length - 1].data : null; return !!u && String(u.getDate()).padStart(2, '0') + '/' + String(u.getMonth() + 1).padStart(2, '0') + '/' + u.getFullYear() === todayStr; };
+  const active = [...all.values()].filter(t => t.no.estado === 'ativa' || (t.no.estado === 'concluida' && concludedToday(t)));
   // files each active US declares: via the graph node (source_file) or, without a graph, via the backtick
-  const arquivosDe = (t) => { const s = new Set(); for (const id of t.ids) { const n = grafo && grafo.nos.get(id); if (n && n.source_file) s.add(n.source_file.replace(/\\/g, '/')); } return s; };
-  const cobertos = new Map();
-  for (const t of ativas) for (const f of arquivosDe(t)) cobertos.set(f, t);
-  const fora = codigoMudado.filter(f => !cobertos.has(f));
-  const dentro = codigoMudado.filter(f => cobertos.has(f));
-  if (dentro.length) { ok(dentro.length + ' changed file(s) are in an active US:'); dentro.forEach(f => info('  ' + f + '  → ' + cobertos.get(f).no.label.split(' — ')[0])); }
-  if (!ativas.length) warn('no active US with "Código tocado" — the diff belongs to nobody on record');
-  if (fora.length) {
-    warn(fora.length + ' changed code file(s) are in NO active US — the map is incomplete, or the work leaked out of scope:');
-    fora.slice(0, 15).forEach(f => {
+  const filesOf = (t) => { const s = new Set(); for (const id of t.ids) { const n = graph && graph.nos.get(id); if (n && n.source_file) s.add(n.source_file.replace(/\\/g, '/')); } return s; };
+  const covered = new Map();
+  for (const t of active) for (const f of filesOf(t)) covered.set(f, t);
+  const outside = changedCode.filter(f => !covered.has(f));
+  const inside = changedCode.filter(f => covered.has(f));
+  if (inside.length) { ok(inside.length + ' changed file(s) are in an active US:'); inside.forEach(f => info('  ' + f + '  → ' + covered.get(f).no.label.split(' — ')[0])); }
+  if (!active.length) warn('no active US with "Código tocado" — the diff belongs to nobody on record');
+  if (outside.length) {
+    warn(outside.length + ' changed code file(s) are in NO active US — the map is incomplete, or the work leaked out of scope:');
+    outside.slice(0, 15).forEach(f => {
       // hint: does some active US depend on this file (2 levels)? then it is probably hers.
-      let dica = '';
-      if (grafo) {
-        const idArq = f.replace(/\.[^./]+$/, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
-        for (const t of ativas) { const imp = impactoDaUS(grafo, todas, [...todas.keys()].find(k => todas.get(k) === t)); if (imp && imp.dependentes.some(([id]) => id === idArq || (grafo.contidoEm.get(id) === idArq))) { dica = '  (depends on what ' + t.no.label.split(' — ')[0] + ' touches — hers?)'; break; } }
+      let hint = '';
+      if (graph) {
+        const fileIdOf = f.replace(/\.[^./]+$/, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
+        for (const t of active) { const imp = usImpact(graph, all, [...all.keys()].find(k => all.get(k) === t)); if (imp && imp.dependentes.some(([id]) => id === fileIdOf || (graph.contidoEm.get(id) === fileIdOf))) { hint = '  (depends on what ' + t.no.label.split(' — ')[0] + ' touches — hers?)'; break; } }
       }
-      info('  ' + f + dica);
+      info('  ' + f + hint);
     });
-    if (fora.length > 15) info('  … and ' + (fora.length - 15) + ' more');
+    if (outside.length > 15) info('  … and ' + (outside.length - 15) + ' more');
     info('add them to "Código tocado" of the US that did it, or open the US that was missing (marvin --us)');
     log('');
     process.exit(1);
@@ -1269,77 +1269,77 @@ if (temFlag('--fechar')) {
 // is a "dirty" note that --status flags — never a US gone without record); only the line
 // whose href matches EXACTLY the US that went in leaves the note; and the count is checked
 // before writing. Date from git, not from `new Date()`: the index has to be reproducible.
-const argRel = process.argv.find(a => a.startsWith('--release='));
-if (argRel || temFlag('--release')) {
-  const versao = argRel ? argRel.slice(10) : process.argv[process.argv.indexOf('--release') + 1];
-  if (!versao || versao.startsWith('--')) { err('usage: marvin --release <versao>'); process.exit(2); }
-  if (LAYOUT_ANTIGO) { err('old layout — run `marvin --migrar` first'); process.exit(1); }
-  log('\x1b[1m--release\x1b[0m — ' + versao + '\n');
+const argRelease = process.argv.find(a => a.startsWith('--release='));
+if (argRelease || hasFlag('--release')) {
+  const version = argRelease ? argRelease.slice(10) : process.argv[process.argv.indexOf('--release') + 1];
+  if (!version || version.startsWith('--')) { err('usage: marvin --release <versao>'); process.exit(2); }
+  if (OLD_LAYOUT) { err('old layout — run `marvin --migrar` first'); process.exit(1); }
+  log('\x1b[1m--release\x1b[0m — ' + version + '\n');
   const relDir = path.join(DOCS, 'Releases');
-  const alvo = path.join(relDir, versao + '.md');
-  if (fs.existsSync(alvo)) { err('Releases/' + versao + '.md already exists — nothing touched (a release is written once)'); process.exit(1); }
+  const target = path.join(relDir, version + '.md');
+  if (fs.existsSync(target)) { err('Releases/' + version + '.md already exists — nothing touched (a release is written once)'); process.exit(1); }
 
   // USs that already shipped: every href inside Releases/*.md, resolved.
-  const jaSubiu = new Set();
-  let relArqs = []; try { relArqs = fs.readdirSync(relDir).filter(f => f.endsWith('.md') && f !== 'README.md'); } catch {}
-  for (const f of relArqs) {
+  const shipped = new Set();
+  let relFiles = []; try { relFiles = fs.readdirSync(relDir).filter(f => f.endsWith('.md') && f !== 'README.md'); } catch {}
+  for (const f of relFiles) {
     const txt = fs.readFileSync(path.join(relDir, f), 'utf8');
     const hrefs = [...txt.matchAll(/^- \[[^\]]*\]\(([^)\s#]+)/gm)].map(m => m[1]);
     if (!hrefs.length) warn('Releases/' + f + ' has no "- [US](path)" line — not in the expected format, so it protects nothing');
-    for (const h of hrefs) jaSubiu.add(path.resolve(relDir, h));
+    for (const h of hrefs) shipped.add(path.resolve(relDir, h));
   }
-  const nos = nosDoPlanejamento();
-  let semFrontmatter = 0;
-  (function varrer(d, prof = 0) {
-    if (prof > 8) return;
-    let ents; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
-    for (const e of ents) {
+  const nodes = planningNodes();
+  let noFrontmatter = 0;
+  (function walk(d, depth = 0) {
+    if (depth > 8) return;
+    let entries; try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
       const p = path.join(d, e.name);
-      if (e.isDirectory()) varrer(p, prof + 1);
-      else if (e.name === 'Sobre.md' && !(lerNo(p) || {}).tipo) semFrontmatter++;
+      if (e.isDirectory()) walk(p, depth + 1);
+      else if (e.name === 'Sobre.md' && !(readNode(p) || {}).tipo) noFrontmatter++;
     }
   })(path.join(DOCS, 'Planejamento'));
-  if (semFrontmatter) warn(semFrontmatter + ' Sobre.md without `tipo:` in the frontmatter — invisible to --release');
+  if (noFrontmatter) warn(noFrontmatter + ' Sobre.md without `tipo:` in the frontmatter — invisible to --release');
 
-  const concluidas = nos.filter(n => n.tipo === 'us' && n.estado === 'concluida' && !jaSubiu.has(path.resolve(n.arq)))
+  const concluded = nodes.filter(n => n.tipo === 'us' && n.estado === 'concluida' && !shipped.has(path.resolve(n.arq)))
     .sort((a, b) => a.arq.localeCompare(b.arq));
-  if (!concluidas.length) { ok('no US with estado: concluida outside a release — nothing to write'); process.exit(0); }
-  const semEvidencia = concluidas.filter(n => !n.comEvidencia);
-  if (semEvidencia.length) {
-    err(semEvidencia.length + ' concluida US without Evidência — nothing written:');
-    semEvidencia.forEach(n => info('  ' + n.titulo + '  (' + path.relative(RAIZ, n.arq).replace(/\\/g, '/') + ')'));
+  if (!concluded.length) { ok('no US with estado: concluida outside a release — nothing to write'); process.exit(0); }
+  const noEvidence = concluded.filter(n => !n.comEvidencia);
+  if (noEvidence.length) {
+    err(noEvidence.length + ' concluida US without Evidência — nothing written:');
+    noEvidence.forEach(n => info('  ' + n.titulo + '  (' + path.relative(ROOT, n.arq).replace(/\\/g, '/') + ')'));
     info('fill the Evidência section (PR, test, screenshot). No flag skips this: write `_(sem evidência: <motivo>)_` in the node if that is the decision.');
     process.exit(1);
   }
 
   // Date of the last commit — reproducible; without git, it is left to the human.
   let data = '_(data)_';
-  try { data = execSync('git log -1 --format=%cs', { cwd: RAIZ, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || data; } catch {}
-  const linhaDe = (n) => '- [' + n.titulo + '](' + path.relative(relDir, n.arq).replace(/\\/g, '/') + ') — evidência: ' + n.evidencia.split(/\r?\n/)[0].replace(/^- /, '').trim();
-  const conteudo = '# ' + versao + ' — ' + data + '\n\n' + concluidas.map(linhaDe).join('\n') + '\n';
+  try { data = execSync('git log -1 --format=%cs', { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || data; } catch {}
+  const lineOf = (n) => '- [' + n.titulo + '](' + path.relative(relDir, n.arq).replace(/\\/g, '/') + ') — evidência: ' + n.evidencia.split(/\r?\n/)[0].replace(/^- /, '').trim();
+  const content = '# ' + version + ' — ' + data + '\n\n' + concluded.map(lineOf).join('\n') + '\n';
 
   // The note: only the line whose href resolves to a US that went in leaves. Checked before writing.
-  const NOTA_R = path.join(DEST, 'onde_paramos.md');
-  let nota = ''; try { nota = fs.readFileSync(NOTA_R, 'utf8'); } catch {}
-  const entram = new Set(concluidas.map(n => path.resolve(n.arq)));
-  const linhas = nota.split(/\r?\n/);
-  const sai = (l) => { const m = l.match(/^- \[[^\]]*\]\(([^)\s#]+)/); return !!m && entram.has(path.resolve(DEST, m[1])); };
-  const removidas = linhas.filter(sai).length;
-  const novaNota = linhas.filter(l => !sai(l)).join('\n');
-  if (linhas.length - novaNota.split('\n').length !== removidas) { err('line count mismatch while editing the note — nothing written'); process.exit(1); }
+  const NOTE_R = path.join(DEST, 'onde_paramos.md');
+  let note = ''; try { note = fs.readFileSync(NOTE_R, 'utf8'); } catch {}
+  const included = new Set(concluded.map(n => path.resolve(n.arq)));
+  const lines = note.split(/\r?\n/);
+  const leaves = (l) => { const m = l.match(/^- \[[^\]]*\]\(([^)\s#]+)/); return !!m && included.has(path.resolve(DEST, m[1])); };
+  const removed = lines.filter(leaves).length;
+  const newNote = lines.filter(l => !leaves(l)).join('\n');
+  if (lines.length - newNote.split('\n').length !== removed) { err('line count mismatch while editing the note — nothing written'); process.exit(1); }
 
-  log('  Releases/' + versao + '.md' + (DRY ? '  (dry-run — this is what it would contain)' : '') + ':');
-  conteudo.trimEnd().split('\n').forEach(l => info('  ' + l));
+  log('  Releases/' + version + '.md' + (DRY ? '  (dry-run — this is what it would contain)' : '') + ':');
+  content.trimEnd().split('\n').forEach(l => info('  ' + l));
   fsw.mkdirSync(relDir, { recursive: true });
-  fsw.writeFileSync(alvo, conteudo);
-  ok('Releases/' + versao + '.md — ' + concluidas.length + ' US');
-  if (removidas) { fsw.writeFileSync(NOTA_R, novaNota); ok('onde_paramos.md — ' + removidas + ' pointer(s) removed'); }
+  fsw.writeFileSync(target, content);
+  ok('Releases/' + version + '.md — ' + concluded.length + ' US');
+  if (removed) { fsw.writeFileSync(NOTE_R, newNote); ok('onde_paramos.md — ' + removed + ' pointer(s) removed'); }
   else info('onde_paramos.md — none of these US was in the note');
-  const naNota = concluidas.length - removidas;
-  if (naNota) info(naNota + ' of them were not in the note (fine — they were never pointed to)');
+  const inNote = concluded.length - removed;
+  if (inNote) info(inNote + ' of them were not in the note (fine — they were never pointed to)');
   log('');
   info('not done, on purpose — yours to run:');
-  info('  git add -A && git commit -m "chore: ' + versao + '" && git tag -a v' + versao + ' -m "' + versao + '"');
+  info('  git add -A && git commit -m "chore: ' + version + '" && git tag -a v' + version + ' -m "' + version + '"');
   log('');
   process.exit(0);
 }
@@ -1349,12 +1349,12 @@ if (argRel || temFlag('--release')) {
 // decisions → sources → leftovers → links. What takes judgment (the note's content, which
 // file is an Epic) stays out and is said at the end. Invariant 1 at every step: copy,
 // check, only then delete. After it, the normal run creates the templates and repoints the junction.
-if (temFlag('--migrar')) {
+if (hasFlag('--migrar')) {
   log('\x1b[1m--migrar\x1b[0m — old layout → graph layout\n');
-  if (!LAYOUT_ANTIGO) { ok('nothing to migrate: this base is already on the graph layout'); process.exit(0); }
+  if (!OLD_LAYOUT) { ok('nothing to migrate: this base is already on the graph layout'); process.exit(0); }
   const dest = path.join(DOCS, '99_Backup', 'antes-do-grafo');
   if (fs.existsSync(dest) && !DRY) { err('99_Backup/antes-do-grafo already exists — a previous --migrar stopped halfway. Look at it before running again.'); process.exit(1); }
-  const contar = (d) => { let n = 0; (function w(x) { let es; try { es = fs.readdirSync(x, { withFileTypes: true }); } catch { return; } for (const e of es) e.isDirectory() ? w(path.join(x, e.name)) : n++; })(d); return n; };
+  const countFiles = (d) => { let n = 0; (function w(x) { let es; try { es = fs.readdirSync(x, { withFileTypes: true }); } catch { return; } for (const e of es) e.isDirectory() ? w(path.join(x, e.name)) : n++; })(d); return n; };
   // 1. backup of everything, except 99_Backup itself
   let n = 0;
   (function cp(dir, rel = '') {
@@ -1365,21 +1365,21 @@ if (temFlag('--migrar')) {
       else { fsw.mkdirSync(path.dirname(path.join(dest, r)), { recursive: true }); fsw.copyFileSync(p, path.join(dest, r)); n++; }
     }
   })(DOCS);
-  if (!DRY && contar(dest) !== n) { err('backup copied ' + contar(dest) + ' of ' + n + ' files — aborting, nothing moved'); process.exit(1); }
-  ok('backup: ' + n + ' files → ' + path.relative(RAIZ, dest).replace(/\\/g, '/'));
-  const mover = (de, para) => {
-    if (!fs.existsSync(de)) return false;
-    if (fs.existsSync(para)) { warn('exists, left alone: ' + path.relative(DOCS, para)); return false; }
-    fsw.mkdirSync(path.dirname(para), { recursive: true });
-    fsw.copyFileSync(de, para);
-    if (!DRY && fs.statSync(de).size !== fs.statSync(para).size) { err('size differs after copy: ' + de); process.exit(1); }
-    fsw.unlinkSync(de);
-    info(path.relative(DOCS, de).replace(/\\/g, '/') + '  →  ' + path.relative(DOCS, para).replace(/\\/g, '/'));
+  if (!DRY && countFiles(dest) !== n) { err('backup copied ' + countFiles(dest) + ' of ' + n + ' files — aborting, nothing moved'); process.exit(1); }
+  ok('backup: ' + n + ' files → ' + path.relative(ROOT, dest).replace(/\\/g, '/'));
+  const move = (src, dst) => {
+    if (!fs.existsSync(src)) return false;
+    if (fs.existsSync(dst)) { warn('exists, left alone: ' + path.relative(DOCS, dst)); return false; }
+    fsw.mkdirSync(path.dirname(dst), { recursive: true });
+    fsw.copyFileSync(src, dst);
+    if (!DRY && fs.statSync(src).size !== fs.statSync(dst).size) { err('size differs after copy: ' + src); process.exit(1); }
+    fsw.unlinkSync(src);
+    info(path.relative(DOCS, src).replace(/\\/g, '/') + '  →  ' + path.relative(DOCS, dst).replace(/\\/g, '/'));
     return true;
   };
   // 2. the whole memory (the junction is repointed by the normal run, which sees 08_Memoria vanish)
   const m8 = path.join(DOCS, '08_Memoria');
-  for (const f of fs.readdirSync(m8)) mover(path.join(m8, f), path.join(DOCS, 'Memoria', f));
+  for (const f of fs.readdirSync(m8)) move(path.join(m8, f), path.join(DOCS, 'Memoria', f));
   if (!DRY) fs.rmdirSync(m8);
   ok('08_Memoria/ → Memoria/');
   // 3. decisions → Contexto/Arquitetura (the old README goes to the backup: the new layout has its own)
@@ -1387,15 +1387,15 @@ if (temFlag('--migrar')) {
   if (fs.existsSync(d10)) {
     for (const f of fs.readdirSync(d10)) {
       const p = path.join(d10, f);
-      if (f === 'README.md') { mover(p, path.join(DOCS, '99_Backup', '10_Decisoes-README.md')); continue; }
+      if (f === 'README.md') { move(p, path.join(DOCS, '99_Backup', '10_Decisoes-README.md')); continue; }
       if (fs.statSync(p).isDirectory()) { warn('10_Decisoes/' + f + '/ is a folder — left for you: features go to Planejamento/, reports to Fontes/'); continue; }
-      mover(p, path.join(DOCS, 'Contexto', 'Arquitetura', f));
+      move(p, path.join(DOCS, 'Contexto', 'Arquitetura', f));
     }
     try { if (!DRY) fs.rmdirSync(d10); ok('10_Decisoes/ → Contexto/Arquitetura/'); } catch { warn('10_Decisoes/ not empty — see above'); }
   }
   // 4. sources and the old index
-  mover(path.join(DOCS, '00_Fontes_Externas.md'), path.join(DOCS, 'Fontes', 'Externas.md'));
-  mover(path.join(DOCS, '00_Inicio.md'), path.join(DOCS, '99_Backup', '00_Inicio.md'));
+  move(path.join(DOCS, '00_Fontes_Externas.md'), path.join(DOCS, 'Fontes', 'Externas.md'));
+  move(path.join(DOCS, '00_Inicio.md'), path.join(DOCS, '99_Backup', '00_Inicio.md'));
   // 5. empty leftovers
   for (const d of ['11_Sessoes', '90_Anexos']) {
     const p = path.join(DOCS, d);
@@ -1404,19 +1404,19 @@ if (temFlag('--migrar')) {
     if (!DRY) fs.rmdirSync(p); info(d + '/ removed (empty)');
   }
   // 6. links: the paths that changed, in the base .md files and in the root pointers
-  const troca = [[/08_Memoria\//g, 'Memoria/'], [/10_Decisoes\/README\.md/g, '99_Backup/10_Decisoes-README.md'], [/10_Decisoes\//g, 'Contexto/Arquitetura/'], [/00_Fontes_Externas\.md/g, 'Fontes/Externas.md']];
-  const alvos = [];
-  (function w(d, prof = 0) { if (prof > 6) return; let es; try { es = fs.readdirSync(d, { withFileTypes: true }); } catch { return; } for (const e of es) { const p = path.join(d, e.name); if (e.isDirectory()) { if (e.name !== '99_Backup') w(p, prof + 1); } else if (e.name.endsWith('.md')) alvos.push(p); } })(DOCS);
-  for (const f of ['AGENTS.md', 'CLAUDE.md']) if (fs.existsSync(path.join(RAIZ, f))) alvos.push(path.join(RAIZ, f));
-  (function w(d) { let es; try { es = fs.readdirSync(d, { withFileTypes: true }); } catch { return; } for (const e of es) { const p = path.join(d, e.name); e.isDirectory() ? w(p) : e.name.endsWith('.md') && alvos.push(p); } })(path.join(RAIZ, '.claude'));
-  let arqs = 0, refs = 0;
-  for (const f of alvos) {
+  const swaps = [[/08_Memoria\//g, 'Memoria/'], [/10_Decisoes\/README\.md/g, '99_Backup/10_Decisoes-README.md'], [/10_Decisoes\//g, 'Contexto/Arquitetura/'], [/00_Fontes_Externas\.md/g, 'Fontes/Externas.md']];
+  const targets = [];
+  (function w(d, depth = 0) { if (depth > 6) return; let es; try { es = fs.readdirSync(d, { withFileTypes: true }); } catch { return; } for (const e of es) { const p = path.join(d, e.name); if (e.isDirectory()) { if (e.name !== '99_Backup') w(p, depth + 1); } else if (e.name.endsWith('.md')) targets.push(p); } })(DOCS);
+  for (const f of ['AGENTS.md', 'CLAUDE.md']) if (fs.existsSync(path.join(ROOT, f))) targets.push(path.join(ROOT, f));
+  (function w(d) { let es; try { es = fs.readdirSync(d, { withFileTypes: true }); } catch { return; } for (const e of es) { const p = path.join(d, e.name); e.isDirectory() ? w(p) : e.name.endsWith('.md') && targets.push(p); } })(path.join(ROOT, '.claude'));
+  let files = 0, refs = 0;
+  for (const f of targets) {
     let t; try { t = fs.readFileSync(f, 'utf8'); } catch { continue; }
-    let novo = t, k = 0;
-    for (const [re, sub] of troca) novo = novo.replace(re, () => { k++; return sub; });
-    if (k) { fsw.writeFileSync(f, novo); arqs++; refs += k; }
+    let newContent = t, k = 0;
+    for (const [re, sub] of swaps) newContent = newContent.replace(re, () => { k++; return sub; });
+    if (k) { fsw.writeFileSync(f, newContent); files++; refs += k; }
   }
-  ok(refs + ' path reference(s) rewritten in ' + arqs + ' file(s)');
+  ok(refs + ' path reference(s) rewritten in ' + files + ' file(s)');
   log('');
   info('left for you — it takes judgment, not a script:');
   info('  · the note: it is a list of pointers now. What it says today goes to the Rumo of the node that owns it');
@@ -1436,21 +1436,21 @@ if (temFlag('--migrar')) {
 // later. The record is the missing "this project uses X" place — any agent reads it.
 // Lives before step 1 because SUBREPOS (right below) and the generated CLAUDE.md depend
 // on GRAPHIFY being decided already.
-const REGISTRO = path.join(DOCS, 'ferramentas.md');
-const REGISTRO_REL = path.relative(RAIZ, REGISTRO).replace(/\\/g, '/');
+const RECORD = path.join(DOCS, 'ferramentas.md');
+const RECORD_REL = path.relative(ROOT, RECORD).replace(/\\/g, '/');
 // `detecta()` returns false or the state found (string) — it goes into the message.
 // Ponytail is not a binary on PATH: it is a Claude Code plugin. INSTALLED lives in
 // ~/.claude/plugins/installed_plugins.json; ACTIVE on this machine is the file
 // ~/.claude/.ponytail-active (the SessionStart hook writes the level there). Installed
 // without being active is the misleading half: the plugin exists and does nothing.
 const CLAUDE_HOME = path.join(os.homedir(), '.claude');
-const noPath = (cmd) => { try { execSync(cmd, { stdio: 'ignore' }); return 'on PATH'; } catch { return false; } };
-const detectaPonytail = () => {
-  let instalado = false;
-  try { instalado = /ponytail/i.test(fs.readFileSync(path.join(CLAUDE_HOME, 'plugins', 'installed_plugins.json'), 'utf8')); } catch {}
-  if (!instalado) return false;
-  let nivel = ''; try { nivel = fs.readFileSync(path.join(CLAUDE_HOME, '.ponytail-active'), 'utf8').trim(); } catch {}
-  return nivel ? 'installed and active (' + nivel + ')' : 'installed but NOT active — run /ponytail in a Claude session';
+const onPath = (cmd) => { try { execSync(cmd, { stdio: 'ignore' }); return 'on PATH'; } catch { return false; } };
+const detectPonytail = () => {
+  let installed = false;
+  try { installed = /ponytail/i.test(fs.readFileSync(path.join(CLAUDE_HOME, 'plugins', 'installed_plugins.json'), 'utf8')); } catch {}
+  if (!installed) return false;
+  let level = ''; try { level = fs.readFileSync(path.join(CLAUDE_HOME, '.ponytail-active'), 'utf8').trim(); } catch {}
+  return level ? 'installed and active (' + level + ')' : 'installed but NOT active — run /ponytail in a Claude session';
 };
 // Ponytail's reach depends on WHERE it loads (plugin README, 4.10.0): a plugin with hooks
 // in Claude Code, Codex and Copilot CLI — each with ITS OWN install; in Cursor, hooks in
@@ -1458,62 +1458,62 @@ const detectaPonytail = () => {
 // a rule file copied from its repository. DETECTION reads only ~/.claude: installed only
 // through codex/copilot comes out as "not found" and records `não` — with the install
 // instruction, so it is not silence; `--use=ponytail` flips it.
-const alcancePonytail = () => {
+const ponytailReach = () => {
   const p = [];
-  if (FERRAMENTAS.some(f => ['claude', 'codex', 'copilot'].includes(f))) p.push('plugin com hooks no Claude Code/Codex/Copilot CLI (install próprio em cada um; aqui só o do Claude é detectado)');
-  if (FERRAMENTAS.includes('cursor')) p.push('no Cursor, hooks em ~/.cursor/hooks.json ou a regra .mdc do repositório dele — nenhum dos dois é gerado, confira');
-  if (FERRAMENTAS.some(f => !['claude', 'codex', 'copilot', 'cursor'].includes(f))) p.push('no resto, só o arquivo de regra copiado do repositório dele');
+  if (TOOLS.some(f => ['claude', 'codex', 'copilot'].includes(f))) p.push('plugin com hooks no Claude Code/Codex/Copilot CLI (install próprio em cada um; aqui só o do Claude é detectado)');
+  if (TOOLS.includes('cursor')) p.push('no Cursor, hooks em ~/.cursor/hooks.json ou a regra .mdc do repositório dele — nenhum dos dois é gerado, confira');
+  if (TOOLS.some(f => !['claude', 'codex', 'copilot', 'cursor'].includes(f))) p.push('no resto, só o arquivo de regra copiado do repositório dele');
   return 'escada de simplicidade para quem IMPLEMENTA — ' + p.join('; ') + '. Confiança baixa: não medido';
 };
-const FERR_OPCIONAIS = [
-  { nome: 'graphify', detecta: () => noPath('graphify --version'), instalar: 'uv tool install graphifyy  ·  pipx install graphifyy',
+const OPTIONAL_TOOLS = [
+  { nome: 'graphify', detecta: () => onPath('graphify --version'), instalar: 'uv tool install graphifyy  ·  pipx install graphifyy',
     alcance: 'saída JSON/markdown em graphify-out/ — qualquer agente lê; só o hook é do Claude, e não é usado' },
-  { nome: 'ponytail', detecta: detectaPonytail, instalar: 'claude plugin marketplace add DietrichGebert/ponytail  ·  claude plugin install ponytail',
-    get alcance() { return alcancePonytail(); } },
+  { nome: 'ponytail', detecta: detectPonytail, instalar: 'claude plugin marketplace add DietrichGebert/ponytail  ·  claude plugin install ponytail',
+    get alcance() { return ponytailReach(); } },
 ];
 {
-  let reg = ''; try { reg = fs.readFileSync(REGISTRO, 'utf8'); } catch {}
-  const linhaReg = (f) => reg.match(new RegExp('^\\|\\s*' + f + '\\s*\\|\\s*(sim|n[aã]o)\\s*\\|', 'mi'));
+  let rec = ''; try { rec = fs.readFileSync(RECORD, 'utf8'); } catch {}
+  const recordLine = (f) => rec.match(new RegExp('^\\|\\s*' + f + '\\s*\\|\\s*(sim|n[aã]o)\\s*\\|', 'mi'));
   // Date of the last commit — reproducible, as in --release; without git, it is left to the human.
-  let dataReg = '_(data)_';
-  try { dataReg = execSync('git log -1 --format=%cs', { cwd: RAIZ, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || dataReg; } catch {}
-  const novas = [];
-  for (const f of FERR_OPCIONAIS) {
-    const m = linhaReg(f.nome);
-    let usa;
-    if (USAR.has(f.nome)) {
-      usa = true;
-      if (!m) novas.push('| ' + f.nome + ' | sim | ' + f.alcance + ' | ' + dataReg + ' |');
+  let recordDate = '_(data)_';
+  try { recordDate = execSync('git log -1 --format=%cs', { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || recordDate; } catch {}
+  const newOnes = [];
+  for (const f of OPTIONAL_TOOLS) {
+    const m = recordLine(f.nome);
+    let uses;
+    if (USE.has(f.nome)) {
+      uses = true;
+      if (!m) newOnes.push('| ' + f.nome + ' | sim | ' + f.alcance + ' | ' + recordDate + ' |');
       else if (!/^sim$/i.test(m[1])) {
-        fsw.writeFileSync(REGISTRO, reg.replace(m[0], m[0].replace(m[1], 'sim')));
-        ok(REGISTRO_REL + ': ' + f.nome + ' → sim');
+        fsw.writeFileSync(RECORD, rec.replace(m[0], m[0].replace(m[1], 'sim')));
+        ok(RECORD_REL + ': ' + f.nome + ' → sim');
       }
     } else if (m) {
-      usa = /^sim$/i.test(m[1]);
+      uses = /^sim$/i.test(m[1]);
     } else {
-      const estado = f.detecta();
-      if (!estado) {
-        usa = false;
+      const state = f.detecta();
+      if (!state) {
+        uses = false;
         info(f.nome + ' not found — recording `não`. To adopt it later:  ' + f.instalar + '  then  marvin --use=' + f.nome);
-      } else if (SEM_PERGUNTAS || !process.stdin.isTTY) {
-        usa = false;
-        warn(f.nome + ' is ' + estado + ' but ' + (SEM_PERGUNTAS ? '--no-questions' : 'no interactive terminal') + ' — recording `não`. Flip it with  marvin --use=' + f.nome);
+      } else if (NO_QUESTIONS || !process.stdin.isTTY) {
+        uses = false;
+        warn(f.nome + ' is ' + state + ' but ' + (NO_QUESTIONS ? '--no-questions' : 'no interactive terminal') + ' — recording `não`. Flip it with  marvin --use=' + f.nome);
       } else {
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-        const r = (await rl.question('  ' + f.nome + ' is ' + estado + '. Use it in this project? [y/N] ')).trim();
+        const r = (await rl.question('  ' + f.nome + ' is ' + state + '. Use it in this project? [y/N] ')).trim();
         await rl.close();
-        usa = /^[ys]/i.test(r);
+        uses = /^[ys]/i.test(r);
       }
-      novas.push('| ' + f.nome + ' | ' + (usa ? 'sim' : 'não') + ' | ' + f.alcance + ' | ' + dataReg + ' |');
+      newOnes.push('| ' + f.nome + ' | ' + (uses ? 'sim' : 'não') + ' | ' + f.alcance + ' | ' + recordDate + ' |');
     }
-    if (f.nome === 'graphify' && usa) GRAPHIFY = true;
-    if (f.nome === 'ponytail' && usa) PONYTAIL = true;
+    if (f.nome === 'graphify' && uses) GRAPHIFY = true;
+    if (f.nome === 'ponytail' && uses) PONYTAIL = true;
   }
-  if (novas.length) {
-    if (reg) fsw.appendFileSync(REGISTRO, novas.join('\n') + '\n');
+  if (newOnes.length) {
+    if (rec) fsw.appendFileSync(RECORD, newOnes.join('\n') + '\n');
     else {
       fsw.mkdirSync(DOCS, { recursive: true });
-      fsw.writeFileSync(REGISTRO, `---
+      fsw.writeFileSync(RECORD, `---
 name: ferramentas
 description: Ferramentas opcionais que ESTE projeto usa — e o que cada uma alcança
 tags: [referencia]
@@ -1526,20 +1526,20 @@ quem consegue ler o que a ferramenta produz — nem tudo é de todo agente.
 
 | ferramenta | usa | alcance | data |
 |---|---|---|---|
-` + novas.join('\n') + '\n');
+` + newOnes.join('\n') + '\n');
     }
-    ok(REGISTRO_REL + (reg ? ' updated' : ''));
+    ok(RECORD_REL + (rec ? ' updated' : ''));
   }
 }
 
 // ═══════════════════════════════════════════ 1. STACK
 log('\x1b[1m1. Stack detected\x1b[0m');
-const MARCA = {
+const MARK = {
   'package.json': 'Node/JS', 'tsconfig.json': 'TypeScript', 'requirements.txt': 'Python',
   'pyproject.toml': 'Python', 'go.mod': 'Go', 'Cargo.toml': 'Rust',
   'pom.xml': 'Java/Maven', 'build.gradle': 'Gradle', 'Gemfile': 'Ruby', 'composer.json': 'PHP',
 };
-const IGNORAR = new Set(['node_modules', 'dist', 'build', 'bin', 'obj', '__pycache__', '.git', 'venv', '.venv']);
+const IGNORE = new Set(['node_modules', 'dist', 'build', 'bin', 'obj', '__pycache__', '.git', 'venv', '.venv']);
 
 // ── Ignored sub-repos: the case where the graph was born useless IN SILENCE.
 // In a monorepo each sub-repository is usually in the root .gitignore, because it is
@@ -1554,12 +1554,12 @@ const IGNORAR = new Set(['node_modules', 'dist', 'build', 'bin', 'obj', '__pycac
 const SUBREPOS = [];
 if (GRAPHIFY) {
   try {
-    for (const e of fs.readdirSync(RAIZ, { withFileTypes: true })) {
-      if (!e.isDirectory() || e.name.startsWith('.') || IGNORAR.has(e.name)) continue;
-      if (!fs.existsSync(path.join(RAIZ, e.name, '.git'))) continue;
+    for (const e of fs.readdirSync(ROOT, { withFileTypes: true })) {
+      if (!e.isDirectory() || e.name.startsWith('.') || IGNORE.has(e.name)) continue;
+      if (!fs.existsSync(path.join(ROOT, e.name, '.git'))) continue;
       // Exits != 0 when NOT ignored — and also when there is no git here.
       try {
-        execSync('git check-ignore -q "' + e.name + '"', { cwd: RAIZ, stdio: 'ignore' });
+        execSync('git check-ignore -q "' + e.name + '"', { cwd: ROOT, stdio: 'ignore' });
         SUBREPOS.push(e.name);
       } catch {}
     }
@@ -1567,29 +1567,29 @@ if (GRAPHIFY) {
 }
 
 const stacks = new Map();
-(function varrer(dir, prof = 0) {
-  if (prof > 3) return;
-  let ents; try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
-  for (const e of ents) {
-    if (IGNORAR.has(e.name) || (e.name.startsWith('.') && e.isDirectory())) continue;
+(function walk(dir, depth = 0) {
+  if (depth > 3) return;
+  let entries; try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+  for (const e of entries) {
+    if (IGNORE.has(e.name) || (e.name.startsWith('.') && e.isDirectory())) continue;
     const p = path.join(dir, e.name);
-    if (e.isDirectory()) { varrer(p, prof + 1); continue; }
-    const t = MARCA[e.name] || (/\.(csproj|sln)$/.test(e.name) ? '.NET/C#' : null);
+    if (e.isDirectory()) { walk(p, depth + 1); continue; }
+    const t = MARK[e.name] || (/\.(csproj|sln)$/.test(e.name) ? '.NET/C#' : null);
     if (t) {
-      const rel = path.relative(RAIZ, dir) || '.';
+      const rel = path.relative(ROOT, dir) || '.';
       if (!stacks.has(rel)) stacks.set(rel, new Set());
       stacks.get(rel).add(t);
     }
   }
-})(RAIZ);
+})(ROOT);
 if (stacks.size) for (const [d, t] of stacks) info(d.padEnd(40) + [...t].join(' + '));
 else warn('no stack marker found');
 
 // Is there a front end? Read from the dependencies of the package.json files found — fact, not guess.
 // Only decides whether the Contexto/Design/ folder is born in step 5.
-const TEM_FRONT = [...stacks.keys()].some(d => {
+const HAS_FRONT = [...stacks.keys()].some(d => {
   try {
-    const pj = JSON.parse(fs.readFileSync(path.join(RAIZ, d, 'package.json'), 'utf8'));
+    const pj = JSON.parse(fs.readFileSync(path.join(ROOT, d, 'package.json'), 'utf8'));
     const deps = Object.keys({ ...pj.dependencies, ...pj.devDependencies });
     return deps.some(x => /^(react|react-dom|vue|@angular\/core|svelte|next|nuxt|solid-js|@remix-run\/react|astro)$/.test(x));
   } catch { return false; }
@@ -1606,74 +1606,74 @@ const TEM_FRONT = [...stacks.keys()].some(d => {
 //
 // Every line carries its ORIGIN. That is what keeps the block from aging silently when
 // the manifest changes: the source can be checked without leaving the file.
-const lerJSON = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } };
-const temNaRaiz = (n) => fs.existsSync(path.join(RAIZ, n));
-const COMANDOS = [];
-const poe = (rotulo, comando, origem) => {
-  if (comando && !COMANDOS.some(c => c.rotulo === rotulo)) COMANDOS.push({ rotulo, comando, origem });
+const readJSON = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } };
+const inRoot = (n) => fs.existsSync(path.join(ROOT, n));
+const COMMANDS = [];
+const put = (label, command, origin) => {
+  if (command && !COMMANDS.some(c => c.rotulo === label)) COMMANDS.push({ rotulo: label, comando: command, origem: origin });
 };
 
-(function detectarComandos() {
+(function detectCommands() {
   // Node: the manager comes from the LOCKFILE. `<pm> install` and `<pm> run <script>` are
   // valid in all four, so one form serves them all — fewer special cases.
-  const pkg = lerJSON(path.join(RAIZ, 'package.json'));
+  const pkg = readJSON(path.join(ROOT, 'package.json'));
   if (pkg) {
-    const pm = temNaRaiz('pnpm-lock.yaml') ? 'pnpm'
-      : temNaRaiz('yarn.lock') ? 'yarn'
-      : (temNaRaiz('bun.lockb') || temNaRaiz('bun.lock')) ? 'bun'
+    const pm = inRoot('pnpm-lock.yaml') ? 'pnpm'
+      : inRoot('yarn.lock') ? 'yarn'
+      : (inRoot('bun.lockb') || inRoot('bun.lock')) ? 'bun'
       : 'npm';
     const lock = pm === 'pnpm' ? 'pnpm-lock.yaml' : pm === 'yarn' ? 'yarn.lock'
       : pm === 'bun' ? 'bun.lock*'
-      : temNaRaiz('package-lock.json') ? 'package-lock.json' : 'no lockfile — npm is the default';
-    poe('Instalar', pm + ' install', lock);
+      : inRoot('package-lock.json') ? 'package-lock.json' : 'no lockfile — npm is the default';
+    put('Instalar', pm + ' install', lock);
     const s = (pkg.scripts && typeof pkg.scripts === 'object') ? pkg.scripts : {};
-    for (const [rotulo, nomes] of [
+    for (const [label, names] of [
       ['Lint', ['lint']], ['Typecheck', ['typecheck', 'type-check', 'tsc']],
       ['Testar', ['test']], ['Build', ['build']], ['Rodar', ['dev', 'start']],
     ]) {
-      const achou = nomes.find(n => typeof s[n] === 'string');
-      if (achou) poe(rotulo, pm + ' run ' + achou, 'package.json > scripts.' + achou);
+      const found = names.find(n => typeof s[n] === 'string');
+      if (found) put(label, pm + ' run ' + found, 'package.json > scripts.' + found);
     }
   }
 
   // Python: pytest.ini / tox.ini / [tool.pytest] in pyproject are an explicit declaration
   // that the suite is pytest. Without one of those, do not invent the runner.
-  const pyproj = temNaRaiz('pyproject.toml');
+  const pyproj = inRoot('pyproject.toml');
   let pyprojTxt = '';
-  if (pyproj) { try { pyprojTxt = fs.readFileSync(path.join(RAIZ, 'pyproject.toml'), 'utf8'); } catch {} }
-  if (temNaRaiz('pytest.ini')) poe('Testar', 'pytest', 'pytest.ini');
-  else if (temNaRaiz('tox.ini')) poe('Testar', 'pytest', 'tox.ini');
-  else if (/\[tool\.pytest/.test(pyprojTxt)) poe('Testar', 'pytest', 'pyproject.toml > [tool.pytest]');
-  if (temNaRaiz('requirements.txt')) poe('Instalar', 'pip install -r requirements.txt', 'requirements.txt');
-  else if (pyproj) poe('Instalar', 'pip install -e .', 'pyproject.toml');
+  if (pyproj) { try { pyprojTxt = fs.readFileSync(path.join(ROOT, 'pyproject.toml'), 'utf8'); } catch {} }
+  if (inRoot('pytest.ini')) put('Testar', 'pytest', 'pytest.ini');
+  else if (inRoot('tox.ini')) put('Testar', 'pytest', 'tox.ini');
+  else if (/\[tool\.pytest/.test(pyprojTxt)) put('Testar', 'pytest', 'pyproject.toml > [tool.pytest]');
+  if (inRoot('requirements.txt')) put('Instalar', 'pip install -r requirements.txt', 'requirements.txt');
+  else if (pyproj) put('Instalar', 'pip install -e .', 'pyproject.toml');
 
-  if (temNaRaiz('go.mod')) { poe('Testar', 'go test ./...', 'go.mod'); poe('Build', 'go build ./...', 'go.mod'); }
-  if (temNaRaiz('Cargo.toml')) { poe('Testar', 'cargo test', 'Cargo.toml'); poe('Build', 'cargo build', 'Cargo.toml'); }
-  if (temNaRaiz('pubspec.yaml')) { poe('Instalar', 'flutter pub get', 'pubspec.yaml'); poe('Testar', 'flutter test', 'pubspec.yaml'); }
+  if (inRoot('go.mod')) { put('Testar', 'go test ./...', 'go.mod'); put('Build', 'go build ./...', 'go.mod'); }
+  if (inRoot('Cargo.toml')) { put('Testar', 'cargo test', 'Cargo.toml'); put('Build', 'cargo build', 'Cargo.toml'); }
+  if (inRoot('pubspec.yaml')) { put('Instalar', 'flutter pub get', 'pubspec.yaml'); put('Testar', 'flutter test', 'pubspec.yaml'); }
 
   // .NET: the marker is usually in a subdirectory — step 1 already scanned for it.
   if ([...stacks.values()].some(t => t.has('.NET/C#'))) {
-    poe('Testar', 'dotnet test', '*.csproj / *.sln'); poe('Build', 'dotnet build', '*.csproj / *.sln');
+    put('Testar', 'dotnet test', '*.csproj / *.sln'); put('Build', 'dotnet build', '*.csproj / *.sln');
   }
 
   // Makefile last: it only fills what nobody filled before. `^target:` at column zero
   // is what tells a target from a variable and from a recipe line.
-  if (temNaRaiz('Makefile')) {
-    let mk = ''; try { mk = fs.readFileSync(path.join(RAIZ, 'Makefile'), 'utf8'); } catch {}
-    for (const [rotulo, alvo] of [['Testar', 'test'], ['Build', 'build'], ['Lint', 'lint'], ['Instalar', 'install']])
-      if (new RegExp('^' + alvo + '\s*:', 'm').test(mk)) poe(rotulo, 'make ' + alvo, 'Makefile');
+  if (inRoot('Makefile')) {
+    let mk = ''; try { mk = fs.readFileSync(path.join(ROOT, 'Makefile'), 'utf8'); } catch {}
+    for (const [label, target] of [['Testar', 'test'], ['Build', 'build'], ['Lint', 'lint'], ['Instalar', 'install']])
+      if (new RegExp('^' + target + '\s*:', 'm').test(mk)) put(label, 'make ' + target, 'Makefile');
   }
 })();
 
-if (COMANDOS.length) {
+if (COMMANDS.length) {
   log('\n\x1b[1m1b. Canonical commands (read from the manifest, not guessed)\x1b[0m');
-  for (const c of COMANDOS) info(c.rotulo.padEnd(11) + c.comando.padEnd(34) + '\x1b[2m' + c.origem + '\x1b[0m');
+  for (const c of COMMANDS) info(c.rotulo.padEnd(11) + c.comando.padEnd(34) + '\x1b[2m' + c.origem + '\x1b[0m');
 }
 
 // Step 7's `AGENTS.md` is a template literal. Building the block HERE, as a string,
 // avoids backtick inside backtick — which is exactly how this file broke while writing
 // this feature. Array + join keeps every line visible in the diff.
-const BLOCO_COMANDOS = COMANDOS.length ? [
+const COMMANDS_BLOCK = COMMANDS.length ? [
   '## Comandos canônicos',
   '',
   'Use **exatamente** estes — não adivinhe. Agente que adivinha roda `npm install` num',
@@ -1681,33 +1681,33 @@ const BLOCO_COMANDOS = COMANDOS.length ? [
   '',
   '| O quê | Comando | De onde saiu |',
   '|---|---|---|',
-  ...COMANDOS.map(c => '| ' + c.rotulo + ' | `' + c.comando + '` | `' + c.origem + '` |'),
+  ...COMMANDS.map(c => '| ' + c.rotulo + ' | `' + c.comando + '` | `' + c.origem + '` |'),
   '',
   'A coluna da direita existe para este bloco **não envelhecer em silêncio**: o marvin leu',
   'do manifesto no dia da montagem. Mudou o manifesto, é aqui que se confere.',
   '', '',
 ].join('\n') : '';
-const LINHA_TESTE_BUILD = COMANDOS.length ? '' : '- _(como rodar teste e build)_\n';
+const TEST_BUILD_LINE = COMMANDS.length ? '' : '- _(como rodar teste e build)_\n';
 
 // ═══════════════════════════════════════════ 2. EMPTY DIRECTORIES
 log('\n\x1b[1m2. Directories that look like a service but are empty\x1b[0m');
 log('   (an agent written for an empty folder invents code — this is the warning not to)');
-let vazios = 0;
-for (const e of fs.readdirSync(RAIZ, { withFileTypes: true })) {
-  if (!e.isDirectory() || e.name.startsWith('.') || IGNORAR.has(e.name)) continue;
-  const arqs = fs.readdirSync(path.join(RAIZ, e.name));
-  if (arqs.length && arqs.every(a => /^(LICENSE|README|\.git.*)/i.test(a))) {
-    warn(e.name + ' — only ' + arqs.join(', ')); vazios++;
+let emptyCount = 0;
+for (const e of fs.readdirSync(ROOT, { withFileTypes: true })) {
+  if (!e.isDirectory() || e.name.startsWith('.') || IGNORE.has(e.name)) continue;
+  const files = fs.readdirSync(path.join(ROOT, e.name));
+  if (files.length && files.every(a => /^(LICENSE|README|\.git.*)/i.test(a))) {
+    warn(e.name + ' — only ' + files.join(', ')); emptyCount++;
   }
 }
-if (!vazios) ok('none');
+if (!emptyCount) ok('none');
 
 // ═══════════════════════════════════════════ 3. JUNK IN THE ROOT
 log('\n\x1b[1m3. Junk in the root\x1b[0m');
 log('   (a strangely named file is almost always a malformed shell command)');
 // A character the shell interprets, at ANY position of the name.
 const METACHAR = /[`(){}\[\]!|<>;&$]/;
-const ehLixo = (n, vazio) => (
+const isJunk = (n, empty) => (
   /^.$/.test(n) ||
   /^[`'"(){}[\],;|&<>~^$]/.test(n) ||
   /^-/.test(n) ||
@@ -1719,20 +1719,20 @@ const ehLixo = (n, vazio) => (
   // a leftover test line the shell interpreted as a redirect.
   // A 0-byte file with a metacharacter in the name is shell junk, not content:
   // a legitimate empty name with a backtick or a parenthesis practically does not exist.
-  (vazio && METACHAR.test(n))
+  (empty && METACHAR.test(n))
 );
-const lixo = fs.readdirSync(RAIZ, { withFileTypes: true })
+const junk = fs.readdirSync(ROOT, { withFileTypes: true })
   .filter(e => e.isFile())
   .filter(e => {
-    let vazio = false;
-    try { vazio = fs.statSync(path.join(RAIZ, e.name)).size === 0; } catch {}
-    return ehLixo(e.name, vazio);
+    let empty = false;
+    try { empty = fs.statSync(path.join(ROOT, e.name)).size === 0; } catch {}
+    return isJunk(e.name, empty);
   })
   .map(e => e.name);
-if (lixo.length) {
-  lixo.forEach(f => warn(JSON.stringify(f) + '  ' + fs.statSync(path.join(RAIZ, f)).size + ' bytes'));
+if (junk.length) {
+  junk.forEach(f => warn(JSON.stringify(f) + '  ' + fs.statSync(path.join(ROOT, f)).size + ' bytes'));
   info('check the contents before deleting — it may be output you actually wanted');
-  info('to delete:  rm -f ' + lixo.map(f => JSON.stringify(f)).join(' '));
+  info('to delete:  rm -f ' + junk.map(f => JSON.stringify(f)).join(' '));
 } else ok('none');
 
 // A declared backup is NOT shell junk — `.bak`, `.orig`, `name~` are someone keeping a
@@ -1741,7 +1741,7 @@ if (lixo.length) {
 // question is another: is this meant to be versioned? If so, git already keeps versions;
 // if not, it goes to .gitignore. Its own warning, without the "rm -f" — the human decides.
 const BACKUP = /(\.(bak|orig|old|backup)$|~$)/i;
-const backups = fs.readdirSync(RAIZ, { withFileTypes: true }).filter(e => e.isFile() && BACKUP.test(e.name)).map(e => e.name);
+const backups = fs.readdirSync(ROOT, { withFileTypes: true }).filter(e => e.isFile() && BACKUP.test(e.name)).map(e => e.name);
 if (backups.length) {
   backups.forEach(f => warn(JSON.stringify(f) + '  backup file in the root — not shell junk, but is it meant to be versioned?'));
   info('git already keeps every version; a .bak next to the file is a second truth that ages in silence.');
@@ -1759,49 +1759,49 @@ if (backups.length) {
 log('\n\x1b[1m4. Fixed context — what loads in every session\x1b[0m');
 log('   (every agent/skill/command description enters the prompt always, used or not)');
 
-const descricaoDe = (arq) => {
+const descriptionOf = (file) => {
   try {
-    const m = fs.readFileSync(arq, 'utf8').match(/^description:[ \t]*(.+)$/mi);
+    const m = fs.readFileSync(file, 'utf8').match(/^description:[ \t]*(.+)$/mi);
     return m ? m[1].trim() : '';
   } catch { return ''; }
 };
-const mdsDe = (dir) => {
+const mdsOf = (dir) => {
   try {
     return fs.readdirSync(dir, { recursive: true })
       .filter(f => String(f).endsWith('.md')).map(f => path.join(dir, String(f)));
   } catch { return []; }
 };
-const pesar = (base) => {
+const weigh = (base) => {
   const r = { agents: 0, skills: 0, commands: 0, chars: 0 };
-  for (const a of mdsDe(path.join(base, 'agents')))   { r.agents++;   r.chars += descricaoDe(a).length; }
-  for (const c of mdsDe(path.join(base, 'commands'))) { r.commands++; r.chars += descricaoDe(c).length; }
+  for (const a of mdsOf(path.join(base, 'agents')))   { r.agents++;   r.chars += descriptionOf(a).length; }
+  for (const c of mdsOf(path.join(base, 'commands'))) { r.commands++; r.chars += descriptionOf(c).length; }
   try {
     for (const e of fs.readdirSync(path.join(base, 'skills'), { withFileTypes: true })) {
       if (!e.isDirectory()) continue;
       const s = path.join(base, 'skills', e.name, 'SKILL.md');
-      if (fs.existsSync(s)) { r.skills++; r.chars += descricaoDe(s).length; }
+      if (fs.existsSync(s)) { r.skills++; r.chars += descriptionOf(s).length; }
     }
   } catch {}
   return r;
 };
 
-const niveis = [];
-const baseGlobal = path.join(os.homedir(), '.claude');
-for (let cur = RAIZ; ; cur = path.dirname(cur)) {
+const levels = [];
+const globalBase = path.join(os.homedir(), '.claude');
+for (let cur = ROOT; ; cur = path.dirname(cur)) {
   const base = path.join(cur, '.claude');
   // Project inside the home: the climb would find ~/.claude and it would be counted
   // again right below, doubling the total. Skip here, not there — the global level
   // has its own label and is what the user needs to see.
-  if (fs.existsSync(base) && path.resolve(base) !== path.resolve(baseGlobal)) {
-    niveis.push([cur, pesar(base), false]);
+  if (fs.existsSync(base) && path.resolve(base) !== path.resolve(globalBase)) {
+    levels.push([cur, weigh(base), false]);
   }
   if (path.dirname(cur) === cur) break;
 }
-if (fs.existsSync(baseGlobal)) niveis.push([baseGlobal + ' (GLOBAL)', pesar(baseGlobal), true]);
+if (fs.existsSync(globalBase)) levels.push([globalBase + ' (GLOBAL)', weigh(globalBase), true]);
 
 let totalTokens = 0;
-for (const [d, p, global] of niveis) {
-  const t = emTokens(p.chars);
+for (const [d, p, global] of levels) {
+  const t = toTokens(p.chars);
   totalTokens += t;
   if (!p.agents && !p.skills && !p.commands) continue;
   info(`${String(p.agents).padStart(3)} agents  ${String(p.skills).padStart(3)} skills  ` +
@@ -1809,12 +1809,12 @@ for (const [d, p, global] of niveis) {
 }
 if (totalTokens) info(`${''.padStart(46)}~${totalTokens} tk fixed per session (estimate)`);
 
-const comAgentes = niveis.filter(([, p]) => p.agents > 0).length;
-if (comAgentes > 2)
+const withAgents = levels.filter(([, p]) => p.agents > 0).length;
+if (withAgents > 2)
   warn('more than 2 levels with agents → the most specific one wins silently.');
-const gl = niveis.find(([, , g]) => g);
-if (gl && emTokens(gl[1].chars) > 2000) {
-  warn(`the GLOBAL level alone costs ~${emTokens(gl[1].chars)} tokens in every session of every project`);
+const gl = levels.find(([, , g]) => g);
+if (gl && toTokens(gl[1].chars) > 2000) {
+  warn(`the GLOBAL level alone costs ~${toTokens(gl[1].chars)} tokens in every session of every project`);
   info('  the three-bucket rule:');
   info('    used in >1 project  → global (that is real capability)');
   info('    used in 1 project   → <project>/.claude/skills/');
@@ -1831,35 +1831,35 @@ if (gl && emTokens(gl[1].chars) > 2000) {
 // The warning is only useful with a DESTINATION. "It is big" is moralizing; "this belongs
 // in such file" is an action. That is why the two go together — in `imprimirContextoFixo`.
 log('');
-imprimirContextoFixo();
+printFixedContext();
 
 // ═══════════════════════════════════════════ 5. KNOWLEDGE BASE IN .marvin/
 log('\n\x1b[1m5. Knowledge base (a single folder — plain markdown, organized as a graph)\x1b[0m');
 // DOCS was detected up top, before any write, because --check needs it.
-const novoVault = !fs.existsSync(DOCS);
+const newVault = !fs.existsSync(DOCS);
 fsw.mkdirSync(DOCS, { recursive: true });
-info('vault: ' + path.relative(RAIZ, DOCS) + (novoVault ? '  (created now)' : '  (already existed)'));
-const docsDoProduto = CANDIDATOS.find(d => fs.existsSync(d) && !ehVault(d) && path.resolve(d) !== path.resolve(DOCS));
-if (docsDoProduto) info('living next to ' + path.relative(RAIZ, docsDoProduto) + '/ from the product — untouched');
+info('vault: ' + path.relative(ROOT, DOCS) + (newVault ? '  (created now)' : '  (already existed)'));
+const productDocs = CANDIDATES.find(d => fs.existsSync(d) && !isVault(d) && path.resolve(d) !== path.resolve(DOCS));
+if (productDocs) info('living next to ' + path.relative(ROOT, productDocs) + '/ from the product — untouched');
 // No tool config is written here: they are just .md files in a folder, and that is
 // the point. Any editor opens them. Whoever wants a notes app on top points it at this
 // folder — the base does not depend on that to work.
 
 // Writes a file only if it does not exist (invariant 2) and records it in the output.
-const escreverSeFaltar = (rel, conteudo) => {
+const writeIfMissing = (rel, content) => {
   const p = path.join(DOCS, rel);
   if (fs.existsSync(p)) { info(rel + ' already exists'); return false; }
   fsw.mkdirSync(path.dirname(p), { recursive: true });
-  fsw.writeFileSync(p, conteudo);
+  fsw.writeFileSync(p, content);
   ok(rel);
   return true;
 };
 
-if (LAYOUT_ANTIGO) {
+if (OLD_LAYOUT) {
   // ── Layout by file type (08_Memoria/, 10_Decisoes/…). Keeps working where it is:
   // the junction points to the notes, /retomar reads the same note. What changed is
   // the organization — and moving content is the human's decision, not the script's.
-  warn('old layout: ' + path.relative(RAIZ, DEST).replace(/\\/g, '/') + ' — the base is organized as a graph since 1.2 (Contexto/ · Planejamento/ · Releases/ · Memoria/)');
+  warn('old layout: ' + path.relative(ROOT, DEST).replace(/\\/g, '/') + ' — the base is organized as a graph since 1.2 (Contexto/ · Planejamento/ · Releases/ · Memoria/)');
   info('  nothing was moved. To migrate: create Memoria/ next to 08_Memoria/, move the note,');
   info('  run marvin again (the junction is re-pointed), then place the rest by hand.');
   info('  why, and what goes where: https://github.com/Josuebmota/Marvin/blob/main/.marvin/Contexto/Arquitetura/organizacao-por-grafo.md');
@@ -1868,7 +1868,7 @@ if (LAYOUT_ANTIGO) {
   // README of 10_Decisoes. The folder was born empty and without a line explaining what
   // it is for, and an empty folder teaches nobody: the result was everyone piling
   // history into `onde_paramos.md` until it became a changelog.
-  escreverSeFaltar('10_Decisoes/README.md', [
+  writeIfMissing('10_Decisoes/README.md', [
   '# Decisões',
   '',
   'Uma decisão por arquivo, nome em `slug-curto.md`. **Acrescenta, nunca sobrescreve** —',
@@ -1918,14 +1918,14 @@ if (LAYOUT_ANTIGO) {
   // teaches nobody, and the result of a mute folder was measured: reports piled into
   // the note that loads in every session (18 sections in a real project).
   const dirs = ['Contexto/Fluxos', 'Contexto/Arquitetura', 'Planejamento/Manutencao', 'Planejamento/Novos', 'Fontes', 'Releases', 'Memoria'];
-  if (TEM_FRONT) dirs.push('Contexto/Design');
+  if (HAS_FRONT) dirs.push('Contexto/Design');
   for (const d of dirs) fsw.mkdirSync(path.join(DOCS, d), { recursive: true });
-  info('Contexto/ (what it IS) · Planejamento/ (what is being DONE) · Fontes/ · Releases/ · Memoria/' + (TEM_FRONT ? ' · Contexto/Design/ (front detected)' : ''));
+  info('Contexto/ (what it IS) · Planejamento/ (what is being DONE) · Fontes/ · Releases/ · Memoria/' + (HAS_FRONT ? ' · Contexto/Design/ (front detected)' : ''));
 
-  escreverSeFaltar('Contexto/Sobre.md', `---
+  writeIfMissing('Contexto/Sobre.md', `---
 tipo: projeto
 ---
-# ${path.basename(RAIZ)}
+# ${path.basename(ROOT)}
 
 _(três linhas: o que é, para quem, o que NÃO é)_
 
@@ -1938,7 +1938,7 @@ _(um fluxo entra aqui quando é analisado numa atividade — não antes. Uma lin
 
 _(como foi projetado e com o quê. Decisão estrutural — a que não pertence a uma US — mora aqui.)_
 <!-- - [visao-geral](Arquitetura/visao-geral.md) -->
-${TEM_FRONT ? `
+${HAS_FRONT ? `
 ## Design
 
 _(o design do front: telas, componentes, onde mora o Figma)_
@@ -1979,7 +1979,7 @@ A memória foi montada de propósito **dentro do repositório**, não no perfil 
 - **_(data)_** — base criada com esta organização.
 `);
 
-  escreverSeFaltar('Contexto/Fluxos/README.md', `# Fluxos
+  writeIfMissing('Contexto/Fluxos/README.md', `# Fluxos
 
 Um arquivo por fluxo do produto (\`checkout.md\`, \`login.md\`…). **Incremental:** o fluxo
 entra quando uma atividade exige analisá-lo, e o que se descobriu fica aqui em vez de
@@ -2003,7 +2003,7 @@ Formato mínimo:
 \`\`\`
 `);
 
-  escreverSeFaltar('Planejamento/README.md', `# Planejamento
+  writeIfMissing('Planejamento/README.md', `# Planejamento
 
 O que está sendo **feito**, em três níveis: \`<Epic>/<Feature>/<US>/\`, cada um com o seu
 \`Sobre.md\`. \`Manutencao/\` para o que já existe; \`Novos/\` para o que ainda não.
@@ -2091,7 +2091,7 @@ pai: ../Sobre.md
 função depois de um traço — é assim que o grafo liga a US ao nó de código.
 `);
 
-  escreverSeFaltar('Releases/README.md', `# Releases
+  writeIfMissing('Releases/README.md', `# Releases
 
 Um arquivo por versão que subiu para main: \`<versao>.md\`. É um **índice**, não um
 relato — uma linha por US, com link e evidência. O relato já está no \`git log\`.
@@ -2105,7 +2105,7 @@ relato — uma linha por US, com link e evidência. O relato já está no \`git 
 Ao entrar aqui, a US sai do \`onde_paramos.md\`. Reaberta depois? É outra release.
 `);
 
-  escreverSeFaltar('Fontes/README.md', `# Fontes
+  writeIfMissing('Fontes/README.md', `# Fontes
 
 Apoio e suporte: o que ajuda a trabalhar mas não é contexto nem planejamento —
 referência de API, esquema de banco, glossário, transcrição de reunião.
@@ -2114,14 +2114,14 @@ referência de API, esquema de banco, glossário, transcrição de reunião.
 }
 
 // a vault in a separate folder is this script's old layout
-const LEGADO = path.join(RAIZ, 'Obsidian');
-if (fs.existsSync(LEGADO) && path.resolve(LEGADO) !== path.resolve(DOCS)) {
+const LEGACY = path.join(ROOT, 'Obsidian');
+if (fs.existsSync(LEGACY) && path.resolve(LEGACY) !== path.resolve(DOCS)) {
   warn('a separate Obsidian/ folder exists — old layout. The knowledge base is .marvin/ now.');
-  for (const e of fs.readdirSync(LEGADO, { withFileTypes: true })) {
-    const p = path.join(LEGADO, e.name);
-    let tipo = e.isFile() ? 'file' : 'folder';
-    try { if (fs.lstatSync(p).isSymbolicLink()) tipo = 'junction → ' + fs.readlinkSync(p); } catch {}
-    info('  · ' + e.name.padEnd(18) + tipo);
+  for (const e of fs.readdirSync(LEGACY, { withFileTypes: true })) {
+    const p = path.join(LEGACY, e.name);
+    let type = e.isFile() ? 'file' : 'folder';
+    try { if (fs.lstatSync(p).isSymbolicLink()) type = 'junction → ' + fs.readlinkSync(p); } catch {}
+    info('  · ' + e.name.padEnd(18) + type);
   }
   info('  migrate the content and delete it. Junction: remove ONLY the link —');
   info('    [System.IO.Directory]::Delete("<path>", $false)   (PowerShell)');
@@ -2133,18 +2133,18 @@ log('\n\x1b[1m6. Memory (inverted junction — the step that versions it)\x1b[0m
 if (WORKTREE) info('git worktree — this checkout gets its own junction; notes written here travel with this branch');
 // DEST, ehJunction and contarNotas live up top — --check uses all three.
 
-if (ehJunction(MEM)) {
-  const alvo = fs.readlinkSync(MEM);
+if (isJunction(MEM)) {
+  const target = fs.readlinkSync(MEM);
   // The junction outlives its target: moving or deleting the vault leaves it pointing at
   // nothing, with no warning (it is the AGENTS.md trap). Without recreating it here, the
   // next steps blow up with ENOENT when writing the canonical note.
   if (!fs.existsSync(DEST)) {
-    warn('the junction exists but its target is gone — recreating ' + path.relative(RAIZ, DEST));
+    warn('the junction exists but its target is gone — recreating ' + path.relative(ROOT, DEST));
     fsw.mkdirSync(DEST, { recursive: true });
   }
-  if (path.resolve(alvo) === path.resolve(DEST)) {
-    ok('already inverted — ' + contarNotas(DEST) + ' notes in ' + path.relative(RAIZ, DEST));
-  } else if (!fs.existsSync(alvo)) {
+  if (path.resolve(target) === path.resolve(DEST)) {
+    ok('already inverted — ' + countNotes(DEST) + ' notes in ' + path.relative(ROOT, DEST));
+  } else if (!fs.existsSync(target)) {
     // Points SOMEWHERE ELSE AND that place does not exist: it is orphaned, not someone
     // else's mount. Telling the two apart is what was missing — renaming the vault (or
     // accepting `.docs` -> `.marvin`) lands exactly here, and before the script only
@@ -2152,14 +2152,14 @@ if (ehJunction(MEM)) {
     //
     // Repointing is safe because there is nothing at the old target to lose: only the
     // link dies, and the live content is in DEST. Invariant 1 holds without drama.
-    warn('the junction pointed somewhere that no longer exists: ' + alvo);
+    warn('the junction pointed somewhere that no longer exists: ' + target);
     fsw.unlinkSync(MEM);
     fsw.symlinkSync(DEST, MEM, 'junction');
-    ok('repointed to ' + path.relative(RAIZ, DEST) + ' — ' + contarNotas(DEST) + ' notes');
+    ok('repointed to ' + path.relative(ROOT, DEST) + ' — ' + countNotes(DEST) + ' notes');
   } else {
     // The other target EXISTS: then it is someone else's mount (or another project's),
     // and undoing it is not this script's call.
-    warn('already a junction, but it points elsewhere: ' + alvo);
+    warn('already a junction, but it points elsewhere: ' + target);
     info('the memory of this project is landing outside this repository.');
     info('nothing was touched — undoing someone else`s mount is not this script`s call.');
   }
@@ -2174,23 +2174,23 @@ if (ehJunction(MEM)) {
   // the junction creation with EEXIST — the script warned and exited 0, leaving the
   // memory disconnected from the repository. Silence that looks like success is the
   // worst way to fail this project knows.
-  const itens = fs.existsSync(MEM) ? fs.readdirSync(MEM) : [];
-  if (itens.length) {
-    const origem = contarNotas(MEM);
+  const items = fs.existsSync(MEM) ? fs.readdirSync(MEM) : [];
+  if (items.length) {
+    const origin = countNotes(MEM);
     fsw.cpSync(MEM, DEST, { recursive: true, force: true });
     // In --dry-run the copy did not happen, so the count would be 0 and the check would
     // abort reporting a loss that does not exist. Invariant 1 holds for the real run;
     // here we only announce what would be done.
-    const copiado = DRY ? origem : contarNotas(DEST);
+    const copied = DRY ? origin : countNotes(DEST);
     // Counting only the notes is not enough: the directory may have a subfolder or an
     // attachment, and deleting what did not reach the destination is exactly what invariant 1 forbids.
-    const naoCopiado = DRY ? [] : itens.filter(n => !fs.existsSync(path.join(DEST, n)));
-    if (copiado < origem || naoCopiado.length) {
-      err(`ABORTED — copied ${copiado} of ${origem} notes. Nothing was deleted.`);
-      naoCopiado.forEach(n => info('missing at the destination: ' + n));
+    const notCopied = DRY ? [] : items.filter(n => !fs.existsSync(path.join(DEST, n)));
+    if (copied < origin || notCopied.length) {
+      err(`ABORTED — copied ${copied} of ${origin} notes. Nothing was deleted.`);
+      notCopied.forEach(n => info('missing at the destination: ' + n));
       process.exit(1);
     }
-    ok(`${copiado} notes copied to ${path.relative(RAIZ, DEST)} (verified)`);
+    ok(`${copied} notes copied to ${path.relative(ROOT, DEST)} (verified)`);
     fsw.rmSync(MEM, { recursive: true, force: true });
   } else if (fs.existsSync(MEM)) {
     // Empty: nothing to check and nothing to lose — and it is what blocks the junction.
@@ -2200,8 +2200,8 @@ if (ehJunction(MEM)) {
   fsw.mkdirSync(path.dirname(MEM), { recursive: true });
   try {
     fsw.symlinkSync(DEST, MEM, 'junction');
-    ok('junction created: profile → ' + path.relative(RAIZ, DEST));
-    ok('check: ' + contarNotas(MEM) + ' notes visible through the agent path');
+    ok('junction created: profile → ' + path.relative(ROOT, DEST));
+    ok('check: ' + countNotes(MEM) + ' notes visible through the agent path');
   } catch (e) {
     err('junction failed: ' + e.message);
     warn('the notes are saved in ' + DEST + ' — nothing was lost');
@@ -2214,7 +2214,7 @@ if (ehJunction(MEM)) {
 // 00_Inicio.md was the root node of the old layout. In the graph layout the root node is
 // Contexto/Sobre.md (step 5), and the junction setup is already in the CLAUDE.md.
 const idx = path.join(DOCS, '00_Inicio.md');
-if (!LAYOUT_ANTIGO) { /* nothing: Contexto/Sobre.md is the root */ }
+if (!OLD_LAYOUT) { /* nothing: Contexto/Sobre.md is the root */ }
 else if (!fs.existsSync(idx)) {
   fsw.writeFileSync(idx, `---
 name: inicio
@@ -2222,9 +2222,9 @@ aliases: ["Início", "Home", "MOC"]
 tags: [moc]
 ---
 
-# ${path.basename(RAIZ)} — Base de Conhecimento
+# ${path.basename(ROOT)} — Base de Conhecimento
 
-> **Esta pasta é a base de conhecimento** deste projeto: \`${path.relative(RAIZ, DOCS)}\`.
+> **Esta pasta é a base de conhecimento** deste projeto: \`${path.relative(ROOT, DOCS)}\`.
 > Markdown puro, arquivo real, sem depender de ferramenta nenhuma para ser lido.
 
 ## Montagem
@@ -2232,12 +2232,12 @@ tags: [moc]
 Existe **uma junction só**, e ela é invertida:
 
 \`\`\`
-~/.claude/projects/${RAIZ.replace(/[:\\/]/g, '-')}/memory  ──►  ${path.relative(RAIZ, DEST)}/
+~/.claude/projects/${ROOT.replace(/[:\\/]/g, '-')}/memory  ──►  ${path.relative(ROOT, DEST)}/
 \`\`\`
 
 O Claude escreve no caminho padrão dele; os arquivos nascem dentro do repositório.
 
-⚠️ Abrir o Claude Code sempre de \`${RAIZ}\` — a memória é derivada do caminho.
+⚠️ Abrir o Claude Code sempre de \`${ROOT}\` — a memória é derivada do caminho.
 ⚠️ A memória guarda decisão de produto e id de cliente. **Repo privado, sempre.**
 ⚠️ Mover ou renomear esta pasta quebra a junction **em silêncio**: ela fica apontando para
 o caminho antigo e um diretório vazio nasce no novo. As notas não se perdem — moram aqui.
@@ -2270,9 +2270,9 @@ não conteúdo.
 
 // ═══════════════════════════════════════════ 6b. EXTERNAL SOURCES
 log('\n\x1b[1m6b. External sources (where user stories, tickets and specs live)\x1b[0m');
-const FONTES = path.join(DOCS, LAYOUT_ANTIGO ? '00_Fontes_Externas.md' : 'Fontes/Externas.md');
-const NOME_FONTES = path.relative(DOCS, FONTES).replace(/\\/g, '/');
-const PADROES = [
+const SOURCES = path.join(DOCS, OLD_LAYOUT ? '00_Fontes_Externas.md' : 'Fontes/Externas.md');
+const SOURCES_NAME = path.relative(DOCS, SOURCES).replace(/\\/g, '/');
+const PATTERNS = [
   [/https?:\/\/[\w.-]*notion\.(so|site)\/\S+/gi, 'Notion'],
   [/https?:\/\/[\w.-]*atlassian\.net\/\S+/gi, 'Jira/Confluence'],
   [/https?:\/\/(www\.)?linear\.app\/\S+/gi, 'Linear'],
@@ -2281,46 +2281,46 @@ const PADROES = [
   [/https?:\/\/(www\.)?figma\.com\/\S+/gi, 'Figma'],
   [/https?:\/\/github\.com\/\S+\/(issues|projects)\S*/gi, 'GitHub Issues'],
 ];
-const encontradas = new Map();
-(function grepDocs(dir, prof = 0) {
-  if (prof > 2) return;
-  let ents; try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
-  for (const e of ents) {
-    if (IGNORAR.has(e.name) || e.name.startsWith('.')) continue;
+const foundItems = new Map();
+(function grepDocs(dir, depth = 0) {
+  if (depth > 2) return;
+  let entries; try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+  for (const e of entries) {
+    if (IGNORE.has(e.name) || e.name.startsWith('.')) continue;
     const p = path.join(dir, e.name);
-    if (e.isDirectory()) { grepDocs(p, prof + 1); continue; }
+    if (e.isDirectory()) { grepDocs(p, depth + 1); continue; }
     if (!/\.(md|txt|json)$/i.test(e.name)) continue;
     let txt; try { txt = fs.readFileSync(p, 'utf8'); } catch { continue; }
-    for (const [re, nome] of PADROES) {
+    for (const [re, name] of PATTERNS) {
       const m = txt.match(re);
       if (m) {
-        if (!encontradas.has(nome)) encontradas.set(nome, new Set());
-        m.slice(0, 3).forEach(u => encontradas.get(nome).add(u.replace(/[)\].,]+$/, '')));
+        if (!foundItems.has(name)) foundItems.set(name, new Set());
+        m.slice(0, 3).forEach(u => foundItems.get(name).add(u.replace(/[)\].,]+$/, '')));
       }
     }
   }
 })(DOCS);
-if (encontradas.size) {
+if (foundItems.size) {
   ok('found references already cited in the docs:');
-  for (const [nome, urls] of encontradas) { info(nome + ':'); [...urls].slice(0, 2).forEach(u => info('  ' + u)); }
+  for (const [name, urls] of foundItems) { info(name + ':'); [...urls].slice(0, 2).forEach(u => info('  ' + u)); }
 } else info('no tool URLs found in the docs');
 
 // A project migrated from the old layout still has the file under the old name: same
 // content, so it counts as existing — otherwise a blank one is born on top (it happened).
-const FONTES_ANTIGO = path.join(DOCS, '00_Fontes_Externas.md');
-if (fs.existsSync(FONTES)) {
-  info(NOME_FONTES + ' already exists — not overwriting');
-} else if (!LAYOUT_ANTIGO && fs.existsSync(FONTES_ANTIGO)) {
-  warn('00_Fontes_Externas.md is the old name — move it to ' + NOME_FONTES + ' (nothing written)');
+const SOURCES_OLD = path.join(DOCS, '00_Fontes_Externas.md');
+if (fs.existsSync(SOURCES)) {
+  info(SOURCES_NAME + ' already exists — not overwriting');
+} else if (!OLD_LAYOUT && fs.existsSync(SOURCES_OLD)) {
+  warn('00_Fontes_Externas.md is the old name — move it to ' + SOURCES_NAME + ' (nothing written)');
 } else {
-  let respostas = null;
+  let answers = null;
   if (process.stdin.isTTY) {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     log('');
     log('  Outside this repo memory and docs, where does the product truth live?');
     log('  (user stories, backlog, tickets, specs, design. Blank Enter skips.)');
     const q = async (rot) => (await rl.question('    ' + rot.padEnd(26))).trim();
-    respostas = {
+    answers = {
       backlog: await q('user stories / backlog:'),
       roadmap: await q('roadmap / status:'),
       design: await q('design (Figma?):'),
@@ -2331,8 +2331,8 @@ if (fs.existsSync(FONTES)) {
   } else {
     warn('no interactive terminal — writing the file with blanks for you to fill in');
   }
-  const linha = (rot, v) => '| ' + rot + ' | ' + (v || '_(preencher)_') + ' | |';
-  fsw.writeFileSync(FONTES, `---
+  const line = (rot, v) => '| ' + rot + ' | ' + (v || '_(preencher)_') + ' | |';
+  fsw.writeFileSync(SOURCES, `---
 name: fontes-externas
 aliases: ["Fontes Externas"]
 description: Onde mora a verdade do produto fora deste repositório
@@ -2346,15 +2346,15 @@ externa que ninguém sabe onde fica vira decisão perdida.
 
 | O quê | Onde | Quem mantém |
 |---|---|---|
-${linha('US / backlog', respostas?.backlog)}
-${linha('Roadmap / status', respostas?.roadmap)}
-${linha('Design', respostas?.design)}
-${linha('Tickets / bugs', respostas?.tickets)}
-${linha('Outro', respostas?.outro)}
-${encontradas.size ? `
+${line('US / backlog', answers?.backlog)}
+${line('Roadmap / status', answers?.roadmap)}
+${line('Design', answers?.design)}
+${line('Tickets / bugs', answers?.tickets)}
+${line('Outro', answers?.outro)}
+${foundItems.size ? `
 ## Detectado automaticamente nos docs
 
-${[...encontradas].map(([n, u]) => '- **' + n + '**: ' + [...u].slice(0, 3).join(' · ')).join('\n')}
+${[...foundItems].map(([n, u]) => '- **' + n + '**: ' + [...u].slice(0, 3).join(' · ')).join('\n')}
 ` : ''}
 ## Precedência
 
@@ -2368,14 +2368,14 @@ achado (tem commit e data); a ferramenta externa vence para roadmap e prioridade
 Quando uma decisão for tomada **lá fora**, registre aqui **o link e a data** — e o que
 mudou em uma linha.
 `);
-  ok(NOME_FONTES + (respostas ? ' (filled in)' : ' (blank — fill it in)'));
+  ok(SOURCES_NAME + (answers ? ' (filled in)' : ' (blank — fill it in)'));
 }
 
 // ═══════════════════════════════════════════ 7. .claude/agents
 log('\n\x1b[1m7. .claude/agents\x1b[0m');
-const agDir = path.join(RAIZ, '.claude', 'agents');
-fsw.mkdirSync(agDir, { recursive: true });
-const readme = path.join(agDir, 'README.md');
+const agentsDir = path.join(ROOT, '.claude', 'agents');
+fsw.mkdirSync(agentsDir, { recursive: true });
+const readme = path.join(agentsDir, 'README.md');
 if (!fs.existsSync(readme)) {
   fsw.writeFileSync(readme, `# Time deste projeto
 
@@ -2405,14 +2405,14 @@ ${(() => {
   // Recommendation DERIVED from the diagnosis, never a menu. Marvin does not write the
   // agent (invariant 4), but staying silent in front of an empty folder does not help
   // either: "how many roles?" has a different answer in a single-stack repo and in a monorepo.
-  const lista = [...new Set([...stacks.values()].flatMap(s => [...s]))];
-  const fronteiras = lista.length + SUBREPOS.length;
-  const detectado = lista.length ? lista.join(', ') : 'nenhum marcador de stack';
-  return `Detectado aqui: **${detectado}**` +
+  const list = [...new Set([...stacks.values()].flatMap(s => [...s]))];
+  const frontiers = list.length + SUBREPOS.length;
+  const detected = list.length ? list.join(', ') : 'nenhum marcador de stack';
+  return `Detectado aqui: **${detected}**` +
     (SUBREPOS.length ? `, mais ${SUBREPOS.length} sub-repositório(s) ignorado(s) pela raiz` : '') + `.
 
-` + (fronteiras > 1
-  ? `- **Um papel por fronteira, não um revisor universal.** São ${fronteiras} fronteiras aqui.
+` + (frontiers > 1
+  ? `- **Um papel por fronteira, não um revisor universal.** São ${frontiers} fronteiras aqui.
   Um único revisor que atravessa todas não segura o invariante de nenhuma — ele vira
   genérico, que é o modo de falhar deste arquivo.`
   : `- **Uma fronteira só:** \`dev-front\` e \`dev-back\` da base do \`AGENTS.md\` podem ser um
@@ -2424,7 +2424,7 @@ ${(() => {
 ${PONYTAIL ? `
 ### Ponytail: em que papel entra
 
-Este projeto usa o ponytail (\`${REGISTRO_REL}\`). A escada dele vale para quem
+Este projeto usa o ponytail (\`${RECORD_REL}\`). A escada dele vale para quem
 **implementa** sem convenção escrita — não para quem lê diff ou decide requisito. Sugestão,
 não regra; o corpo de cada agente é seu:
 
@@ -2474,7 +2474,7 @@ Arquivo vazio commitado passa despercebido por meses.
 
 // ═══════════════════════════════════════════ 7a. .claude/skills
 log('\n\x1b[1m7a. .claude/skills\x1b[0m');
-const skDir = path.join(RAIZ, '.claude', 'skills');
+const skDir = path.join(ROOT, '.claude', 'skills');
 fsw.mkdirSync(skDir, { recursive: true });
 const skReadme = path.join(skDir, 'README.md');
 if (!fs.existsSync(skReadme)) {
@@ -2538,19 +2538,19 @@ puro e migra por copiar e colar — igual à persona dos agentes.
 
 // ═══════════════════════════════════════════ 7b. ENTRY POINT
 log('\n\x1b[1m7b. Entry point (/retomar + the canonical note)\x1b[0m');
-const cmdDir = path.join(RAIZ, '.claude', 'commands');
+const cmdDir = path.join(ROOT, '.claude', 'commands');
 fsw.mkdirSync(cmdDir, { recursive: true });
-const cmdRetomar = path.join(cmdDir, 'retomar.md');
-if (!fs.existsSync(cmdRetomar)) {
-  fsw.writeFileSync(cmdRetomar, `---
+const cmdResume = path.join(cmdDir, 'retomar.md');
+if (!fs.existsSync(cmdResume)) {
+  fsw.writeFileSync(cmdResume, `---
 description: Retoma o trabalho a partir do estado corrente registrado — a porta de entrada do projeto
 ---
 
 Retome o trabalho neste projeto.
 
-1. Leia \`${path.relative(RAIZ, DEST).replace(/\\/g, '/')}/onde_paramos.md\` — é a **única**
+1. Leia \`${path.relative(ROOT, DEST).replace(/\\/g, '/')}/onde_paramos.md\` — é a **única**
    porta de entrada, sempre atualizada. Se não existir, leia o \`MEMORY.md\` e diga que a
-   nota canônica está faltando.${LAYOUT_ANTIGO ? '' : `
+   nota canônica está faltando.${OLD_LAYOUT ? '' : `
    Ela é uma lista de ponteiros: **siga o link** de cada US ativa e leia o \`Sobre.md\` dela —
    o estado e o Rumo moram lá, não na nota. Não abra o resto da base sem necessidade.`}
 
@@ -2595,8 +2595,8 @@ e **qual seria a primeira frase** do chat novo.
 // rule existed as text; text depends on someone remembering. A command fires.
 // /us calls `marvin --us`, which creates the Sobre.md chain and the pointer — the agent
 // only fills what takes judgment. /fechar is the pair of /retomar. Graph layout only.
-if (!LAYOUT_ANTIGO) {
-  const relDocs = path.relative(RAIZ, DOCS).replace(/\\/g, '/');   // 7c declares its own later
+if (!OLD_LAYOUT) {
+  const relDocs = path.relative(ROOT, DOCS).replace(/\\/g, '/');   // 7c declares its own later
   const cmdUs = path.join(cmdDir, 'us.md');
   if (!fs.existsSync(cmdUs)) {
     fsw.writeFileSync(cmdUs, `---
@@ -2608,7 +2608,7 @@ se eu passei só o nome, pergunte em qual Epic e Feature ela entra (liste os que
 \`${relDocs}/Planejamento/\`) antes de criar qualquer coisa.
 
 1. Rode \`marvin --us <caminho>\`. Ele cria a cadeia de \`Sobre.md\` que faltar e põe a linha em
-   \`${path.relative(RAIZ, DEST).replace(/\\/g, '/')}/onde_paramos.md\`. Se \`marvin\` não estiver no PATH:
+   \`${path.relative(ROOT, DEST).replace(/\\/g, '/')}/onde_paramos.md\`. Se \`marvin\` não estiver no PATH:
    \`npx marvin-kb --us <caminho>\`.
 
 2. A passada que a regra pede — está em \`${relDocs}/Planejamento/README.md\`, leia antes:
@@ -2627,9 +2627,9 @@ se eu passei só o nome, pergunte em qual Epic e Feature ela entra (liste os que
     ok('.claude/commands/us.md  → /us <caminho> opens a US the right way');
   } else info('/us already exists');
 
-  const cmdFechar = path.join(cmdDir, 'fechar.md');
-  if (!fs.existsSync(cmdFechar)) {
-    fsw.writeFileSync(cmdFechar, `---
+  const cmdClose = path.join(cmdDir, 'fechar.md');
+  if (!fs.existsSync(cmdClose)) {
+    fsw.writeFileSync(cmdClose, `---
 description: Fecha a sessão — registra o Rumo da US, atualiza a nota, confere a árvore, e diz se é hora de um chat novo
 ---
 
@@ -2638,7 +2638,7 @@ Feche a sessão. O par do \`/retomar\`: nada do que foi descoberto hoje pode fic
 1. \`git status --short\` e \`git log --oneline -3\`. Arquivo novo sem justificativa → me pergunte.
 
 2. Para cada US que mexemos hoje (as da seção *Em andamento* de
-   \`${path.relative(RAIZ, DEST).replace(/\\/g, '/')}/onde_paramos.md\`): uma entrada no **Rumo** do \`Sobre.md\`
+   \`${path.relative(ROOT, DEST).replace(/\\/g, '/')}/onde_paramos.md\`): uma entrada no **Rumo** do \`Sobre.md\`
    dela, datada, com o que se viu e o que se decidiu — e o que foi descartado, se houve. Concluiu
    e foi validada? *Evidência* preenchida, \`estado: concluida\`, linha em \`${relDocs}/Releases/<versao>.md\`,
    e **sai da nota**.
@@ -2668,33 +2668,33 @@ $ARGUMENTS
   // `--html` alongside regenerates the dashboard on every session start, silently — that is how it stays fresh.
   // MEDIUM confidence: hook conventions change fast — the warning says to check (invariant 3).
   // An existing settings.json is someone else's: NO merge — prints the block and stops.
-  const settings = path.join(RAIZ, '.claude', 'settings.json');
+  const settings = path.join(ROOT, '.claude', 'settings.json');
   // The command points to THE SCRIPT THAT SCAFFOLDED, not to `npx marvin-kb`: npx downloads
   // the published version, and a version that does not know `--status` would ignore the
   // flag and run the whole scaffold on every session start. Same choice as 8b's post-commit.
-  const comandoHook = fs.existsSync(path.join(RAIZ, 'marvin.mjs')) ? 'node marvin.mjs --status --curto --html'
+  const hookCommand = fs.existsSync(path.join(ROOT, 'marvin.mjs')) ? 'node marvin.mjs --status --curto --html'
     : 'node "' + process.argv[1].replace(/\\/g, '/') + '" --status --curto --html';
-  const blocoHook = { hooks: { SessionStart: [{ matcher: '', hooks: [{ type: 'command', command: comandoHook }] }] } };
+  const hookBlock = { hooks: { SessionStart: [{ matcher: '', hooks: [{ type: 'command', command: hookCommand }] }] } };
   if (!fs.existsSync(settings)) {
-    fsw.writeFileSync(settings, JSON.stringify(blocoHook, null, 2) + '\n');
-    ok('.claude/settings.json — SessionStart hook: `' + comandoHook + '` (confidence: medium — check the hook format in the current Claude Code docs)');
+    fsw.writeFileSync(settings, JSON.stringify(hookBlock, null, 2) + '\n');
+    ok('.claude/settings.json — SessionStart hook: `' + hookCommand + '` (confidence: medium — check the hook format in the current Claude Code docs)');
   } else {
     let txt = ''; try { txt = fs.readFileSync(settings, 'utf8'); } catch {}
     if (/--status --curto/.test(txt)) info('.claude/settings.json already runs the status hook');
     else {
       warn('.claude/settings.json exists — not merged (it is yours). To get the status at session start, add:');
-      JSON.stringify(blocoHook, null, 2).split('\n').forEach(l => info('  ' + l));
+      JSON.stringify(hookBlock, null, 2).split('\n').forEach(l => info('  ' + l));
     }
   }
 }
 
-const ondeParamos = path.join(DEST, 'onde_paramos.md');
-if (fs.existsSync(ondeParamos)) {
+const whereWeStopped = path.join(DEST, 'onde_paramos.md');
+if (fs.existsSync(whereWeStopped)) {
   info('onde_paramos.md already exists');
-} else if (!LAYOUT_ANTIGO) {
+} else if (!OLD_LAYOUT) {
   // The graph-layout note is pointers only. Each US's state lives in its Sobre.md and
   // only loads when followed — it is the difference between 1 KB and 19 KB per session.
-  fsw.writeFileSync(ondeParamos, `---
+  fsw.writeFileSync(whereWeStopped, `---
 name: onde-paramos
 aliases: ["onde-paramos", "ONDE PARAMOS"]
 description: "ÚNICA porta de entrada. Só ponteiros para as US em andamento — sempre sobrescrita."
@@ -2728,7 +2728,7 @@ _(só o que trava TODAS as US — acesso, ambiente, decisão de fora. O que é d
 `);
   ok('onde_paramos.md (pointers only — one line per active US)');
 } else {
-  fsw.writeFileSync(ondeParamos, `---
+  fsw.writeFileSync(whereWeStopped, `---
 name: onde-paramos
 aliases: ["onde-paramos", "ONDE PARAMOS"]
 description: "ÚNICA porta de entrada. Estado corrente — sempre sobrescrita, nunca duplicada."
@@ -2774,20 +2774,20 @@ _(o que não anda, e por quê — se nada, escreva "nada")_
 
 // ═══════════════════════════════════════════ 7c. SINGLE SOURCE + ADAPTERS
 log('\n\x1b[1m7c. Portability — 1 source, N thin adapters\x1b[0m');
-const relDocs = path.relative(RAIZ, DOCS).replace(/\\/g, '/');
-const relMem = path.relative(RAIZ, DEST).replace(/\\/g, '/');
-const NOME = path.basename(RAIZ);
+const relDocs = path.relative(ROOT, DOCS).replace(/\\/g, '/');
+const relMem = path.relative(ROOT, DEST).replace(/\\/g, '/');
+const NAME = path.basename(ROOT);
 
-if (ferrInvalidas.length) {
-  warn('unknown tool ignored: ' + ferrInvalidas.join(', '));
-  info('valid: ' + FERRAMENTAS_VALIDAS.join(', '));
+if (invalidTools.length) {
+  warn('unknown tool ignored: ' + invalidTools.join(', '));
+  info('valid: ' + VALID_TOOLS.join(', '));
 }
-info('tools: ' + FERRAMENTAS.join(', '));
+info('tools: ' + TOOLS.join(', '));
 
 // ── THE SOURCE. All durable content lives here and nowhere else.
-const AGENTS = path.join(RAIZ, 'AGENTS.md');
+const AGENTS = path.join(ROOT, 'AGENTS.md');
 if (!fs.existsSync(AGENTS)) {
-  fsw.writeFileSync(AGENTS, `# ${NOME}
+  fsw.writeFileSync(AGENTS, `# ${NAME}
 
 > **Fonte de verdade deste projeto, independente de ferramenta.**
 > Estrutura, invariantes, armadilhas e convenções moram **aqui e em nenhum outro lugar**.
@@ -2820,11 +2820,11 @@ consegue julgar se uma mudança é segura.)_
 _(o que já mordeu: campo que parece uma coisa e é outra, valor derivado que parece
 persistido, efeito colateral não óbvio, UI que promete o que o código não faz)_
 
-${BLOCO_COMANDOS}## Convenções
+${COMMANDS_BLOCK}## Convenções
 
 - _(idioma do código / comentário / commit)_
 - _(limite de tamanho de arquivo)_
-${LINHA_TESTE_BUILD}- Nunca commitar secret, \`.env\` ou credencial
+${TEST_BUILD_LINE}- Nunca commitar secret, \`.env\` ou credencial
 - **Nada de arquivo que ninguém pediu.** Antes de fechar: \`git status --short\` e uma
   justificativa por arquivo novo — sem justificativa, apaga.
 
@@ -2844,9 +2844,9 @@ Relatório verde de agente não substitui ler o diff.
 
 ## Conhecimento e memória
 
-\`${relDocs}/\` é a base de conhecimento — markdown puro, arquivo real${LAYOUT_ANTIGO ? '' : ', **organizada como grafo**'}.
+\`${relDocs}/\` é a base de conhecimento — markdown puro, arquivo real${OLD_LAYOUT ? '' : ', **organizada como grafo**'}.
 **Legível por qualquer ferramenta**, e por nenhuma também: é só uma pasta com \`.md\` dentro.
-${LAYOUT_ANTIGO ? `
+${OLD_LAYOUT ? `
 - \`${relMem}/onde_paramos.md\` — a única porta de entrada
 - \`${relDocs}/00_Fontes_Externas.md\` — o que vive fora deste repositório
 - \`${relDocs}/10_Decisoes/<slug>.md\` — **por que** escolhemos cada coisa (ver o README de lá)
@@ -2871,7 +2871,7 @@ gatilho que faz a regra ser lembrada em vez de decorada. Sem gatilho, "sempre at
 memória" não dispara nunca — ou dispara sempre, que é pior.
 
 - Commit que muda o **estado** do projeto — decisão tomada, subsistema novo, armadilha
-  descoberta, algo que travou — pede uma passada ${LAYOUT_ANTIGO ? 'no \`onde_paramos.md\`' : 'no \`Sobre.md\` da US (e na nota, se uma US abriu ou fechou)'} **antes**.
+  descoberta, algo que travou — pede uma passada ${OLD_LAYOUT ? 'no \`onde_paramos.md\`' : 'no \`Sobre.md\` da US (e na nota, se uma US abriu ou fechou)'} **antes**.
 - Commit de typo, formatação ou renomeação não pede nada.
 - A nota é **sobrescrita**, não acrescentada: o histórico é o \`git log\`. Criar
   \`onde_paramos_<data>.md\` **ou uma seção de relato dentro dela** é o mesmo erro.
@@ -2903,25 +2903,25 @@ abre a sessão, então é onde a regra de fechar mora. **A regra que fecha:** re
 } else info('AGENTS.md already exists');
 
 // ── THE ADAPTERS. Each points to the source; none carries content of its own.
-const PONTEIRO = `A fonte de verdade deste projeto é **[AGENTS.md](AGENTS.md)** — estrutura, invariantes,
+const POINTER = `A fonte de verdade deste projeto é **[AGENTS.md](AGENTS.md)** — estrutura, invariantes,
 armadilhas e convenções estão lá. **Leia AGENTS.md antes de qualquer coisa.**
 Este arquivo não duplica nada: só acrescenta o que é específico desta ferramenta.
 
 Estado corrente e próximo passo: \`${relMem}/onde_paramos.md\`.`;
 
-const AVISO_CONVENCAO = (ferr) => `<!-- ATENÇÃO: a convenção de arquivo do ${ferr} pode ter mudado desde 31/07/2026.
+const CONVENTION_NOTICE = (tool) => `<!-- ATENÇÃO: a convenção de arquivo do ${tool} pode ter mudado desde 31/07/2026.
      Confira na documentação atual se este caminho ainda é lido. Adaptador que não
      carrega falha em silêncio — pior que adaptador ausente. -->`;
 
-const adaptadores = {
+const adapters = {
   claude: {
     arquivo: 'CLAUDE.md',
     confianca: 'alta',
-    conteudo: () => `# ${NOME} — Claude Code
+    conteudo: () => `# ${NAME} — Claude Code
 
 @AGENTS.md
 
-> ${PONTEIRO.split('\n').join('\n> ')}
+> ${POINTER.split('\n').join('\n> ')}
 
 ## Onde parou
 
@@ -2944,10 +2944,10 @@ o que está *faltando*.
 
 ## Memória
 
-\`~/.claude/projects/${RAIZ.replace(/[:\\/]/g, '-')}/memory\` é uma **junction** para
+\`~/.claude/projects/${ROOT.replace(/[:\\/]/g, '-')}/memory\` é uma **junction** para
 \`${relMem}/\`. O Claude escreve no caminho padrão e os arquivos nascem no repositório.
 
-⚠️ Abra sempre de \`${RAIZ}\` — a memória é derivada do caminho. De um subdiretório, cai
+⚠️ Abra sempre de \`${ROOT}\` — a memória é derivada do caminho. De um subdiretório, cai
 numa memória diferente e vazia, sem aviso.
 
 ⚠️ **Mover ou renomear a pasta do projeto quebra essa junction em silêncio.** Ela continua
@@ -2999,9 +2999,9 @@ sobre um grafo que ele não garante fresco.
   copilot: {
     arquivo: '.github/copilot-instructions.md',
     confianca: 'alta',
-    conteudo: () => `# ${NOME}
+    conteudo: () => `# ${NAME}
 
-${PONTEIRO}
+${POINTER}
 
 <!-- Repository-wide instructions: GitHub Copilot reads this file automatically.
      Copilot's agent also reads AGENTS.md anywhere in the repo; chat and code
@@ -3012,73 +3012,73 @@ ${PONTEIRO}
     arquivo: '.cursor/rules/projeto.mdc',
     confianca: 'média',
     conteudo: () => `---
-description: Contexto do projeto ${NOME}
+description: Contexto do projeto ${NAME}
 alwaysApply: true
 ---
-${AVISO_CONVENCAO('Cursor')}
+${CONVENTION_NOTICE('Cursor')}
 
-${PONTEIRO}
+${POINTER}
 `,
   },
   aider: {
     arquivo: 'CONVENTIONS.md',
     confianca: 'média',
-    conteudo: () => `${AVISO_CONVENCAO('Aider')}
+    conteudo: () => `${CONVENTION_NOTICE('Aider')}
 <!-- O Aider não lê este arquivo automaticamente: rode com --read CONVENTIONS.md
      ou registre em .aider.conf.yml -->
 
-# Convenções — ${NOME}
+# Convenções — ${NAME}
 
-${PONTEIRO}
+${POINTER}
 `,
   },
   zed: {
     arquivo: 'AGENT.md',
     confianca: 'baixa',
-    conteudo: () => `${AVISO_CONVENCAO('Zed')}
+    conteudo: () => `${CONVENTION_NOTICE('Zed')}
 <!-- O Zed usa AGENT.md (singular) e/ou .rules. Se este não carregar, tente .rules -->
 
-# ${NOME}
+# ${NAME}
 
-${PONTEIRO}
+${POINTER}
 `,
   },
 };
 
-for (const f of FERRAMENTAS) {
-  const a = adaptadores[f];
+for (const f of TOOLS) {
+  const a = adapters[f];
   if (!a) continue;
   if (!a.arquivo) { ok(f.padEnd(9) + '— ' + a.nota); continue; }
-  const destino = path.join(RAIZ, a.arquivo);
-  if (fs.existsSync(destino)) {
-    const txt = fs.readFileSync(destino, 'utf8');
+  const destination = path.join(ROOT, a.arquivo);
+  if (fs.existsSync(destination)) {
+    const txt = fs.readFileSync(destination, 'utf8');
     if (!/AGENTS\.md/i.test(txt)) warn(f.padEnd(9) + '— ' + a.arquivo + ' exists but does NOT point to AGENTS.md');
     else info(f.padEnd(9) + '— ' + a.arquivo + ' already exists and points correctly');
     continue;
   }
-  fsw.mkdirSync(path.dirname(destino), { recursive: true });
-  fsw.writeFileSync(destino, a.conteudo());
-  const selo = a.confianca === 'alta' ? '' : '  ⚠ ' + a.confianca + ' confidence — verify the convention';
-  ok(f.padEnd(9) + '— ' + a.arquivo + selo);
+  fsw.mkdirSync(path.dirname(destination), { recursive: true });
+  fsw.writeFileSync(destination, a.conteudo());
+  const seal = a.confianca === 'alta' ? '' : '  ⚠ ' + a.confianca + ' confidence — verify the convention';
+  ok(f.padEnd(9) + '— ' + a.arquivo + seal);
 }
 
-const naoEscolhidas = FERRAMENTAS_VALIDAS.filter(f => !FERRAMENTAS.includes(f));
-if (naoEscolhidas.length) {
-  info('not generated: ' + naoEscolhidas.join(', '));
-  info('to add later:  --tools=' + [...FERRAMENTAS, naoEscolhidas[0]].join(','));
+const notChosen = VALID_TOOLS.filter(f => !TOOLS.includes(f));
+if (notChosen.length) {
+  info('not generated: ' + notChosen.join(', '));
+  info('to add later:  --tools=' + [...TOOLS, notChosen[0]].join(','));
 }
 
 // ═══════════════════════════════════════════ 8. GIT
-if (!SEM_GIT) {
+if (!NO_GIT) {
   log('\n\x1b[1m8. Git\x1b[0m');
-  const jaRepo = fs.existsSync(path.join(RAIZ, '.git'));
-  if (!jaRepo) { exec('git init -q', { cwd: RAIZ }); ok('git init'); }
+  const isRepo = fs.existsSync(path.join(ROOT, '.git'));
+  if (!isRepo) { exec('git init -q', { cwd: ROOT }); ok('git init'); }
   else info('already a repository');
 
-  const gi = path.join(RAIZ, '.gitignore');
+  const gi = path.join(ROOT, '.gitignore');
   if (!fs.existsSync(gi)) {
-    const subRepos = fs.readdirSync(RAIZ, { withFileTypes: true })
-      .filter(e => e.isDirectory() && fs.existsSync(path.join(RAIZ, e.name, '.git')))
+    const subRepos = fs.readdirSync(ROOT, { withFileTypes: true })
+      .filter(e => e.isDirectory() && fs.existsSync(path.join(ROOT, e.name, '.git')))
       .map(e => e.name + '/');
     fsw.writeFileSync(gi, [
       ...(subRepos.length ? ['# sub-repositórios (versionados por conta própria)', ...subRepos, ''] : []),
@@ -3100,16 +3100,16 @@ if (!SEM_GIT) {
   warn('memory enters git from now on. Keep the repo PRIVATE, always.');
 
   try {
-    const rastreados = execSync('git ls-files --full-name', { cwd: RAIZ, encoding: 'utf8' })
+    const tracked = execSync('git ls-files --full-name', { cwd: ROOT, encoding: 'utf8' })
       .split('\n').filter(f => f && !f.includes('/'));
-    const vaziosRastreados = rastreados.filter(f => {
-      try { return fs.statSync(path.join(RAIZ, f)).size === 0; } catch { return false; }
+    const trackedEmpty = tracked.filter(f => {
+      try { return fs.statSync(path.join(ROOT, f)).size === 0; } catch { return false; }
     });
-    if (vaziosRastreados.length) {
-      warn(vaziosRastreados.length + ' EMPTY file(s) tracked in the root — probably committed junk:');
-      vaziosRastreados.forEach(f => info('  ' + JSON.stringify(f)));
+    if (trackedEmpty.length) {
+      warn(trackedEmpty.length + ' EMPTY file(s) tracked in the root — probably committed junk:');
+      trackedEmpty.forEach(f => info('  ' + JSON.stringify(f)));
       info('  to drop them from the index without deleting from disk:');
-      info('    git rm --cached -- ' + vaziosRastreados.map(f => JSON.stringify(f)).join(' '));
+      info('    git rm --cached -- ' + trackedEmpty.map(f => JSON.stringify(f)).join(' '));
     } else ok('no empty files tracked in the root');
   } catch {}
 }
@@ -3136,27 +3136,27 @@ if (!SEM_GIT) {
 if (GRAPHIFY) {
   log('\n\x1b[1m8b. Code graph (--graphify)\x1b[0m');
 
-  let versao = null;
+  let version = null;
   try {
-    versao = execSync('graphify --version', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    version = execSync('graphify --version', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
   } catch {}
 
-  const SAIDA = path.join(RAIZ, 'graphify-out');
-  const GRAFO = path.join(SAIDA, 'graph.json');
+  const OUT_DIR = path.join(ROOT, 'graphify-out');
+  const GRAPH = path.join(OUT_DIR, 'graph.json');
 
   // No graphify on PATH but a graph already built (CI, another machine): the docs side
   // can still be appended — it is just JSON. Only the code extraction needs the binary.
-  if (!versao && !fs.existsSync(GRAFO)) {
+  if (!version && !fs.existsSync(GRAPH)) {
     warn('graphify not found on PATH — step skipped, nothing else changed');
     info('install it in isolation (no need to go global):');
     info('  uv tool install graphifyy    ·    pipx install graphifyy');
     info('then run again with --graphify');
   } else {
-    if (versao) info(versao);
+    if (version) info(version);
     else warn('graphify not found on PATH — using the existing graph.json; code will not be re-extracted');
 
     // An existing .gitignore is not rewritten by step 8 — the line is guaranteed here.
-    const gi2 = path.join(RAIZ, '.gitignore');
+    const gi2 = path.join(ROOT, '.gitignore');
     if (fs.existsSync(gi2)) {
       const txt = fs.readFileSync(gi2, 'utf8');
       if (!/^graphify-out\/?\s*$/m.test(txt)) {
@@ -3167,15 +3167,15 @@ if (GRAPHIFY) {
     }
 
     const subRepos = SUBREPOS;   // detected at the top: step 7 needs it too
-    const contarNos = (g) => {
+    const countNodes = (g) => {
       try { return (JSON.parse(fs.readFileSync(g, 'utf8')).nodes || []).length; } catch { return 0; }
     };
 
     // Idempotence: an existing graph is not rebuilt. A rebuild is the human's decision.
-    let construiu = false;
-    if (!versao) {
+    let built = false;
+    if (!version) {
       /* no binary: nothing to extract */
-    } else if (fs.existsSync(GRAFO) && !GRAPHIFY_REBUILD) {
+    } else if (fs.existsSync(GRAPH) && !GRAPHIFY_REBUILD) {
       info('graph.json already exists — not rebuilding (running twice must not overwrite)');
       info('to rebuild after code changes:  marvin --graphify --graphify-rebuild');
     } else {
@@ -3186,46 +3186,46 @@ if (GRAPHIFY) {
       }
       // --code-only: local AST only. Without it, it demands a paid LLM key for the .md files.
       try {
-        const partes = [];
+        const parts = [];
         if (!subRepos.length) {
-          exec('graphify . --code-only --no-viz', { cwd: RAIZ, stdio: 'inherit' });
+          exec('graphify . --code-only --no-viz', { cwd: ROOT, stdio: 'inherit' });
         } else {
           // Each extraction's output lands inside graphify-out/, which is already in
           // .gitignore. Writing inside the sub-repo would dirty someone else's repository —
           // none of them has `graphify` in its own .gitignore.
-          for (const alvo of ['.', ...subRepos]) {
-            const nome = alvo === '.' ? '_root' : alvo;
-            const destino = path.join(SAIDA, 'repos', nome);
+          for (const target of ['.', ...subRepos]) {
+            const name = target === '.' ? '_root' : target;
+            const destination = path.join(OUT_DIR, 'repos', name);
             // try PER SUB-REPO, not around the loop: `graphify extract` exits != 0
             // when the target produces no node at all — a still-empty sub-repo (only
             // LICENSE and README, every monorepo's placeholder) is a common case, and
             // it took the whole build down with it: no merge, no backup.
             try {
-              exec('graphify extract "' + path.join(RAIZ, alvo) + '" --code-only --out "' + destino + '"',
-                   { cwd: RAIZ, stdio: 'inherit' });
+              exec('graphify extract "' + path.join(ROOT, target) + '" --code-only --out "' + destination + '"',
+                   { cwd: ROOT, stdio: 'inherit' });
             } catch {}
-            const g = path.join(destino, 'graphify-out', 'graph.json');
-            if (DRY || fs.existsSync(g)) partes.push(g);
-            else warn(nome + ' produced no nodes — left out of the merge');
+            const g = path.join(destination, 'graphify-out', 'graph.json');
+            if (DRY || fs.existsSync(g)) parts.push(g);
+            else warn(name + ' produced no nodes — left out of the merge');
           }
           // Invariant 1: the previous graph is not deleted, it becomes .bak, and both
           // counts go to the screen. Here FEWER nodes is legitimate — the scope changed —
           // so the right thing is to show the number, not abort as in the migration.
-          if (!DRY && fs.existsSync(GRAFO)) {
-            fsw.copyFileSync(GRAFO, path.join(SAIDA, 'graph.bak.json'));
-            info('previous graph kept as graphify-out/graph.bak.json (' + contarNos(GRAFO) + ' nodes)');
+          if (!DRY && fs.existsSync(GRAPH)) {
+            fsw.copyFileSync(GRAPH, path.join(OUT_DIR, 'graph.bak.json'));
+            info('previous graph kept as graphify-out/graph.bak.json (' + countNodes(GRAPH) + ' nodes)');
           }
-          if (partes.length > 1) {
-            exec('graphify merge-graphs ' + partes.map(p => '"' + p + '"').join(' ') +
-                 ' --out "' + GRAFO + '"', { cwd: RAIZ, stdio: 'inherit' });
-          } else if (partes.length === 1) {
-            fsw.copyFileSync(partes[0], GRAFO);   // merge-graphs requires two
+          if (parts.length > 1) {
+            exec('graphify merge-graphs ' + parts.map(p => '"' + p + '"').join(' ') +
+                 ' --out "' + GRAPH + '"', { cwd: ROOT, stdio: 'inherit' });
+          } else if (parts.length === 1) {
+            fsw.copyFileSync(parts[0], GRAPH);   // merge-graphs requires two
           }
         }
         if (!DRY) {
-          if (fs.existsSync(GRAFO)) { ok('graph built — ' + contarNos(GRAFO) + ' nodes in graphify-out/'); construiu = true; }
+          if (fs.existsSync(GRAPH)) { ok('graph built — ' + countNodes(GRAPH) + ' nodes in graphify-out/'); built = true; }
           else err('no graph was produced');
-        } else construiu = true;
+        } else built = true;
       } catch {
         err('the graph build failed — nothing else changed');
       }
@@ -3254,37 +3254,37 @@ if (GRAPHIFY) {
     // Idempotent: everything this block writes carries `_origin: 'marvin'`, and is removed
     // and regenerated every run. A code node that does not exist in the graph becomes a
     // WARNING, never a ghost node — a renamed function is exactly what the ruler should flag.
-    let docsMudou = false;
-    if (fs.existsSync(GRAFO) && fs.existsSync(DOCS)) {
+    let docsChanged = false;
+    if (fs.existsSync(GRAPH) && fs.existsSync(DOCS)) {
       let g = null;
-      try { g = JSON.parse(fs.readFileSync(GRAFO, 'utf8')); } catch {}
+      try { g = JSON.parse(fs.readFileSync(GRAPH, 'utf8')); } catch {}
       if (g && Array.isArray(g.nodes)) {
         // `extract` writes `edges`; after `cluster-only` the file comes out in networkx
         // format, with `links`. The append respects whatever it finds.
-        const CHAVE = Array.isArray(g.links) ? 'links' : 'edges';
-        g.edges = g[CHAVE] || [];
-        const antes = JSON.stringify({ n: g.nodes.filter(n => n._origin === 'marvin'), e: g.edges.filter(e => e._origin === 'marvin') });
+        const KEY = Array.isArray(g.links) ? 'links' : 'edges';
+        g.edges = g[KEY] || [];
+        const before = JSON.stringify({ n: g.nodes.filter(n => n._origin === 'marvin'), e: g.edges.filter(e => e._origin === 'marvin') });
         g.nodes = g.nodes.filter(n => n._origin !== 'marvin');
         g.edges = g.edges.filter(e => e._origin !== 'marvin');
         const ids = new Set(g.nodes.map(n => n.id));
-      const { novosNos, novasArestas, avisos } = grafoDosDocs(ids, subRepos);
-        g.nodes.push(...novosNos);
-        g.edges.push(...novasArestas);
-        if (CHAVE !== 'edges') { g[CHAVE] = g.edges; delete g.edges; }
-        const depois = JSON.stringify({ n: novosNos, e: novasArestas });
-        docsMudou = antes !== depois;
-        if (docsMudou) {
+      const { novosNos: newNodes, novasArestas: newEdges, avisos: warnings } = docsGraph(ids, subRepos);
+        g.nodes.push(...newNodes);
+        g.edges.push(...newEdges);
+        if (KEY !== 'edges') { g[KEY] = g.edges; delete g.edges; }
+        const after = JSON.stringify({ n: newNodes, e: newEdges });
+        docsChanged = before !== after;
+        if (docsChanged) {
           // Preserves the mtime: the freshness check below compares code against the
           // EXTRACTION TIME, and appending docs re-extracted nothing.
-          let st = null; try { st = fs.statSync(GRAFO); } catch {}
-          fsw.writeFileSync(GRAFO, JSON.stringify(g, null, 1));
-          if (!DRY && st) { try { fs.utimesSync(GRAFO, st.atime, st.mtime); } catch {} }
+          let st = null; try { st = fs.statSync(GRAPH); } catch {}
+          fsw.writeFileSync(GRAPH, JSON.stringify(g, null, 1));
+          if (!DRY && st) { try { fs.utimesSync(GRAPH, st.atime, st.mtime); } catch {} }
         }
-        ok('knowledge base in the graph — ' + novosNos.length + ' doc node(s), ' + novasArestas.length + ' edge(s)' + (docsMudou ? '' : ' (unchanged)'));
-        if (avisos.length) {
-          warn(avisos.length + ' link(s) from docs to code did not land on a node:');
-          avisos.slice(0, 8).forEach(a => info('  ' + a));
-          if (avisos.length > 8) info('  … and ' + (avisos.length - 8) + ' more');
+        ok('knowledge base in the graph — ' + newNodes.length + ' doc node(s), ' + newEdges.length + ' edge(s)' + (docsChanged ? '' : ' (unchanged)'));
+        if (warnings.length) {
+          warn(warnings.length + ' link(s) from docs to code did not land on a node:');
+          warnings.slice(0, 8).forEach(a => info('  ' + a));
+          if (warnings.length > 8) info('  … and ' + (warnings.length - 8) + ' more');
         }
         info('  try:  graphify affected "<function>"   — which US and which code depend on it');
       }
@@ -3296,22 +3296,22 @@ if (GRAPHIFY) {
     // Without --graphify-label it runs --no-label: deterministic, free, no key — the
     // html comes out the same, just with "Community 0/1/2" as names.
     // Runs when the graph changed — built now or docs appended — and only with the binary.
-    if (versao && (construiu || docsMudou) && (DRY || fs.existsSync(GRAFO))) {
-      let modo = '--no-label';
+    if (version && (built || docsChanged) && (DRY || fs.existsSync(GRAPH))) {
+      let mode = '--no-label';
       if (GRAPHIFY_LABEL) {
-        let temClaude = false;
-        try { execSync('claude --version', { stdio: 'ignore' }); temClaude = true; } catch {}
-        if (temClaude) modo = '--backend claude-cli';
+        let hasClaude = false;
+        try { execSync('claude --version', { stdio: 'ignore' }); hasClaude = true; } catch {}
+        if (hasClaude) mode = '--backend claude-cli';
         else warn('--graphify-label ignored: no `claude` on PATH — using --no-label');
       }
       // Only the docs changed? cluster-only rewrites graph.json, and the freshness check
       // below compares the code against its mtime — without this, appending docs would
       // make a stale graph look fresh.
-      let stAntes = null;
-      if (!construiu) { try { stAntes = fs.statSync(GRAFO); } catch {} }
+      let stBefore = null;
+      if (!built) { try { stBefore = fs.statSync(GRAPH); } catch {} }
       try {
-        exec('graphify cluster-only . ' + modo, { cwd: RAIZ, stdio: 'inherit' });
-        if (!DRY && stAntes) { try { fs.utimesSync(GRAFO, stAntes.atime, stAntes.mtime); } catch {} }
+        exec('graphify cluster-only . ' + mode, { cwd: ROOT, stdio: 'inherit' });
+        if (!DRY && stBefore) { try { fs.utimesSync(GRAPH, stBefore.atime, stBefore.mtime); } catch {} }
         ok('GRAPH_REPORT.md and graph.html written — open the html in any browser');
       } catch {
         warn('the report step failed — graph.json is fine, only the html is missing');
@@ -3319,26 +3319,26 @@ if (GRAPHIFY) {
     }
 
     // ── Freshness: the check graphify's hook lacks — the whole tree, not 1 file.
-    if (fs.existsSync(GRAFO)) {
-      const EXT_CODIGO = /\.(js|mjs|cjs|jsx|ts|tsx|py|go|rs|java|kt|rb|php|cs|c|h|cpp|hpp|swift|scala|ex|exs|lua|sh)$/i;
-      const tsGrafo = fs.statSync(GRAFO).mtimeMs;
-      const novos = [];
-      (function varrerFontes(dir, prof = 0) {
-        if (prof > 8) return;
-        let ents; try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
-        for (const e of ents) {
-          if (IGNORAR.has(e.name) || e.name === 'graphify-out' || e.name.startsWith('.')) continue;
+    if (fs.existsSync(GRAPH)) {
+      const CODE_EXT = /\.(js|mjs|cjs|jsx|ts|tsx|py|go|rs|java|kt|rb|php|cs|c|h|cpp|hpp|swift|scala|ex|exs|lua|sh)$/i;
+      const graphTs = fs.statSync(GRAPH).mtimeMs;
+      const newer = [];
+      (function walkSources(dir, depth = 0) {
+        if (depth > 8) return;
+        let entries; try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+        for (const e of entries) {
+          if (IGNORE.has(e.name) || e.name === 'graphify-out' || e.name.startsWith('.')) continue;
           const p = path.join(dir, e.name);
-          if (e.isDirectory()) { varrerFontes(p, prof + 1); continue; }
-          if (!EXT_CODIGO.test(e.name)) continue;
-          try { if (fs.statSync(p).mtimeMs > tsGrafo) novos.push(path.relative(RAIZ, p)); } catch {}
+          if (e.isDirectory()) { walkSources(p, depth + 1); continue; }
+          if (!CODE_EXT.test(e.name)) continue;
+          try { if (fs.statSync(p).mtimeMs > graphTs) newer.push(path.relative(ROOT, p)); } catch {}
         }
-      })(RAIZ);
+      })(ROOT);
 
-      if (novos.length) {
-        warn(novos.length + ' source file(s) newer than the graph — it is STALE');
-        novos.slice(0, 5).forEach(f => info('  ' + f));
-        if (novos.length > 5) info('  … e mais ' + (novos.length - 5));
+      if (newer.length) {
+        warn(newer.length + ' source file(s) newer than the graph — it is STALE');
+        newer.slice(0, 5).forEach(f => info('  ' + f));
+        if (newer.length > 5) info('  … e mais ' + (newer.length - 5));
         // In a monorepo `graphify update .` re-extracts ONLY the root and throws away the
         // sub-repos — the right command is to redo the whole cycle.
         info(subRepos.length ? 'refresh with:  marvin --graphify --graphify-rebuild'
@@ -3353,7 +3353,7 @@ if (GRAPHIFY) {
     if (GRAPHIFY_GIT_HOOK) {
       // Forward slash on Windows too: inside `sh` quotes the backslash only avoids
       // becoming an escape by luck, and node accepts both. Do not depend on luck.
-      const comando = subRepos.length
+      const command = subRepos.length
         ? 'node "' + process.argv[1].replace(/\\/g, '/') + '" --graphify --graphify-rebuild'
         : 'graphify update .';
       const script = `#!/bin/sh
@@ -3379,24 +3379,24 @@ export PYTHONHASHSEED=0
 # aceita esperar isso a cada commit.
 LOG="\${TMPDIR:-/tmp}/marvin-graph-refresh.log"
 echo "[marvin] atualizando o grafo em segundo plano (log: $LOG)"
-{ ${comando} ; } >"$LOG" 2>&1 &
+{ ${command} ; } >"$LOG" 2>&1 &
 `;
-      const dirHooks = path.join(RAIZ, '.git', 'hooks');
-      const alvo = path.join(dirHooks, 'post-commit');
-      if (!fs.existsSync(path.join(RAIZ, '.git'))) {
+      const hooksDir = path.join(ROOT, '.git', 'hooks');
+      const target = path.join(hooksDir, 'post-commit');
+      if (!fs.existsSync(path.join(ROOT, '.git'))) {
         warn('--graphify-git-hook skipped: this is not a git repository');
-      } else if (fs.existsSync(alvo)) {
+      } else if (fs.existsSync(target)) {
         // Invariant 1: someone else's hook is not overwritten. An existing post-commit
         // may be the CI, the lint or someone else's changelog generator.
         warn('a post-commit hook already exists — left untouched');
         info('  to get the refresh, add this line to it by hand:');
-        info('    ' + comando);
+        info('    ' + command);
       } else {
-        fsw.mkdirSync(dirHooks, { recursive: true });
-        fsw.writeFileSync(alvo, script);
-        try { if (!DRY) fs.chmodSync(alvo, 0o755); } catch {}   // no-op on Windows
+        fsw.mkdirSync(hooksDir, { recursive: true });
+        fsw.writeFileSync(target, script);
+        try { if (!DRY) fs.chmodSync(target, 0o755); } catch {}   // no-op on Windows
         ok('.git/hooks/post-commit — the graph refreshes itself after each commit');
-        info('  it runs:  ' + comando);
+        info('  it runs:  ' + command);
         info('  NOT versioned: it lives in .git/, so it does not reach the team');
         info('  skip it once with:  MARVIN_SKIP_GRAPH_HOOK=1 git commit …');
       }
@@ -3425,29 +3425,29 @@ echo "[marvin] atualizando o grafo em segundo plano (log: $LOG)"
 }
 
 // ═══════════════════════════════════════════ 9. LEGACY (only if detected)
-const ORQUESTRADORES = [
+const ORCHESTRATORS = [
   { arquivos: ['.swarm', '.claude-flow', '.hive-mind', 'agentdb.rvf', 'agentdb.rvf.lock', 'ruvector.db'],
     nome: 'claude-flow / ruflo' },
 ];
-const legado = ORQUESTRADORES
-  .map(o => ({ ...o, presentes: o.arquivos.filter(f => fs.existsSync(path.join(RAIZ, f))) }))
+const legacy = ORCHESTRATORS
+  .map(o => ({ ...o, presentes: o.arquivos.filter(f => fs.existsSync(path.join(ROOT, f))) }))
   .filter(o => o.presentes.length);
 
-if (legado.length) {
+if (legacy.length) {
   log('\n\x1b[1m9. Leftovers from an old orchestration tool\x1b[0m');
-  for (const o of legado) {
+  for (const o of legacy) {
     warn(o.nome + ':');
     o.presentes.forEach(f => info('  ' + f));
   }
-  if (!LIMPAR) {
+  if (!CLEAN) {
     info('run with --clean-legacy to remove them (the database is backed up first)');
   } else {
-    const bkp = path.join(DOCS, '99_Backup');
-    fsw.mkdirSync(bkp, { recursive: true });
-    const db = path.join(RAIZ, '.swarm', 'memory.db');
+    const bak = path.join(DOCS, '99_Backup');
+    fsw.mkdirSync(bak, { recursive: true });
+    const db = path.join(ROOT, '.swarm', 'memory.db');
     if (fs.existsSync(db)) {
-      fsw.copyFileSync(db, path.join(bkp, 'orquestrador-memory.db.bak'));
-      ok('database backed up to ' + path.relative(RAIZ, bkp));
+      fsw.copyFileSync(db, path.join(bak, 'orquestrador-memory.db.bak'));
+      ok('database backed up to ' + path.relative(ROOT, bak));
       warn('BEFORE deleting, rescue the memory — it will not come out the official way:');
       info('  1. stop the daemon (the shutdown is what checkpoints the WAL)');
       info('  2. claude-flow`s `memory export` reports 0 even with data —');
@@ -3455,8 +3455,8 @@ if (legado.length) {
       info('  3. real rescue: node --experimental-sqlite reading the table');
       info('     memory_entries, column `content`');
     }
-    for (const o of legado) for (const f of o.presentes) {
-      fsw.rmSync(path.join(RAIZ, f), { recursive: true, force: true });
+    for (const o of legacy) for (const f of o.presentes) {
+      fsw.rmSync(path.join(ROOT, f), { recursive: true, force: true });
       ok('removed ' + f);
     }
   }
@@ -3477,7 +3477,7 @@ if (legado.length) {
 // There is no version file. The check reads the actual content, because a recorded
 // version number is one more derived artifact — and derived artifacts age in silence,
 // which is the disease this whole project fights.
-const ATUALIZACOES = [
+const UPDATES = [
   { arquivo: '.claude/skills/README.md', marca: /Skill, agente ou command/i,
     o_que: 'the skill vs. agent vs. command discriminator (and the 2x rule)' },
   // A rule lives where it fires (11/09): closing a session → /retomar; portability → Sobre.md;
@@ -3492,39 +3492,39 @@ const ATUALIZACOES = [
   // A canonical command only enters when there IS a readable manifest — `soCom` avoids
   // demanding the block from whoever scaffolds a repo with no detectable stack and would
   // be stuck with an impossible warning. Whoever scaffolded before this version filled it by hand (or did not).
-  { arquivo: 'AGENTS.md', marca: /Comandos canônicos/, soCom: COMANDOS.length > 0,
+  { arquivo: 'AGENTS.md', marca: /Comandos canônicos/, soCom: COMMANDS.length > 0,
     o_que: 'the "Comandos canônicos" table — install/test/build read from the manifest' },
   // The decisions folder has always existed and was born EMPTY. Whoever scaffolded
   // before this version has the folder and no clue what it is — and is precisely who is
   // already piling history into onde_paramos.md without knowing there was another place.
-  { arquivo: path.relative(RAIZ, path.join(DOCS, '10_Decisoes', 'README.md')).replace(/\\/g, '/'),
-    marca: /por que escolhemos isto/i, soCom: LAYOUT_ANTIGO,
+  { arquivo: path.relative(ROOT, path.join(DOCS, '10_Decisoes', 'README.md')).replace(/\\/g, '/'),
+    marca: /por que escolhemos isto/i, soCom: OLD_LAYOUT,
     o_que: 'the decisions README — what belongs there instead of in onde_paramos.md' },
-  { arquivo: 'AGENTS.md', marca: /A nota é curta; a decisão é imutável/, soCom: LAYOUT_ANTIGO,
+  { arquivo: 'AGENTS.md', marca: /A nota é curta; a decisão é imutável/, soCom: OLD_LAYOUT,
     o_que: 'the "note is short, decision is immutable" rule — where overflow goes' },
   // Graph organization (1.2). Whoever scaffolded on the new layout with a version older
   // than some new section finds out here; whoever is on the old layout gets step 5's
   // warning, not these marks — demanding a graph section in an old AGENTS.md would be noise.
-  { arquivo: '.claude/commands/fechar.md', marca: /--fechar/, soCom: !LAYOUT_ANTIGO,
+  { arquivo: '.claude/commands/fechar.md', marca: /--fechar/, soCom: !OLD_LAYOUT,
     o_que: 'the `marvin --fechar` step — drift between the diff and the active USs' },
-  { arquivo: '.claude/commands/us.md', marca: /Impacto/, soCom: !LAYOUT_ANTIGO,
+  { arquivo: '.claude/commands/us.md', marca: /Impacto/, soCom: !OLD_LAYOUT,
     o_que: 'the second `marvin --us` run that writes the Impacto section from the graph' },
-  { arquivo: '.claude/settings.json', marca: /--status --curto/, soCom: !LAYOUT_ANTIGO,
+  { arquivo: '.claude/settings.json', marca: /--status --curto/, soCom: !OLD_LAYOUT,
     o_que: 'the SessionStart hook running `marvin --status --curto` (the note cannot lie unnoticed)' },
   { arquivo: 'AGENTS.md', marca: /Antes de qualquer US/,
     o_que: 'the "Antes de qualquer US" pointer — the rule itself lives in Planejamento/README.md' },
-  { arquivo: path.relative(RAIZ, path.join(DOCS, 'Contexto', 'Sobre.md')).replace(/\\/g, '/'),
-    marca: /##\s*Portabilidade/, soCom: !LAYOUT_ANTIGO,
+  { arquivo: path.relative(ROOT, path.join(DOCS, 'Contexto', 'Sobre.md')).replace(/\\/g, '/'),
+    marca: /##\s*Portabilidade/, soCom: !OLD_LAYOUT,
     o_que: 'the "Portabilidade" table (moved here from AGENTS.md)' },
-  { arquivo: 'AGENTS.md', marca: /A nota aponta; o nó guarda/, soCom: !LAYOUT_ANTIGO,
+  { arquivo: 'AGENTS.md', marca: /A nota aponta; o nó guarda/, soCom: !OLD_LAYOUT,
     o_que: 'the "note points, node keeps" rule — the knowledge base as a graph' },
-  { arquivo: 'AGENTS.md', marca: /seção\s+de\s+relato/, soCom: !LAYOUT_ANTIGO,
+  { arquivo: 'AGENTS.md', marca: /seção\s+de\s+relato/, soCom: !OLD_LAYOUT,
     o_que: 'the rule naming the loophole: a report SECTION inside the note is the same error as a new file' },
-  { arquivo: path.relative(RAIZ, path.join(DOCS, 'Contexto', 'Sobre.md')).replace(/\\/g, '/'),
-    marca: /Como esta base está organizada/, soCom: !LAYOUT_ANTIGO,
+  { arquivo: path.relative(ROOT, path.join(DOCS, 'Contexto', 'Sobre.md')).replace(/\\/g, '/'),
+    marca: /Como esta base está organizada/, soCom: !OLD_LAYOUT,
     o_que: 'the "how this base is organized" section — changing it is an entry in Rumo' },
-  { arquivo: path.relative(RAIZ, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
-    marca: /Código tocado/, soCom: !LAYOUT_ANTIGO,
+  { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
+    marca: /Código tocado/, soCom: !OLD_LAYOUT,
     o_que: 'the Sobre.md format for Epic/Feature/US — "Código tocado" is what links a US to code in the graph' },
   // A new block in an existing file is exactly what this step exists to catch.
   // Without this mark, whoever scaffolded before this version keeps looking at an
@@ -3543,7 +3543,7 @@ const ATUALIZACOES = [
     o_que: 'the secrets block (.env, *.pem, *.key, **/credentials/)' },
   // The record is born on its own (block 0b) — but an AGENTS.md generated before it does
   // not point there, and a record nobody reads is the same as none.
-  { arquivo: 'AGENTS.md', marca: /ferramentas\.md/, soCom: !LAYOUT_ANTIGO,
+  { arquivo: 'AGENTS.md', marca: /ferramentas\.md/, soCom: !OLD_LAYOUT,
     o_que: 'the pointer to .marvin/ferramentas.md — which optional tools THIS project uses' },
   // Ponytail only enters when the record says `sim` — demanding the section from who does not use it is noise.
   { arquivo: 'AGENTS.md', marca: /## Ferramentas[\s\S]*?\*\*Ponytail\*\*/, soCom: PONYTAIL,
@@ -3552,17 +3552,17 @@ const ATUALIZACOES = [
     o_que: 'the ponytail role table — which roles carry the ladder (dev yes, tl/po/scout no)' },
 ];
 
-const faltando = ATUALIZACOES.filter(a => {
+const missing = UPDATES.filter(a => {
   if (a.soCom === false) return false;
-  const p = path.join(RAIZ, a.arquivo);
+  const p = path.join(ROOT, a.arquivo);
   if (!fs.existsSync(p)) return false; // does not exist: the steps above already create it
   try { return !a.marca.test(fs.readFileSync(p, 'utf8')); } catch { return false; }
 });
 
-if (faltando.length) {
+if (missing.length) {
   log('\n\x1b[1m10. Updates this project does not have yet\x1b[0m');
   log('   (the file already existed, so no step above touched it — that is deliberate)');
-  for (const f of faltando) warn(f.arquivo + ' — missing ' + f.o_que);
+  for (const f of missing) warn(f.arquivo + ' — missing ' + f.o_que);
   info('nothing was rewritten: these files are yours and may have been edited on purpose.');
   info('to see the current text of each block, generate a clean project in a throwaway');
   info('directory:  mkdir /tmp/marvin-ref && cd /tmp/marvin-ref && node <path>/marvin.mjs --no-git');
@@ -3570,10 +3570,10 @@ if (faltando.length) {
 
 if (DRY) {
   log('\n\x1b[1m--dry-run — nothing was written\x1b[0m');
-  if (!plano.length) log('   nothing to do: this project is already set up.');
+  if (!plan.length) log('   nothing to do: this project is already set up.');
   else {
-    log('   ' + plano.length + ' operation(s) a real run would perform:\n');
-    plano.forEach(p => info(p));
+    log('   ' + plan.length + ' operation(s) a real run would perform:\n');
+    plan.forEach(p => info(p));
   }
   log('\n   run without --dry-run to apply.');
 }
@@ -3590,7 +3590,7 @@ if (!GRAPHIFY) {
   log('  graphify builds a code graph for STRUCTURAL questions — what calls what,');
   log('  type hierarchy, cross-package deps. For finding a file, grep is cheaper.');
   log('  It needs graphify on PATH:  uv tool install graphifyy  ·  pipx install graphifyy');
-  log('  then  marvin --use=graphify  (recorded in ' + REGISTRO_REL + ').');
+  log('  then  marvin --use=graphify  (recorded in ' + RECORD_REL + ').');
   log('  Read the trade-offs in the README first — a stale graph answers with confidence.');
 }
 
@@ -3598,6 +3598,6 @@ log('\n\x1b[1mLeft for you to write by hand:\x1b[0m');
 log('  • AGENTS.md — real structure, invariants, traps, the team (the SOURCE)');
 log("  • .claude/agents/*.md — the roles, with the scars of THIS codebase");
 log("  • .claude/skills/*/SKILL.md — only procedures already run twice (see its README)");
-log(LAYOUT_ANTIGO ? '  • ' + relMem + '/onde_paramos.md — the current state'
+log(OLD_LAYOUT ? '  • ' + relMem + '/onde_paramos.md — the current state'
                   : '  • ' + relDocs + '/Contexto/Sobre.md — what the project IS; then one Sobre.md per US as work starts');
 log('  Companion prompt: https://github.com/Josuebmota/Marvin/blob/main/PROMPT.md\n');

@@ -134,7 +134,7 @@ script e a documentação. Quem instala roda a ferramenta e gera os seus.
 
 ## Convenções
 
-- Português no código, no comentário e no commit
+- Inglês no código e no comentário; português na base `.marvin/`, nos agentes e no commit
 - Zero dependência. Se precisar de pacote, provavelmente é sinal de estar fazendo demais
 - Nunca commitar caminho pessoal nem nome de projeto de cliente — use `<caminho>` nos
   exemplos. Vale para o **texto do commit** também, não só para o arquivo
