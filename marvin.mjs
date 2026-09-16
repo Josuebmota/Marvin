@@ -1,64 +1,65 @@
 #!/usr/bin/env node
 /**
- * marvin — monta a arquitetura de conhecimento de um projeto.
+ * marvin — scaffolds a project's knowledge architecture.
  *
- * A SAÍDA do script é em inglês (o repo é público); comentário e template, em português.
+ * The script's OUTPUT is in English (the repo is public); the knowledge base it
+ * writes, the agents and the commits stay in Portuguese.
  *
- * Rode DE DENTRO da raiz do projeto:
- *     marvin --help       ← sai sem escrever nada
- *     marvin --dry-run    ← mostra o plano, não escreve
+ * Run it FROM the project root:
+ *     marvin --help       ← exits without writing anything
+ *     marvin --dry-run    ← shows the plan, writes nothing
  *     marvin
  *     marvin --tools=claude,codex
  *     marvin --clean-legacy
  *     marvin --no-git
  *     marvin --graphify
  *
- * A arquitetura:
+ * The architecture:
  *
- *     <projeto>/
- *     ├── AGENTS.md               fonte de verdade — lida por QUALQUER ferramenta
- *     ├── CLAUDE.md               só o que é específico do Claude Code
+ *     <project>/
+ *     ├── AGENTS.md               source of truth — read by ANY tool
+ *     ├── CLAUDE.md               only what is specific to Claude Code
  *     ├── .claude/
- *     │   ├── agents/             o time (tu escreve)
- *     │   ├── skills/             procedimentos compartilhados (tu escreve)
- *     │   └── commands/retomar.md porta de entrada: /retomar num chat novo
- *     └── .marvin/                ← base de conhecimento, organizada como GRAFO
- *         ├── Contexto/           o que o projeto É
- *         │   ├── Sobre.md        nó raiz — liga aos fluxos
- *         │   ├── Fluxos/         um .md por fluxo, nasce quando um fluxo é analisado
- *         │   ├── Arquitetura/    como foi projetado; decisão estrutural mora aqui
- *         │   └── Design/         só se há front
- *         ├── Planejamento/       o que está sendo FEITO: Epic/ → Feature/ → US/
- *         │   ├── Manutencao/     cada nó tem um Sobre.md com estado, pai e Rumo
+ *     │   ├── agents/             the team (you write it)
+ *     │   ├── skills/             shared procedures (you write them)
+ *     │   └── commands/retomar.md entry point: /retomar in a new chat
+ *     └── .marvin/                ← knowledge base, organized as a GRAPH
+ *         ├── Contexto/           what the project IS
+ *         │   ├── Sobre.md        root node — links to the flows
+ *         │   ├── Fluxos/         one .md per flow, born when a flow is analyzed
+ *         │   ├── Arquitetura/    how it was designed; structural decisions live here
+ *         │   └── Design/         only if there is a front end
+ *         ├── Planejamento/       what is being DONE: Epic/ → Feature/ → US/
+ *         │   ├── Manutencao/     every node has a Sobre.md with state, parent and Rumo
  *         │   └── Novos/
- *         ├── Fontes/             apoio e suporte (Externas.md: o que vive fora daqui)
- *         ├── Releases/           <versao>.md — índice do que subiu, com evidência
- *         └── Memoria/            ← memória, ARQUIVOS REAIS versionados
- *             └── onde_paramos.md a única porta; só ponteiros para as US ativas
+ *         ├── Fontes/             support material (Externas.md: what lives outside)
+ *         ├── Releases/           <version>.md — index of what shipped, with evidence
+ *         └── Memoria/            ← memory, REAL FILES under version control
+ *             └── onde_paramos.md the single entry point; only pointers to active USs
  *
- *     Layout anterior (08_Memoria/, 10_Decisoes/…) continua detectado e NÃO é movido —
- *     mover é decisão do humano. O script só avisa. O porquê da mudança está em
- *     .marvin/10_Decisoes/organizacao-por-grafo.md deste repositório.
+ *     The previous layout (08_Memoria/, 10_Decisoes/…) is still detected and NOT
+ *     moved — moving is the human's decision. The script only warns. The reason for
+ *     the change is in .marvin/10_Decisoes/organizacao-por-grafo.md of this repository.
  *
- * PORTABILIDADE: o durável (AGENTS.md + .marvin/ + memória) é markdown puro e migra
- * inteiro para Codex, Cursor, Aider, Zed, opencode. Só o frontmatter dos agentes,
- * os slash commands e o auto-load da memória são do Claude Code — e desses, só o
- * auto-load some: os arquivos de memória ficam, porque moram no repositório.
+ * PORTABILITY: the durable part (AGENTS.md + .marvin/ + memory) is plain markdown and
+ * migrates whole to Codex, Cursor, Aider, Zed, opencode. Only the agents' frontmatter,
+ * the slash commands and the memory auto-load belong to Claude Code — and of those,
+ * only the auto-load is lost: the memory files stay, because they live in the repo.
  *
- * O truque central é a JUNCTION INVERTIDA:
+ * The central trick is the INVERTED JUNCTION:
  *
- *     ~/.claude/projects/<caminho>/memory  ──junction──►  .marvin/Memoria/
+ *     ~/.claude/projects/<path>/memory  ──junction──►  .marvin/Memoria/
  *
- * O Claude escreve no caminho padrão dele e os arquivos nascem dentro do
- * repositório. Memória em markdown puro no repositório, uma fonte só.
+ * Claude writes to its default path and the files are born inside the repository.
+ * Plain-markdown memory in the repository, a single source.
  *
- * O que ele NÃO faz — de propósito:
- *   Não escreve os agentes nem o CLAUDE.md. Isso exige conhecer as armadilhas
- *   do projeto, e agente genérico é pior que agente nenhum. Use o prompt de
- *   acompanhamento: https://github.com/Josuebmota/Marvin/blob/main/PROMPT.md
+ * What it does NOT do — on purpose:
+ *   It does not write the agents nor the CLAUDE.md. That requires knowing the
+ *   project's traps, and a generic agent is worse than no agent. Use the companion
+ *   prompt: https://github.com/Josuebmota/Marvin/blob/main/PROMPT.md
  *
- * Projeto que veio de outra ferramenta (claude-flow/ruflo, etc.) tem uma etapa
- * extra de limpeza — ela só aparece se o script detectar os artefatos.
+ * A project that came from another tool (claude-flow/ruflo, etc.) has an extra
+ * cleanup step — it only shows up if the script detects the artifacts.
  */
 
 import fs from 'node:fs';
@@ -69,54 +70,54 @@ import readline from 'node:readline/promises';
 
 const RAIZ = process.cwd();
 
-// Flags em inglês (o repo é público). Os nomes antigos em português continuam
-// valendo como alias: renomear flag sem alias quebraria quem já tem script ou
-// alias montado — que é exatamente a retrocompatibilidade que o passo 10 defende.
+// Flags in English (the repo is public). The old Portuguese names still work as
+// aliases: renaming a flag without an alias would break whoever already has a script
+// or a shell alias built — exactly the backward compatibility step 10 defends.
 const temFlag = (...nomes) => nomes.some(n => process.argv.includes(n));
 const LIMPAR = temFlag('--clean-legacy', '--limpar-legado', '--limpar-ruflo');
 const SEM_GIT = temFlag('--no-git', '--sem-git');
-// Mostra tudo o que faria e não escreve nada — nem arquivo, nem junction, nem git init.
+// Shows everything it would do and writes nothing — no file, no junction, no git init.
 const DRY = temFlag('--dry-run');
-// Opcional e nunca obrigatório: gera o grafo de código do graphify para consulta
-// estrutural. NÃO instala hook — ver o passo 8b para o porquê.
-// `let`: sem a flag, a decisão sai do registro `.marvin/ferramentas.md` (bloco 0b).
+// Optional and never required: builds graphify's code graph for structural queries.
+// Does NOT install a hook — see step 8b for why.
+// `let`: without the flag, the decision comes from the `.marvin/ferramentas.md` record (block 0b).
 let GRAPHIFY = temFlag('--graphify');
-// Ponytail (plugin do Claude Code): não tem flag própria — só o registro decide (bloco
-// 0b, `--use=ponytail`). Liga a seção no AGENTS.md e a tabela de papéis no agents/README.
+// Ponytail (Claude Code plugin): has no flag of its own — only the record decides (block
+// 0b, `--use=ponytail`). Turns on the section in AGENTS.md and the roles table in agents/README.
 let PONYTAIL = false;
-// Nomeia as comunidades usando o `claude` do PATH (backend claude-cli do graphify,
-// que não pede chave). Fora do padrão de propósito: esse backend é forçado a UMA
-// chamada por vez, então num grafo de ~130 comunidades o run vira minutos e consome
-// cota da assinatura de quem rodou. Gastar tempo e cota sem perguntar não é padrão.
+// Names the communities using the `claude` on PATH (graphify's claude-cli backend, which
+// asks for no key). Off by default on purpose: that backend is forced to ONE call at a
+// time, so on a graph of ~130 communities the run takes minutes and burns the subscription
+// quota of whoever ran it. Spending time and quota without asking is not a default.
 const GRAPHIFY_LABEL = temFlag('--graphify-label');
-// Refaz o grafo mesmo que já exista. Sem isso, rodar duas vezes não reconstrói
-// (invariante 2). Existe porque num monorepo `graphify update .` NÃO serve: ele
-// re-extrai só a raiz, e a raiz é justamente o que não tem o código dentro.
+// Rebuilds the graph even if it already exists. Without it, running twice does not
+// rebuild (invariant 2). It exists because in a monorepo `graphify update .` does NOT
+// work: it re-extracts only the root, and the root is exactly what has no code inside.
 const GRAPHIFY_REBUILD = temFlag('--graphify-rebuild');
-// Escreve `.git/hooks/post-commit` para o grafo se atualizar sozinho depois do commit.
-// NÃO usa o `graphify hook install`: aquele reconstrói a RAIZ do repositório, que num
-// monorepo é justamente o caminho que apaga os sub-repos do grafo — automatizaria o bug.
-// Fora do padrão porque hook mora em `.git/`, não é versionado e dispara invisível.
+// Writes `.git/hooks/post-commit` so the graph refreshes itself after the commit.
+// Does NOT use `graphify hook install`: that one rebuilds the repository ROOT, which in
+// a monorepo is precisely the path that drops the sub-repos from the graph — it would automate the bug.
+// Off by default because a hook lives in `.git/`, is not versioned and fires invisibly.
 const GRAPHIFY_GIT_HOOK = temFlag('--graphify-git-hook');
-// Só diagnostica a montagem e sai com código != 0 se ela estiver quebrada.
-// Não escreve nada — nem no repositório, nem no perfil.
+// Only diagnoses the mount and exits non-zero if it is broken.
+// Writes nothing — neither in the repository nor in the profile.
 const CHECK = temFlag('--check');
-// --use=graphify  [alias: --usar=]  flipa o registro para `sim` sem perguntar.
-// --no-questions  [alias: --sem-perguntas]  assume `não` mesmo com terminal (CI, script).
-// aceita --use=a,b e também --use=a --use=b — a flag repetida era engolida pelo find (15/09)
+// --use=graphify  [alias: --usar=]  flips the record to `sim` without asking.
+// --no-questions  [alias: --sem-perguntas]  assumes `não` even with a terminal (CI, script).
+// accepts --use=a,b and also --use=a --use=b — the repeated flag was swallowed by find (15/09)
 const USAR = new Set(process.argv.filter(a => a.startsWith('--use=') || a.startsWith('--usar='))
   .flatMap(a => a.split('=').slice(1).join('=').split(',')).map(s => s.trim().toLowerCase()).filter(Boolean));
 const SEM_PERGUNTAS = temFlag('--no-questions', '--sem-perguntas');
 
 // --tools=claude,codex,cursor  (default: claude)   [alias: --ferramentas=]
-// Rodar de novo com outra lista ACRESCENTA o adaptador que falta; nada é removido.
+// Running again with a different list ADDS the missing adapter; nothing is removed.
 const FERRAMENTAS_VALIDAS = ['claude', 'codex', 'copilot', 'cursor', 'aider', 'zed', 'opencode'];
 const argFerr = process.argv.find(a => a.startsWith('--tools=') || a.startsWith('--ferramentas='));
 const FERRAMENTAS = (argFerr ? argFerr.split('=').slice(1).join('=') : 'claude')
   .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 const ferrInvalidas = FERRAMENTAS.filter(f => !FERRAMENTAS_VALIDAS.includes(f));
 
-// --curto é saída de hook: sem cabeçalho e sem cor — vai direto para o contexto do agente.
+// --curto is hook output: no header and no color — it goes straight into the agent's context.
 const CURTO_HOOK = process.argv.includes('--curto');
 const log = (s = '') => console.log(CURTO_HOOK ? String(s).replace(/\x1b\[[0-9;]*m/g, '') : s);
 const ok = (s) => log('  \x1b[32m✓\x1b[0m ' + s);
@@ -125,9 +126,9 @@ const err = (s) => log('  \x1b[31m✗\x1b[0m ' + s);
 const info = (s) => log('    ' + s);
 const okReal = ok, infoReal = info, warnReal = warn;
 
-// ── --help / -h. Sai ANTES de qualquer coisa: um script que escreve no repo e
-// cria link no perfil do usuário não pode montar o projeto quando alguém digita
-// a flag que todo mundo usa para "ver o que isso faz".
+// ── --help / -h. Exits BEFORE anything else: a script that writes to the repo and
+// creates a link in the user's profile cannot scaffold the project when someone types
+// the flag everyone uses to "see what this does".
 if (temFlag('--help', '-h')) {
   log(`
 marvin — scaffolds a project's knowledge base for working with AI agents.
@@ -192,30 +193,30 @@ Docs: README.md (English) · README.pt-BR.md (Português)
   process.exit(0);
 }
 
-// ── --dry-run. Toda operação que MUDA o disco passa por `fsw` / `exec`; leitura
-// continua em `fs` direto. Escrita nova que não passe por aqui faz o dry-run
-// mentir — e dry-run que mente é pior que não ter dry-run.
+// ── --dry-run. Every operation that CHANGES the disk goes through `fsw` / `exec`;
+// reads stay on `fs` directly. A new write that bypasses this makes the dry-run
+// lie — and a dry-run that lies is worse than having no dry-run.
 const plano = [];
 const rel = (p) => {
   const s = String(p);
   const r = path.relative(RAIZ, s);
-  if (!r) return '.';                 // o próprio diretório do projeto
-  if (r.startsWith('..')) return s;   // FORA do projeto: absoluto é mais honesto que ../../..
+  if (!r) return '.';                 // the project directory itself
+  if (r.startsWith('..')) return s;   // OUTSIDE the project: absolute is more honest than ../../..
   return r;
 };
 const fsw = !DRY ? fs : {
-  // `mkdirSync` roda com recursive:true em diretório que quase sempre já existe, e
-  // nesse caso a execução real não cria nada. Listar assim mesmo enchia o plano de
-  // linhas falsas — num projeto já montado o dry-run anunciava 9 operações e a
-  // mensagem "nothing to do" era inalcançável. Plano que exagera é a mesma doença
-  // do plano que esconde: os dois fazem você parar de ler.
+  // `mkdirSync` runs with recursive:true on a directory that almost always exists, and
+  // in that case the real run creates nothing. Listing it anyway filled the plan with
+  // false lines — on an already scaffolded project the dry-run announced 9 operations
+  // and the "nothing to do" message was unreachable. A plan that exaggerates has the
+  // same disease as a plan that hides: both make you stop reading.
   mkdirSync:      (p) => { if (!fs.existsSync(p)) plano.push('create dir    ' + rel(p)); },
   writeFileSync:  (p) => plano.push('create file   ' + rel(p)),
   appendFileSync: (p) => plano.push('append to     ' + rel(p)),
   cpSync:         (a, b) => plano.push('copy          ' + a + '  →  ' + rel(b)),
   rmSync:         (p) => plano.push('REMOVE        ' + p),
-  // Só o LINK, nunca o conteúdo — é a diferença que o AGENTS.md repete e que o
-  // plano precisa mostrar com essas palavras, senão quem lê o dry-run se assusta.
+  // Only the LINK, never the content — the distinction AGENTS.md repeats and the plan
+  // has to show in those words, otherwise whoever reads the dry-run gets scared.
   unlinkSync:     (p) => plano.push('remove link   ' + p + '  (only the link)'),
   symlinkSync:    (alvo, link) => plano.push('junction      ' + link + '  →  ' + rel(alvo)),
   copyFileSync:   (a, b) => plano.push('copy          ' + rel(a) + '  →  ' + rel(b)),
@@ -225,50 +226,50 @@ const exec = (cmd, opts) => {
   return execSync(cmd, opts);
 };
 
-// memória nativa: cwd com : \ / virando -
+// native memory: cwd with : \ / turned into -
 const MEM = path.join(os.homedir(), '.claude', 'projects', RAIZ.replace(/[:\\/]/g, '-'), 'memory');
 
-// ── Onde fica o vault e a memória. É só LEITURA, e mora aqui em cima porque o
-// --check precisa das duas antes de qualquer escrita acontecer.
-// Prefere um vault que JÁ existe (identificado pelos marcadores), senão `.marvin`.
-// O nome diz de quem é a pasta: na maioria dos repositórios ela é MATERIAL DE
-// TRABALHO de quem usa a ferramenta, não entregável do projeto. `.docs` genérico
-// sugeria o contrário. `.docs` segue na lista para que projeto montado pela versão
-// antiga continue sendo reconhecido — a detecção é por marcador, não por nome, e
-// por isso trocar o padrão NÃO exige migrar ninguém (invariante 2).
+// ── Where the vault and the memory live. READ-ONLY, and it sits up here because
+// --check needs both before any write happens.
+// Prefers a vault that ALREADY exists (identified by the markers), else `.marvin`.
+// The name says whose folder it is: in most repositories it is the WORKING MATERIAL
+// of whoever uses the tool, not a project deliverable. A generic `.docs` suggested
+// the opposite. `.docs` stays on the list so a project scaffolded by the old version
+// keeps being recognized — detection is by marker, not by name, which is why changing
+// the default does NOT require migrating anyone (invariant 2).
 const CANDIDATOS = ['.marvin', '.docs', 'Docs', 'docs', 'doc'].map(d => path.join(RAIZ, d));
-// `.obsidian` continua valendo como marcador de LEITURA: o script não escreve mais
-// config de Obsidian, mas quem já tinha um vault seu numa dessas pastas segue sendo
-// reaproveitado em vez de ganhar uma segunda base de conhecimento ao lado.
+// `.obsidian` still counts as a READ marker: the script no longer writes Obsidian
+// config, but whoever already had a vault of theirs in one of these folders keeps
+// being reused instead of getting a second knowledge base next to it.
 const ehVault = (d) => fs.existsSync(path.join(d, 'Memoria')) || fs.existsSync(path.join(d, '08_Memoria'))
   || fs.existsSync(path.join(d, '.obsidian'));
 const DOCS = CANDIDATOS.find(ehVault) || path.join(RAIZ, '.marvin');
-// Layout antigo: pastas numeradas por tipo (08_Memoria/, 10_Decisoes/). Desde a
-// organização por grafo a memória mora em Memoria/. Projeto montado antes continua
-// funcionando no lugar onde está — a junction aponta para onde as notas ESTÃO, e
-// mover é decisão do humano (invariante 1). O passo 5 avisa; nada mais.
+// Old layout: folders numbered by type (08_Memoria/, 10_Decisoes/). Since the graph
+// organization the memory lives in Memoria/. A project scaffolded before keeps working
+// where it is — the junction points to where the notes ARE, and moving is the human's
+// decision (invariant 1). Step 5 warns; nothing more.
 const LAYOUT_ANTIGO = fs.existsSync(path.join(DOCS, '08_Memoria')) && !fs.existsSync(path.join(DOCS, 'Memoria'));
 const DEST = path.join(DOCS, LAYOUT_ANTIGO ? '08_Memoria' : 'Memoria');
-// Worktree: `.git` é ARQUIVO (`gitdir: …`), não pasta. A memória segue o cwd, então cada
-// worktree tem a sua — e ela anda com o branch, de propósito (US-13). O que não pode é a
-// sessão abrir lá sem ninguém ter rodado `marvin`: aí o Claude Code cria um diretório real
-// e vazio no caminho novo, e a memória some em silêncio. O hook --status --curto acusa.
+// Worktree: `.git` is a FILE (`gitdir: …`), not a folder. Memory follows the cwd, so each
+// worktree has its own — and it travels with the branch, on purpose (US-13). What cannot
+// happen is a session opening there before anyone ran `marvin`: then Claude Code creates a
+// real, empty directory at the new path and memory vanishes silently. The --status --curto hook flags it.
 const WORKTREE = (() => { try { return fs.statSync(path.join(RAIZ, '.git')).isFile(); } catch { return false; } })();
 const ehJunction = (p) => { try { return fs.lstatSync(p).isSymbolicLink(); } catch { return false; } };
 
-// ── O que carrega em TODA sessão, sem ninguém pedir: a fonte (AGENTS.md), o adaptador
-// (CLAUDE.md, que faz @AGENTS.md) e a nota (pela junction). Medido em três projetos
-// reais: a fonte era o dobro da nota num, e CINCO vezes noutro — e a régua antiga só
-// media a nota. Teto é para o que carrega sozinho; o resto da base cresce à vontade
-// e custa zero por sessão. ~4 chars por token: estimativa, serve para ordem de grandeza.
-// Mora aqui em cima porque o --check imprime a mesma conta.
+// ── What loads in EVERY session, unasked: the source (AGENTS.md), the adapter
+// (CLAUDE.md, which does @AGENTS.md) and the note (through the junction). Measured in
+// three real projects: the source was twice the note in one, and FIVE times in another —
+// and the old ruler only measured the note. The ceiling is for what loads by itself; the
+// rest of the base grows freely and costs zero per session. ~4 chars per token: an
+// estimate, good for order of magnitude. Lives up here because --check prints the same math.
 const emTokens = (chars) => Math.round(chars / 4);
-const TETO_NOTA = 6 * 1024;      // o dobro de uma nota bem-formada de referência (3,3 KB)
-const TETO_FIXO_TK = 6000;       // os três somados; acima disso a sessão começa pesada
-// Cinco fontes, não três — a segunda medição (11/09) achou duas que a primeira ignorava:
-// o MEMORY.md (índice da memória, que o Claude Code carrega inteiro pela junction) e o
-// nível GLOBAL (~/.claude/CLAUDE.md + rules/**/*.md), que entra em TODO projeto. Num
-// projeto real eram 2.900 tk invisíveis num total de 11.700.
+const TETO_NOTA = 6 * 1024;      // twice a well-formed reference note (3.3 KB)
+const TETO_FIXO_TK = 6000;       // the three combined; above this the session starts heavy
+// Five sources, not three — the second measurement (11/09) found two the first one ignored:
+// MEMORY.md (the memory index, which Claude Code loads whole through the junction) and the
+// GLOBAL level (~/.claude/CLAUDE.md + rules/**/*.md), which enters EVERY project. In a
+// real project those were 2,900 invisible tk out of 11,700.
 const contextoFixo = () => {
   const globalDir = path.join(os.homedir(), '.claude');
   const arqs = [['AGENTS.md', path.join(RAIZ, 'AGENTS.md')],
@@ -281,9 +282,9 @@ const contextoFixo = () => {
     let bytes = 0; try { bytes = fs.statSync(p).size; } catch { continue; }
     linhas.push({ nome, bytes, tk: emTokens(bytes) });
   }
-  // rules/**/*.md: lido em toda sessão de todo projeto — EXCETO o que tem `paths:` no
-  // frontmatter, que só entra quando um arquivo casado é tocado. Contar esses seria
-  // inflar a conta com o que não carrega; a régua só vale se for justa.
+  // rules/**/*.md: read in every session of every project — EXCEPT those with `paths:`
+  // in the frontmatter, which only enter when a matching file is touched. Counting those
+  // would inflate the bill with what does not load; the ruler is only worth it if fair.
   let regras = 0, nRegras = 0, nCond = 0;
   (function varrer(d, prof = 0) {
     if (prof > 4) return;
@@ -335,13 +336,13 @@ if (!CURTO_HOOK) {
   log('agent memory: ' + MEM + '\n');
 }
 
-// ── --check. Diagnostica a montagem e sai. Existe porque a junction quebra em
-// SILÊNCIO: mover ou renomear a pasta do projeto a deixa apontando para o caminho
-// antigo, e no caminho novo o Claude Code cria um diretório vazio de verdade. Tudo
-// parece normal, o agente escreve, e nada daquilo chega ao repositório.
+// ── --check. Diagnoses the mount and exits. It exists because the junction breaks
+// SILENTLY: moving or renaming the project folder leaves it pointing at the old path,
+// and at the new path Claude Code creates a genuinely empty directory. Everything looks
+// normal, the agent writes, and none of it reaches the repository.
 //
-// Sai com código != 0 de propósito — aviso que só imprime texto é aviso que ninguém
-// lê. Assim ele serve em hook, em CI e em alias de shell.
+// Exits non-zero on purpose — a warning that only prints text is a warning nobody
+// reads. This way it works in a hook, in CI and in a shell alias.
 if (CHECK) {
   log('\x1b[1mcheck\x1b[0m — read-only: nothing is written in this mode\n');
   let problemas = 0;
@@ -375,10 +376,10 @@ if (CHECK) {
   log('');
   imprimirContextoFixo();
 
-  // Junction de OUTRO projeto que ficou apontando para o nada. Não é problema
-  // DESTE repositório — por isso avisa e não muda o código de saída —, mas é lixo
-  // no perfil que ninguém mais vai olhar, e some do radar justamente quando o
-  // projeto muda de lugar.
+  // A junction from ANOTHER project left pointing at nothing. Not a problem of THIS
+  // repository — hence it warns and does not change the exit code —, but it is junk
+  // in the profile nobody will look at again, and it drops off the radar precisely
+  // when the project moves.
   const orfas = [];
   try {
     const projetos = path.join(os.homedir(), '.claude', 'projects');
@@ -404,8 +405,8 @@ if (CHECK) {
   process.exit(problemas ? 1 : 0);
 }
 
-// ── Leitura de nós. Todo Sobre.md tem frontmatter (tipo, estado, pai), um título e uma
-// seção Rumo com entradas "- **dd/mm/aaaa** — …". É tudo que --status e --us precisam.
+// ── Reading nodes. Every Sobre.md has frontmatter (tipo, estado, pai), a title and a
+// Rumo section with "- **dd/mm/yyyy** — …" entries. That is all --status and --us need.
 const lerNo = (arq) => {
   let txt; try { txt = fs.readFileSync(arq, 'utf8'); } catch { return null; }
   const fm = txt.match(/^---\r?\n([\s\S]*?)\r?\n---/);
@@ -431,17 +432,17 @@ const nosDoPlanejamento = () => {
   })(path.join(DOCS, 'Planejamento'));
   return nos;
 };
-const dias = (d) => Math.floor((Date.now() - d.getTime()) / 86400000);  // só para exibir; --status não escreve nada
+const dias = (d) => Math.floor((Date.now() - d.getTime()) / 86400000);  // display only; --status writes nothing
 
-// ── Tokens GASTOS, por modelo — lidos das transcrições do Claude Code. O 4b mede o que
-// carrega; isto mede o que foi pago. O dado é fato: cada resposta do agente fica em
-// ~/.claude/projects/<projeto>/*.jsonl com `model` e `usage`. Só a conversão em dinheiro é
-// estimativa, e a tabela abaixo envelhece — por isso vem datada e a saída diz "confira".
+// ── Tokens SPENT, per model — read from the Claude Code transcripts. 4b measures what
+// loads; this measures what was paid. The data is fact: every agent reply sits in
+// ~/.claude/projects/<project>/*.jsonl with `model` and `usage`. Only the conversion to
+// money is an estimate, and the table below ages — hence it is dated and the output says "check".
 //
-// Dedupe por id de mensagem: a mesma resposta é gravada mais de uma vez enquanto streama
-// (3× por id neste repositório), e a última tem o usage completo. Sub-agentes
-// (`isSidechain`) contam — foram pagos — e aparecem separados.
-const PRECOS_DATA = '2026-09';   // USD por milhão de tokens: input · output · cache write · cache read
+// Dedupe by message id: the same reply is recorded more than once while streaming
+// (3× per id in this repository), and the last one has the complete usage. Sub-agents
+// (`isSidechain`) count — they were paid for — and show up separately.
+const PRECOS_DATA = '2026-09';   // USD per million tokens: input · output · cache write · cache read
 const PRECOS = [
   [/fable|mythos/, { in: 10, out: 50, cw: 12.5, cr: 1 }],
   [/opus/,         { in: 5,  out: 25, cw: 6.25, cr: 0.5 }],
@@ -494,8 +495,8 @@ const imprimirGastos = (g, fixoTk) => {
   }
 };
 
-// ── O lado dos docs do grafo, como função: o 8b anexa ao graph.json, o --status --html
-// desenha. `ids` são os nós de código que existem (vazio sem graphify: aí só doc↔doc).
+// ── The docs side of the graph, as a function: 8b appends it to graph.json, --status --html
+// draws it. `ids` are the code nodes that exist (empty without graphify: then only doc↔doc).
 const grafoDosDocs = (ids, subRepos = []) => {
   const idDe = (rel) => rel.replace(/\\/g, '/').replace(/\.[^./]+$/, '')
     .replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
@@ -505,7 +506,7 @@ const grafoDosDocs = (ids, subRepos = []) => {
     if (prof > 8) return;
     let ents; try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
     for (const e of ents) {
-      // 99_Backup/ e historico/ ficam fora do caminho de leitura — e do grafo.
+      // 99_Backup/ and historico/ stay out of the read path — and out of the graph.
       if (e.name.startsWith('.') || e.name === '99_Backup' || e.name === 'historico') continue;
       const p = path.join(dir, e.name);
       if (e.isDirectory()) { varrerDocs(p, prof + 1); continue; }
@@ -529,8 +530,8 @@ const grafoDosDocs = (ids, subRepos = []) => {
     if (estado) no.estado = estado;
     novosNos.push(no);
     ids.add(id);
-    // [[wikilink]] resolve por nome de arquivo ou pelo `name:` do frontmatter —
-    // é como vault de notas liga, e base migrada de lá vem cheia deles.
+    // [[wikilink]] resolves by file name or by the frontmatter `name:` —
+    // that is how a notes vault links, and a base migrated from one is full of them.
     porNome.set(path.basename(arq, '.md').toLowerCase(), id);
     const nome = campo('name'); if (nome) porNome.set(nome.replace(/^["']|["']$/g, '').toLowerCase(), id);
   }
@@ -549,12 +550,12 @@ const grafoDosDocs = (ids, subRepos = []) => {
       if (fs.existsSync(alvo)) aresta(id, idDe(relDe(alvo)), 'child_of');
       else avisos.push(rel + ': pai → ' + pai.trim() + ' does not exist');
     }
-    // links relativos
+    // relative links
     for (const m of corpo.matchAll(/\[[^\]]*\]\(([^)\s#]+)(?:#[^)]*)?\)/g)) {
       const href = m[1];
       if (/^[a-z]+:/i.test(href)) continue;           // http, mailto…
       const alvo = path.resolve(path.dirname(arq), href);
-      if (!fs.existsSync(alvo)) continue;             // link quebrado é assunto de outro passo
+      if (!fs.existsSync(alvo)) continue;             // a broken link is another step's business
       const alvoRel = relDe(alvo);
       if (alvoRel.startsWith('..')) continue;
       const alvoId = idDe(alvoRel);
@@ -583,21 +584,21 @@ const grafoDosDocs = (ids, subRepos = []) => {
   return { novosNos, novasArestas, avisos };
 };
 
-// ── O grafo a serviço do Marvin. Medido em 14/09: em 23.745 turnos de agente nos quatro
-// projetos, o grafo foi consultado DUAS vezes — as duas em teste. "Consulta, nunca hook"
-// virou "nunca". A pergunta estrutural não aparece como pergunta na hora de trabalhar;
-// então quem pergunta é o script, nos momentos que ele já controla:
-//   --us       Impacto: quem chama o que a US toca, e que outras US passam por ali
-//   --status   Colisão: duas US ativas na mesma função/arquivo · Dispersão: US em N comunidades
-//   --fechar   Deriva: o diff tocou arquivo que não está no "Código tocado" de nenhuma US ativa
-// Tudo determinístico, zero LLM. O graphify fez a extração; o script liga a resposta ao nó.
+// ── The graph in Marvin's service. Measured on 14/09: in 23,745 agent turns across the four
+// projects, the graph was queried TWICE — both times in a test. "Query, never hook"
+// became "never". The structural question does not show up as a question while working;
+// so the script is the one asking, at the moments it already controls:
+//   --us       Impact: who calls what the US touches, and which other USs pass through there
+//   --status   Collision: two active USs on the same function/file · Dispersion: US across N communities
+//   --fechar   Drift: the diff touched a file that is in no active US's "Código tocado"
+// All deterministic, zero LLM. graphify did the extraction; the script ties the answer to the node.
 const carregarGrafo = () => {
   const p = path.join(RAIZ, 'graphify-out', 'graph.json');
   let g; try { g = JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
   const nos = new Map((g.nodes || []).map(n => [n.id, n]));
   const arestas = g.links || g.edges || [];
-  const chamadores = new Map();   // alvo → [quem chama/importa/estende]
-  const contidoEm = new Map();    // função → arquivo
+  const chamadores = new Map();   // target → [who calls/imports/extends it]
+  const contidoEm = new Map();    // function → file
   for (const e of arestas) {
     if (/^(calls|indirect_call|imports|imports_from|uses|extends|inherits|implements|requires)$/.test(e.relation)) {
       if (!chamadores.has(e.target)) chamadores.set(e.target, []);
@@ -607,7 +608,7 @@ const carregarGrafo = () => {
   }
   return { nos, arestas, chamadores, contidoEm, mtime: fs.statSync(p).mtime };
 };
-// Que nós de código cada US toca — pelo mesmo parser do 8b. Devolve Map usId → {no, ids}.
+// Which code nodes each US touches — through the same parser as 8b. Returns Map usId → {no, ids}.
 const tocadoPorUS = (grafo) => {
   const ids = new Set(grafo ? grafo.nos.keys() : []);
   const { novosNos, novasArestas } = grafoDosDocs(ids);
@@ -618,10 +619,10 @@ const tocadoPorUS = (grafo) => {
 };
 const rotuloNo = (grafo, id) => { const n = grafo && grafo.nos.get(id); return n ? (n.label || id) + (n.source_file ? '  ' + n.source_file + (n.source_location ? ':' + n.source_location : '') : '') : id; };
 
-// Impacto de uma US: quem depende do que ela toca (2 níveis), e que outras US tocam o mesmo.
+// Impact of a US: who depends on what it touches (2 levels), and which other USs touch the same.
 const impactoDaUS = (grafo, todas, usId) => {
   const alvo = todas.get(usId); if (!alvo || !grafo) return null;
-  const dependentes = new Map();   // id → nível
+  const dependentes = new Map();   // id → level
   let fronteira = [...alvo.ids];
   for (let nivel = 1; nivel <= 2 && fronteira.length; nivel++) {
     const prox = [];
@@ -641,18 +642,18 @@ const impactoDaUS = (grafo, todas, usId) => {
   return { tocados: [...alvo.ids], dependentes: [...dependentes], outras, comunidades: [...comunidades] };
 };
 
-// ── --status --html. Um `index.html` único, regerado a cada run, com a série embutida
-// (`file://` bloqueia fetch, então nada de JSON separado lido pela página). O histórico
-// mora em `.marvin/.status/historico.jsonl`, uma linha por COMMIT — a data vem do
-// `git log -1 --format=%cI`, não de `Date.now()`, então dois runs no mesmo commit não
-// duplicam. Tudo em pasta ignorada pelo git: é derivado, e derivado envelhece em silêncio.
-// SVG pré-renderizado aqui, sem JS na página: abre sem rede, sem lib, em qualquer coisa.
+// ── --status --html. A single `index.html`, regenerated every run, with the series embedded
+// (`file://` blocks fetch, so no separate JSON read by the page). The history lives in
+// `.marvin/.status/historico.jsonl`, one line per COMMIT — the date comes from
+// `git log -1 --format=%cI`, not from `Date.now()`, so two runs on the same commit do not
+// duplicate. All in a git-ignored folder: it is derived, and derived ages silently.
+// SVG pre-rendered here, no JS on the page: opens with no network, no lib, on anything.
 const escreverStatusHtml = (st, silencioso = false) => {
   const ok = silencioso ? () => {} : okReal, info = silencioso ? () => {} : infoReal, warn = silencioso ? () => {} : warnReal;
   const dir = path.join(DOCS, '.status');
   const jsonl = path.join(dir, 'historico.jsonl');
   fsw.mkdirSync(dir, { recursive: true });
-  // .gitignore: a mesma disciplina do graphify-out/
+  // .gitignore: the same discipline as graphify-out/
   const relStatus = path.relative(RAIZ, dir).replace(/\\/g, '/') + '/';
   const gi = path.join(RAIZ, '.gitignore');
   if (fs.existsSync(gi)) {
@@ -662,7 +663,7 @@ const escreverStatusHtml = (st, silencioso = false) => {
       ok(relStatus + ' added to .gitignore');
     }
   }
-  // a série
+  // the series
   let commit = null, data = null;
   try {
     const out = execSync('git log -1 --format=%h%x09%cI', { cwd: RAIZ, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
@@ -685,7 +686,7 @@ const escreverStatusHtml = (st, silencioso = false) => {
   }
   const pts = serie.length ? serie : [ponto];
 
-  // gráficos: polyline pré-renderizada. Uma função, três usos.
+  // charts: pre-rendered polyline. One function, several uses.
   const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const grafico = (titulo, series, fmt = (v) => v) => {
     const W = 640, H = 200, PL = 46, PR = 12, PT = 18, PB = 28;
@@ -721,7 +722,7 @@ const escreverStatusHtml = (st, silencioso = false) => {
   ]);
   const gGrafo = grafico('Idade do grafo no commit (dias)', [{ nome: 'dias desde a extração', v: pts.map(idadeGrafo) }]);
   const gCusto = grafico('Custo acumulado por commit (USD, estimado)', [{ nome: 'USD', v: pts.map(p => p.custo == null ? null : p.custo) }]);
-  // por dia: o que foi lido (in + cache) e o que foi escrito — do transcript, não da série
+  // per day: what was read (in + cache) and what was written — from the transcript, not the series
   const dias = Object.keys(st.gastos.porDia).filter(Boolean).sort();
   const g = st.gastos;
   const barras = (() => {
@@ -742,10 +743,10 @@ const escreverStatusHtml = (st, silencioso = false) => {
   const tabelaModelos = Object.entries(g.porModelo).sort((a, b) => b[1].cr + b[1].in - (a[1].cr + a[1].in)).map(([m, t]) =>
     `<tr><td></td><td>${esc(m)}</td><td>${kTk(t.in)}</td><td>${kTk(t.cw)}</td><td>${kTk(t.cr)}</td><td>${kTk(t.out)}</td><td>${t.msgs}</td><td>≈ $${custoDe(t, m).toFixed(2)}</td><td>${t.msgs ? '$' + (custoDe(t, m) / t.msgs).toFixed(3) : '—'}</td></tr>`).join('');
 
-  // ── A rede: a base de conhecimento como grafo, colorida por estado. Nós de doc vêm do
-  // mesmo `grafoDosDocs` que o 8b anexa; nós de código entram só quando uma US os toca
-  // (o graph.json inteiro tem milhares — seria ruído). Layout de força em JS inline, sem
-  // lib, posições iniciais determinísticas (espiral), para a página abrir igual sempre.
+  // ── The network: the knowledge base as a graph, colored by state. Doc nodes come from
+  // the same `grafoDosDocs` that 8b appends; code nodes enter only when a US touches them
+  // (the whole graph.json has thousands — it would be noise). Force layout in inline JS, no
+  // lib, deterministic initial positions (spiral), so the page always opens the same.
   const rede = (() => {
     const GRAFO_R = path.join(RAIZ, 'graphify-out', 'graph.json');
     let codigo = new Map();
@@ -762,7 +763,7 @@ const escreverStatusHtml = (st, silencioso = false) => {
       else if (rel.endsWith('/Contexto/Sobre.md')) cat = 'raiz';
       else if (rel.startsWith(relDocs + '/Releases/')) cat = 'release';
       else if (rel.startsWith(relDocs + '/Memoria/')) cat = 'nota';
-      if (/README\.md$/.test(rel) && cat === 'doc') continue;   // READMEs de formato: não são conhecimento
+      if (/README\.md$/.test(rel) && cat === 'doc') continue;   // format READMEs: not knowledge
       nos.set(n.id, { id: n.id, rotulo: n.label.replace(/\s+—.*$/, '').slice(0, 40), cat, estado: n.estado || null, arq: rel });
     }
     const arestas = [];
@@ -843,8 +844,8 @@ const escreverStatusHtml = (st, silencioso = false) => {
 </script></details>`;
 
   const linhaUS = (a) => `<tr class="${esc(a.estado)}"><td><span class="badge ${esc(a.estado)}">${esc(a.estado)}</span></td><td><strong>${esc(a.titulo)}</strong>${a.cadeia.length ? `<div class="dim">${esc(a.cadeia.join(' › '))}</div>` : ''}${a.proximo ? `<div>${esc(a.proximo.replace(/\*\*|`/g, ''))}</div>` : ''}${a.avisos.map(w => `<div class="warn">! ${esc(w)}</div>`).join('')}</td><td>${a.rumo ? `<span class="dim">${a.idade}d</span> ${esc(a.rumo.slice(0, 120))}` : '<span class="dim">sem Rumo datado</span>'}</td></tr>`;
-  // primeira dobra: o ponto anterior dá o delta dos cards; a lista Corrigir junta os avisos
-  // da página com os de cada US (com link para o arquivo) — é o motivo de abrir a página
+  // first fold: the previous point gives the cards' delta; the Corrigir list joins the page
+  // warnings with each US's (linking to the file) — it is the reason to open the page
   const ant = pts.length > 1 ? pts[pts.length - 2] : null;
   const delta = (a, b, uni, bom, fmt = (v) => String(v)) => { if (a == null || b == null) return '<span class="delta">—</span>'; const d = +(b - a).toFixed(2); const cls = d > 0 ? 'up' : d < 0 ? 'down' : ''; return `<span class="delta ${cls}${bom ? ' bom' : ''}">${d === 0 ? '= igual' : (d > 0 ? '▲ +' : '▼ −') + fmt(Math.abs(d)) + uni} desde o último commit</span>`; };
   const card = (rot, val, sub, href) => `<a class="card" href="${href}"><span class="rot">${esc(rot)}</span><span class="val">${val}</span><span class="delta-wrap">${sub}</span></a>`;
@@ -852,7 +853,7 @@ const escreverStatusHtml = (st, silencioso = false) => {
   const itens = [...st.avisos.filter(w => w.nivel !== 'info').map(w => `<li>${esc(w.texto)}</li>`), ...st.ativas.flatMap(a => a.avisos.map(w => `<li>${linkArq(a.arq)} — ${esc(w)}</li>`))];
   const corrigir = itens.length ? `<section class="corrigir" id="corrigir"><h2>Corrigir <span class="dim">— ${itens.length} item(ns)</span></h2><ul>${itens.join('')}</ul></section>` : '<p class="tudo-ok">✓ tudo consistente — nada a corrigir</p>';
   const ESCURO = '--fg:#f6f4f2;--fg2:#b4b1af;--dim:#93908d;--bg:#1c1b1a;--bg2:#252423;--bg3:#302e2d;--line:#3a3938;--ok:#3fb950;--warn:#d4a72c;--err:#ff6b5b;--acc:#3fb950;--acc2:#2c5a34;--s0:#4d9cff;--s1c:#ff7d36;--s2c:#3fb950;--grade:rgba(255,255,255,.05);--c-epic:#7c85ff;--c-feature:#4d9cff;--c-us:#ff7d36;--c-fluxo:#26f2d5;--c-arq:#cfcc3a;--c-release:#8dff55';
-  const relRaiz = (abs) => path.relative(RAIZ, abs).replace(/\\/g, '/');   // o mesmo `arq` que o nó da rede carrega
+  const relRaiz = (abs) => path.relative(RAIZ, abs).replace(/\\/g, '/');   // the same `arq` the network node carries
   const arvoreHtml = (() => {
     const filhos = (pai) => st.arvore.filter(n => n.pai === pai);
     const badge = (n) => `<span class="badge ${esc(n.estado || '')}">${esc(n.estado || '?')}</span>`;
@@ -951,8 +952,8 @@ ${redeHtml}
   ok(relStatus + 'index.html — open it in any browser, no server');
 };
 
-// Cálculo separado da impressão: o texto, o `--curto` do hook e o `--html` leem a mesma
-// estrutura. Nada aqui escreve.
+// Computation separate from printing: the text, the hook's `--curto` and `--html` read the
+// same structure. Nothing here writes.
 const calcularStatus = () => {
   const nos = nosDoPlanejamento();
   const porArq = new Map(nos.map(n => [path.resolve(n.arq), n]));
@@ -980,9 +981,9 @@ const calcularStatus = () => {
   if (estranhas.length) { st.avisos.push({ nivel: 'warn', texto: `the note has ${estranhas.length} section(s) that look like a report: ${estranhas.slice(0, 3).map(s => '"' + s + '"').join(', ')}${estranhas.length > 3 ? '…' : ''} → Rumo of the US` }); st.problemas++; }
   const foraDaNota = nos.filter(n => n.tipo === 'us' && n.estado === 'ativa' && !ponteiros.some(([, , h]) => path.resolve(DEST, h) === path.resolve(n.arq)));
   if (foraDaNota.length) st.avisos.push({ nivel: 'warn', texto: `${foraDaNota.length} US marked ativa but not in the note: ${foraDaNota.map(n => n.titulo.split(' — ')[0]).join(', ')}` });
-  // ── O grafo no status: colisão e dispersão. Duas US ativas na mesma função é o conflito
-  // que duas sessões paralelas descobrem no merge — aqui ele aparece antes. US espalhada
-  // por muitas comunidades é escopo largo demais para uma US.
+  // ── The graph in the status: collision and dispersion. Two active USs on the same function
+  // is the conflict two parallel sessions discover at the merge — here it shows up before.
+  // A US spread across many communities is too wide a scope for one US.
   const grafoSt = carregarGrafo();
   if (grafoSt) {
     const todas = tocadoPorUS(grafoSt);
@@ -1053,26 +1054,27 @@ const imprimirStatus = (st, curto) => {
   info(st.grafo ? `${st.grafo.nos} nodes (${st.grafo.docs} from the knowledge base) — extracted ${st.grafo.idade}d ago` + (st.grafo.idade > 7 ? '  → marvin --graphify --graphify-rebuild' : '') : 'none — marvin --graphify builds it');
 };
 
-// ── --status. O dashboard que a organização por grafo tornou possível: todo nó tem estado
-// no frontmatter e Rumo datado, então o estado do projeto é LEITURA. É o comando que se
-// roda ao abrir a sessão, e é onde a régua pega antes de virar problema. Existe porque a
-// nota de um projeto real chegou a nove seções de relato e 52 KB sem que ninguém rodasse
-// --check: medir sob demanda não basta; tem que estar no caminho.
+// ── --status. The dashboard the graph organization made possible: every node has a state
+// in the frontmatter and a dated Rumo, so the project state is a READ. It is the command
+// you run when opening a session, and where the ruler catches things before they become a
+// problem. It exists because a real project's note reached nine report sections and 52 KB
+// without anyone running --check: measuring on demand is not enough; it has to be on the path.
 //
-//   --curto   só o que o hook de sessão precisa (≤ 200 tk): US ativas e avisos. SEMPRE sai 0
-//             — em hook, exit != 0 vira erro visível e derruba a sessão.
-//   --html    escreve .marvin/.status/index.html e anexa uma linha em historico.jsonl —
-//             a única forma do --status que escreve, e só ela. O texto é uma foto; "medição"
-//             é filme: sem a série ninguém responde "o contexto fixo cresceu desde a release?".
+//   --curto   only what the session hook needs (≤ 200 tk): active USs and warnings. ALWAYS exits 0
+//             — in a hook, exit != 0 becomes a visible error and takes the session down.
+//   --html    writes .marvin/.status/index.html and appends a line to historico.jsonl —
+//             the only form of --status that writes, and only that. The text is a photo;
+//             "measurement" is a film: without the series nobody can answer "did the fixed
+//             context grow since the release?".
 if (temFlag('--status')) {
   const CURTO = temFlag('--curto'), HTML = temFlag('--html');
   if (!CURTO) log('\x1b[1mstatus\x1b[0m — ' + (HTML ? 'writes .marvin/.status/ only' : 'read-only') + '\n');
   if (LAYOUT_ANTIGO) { if (!CURTO) warn('old layout — --status reads Planejamento/<Epic>/<Feature>/<US>/Sobre.md. Run `marvin --migrar` first.'); process.exit(CURTO ? 0 : 1); }
   const st = calcularStatus();
   imprimirStatus(st, CURTO);
-  // A sessão abriu num caminho sem junction (worktree, clone novo, pasta movida): tudo
-  // que o agente escrever em memória cai num diretório real e não chega ao repositório.
-  // Aviso aqui porque é o único lugar que roda em TODA sessão; --check é sob demanda.
+  // The session opened at a path with no junction (worktree, fresh clone, moved folder):
+  // everything the agent writes to memory lands in a real directory and never reaches the
+  // repository. Warned here because it is the only place that runs in EVERY session; --check is on demand.
   if (fs.existsSync(DOCS) && !ehJunction(MEM))
     log('  ! memória DESLIGADA deste repositório' + (WORKTREE ? ' (git worktree)' : '') + ' — rode `marvin` daqui antes de escrever qualquer nota; `marvin --check` explica');
   if (HTML) { if (!CURTO) log(''); escreverStatusHtml(st, CURTO); }
@@ -1080,10 +1082,10 @@ if (temFlag('--status')) {
   process.exit(CURTO ? 0 : st.problemas ? 1 : 0);
 }
 
-// ── --us <Epic>/<Feature>/<US>. O gatilho físico da regra "antes de qualquer US": cria a
-// pasta com o Sobre.md no formato, cria o Epic e a Feature se faltarem, e põe a linha na
-// nota. Sem isto a regra depende de alguém lembrar — e a US nasce torta para ser
-// consertada depois. Idempotente: nó que existe não é tocado.
+// ── --us <Epic>/<Feature>/<US>. The physical trigger of the "before any US" rule: creates
+// the folder with the Sobre.md in the format, creates the Epic and the Feature if missing,
+// and puts the line in the note. Without this the rule depends on someone remembering — and
+// the US is born crooked to be fixed later. Idempotent: an existing node is not touched.
 const argUS = process.argv.find(a => a.startsWith('--us='));
 if (argUS || temFlag('--us')) {
   const alvo = argUS ? argUS.slice(5) : process.argv[process.argv.indexOf('--us') + 1];
@@ -1129,7 +1131,7 @@ _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
     fsw.writeFileSync(sobre, cab + corpo);
     ok(tipo + ': ' + partes.slice(0, i + 1).join('/') + '/Sobre.md');
   }
-  // Pai que já existia: acrescenta o filho novo na seção Filhos, se não estiver.
+  // Parent that already existed: adds the new child to the Filhos section, if not there.
   for (let i = 1; i <= 2; i++) {
     const sobre = path.join(DOCS, 'Planejamento', ...partes.slice(0, i + 1), 'Sobre.md');
     const filho = partes[i + 1];
@@ -1140,7 +1142,7 @@ _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
     fsw.writeFileSync(sobre, novo);
     ok(partes.slice(0, i + 1).join('/') + '/Sobre.md — child added: ' + filho);
   }
-  // A linha na nota.
+  // The line in the note.
   const NOTA_US = path.join(DEST, 'onde_paramos.md');
   const relSobre = path.relative(DEST, path.join(DOCS, 'Planejamento', ...partes, 'Sobre.md')).replace(/\\/g, '/');
   let nota = ''; try { nota = fs.readFileSync(NOTA_US, 'utf8'); } catch {}
@@ -1150,7 +1152,7 @@ _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
   else if (nota.includes('](' + relSobre + ')')) info('onde_paramos.md already points to it');
   else {
     const linha = `- [${partes[3]}](${relSobre}) — aberta ${hoje}; próximo passo: _(uma frase)_`;
-    // Entra no FIM da lista da seção; o placeholder do template sai na primeira US.
+    // Goes at the END of the section's list; the template placeholder leaves on the first US.
     const m = nota.match(/^##\s+Em andamento[ \t]*\r?\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
     let nova;
     if (m) {
@@ -1162,10 +1164,10 @@ _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
     fsw.writeFileSync(NOTA_US, nova);
     ok('onde_paramos.md — pointer added');
   }
-  // ── Impacto: o grafo responde "o que esta US vai quebrar" ANTES de codar. Só quando o
-  // "Código tocado" está preenchido — na primeira chamada ele está vazio, e o /us manda
-  // rodar de novo depois de preencher. A seção é DERIVADA e regerada a cada run; a marca
-  // no cabeçalho diz isso, para ninguém editar à mão o que o próximo run sobrescreve.
+  // ── Impacto: the graph answers "what will this US break" BEFORE coding. Only once
+  // "Código tocado" is filled in — on the first call it is empty, and /us says to run
+  // again after filling it. The section is DERIVED and regenerated every run; the mark in
+  // the header says so, so nobody hand-edits what the next run overwrites.
   {
     const usArq = path.join(DOCS, 'Planejamento', ...partes, 'Sobre.md');
     const grafo = carregarGrafo();
@@ -1205,10 +1207,10 @@ _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
   process.exit(0);
 }
 
-// ── --fechar. A deriva: o que mudou no git e NÃO está no "Código tocado" de nenhuma US
-// ativa. Ou o mapa da US está incompleto, ou a US vazou de escopo — os dois são coisa
-// para registrar antes de fechar, e ninguém vê sem olhar o diff contra o grafo. Lê só;
-// o /fechar chama isto e depois o --status. "Mudou" = não commitado + commits de hoje.
+// ── --fechar. The drift: what changed in git and is NOT in any active US's "Código
+// tocado". Either the US map is incomplete, or the US leaked out of scope — both are things
+// to record before closing, and nobody sees them without checking the diff against the
+// graph. Read-only; /fechar calls this and then --status. "Changed" = uncommitted + today's commits.
 if (temFlag('--fechar')) {
   log('\x1b[1m--fechar\x1b[0m — drift between the diff and the active USs (read-only)\n');
   if (LAYOUT_ANTIGO) { warn('old layout — run `marvin --migrar` first'); process.exit(1); }
@@ -1222,12 +1224,12 @@ if (temFlag('--fechar')) {
   info(mudados.size + ' file(s) changed (uncommitted + commits since midnight), ' + codigoMudado.length + ' of them code');
   const grafo = carregarGrafo();
   const todas = tocadoPorUS(grafo);
-  // Conta a US ativa E a que foi concluída HOJE (último Rumo datado de hoje): o trabalho
-  // de hoje não vira "deriva" só porque a release já saiu.
+  // Counts the active US AND the one concluded TODAY (last Rumo dated today): today's
+  // work does not become "drift" just because the release already went out.
   const hojeStr = (() => { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); })();
   const concluidaHoje = (t) => { const n = lerNo(path.join(RAIZ, t.no.source_file)); const u = n && n.rumo.length ? n.rumo[n.rumo.length - 1].data : null; return !!u && String(u.getDate()).padStart(2, '0') + '/' + String(u.getMonth() + 1).padStart(2, '0') + '/' + u.getFullYear() === hojeStr; };
   const ativas = [...todas.values()].filter(t => t.no.estado === 'ativa' || (t.no.estado === 'concluida' && concluidaHoje(t)));
-  // arquivos que cada US ativa declara: pelo nó do grafo (source_file) ou, sem grafo, pela crase
+  // files each active US declares: via the graph node (source_file) or, without a graph, via the backtick
   const arquivosDe = (t) => { const s = new Set(); for (const id of t.ids) { const n = grafo && grafo.nos.get(id); if (n && n.source_file) s.add(n.source_file.replace(/\\/g, '/')); } return s; };
   const cobertos = new Map();
   for (const t of ativas) for (const f of arquivosDe(t)) cobertos.set(f, t);
@@ -1238,7 +1240,7 @@ if (temFlag('--fechar')) {
   if (fora.length) {
     warn(fora.length + ' changed code file(s) are in NO active US — the map is incomplete, or the work leaked out of scope:');
     fora.slice(0, 15).forEach(f => {
-      // dica: alguma US ativa depende deste arquivo (2 níveis)? então provavelmente é dela.
+      // hint: does some active US depend on this file (2 levels)? then it is probably hers.
       let dica = '';
       if (grafo) {
         const idArq = f.replace(/\.[^./]+$/, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
@@ -1256,16 +1258,17 @@ if (temFlag('--fechar')) {
   process.exit(0);
 }
 
-// ── --release <versao>. Fecha o ciclo US → Rumo → Evidência → Release, o único passo que
-// ainda era manual — e é onde a nota volta a inflar. Lê toda US `concluida` que não está em
-// nenhum Releases/*.md, EXIGE Evidência (sem escape: quem quer marcar sem, escreve
-// `_(sem evidência: hotfix)_` no nó e a decisão fica registrada), escreve o índice e tira
-// as linhas da nota. Não faz tag, commit nem bump — isso é decisão do humano; sugere o tag.
+// ── --release <version>. Closes the cycle US → Rumo → Evidência → Release, the only step
+// that was still manual — and where the note inflates again. Reads every `concluida` US
+// that is in no Releases/*.md, REQUIRES Evidência (no escape hatch: whoever wants to mark
+// without one writes `_(sem evidência: hotfix)_` in the node and the decision is on record),
+// writes the index and removes the lines from the note. No tag, commit or bump — that is
+// the human's decision; it suggests the tag.
 //
-// Invariante 1 aqui: o release é escrito ANTES da nota (se cair no meio, sobra uma nota
-// "suja" que o --status acusa — nunca uma US sumida sem registro); só sai da nota a linha
-// cujo href casa EXATAMENTE a US que entrou; e a contagem é conferida antes de escrever.
-// Data pelo git, não por `new Date()`: o índice precisa ser reproduzível.
+// Invariant 1 here: the release is written BEFORE the note (if it dies midway, what is left
+// is a "dirty" note that --status flags — never a US gone without record); only the line
+// whose href matches EXACTLY the US that went in leaves the note; and the count is checked
+// before writing. Date from git, not from `new Date()`: the index has to be reproducible.
 const argRel = process.argv.find(a => a.startsWith('--release='));
 if (argRel || temFlag('--release')) {
   const versao = argRel ? argRel.slice(10) : process.argv[process.argv.indexOf('--release') + 1];
@@ -1276,7 +1279,7 @@ if (argRel || temFlag('--release')) {
   const alvo = path.join(relDir, versao + '.md');
   if (fs.existsSync(alvo)) { err('Releases/' + versao + '.md already exists — nothing touched (a release is written once)'); process.exit(1); }
 
-  // US que já subiram: todo href dentro de Releases/*.md, resolvido.
+  // USs that already shipped: every href inside Releases/*.md, resolved.
   const jaSubiu = new Set();
   let relArqs = []; try { relArqs = fs.readdirSync(relDir).filter(f => f.endsWith('.md') && f !== 'README.md'); } catch {}
   for (const f of relArqs) {
@@ -1309,13 +1312,13 @@ if (argRel || temFlag('--release')) {
     process.exit(1);
   }
 
-  // Data do último commit — reproduzível; sem git, fica para o humano.
+  // Date of the last commit — reproducible; without git, it is left to the human.
   let data = '_(data)_';
   try { data = execSync('git log -1 --format=%cs', { cwd: RAIZ, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || data; } catch {}
   const linhaDe = (n) => '- [' + n.titulo + '](' + path.relative(relDir, n.arq).replace(/\\/g, '/') + ') — evidência: ' + n.evidencia.split(/\r?\n/)[0].replace(/^- /, '').trim();
   const conteudo = '# ' + versao + ' — ' + data + '\n\n' + concluidas.map(linhaDe).join('\n') + '\n';
 
-  // A nota: só sai a linha cujo href resolve para uma US que entrou. Conferido antes de escrever.
+  // The note: only the line whose href resolves to a US that went in leaves. Checked before writing.
   const NOTA_R = path.join(DEST, 'onde_paramos.md');
   let nota = ''; try { nota = fs.readFileSync(NOTA_R, 'utf8'); } catch {}
   const entram = new Set(concluidas.map(n => path.resolve(n.arq)));
@@ -1341,18 +1344,18 @@ if (argRel || temFlag('--release')) {
   process.exit(0);
 }
 
-// ── --migrar. Layout antigo (08_Memoria/, 10_Decisoes/…) → layout por grafo. Feito três
-// vezes à mão em projetos reais no mesmo dia, sempre na mesma ordem: backup → memória →
-// decisões → fontes → sobras → links. O que exige julgamento (o conteúdo da nota, qual
-// arquivo é Epic) fica de fora e é dito no fim. Invariante 1 em cada passo: copia, confere,
-// só então apaga. Depois dele, o run normal cria os templates e reponta a junction.
+// ── --migrar. Old layout (08_Memoria/, 10_Decisoes/…) → graph layout. Done three times
+// by hand on real projects the same day, always in the same order: backup → memory →
+// decisions → sources → leftovers → links. What takes judgment (the note's content, which
+// file is an Epic) stays out and is said at the end. Invariant 1 at every step: copy,
+// check, only then delete. After it, the normal run creates the templates and repoints the junction.
 if (temFlag('--migrar')) {
   log('\x1b[1m--migrar\x1b[0m — old layout → graph layout\n');
   if (!LAYOUT_ANTIGO) { ok('nothing to migrate: this base is already on the graph layout'); process.exit(0); }
   const dest = path.join(DOCS, '99_Backup', 'antes-do-grafo');
   if (fs.existsSync(dest) && !DRY) { err('99_Backup/antes-do-grafo already exists — a previous --migrar stopped halfway. Look at it before running again.'); process.exit(1); }
   const contar = (d) => { let n = 0; (function w(x) { let es; try { es = fs.readdirSync(x, { withFileTypes: true }); } catch { return; } for (const e of es) e.isDirectory() ? w(path.join(x, e.name)) : n++; })(d); return n; };
-  // 1. backup de tudo, menos do próprio 99_Backup
+  // 1. backup of everything, except 99_Backup itself
   let n = 0;
   (function cp(dir, rel = '') {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -1374,12 +1377,12 @@ if (temFlag('--migrar')) {
     info(path.relative(DOCS, de).replace(/\\/g, '/') + '  →  ' + path.relative(DOCS, para).replace(/\\/g, '/'));
     return true;
   };
-  // 2. memória inteira (a junction é repontada pelo run normal, que vê 08_Memoria sumir)
+  // 2. the whole memory (the junction is repointed by the normal run, which sees 08_Memoria vanish)
   const m8 = path.join(DOCS, '08_Memoria');
   for (const f of fs.readdirSync(m8)) mover(path.join(m8, f), path.join(DOCS, 'Memoria', f));
   if (!DRY) fs.rmdirSync(m8);
   ok('08_Memoria/ → Memoria/');
-  // 3. decisões → Contexto/Arquitetura (o README antigo vai para o backup: o novo layout tem o seu)
+  // 3. decisions → Contexto/Arquitetura (the old README goes to the backup: the new layout has its own)
   const d10 = path.join(DOCS, '10_Decisoes');
   if (fs.existsSync(d10)) {
     for (const f of fs.readdirSync(d10)) {
@@ -1390,17 +1393,17 @@ if (temFlag('--migrar')) {
     }
     try { if (!DRY) fs.rmdirSync(d10); ok('10_Decisoes/ → Contexto/Arquitetura/'); } catch { warn('10_Decisoes/ not empty — see above'); }
   }
-  // 4. fontes e o índice antigo
+  // 4. sources and the old index
   mover(path.join(DOCS, '00_Fontes_Externas.md'), path.join(DOCS, 'Fontes', 'Externas.md'));
   mover(path.join(DOCS, '00_Inicio.md'), path.join(DOCS, '99_Backup', '00_Inicio.md'));
-  // 5. sobras vazias
+  // 5. empty leftovers
   for (const d of ['11_Sessoes', '90_Anexos']) {
     const p = path.join(DOCS, d);
     if (!fs.existsSync(p)) continue;
     if (fs.readdirSync(p).length) { warn(d + '/ is not empty — left for you'); continue; }
     if (!DRY) fs.rmdirSync(p); info(d + '/ removed (empty)');
   }
-  // 6. links: os caminhos que mudaram, nos .md da base e nos ponteiros da raiz
+  // 6. links: the paths that changed, in the base .md files and in the root pointers
   const troca = [[/08_Memoria\//g, 'Memoria/'], [/10_Decisoes\/README\.md/g, '99_Backup/10_Decisoes-README.md'], [/10_Decisoes\//g, 'Contexto/Arquitetura/'], [/00_Fontes_Externas\.md/g, 'Fontes/Externas.md']];
   const alvos = [];
   (function w(d, prof = 0) { if (prof > 6) return; let es; try { es = fs.readdirSync(d, { withFileTypes: true }); } catch { return; } for (const e of es) { const p = path.join(d, e.name); if (e.isDirectory()) { if (e.name !== '99_Backup') w(p, prof + 1); } else if (e.name.endsWith('.md')) alvos.push(p); } })(DOCS);
@@ -1424,22 +1427,22 @@ if (temFlag('--migrar')) {
   process.exit(0);
 }
 
-// ── 0b. Ferramentas opcionais: o registro `.marvin/ferramentas.md`.
+// ── 0b. Optional tools: the `.marvin/ferramentas.md` record.
 //
-// Ninguém descobre flag que só existe no --help. Então, sem `--graphify`, o script
-// detecta o binário no PATH e PERGUNTA — uma vez, só com terminal; sem TTY assume
-// `não` e avisa. A resposta vai para o registro, e daí em diante ele manda: rodar de
-// novo não pergunta (invariante 2). `--use=graphify` flipa o registro depois. O
-// registro é o lugar de "este projeto usa X" que faltava — qualquer agente lê.
-// Mora antes do passo 1 porque SUBREPOS (logo abaixo) e o CLAUDE.md gerado dependem
-// de GRAPHIFY já estar decidido.
+// Nobody discovers a flag that only exists in --help. So, without `--graphify`, the
+// script detects the binary on PATH and ASKS — once, only with a terminal; without a TTY
+// it assumes `não` and warns. The answer goes to the record, and from then on the record
+// rules: running again does not ask (invariant 2). `--use=graphify` flips the record
+// later. The record is the missing "this project uses X" place — any agent reads it.
+// Lives before step 1 because SUBREPOS (right below) and the generated CLAUDE.md depend
+// on GRAPHIFY being decided already.
 const REGISTRO = path.join(DOCS, 'ferramentas.md');
 const REGISTRO_REL = path.relative(RAIZ, REGISTRO).replace(/\\/g, '/');
-// `detecta()` devolve false ou o estado encontrado (string) — vai para a mensagem.
-// Ponytail não é binário no PATH: é plugin do Claude Code. INSTALADO mora em
-// ~/.claude/plugins/installed_plugins.json; ATIVO nesta máquina é o arquivo
-// ~/.claude/.ponytail-active (o hook de SessionStart escreve o nível lá). Instalado
-// sem estar ativo é a metade que engana: o plugin existe e não faz nada.
+// `detecta()` returns false or the state found (string) — it goes into the message.
+// Ponytail is not a binary on PATH: it is a Claude Code plugin. INSTALLED lives in
+// ~/.claude/plugins/installed_plugins.json; ACTIVE on this machine is the file
+// ~/.claude/.ponytail-active (the SessionStart hook writes the level there). Installed
+// without being active is the misleading half: the plugin exists and does nothing.
 const CLAUDE_HOME = path.join(os.homedir(), '.claude');
 const noPath = (cmd) => { try { execSync(cmd, { stdio: 'ignore' }); return 'on PATH'; } catch { return false; } };
 const detectaPonytail = () => {
@@ -1449,12 +1452,12 @@ const detectaPonytail = () => {
   let nivel = ''; try { nivel = fs.readFileSync(path.join(CLAUDE_HOME, '.ponytail-active'), 'utf8').trim(); } catch {}
   return nivel ? 'installed and active (' + nivel + ')' : 'installed but NOT active — run /ponytail in a Claude session';
 };
-// Alcance do ponytail depende de ONDE ele carrega (README do plugin, 4.10.0): plugin com
-// hooks no Claude Code, Codex e Copilot CLI — cada um com o SEU install; no Cursor, hooks
-// em ~/.cursor/hooks.json (`node scripts/cursor-hooks.js install`) OU o arquivo de regra;
-// no resto, arquivo de regra copiado do repositório dele. A DETECÇÃO lê só ~/.claude:
-// instalado só pelo codex/copilot sai como "not found" e grava `não` — com a instrução
-// de instalar, então não é silêncio; `--use=ponytail` flipa.
+// Ponytail's reach depends on WHERE it loads (plugin README, 4.10.0): a plugin with hooks
+// in Claude Code, Codex and Copilot CLI — each with ITS OWN install; in Cursor, hooks in
+// ~/.cursor/hooks.json (`node scripts/cursor-hooks.js install`) OR the rule file; elsewhere,
+// a rule file copied from its repository. DETECTION reads only ~/.claude: installed only
+// through codex/copilot comes out as "not found" and records `não` — with the install
+// instruction, so it is not silence; `--use=ponytail` flips it.
 const alcancePonytail = () => {
   const p = [];
   if (FERRAMENTAS.some(f => ['claude', 'codex', 'copilot'].includes(f))) p.push('plugin com hooks no Claude Code/Codex/Copilot CLI (install próprio em cada um; aqui só o do Claude é detectado)');
@@ -1471,7 +1474,7 @@ const FERR_OPCIONAIS = [
 {
   let reg = ''; try { reg = fs.readFileSync(REGISTRO, 'utf8'); } catch {}
   const linhaReg = (f) => reg.match(new RegExp('^\\|\\s*' + f + '\\s*\\|\\s*(sim|n[aã]o)\\s*\\|', 'mi'));
-  // Data do último commit — reproduzível, como no --release; sem git, fica para o humano.
+  // Date of the last commit — reproducible, as in --release; without git, it is left to the human.
   let dataReg = '_(data)_';
   try { dataReg = execSync('git log -1 --format=%cs', { cwd: RAIZ, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || dataReg; } catch {}
   const novas = [];
@@ -1538,23 +1541,23 @@ const MARCA = {
 };
 const IGNORAR = new Set(['node_modules', 'dist', 'build', 'bin', 'obj', '__pycache__', '.git', 'venv', '.venv']);
 
-// ── Sub-repos ignorados: o caso em que o grafo nascia inútil EM SILÊNCIO.
-// Num monorepo cada sub-repositório costuma estar no .gitignore da raiz, porque é
-// versionado por conta própria. O graphify respeita .gitignore, então extrair só da
-// raiz indexa tudo MENOS o código do produto. Medido num monorepo de quatro sub-repos:
-// 2.783 dos 2.854 nós vinham de `.claude/` e ZERO do produto — e nada avisava.
-// Sub-repo NÃO ignorado já é varrido junto com a raiz e fica de fora desta lista,
-// senão entraria duas vezes no grafo. Só é calculado com --graphify: é uma chamada
-// de git por diretório, e sem a flag ninguém usa o resultado.
-// Mora aqui em cima porque o CLAUDE.md gerado (passo 7) precisa dele para não
-// mandar o agente rodar `graphify update .`, que num monorepo destrói o grafo.
+// ── Ignored sub-repos: the case where the graph was born useless IN SILENCE.
+// In a monorepo each sub-repository is usually in the root .gitignore, because it is
+// versioned on its own. graphify respects .gitignore, so extracting only from the root
+// indexes everything EXCEPT the product code. Measured in a monorepo of four sub-repos:
+// 2,783 of the 2,854 nodes came from `.claude/` and ZERO from the product — and nothing warned.
+// A sub-repo that is NOT ignored is already scanned with the root and stays off this list,
+// otherwise it would enter the graph twice. Only computed with --graphify: it is one git
+// call per directory, and without the flag nobody uses the result.
+// Lives up here because the generated CLAUDE.md (step 7) needs it so as not to tell the
+// agent to run `graphify update .`, which in a monorepo destroys the graph.
 const SUBREPOS = [];
 if (GRAPHIFY) {
   try {
     for (const e of fs.readdirSync(RAIZ, { withFileTypes: true })) {
       if (!e.isDirectory() || e.name.startsWith('.') || IGNORAR.has(e.name)) continue;
       if (!fs.existsSync(path.join(RAIZ, e.name, '.git'))) continue;
-      // Sai != 0 quando NÃO é ignorado — e também quando não existe git aqui.
+      // Exits != 0 when NOT ignored — and also when there is no git here.
       try {
         execSync('git check-ignore -q "' + e.name + '"', { cwd: RAIZ, stdio: 'ignore' });
         SUBREPOS.push(e.name);
@@ -1582,8 +1585,8 @@ const stacks = new Map();
 if (stacks.size) for (const [d, t] of stacks) info(d.padEnd(40) + [...t].join(' + '));
 else warn('no stack marker found');
 
-// Há front? Lido das dependências dos package.json encontrados — é fato, não palpite.
-// Decide só se a pasta Contexto/Design/ nasce no passo 5.
+// Is there a front end? Read from the dependencies of the package.json files found — fact, not guess.
+// Only decides whether the Contexto/Design/ folder is born in step 5.
 const TEM_FRONT = [...stacks.keys()].some(d => {
   try {
     const pj = JSON.parse(fs.readFileSync(path.join(RAIZ, d, 'package.json'), 'utf8'));
@@ -1592,17 +1595,17 @@ const TEM_FRONT = [...stacks.keys()].some(d => {
   } catch { return false; }
 });
 
-// ── Comandos canônicos. O passo 1 sabia QUAL manifesto existe e nunca o abria: o
-// `AGENTS.md` saía com "_(como rodar teste e build)_" para o humano preencher, sendo
-// que `scripts` está a um `JSON.parse` de distância. Ler manifesto é FATO, não
-// julgamento — cabe ao script (o invariante 4 protege o que exige conhecer o projeto,
-// não o que está escrito no disco).
+// ── Canonical commands. Step 1 knew WHICH manifest exists and never opened it: the
+// `AGENTS.md` came out with "_(como rodar teste e build)_" for the human to fill in,
+// while `scripts` is one `JSON.parse` away. Reading a manifest is FACT, not judgment —
+// it belongs to the script (invariant 4 protects what requires knowing the project,
+// not what is written on disk).
 //
-// Por que isso importa mais do que parece: agente que adivinha comando roda `npm i`
-// num projeto pnpm e suja o lockfile. O gerenciador vem do LOCKFILE, nunca do palpite.
+// Why this matters more than it seems: an agent that guesses the command runs `npm i`
+// in a pnpm project and dirties the lockfile. The manager comes from the LOCKFILE, never from a guess.
 //
-// Cada linha carrega a ORIGEM. É o que impede o bloco de envelhecer em silêncio quando
-// o manifesto muda: dá para conferir a fonte sem sair do arquivo.
+// Every line carries its ORIGIN. That is what keeps the block from aging silently when
+// the manifest changes: the source can be checked without leaving the file.
 const lerJSON = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } };
 const temNaRaiz = (n) => fs.existsSync(path.join(RAIZ, n));
 const COMANDOS = [];
@@ -1611,8 +1614,8 @@ const poe = (rotulo, comando, origem) => {
 };
 
 (function detectarComandos() {
-  // Node: o gerenciador sai do LOCKFILE. `<pm> install` e `<pm> run <script>` são
-  // válidos nos quatro, então uma forma só serve para todos — menos caso especial.
+  // Node: the manager comes from the LOCKFILE. `<pm> install` and `<pm> run <script>` are
+  // valid in all four, so one form serves them all — fewer special cases.
   const pkg = lerJSON(path.join(RAIZ, 'package.json'));
   if (pkg) {
     const pm = temNaRaiz('pnpm-lock.yaml') ? 'pnpm'
@@ -1633,8 +1636,8 @@ const poe = (rotulo, comando, origem) => {
     }
   }
 
-  // Python: pytest.ini / tox.ini / [tool.pytest] no pyproject são declaração explícita
-  // de que a suíte é pytest. Sem um desses, não inventar o runner.
+  // Python: pytest.ini / tox.ini / [tool.pytest] in pyproject are an explicit declaration
+  // that the suite is pytest. Without one of those, do not invent the runner.
   const pyproj = temNaRaiz('pyproject.toml');
   let pyprojTxt = '';
   if (pyproj) { try { pyprojTxt = fs.readFileSync(path.join(RAIZ, 'pyproject.toml'), 'utf8'); } catch {} }
@@ -1648,13 +1651,13 @@ const poe = (rotulo, comando, origem) => {
   if (temNaRaiz('Cargo.toml')) { poe('Testar', 'cargo test', 'Cargo.toml'); poe('Build', 'cargo build', 'Cargo.toml'); }
   if (temNaRaiz('pubspec.yaml')) { poe('Instalar', 'flutter pub get', 'pubspec.yaml'); poe('Testar', 'flutter test', 'pubspec.yaml'); }
 
-  // .NET: o marcador costuma estar em subdiretório — o passo 1 já varreu por isso.
+  // .NET: the marker is usually in a subdirectory — step 1 already scanned for it.
   if ([...stacks.values()].some(t => t.has('.NET/C#'))) {
     poe('Testar', 'dotnet test', '*.csproj / *.sln'); poe('Build', 'dotnet build', '*.csproj / *.sln');
   }
 
-  // Makefile por último: só preenche o que ninguém preencheu antes. `^alvo:` na coluna
-  // zero é o que distingue alvo de variável e de linha de receita.
+  // Makefile last: it only fills what nobody filled before. `^target:` at column zero
+  // is what tells a target from a variable and from a recipe line.
   if (temNaRaiz('Makefile')) {
     let mk = ''; try { mk = fs.readFileSync(path.join(RAIZ, 'Makefile'), 'utf8'); } catch {}
     for (const [rotulo, alvo] of [['Testar', 'test'], ['Build', 'build'], ['Lint', 'lint'], ['Instalar', 'install']])
@@ -1667,9 +1670,9 @@ if (COMANDOS.length) {
   for (const c of COMANDOS) info(c.rotulo.padEnd(11) + c.comando.padEnd(34) + '\x1b[2m' + c.origem + '\x1b[0m');
 }
 
-// O `AGENTS.md` do passo 7 é um template literal. Montar o bloco AQUI, como string,
-// evita crase dentro de crase — que é exatamente como este arquivo se quebrou ao
-// escrever esta feature. Array + join deixa cada linha visível no diff.
+// Step 7's `AGENTS.md` is a template literal. Building the block HERE, as a string,
+// avoids backtick inside backtick — which is exactly how this file broke while writing
+// this feature. Array + join keeps every line visible in the diff.
 const BLOCO_COMANDOS = COMANDOS.length ? [
   '## Comandos canônicos',
   '',
@@ -1686,7 +1689,7 @@ const BLOCO_COMANDOS = COMANDOS.length ? [
 ].join('\n') : '';
 const LINHA_TESTE_BUILD = COMANDOS.length ? '' : '- _(como rodar teste e build)_\n';
 
-// ═══════════════════════════════════════════ 2. DIRETÓRIOS VAZIOS
+// ═══════════════════════════════════════════ 2. EMPTY DIRECTORIES
 log('\n\x1b[1m2. Directories that look like a service but are empty\x1b[0m');
 log('   (an agent written for an empty folder invents code — this is the warning not to)');
 let vazios = 0;
@@ -1699,10 +1702,10 @@ for (const e of fs.readdirSync(RAIZ, { withFileTypes: true })) {
 }
 if (!vazios) ok('none');
 
-// ═══════════════════════════════════════════ 3. LIXO NA RAIZ
+// ═══════════════════════════════════════════ 3. JUNK IN THE ROOT
 log('\n\x1b[1m3. Junk in the root\x1b[0m');
 log('   (a strangely named file is almost always a malformed shell command)');
-// Caractere que o shell interpreta, em QUALQUER posição do nome.
+// A character the shell interprets, at ANY position of the name.
 const METACHAR = /[`(){}\[\]!|<>;&$]/;
 const ehLixo = (n, vazio) => (
   /^.$/.test(n) ||
@@ -1711,11 +1714,11 @@ const ehLixo = (n, vazio) => (
   /^(nul|NUL|con|CON)$/.test(n) ||
   /\.(tmp|temp|rej|swp)$/i.test(n) ||
   /^~\$/.test(n) ||
-  // Os testes acima ancoram no PRIMEIRO caractere e deixavam passar coisas como
-  // `0\`` e `!!obj.id)).toBe(true)` — o padrão apareceu num repositório real:
-  // sobra de linha de teste que o shell interpretou como redirecionamento.
-  // Arquivo de 0 byte com metacaractere no nome é lixo de shell, não conteúdo:
-  // nome legítimo vazio com crase ou parêntese praticamente não existe.
+  // The tests above anchor on the FIRST character and let through things like
+  // `0\`` and `!!obj.id)).toBe(true)` — the pattern showed up in a real repository:
+  // a leftover test line the shell interpreted as a redirect.
+  // A 0-byte file with a metacharacter in the name is shell junk, not content:
+  // a legitimate empty name with a backtick or a parenthesis practically does not exist.
   (vazio && METACHAR.test(n))
 );
 const lixo = fs.readdirSync(RAIZ, { withFileTypes: true })
@@ -1732,11 +1735,11 @@ if (lixo.length) {
   info('to delete:  rm -f ' + lixo.map(f => JSON.stringify(f)).join(' '));
 } else ok('none');
 
-// Backup declarado NÃO é lixo de shell — `.bak`, `.orig`, `nome~` são alguém guardando
-// uma versão de propósito. Este passo os chamava de "malformed shell command", e num
-// repositório real (`firestore.rules.bak`) o aviso ensinava errado. A pergunta certa é
-// outra: isso é para versionar? Se sim, o git já guarda versões; se não, vai para o
-// .gitignore. Aviso próprio, sem o "rm -f" — decisão é do humano.
+// A declared backup is NOT shell junk — `.bak`, `.orig`, `name~` are someone keeping a
+// version on purpose. This step called them "malformed shell command", and in a real
+// repository (`firestore.rules.bak`) the warning taught the wrong thing. The right
+// question is another: is this meant to be versioned? If so, git already keeps versions;
+// if not, it goes to .gitignore. Its own warning, without the "rm -f" — the human decides.
 const BACKUP = /(\.(bak|orig|old|backup)$|~$)/i;
 const backups = fs.readdirSync(RAIZ, { withFileTypes: true }).filter(e => e.isFile() && BACKUP.test(e.name)).map(e => e.name);
 if (backups.length) {
@@ -1745,14 +1748,14 @@ if (backups.length) {
   info('keep it → move it out of the root or add it to .gitignore · done with it → delete');
 }
 
-// ═══════════════════════════════════════════ 4. CONTEXTO FIXO
+// ═══════════════════════════════════════════ 4. FIXED CONTEXT
 //
-// A `description` de todo agente, skill e command entra no prompt de TODA sessão,
-// usando ou não. É custo por requisição, não custo de uma vez — e no nível GLOBAL
-// você paga em todo projeto. Skill de stack que você não usa é puro peso morto.
+// The `description` of every agent, skill and command enters the prompt of EVERY
+// session, used or not. It is a per-request cost, not a one-time cost — and at the GLOBAL
+// level you pay it in every project. A stack skill you do not use is pure dead weight.
 //
-// O script MEDE e mostra a conta. Ele não diz o que apagar: decidir exige saber
-// quais stacks são realmente suas, e isso é do humano (invariante 4).
+// The script MEASURES and shows the bill. It does not say what to delete: deciding
+// requires knowing which stacks are really yours, and that is the human's (invariant 4).
 log('\n\x1b[1m4. Fixed context — what loads in every session\x1b[0m');
 log('   (every agent/skill/command description enters the prompt always, used or not)');
 
@@ -1786,9 +1789,9 @@ const niveis = [];
 const baseGlobal = path.join(os.homedir(), '.claude');
 for (let cur = RAIZ; ; cur = path.dirname(cur)) {
   const base = path.join(cur, '.claude');
-  // Projeto dentro da home: a subida encontraria ~/.claude e ele seria contado
-  // de novo logo abaixo, dobrando o total. Pular aqui, não lá — o nível global
-  // tem rótulo próprio e é o que o usuário precisa ver.
+  // Project inside the home: the climb would find ~/.claude and it would be counted
+  // again right below, doubling the total. Skip here, not there — the global level
+  // has its own label and is what the user needs to see.
   if (fs.existsSync(base) && path.resolve(base) !== path.resolve(baseGlobal)) {
     niveis.push([cur, pesar(base), false]);
   }
@@ -1818,31 +1821,31 @@ if (gl && emTokens(gl[1].chars) > 2000) {
   info('    used in 0 projects  → out — it is pure weight');
 }
 
-// ── 4b. Os três arquivos que carregam SEMPRE — e o total.
+// ── 4b. The three files that ALWAYS load — and the total.
 //
-// O passo 4 media agente, skill e command e parava ali. A primeira versão deste bloco
-// media só a nota, porque ela é o arquivo que mais cresce. Mas o que entra em toda
-// sessão são TRÊS: a fonte, o adaptador e a nota — e medido em projetos reais o
-// AGENTS.md pesava mais que a nota em todos eles. Passamos um dia cortando o menor.
+// Step 4 measured agent, skill and command and stopped there. The first version of this
+// block measured only the note, because it is the file that grows the most. But what
+// enters every session is THREE: the source, the adapter and the note — and measured in
+// real projects AGENTS.md weighed more than the note in all of them. We spent a day cutting the smaller one.
 //
-// O aviso só serve com DESTINO. "Está grande" é moralismo; "isto pertence a tal
-// arquivo" é uma ação. Por isso os dois andam juntos — em `imprimirContextoFixo`.
+// The warning is only useful with a DESTINATION. "It is big" is moralizing; "this belongs
+// in such file" is an action. That is why the two go together — in `imprimirContextoFixo`.
 log('');
 imprimirContextoFixo();
 
-// ═══════════════════════════════════════════ 5. BASE DE CONHECIMENTO EM .marvin/
+// ═══════════════════════════════════════════ 5. KNOWLEDGE BASE IN .marvin/
 log('\n\x1b[1m5. Knowledge base (a single folder — plain markdown, organized as a graph)\x1b[0m');
-// DOCS foi detectado lá em cima, antes de qualquer escrita, porque o --check precisa dele.
+// DOCS was detected up top, before any write, because --check needs it.
 const novoVault = !fs.existsSync(DOCS);
 fsw.mkdirSync(DOCS, { recursive: true });
 info('vault: ' + path.relative(RAIZ, DOCS) + (novoVault ? '  (created now)' : '  (already existed)'));
 const docsDoProduto = CANDIDATOS.find(d => fs.existsSync(d) && !ehVault(d) && path.resolve(d) !== path.resolve(DOCS));
 if (docsDoProduto) info('living next to ' + path.relative(RAIZ, docsDoProduto) + '/ from the product — untouched');
-// Nenhuma config de ferramenta é escrita aqui: são só arquivos .md numa pasta, e
-// esse é o ponto. Qualquer editor abre. Quem quiser usar um app de notas por cima
-// aponta ele para esta pasta — a base não depende disso para funcionar.
+// No tool config is written here: they are just .md files in a folder, and that is
+// the point. Any editor opens them. Whoever wants a notes app on top points it at this
+// folder — the base does not depend on that to work.
 
-// Escreve um arquivo só se não existir (invariante 2) e registra na saída.
+// Writes a file only if it does not exist (invariant 2) and records it in the output.
 const escreverSeFaltar = (rel, conteudo) => {
   const p = path.join(DOCS, rel);
   if (fs.existsSync(p)) { info(rel + ' already exists'); return false; }
@@ -1853,18 +1856,18 @@ const escreverSeFaltar = (rel, conteudo) => {
 };
 
 if (LAYOUT_ANTIGO) {
-  // ── Layout por tipo de arquivo (08_Memoria/, 10_Decisoes/…). Continua funcionando
-  // onde está: a junction aponta para as notas, o /retomar lê a mesma nota. O que
-  // mudou é a organização — e mover conteúdo é decisão do humano, não do script.
+  // ── Layout by file type (08_Memoria/, 10_Decisoes/…). Keeps working where it is:
+  // the junction points to the notes, /retomar reads the same note. What changed is
+  // the organization — and moving content is the human's decision, not the script's.
   warn('old layout: ' + path.relative(RAIZ, DEST).replace(/\\/g, '/') + ' — the base is organized as a graph since 1.2 (Contexto/ · Planejamento/ · Releases/ · Memoria/)');
   info('  nothing was moved. To migrate: create Memoria/ next to 08_Memoria/, move the note,');
   info('  run marvin again (the junction is re-pointed), then place the rest by hand.');
   info('  why, and what goes where: https://github.com/Josuebmota/Marvin/blob/main/.marvin/Contexto/Arquitetura/organizacao-por-grafo.md');
   for (const d of ['10_Decisoes', '99_Backup']) fsw.mkdirSync(path.join(DOCS, d), { recursive: true });
 
-  // README de 10_Decisoes. A pasta nascia vazia e sem uma linha explicando para que
-  // serve, e pasta vazia não ensina ninguém: o resultado era todo mundo empilhando
-  // histórico no `onde_paramos.md` até ele virar changelog.
+  // README of 10_Decisoes. The folder was born empty and without a line explaining what
+  // it is for, and an empty folder teaches nobody: the result was everyone piling
+  // history into `onde_paramos.md` until it became a changelog.
   escreverSeFaltar('10_Decisoes/README.md', [
   '# Decisões',
   '',
@@ -1907,13 +1910,13 @@ if (LAYOUT_ANTIGO) {
   '',
   ].join('\n'));
 } else {
-  // ── Organização por grafo. Dois eixos: o que o projeto É (Contexto/) e o que está
-  // sendo FEITO nele (Planejamento/). Todo nó tem um Sobre.md; ligação é link markdown,
-  // porque é o que vira aresta no grafo (passo 8b) — menção em prosa não é aresta.
+  // ── Graph organization. Two axes: what the project IS (Contexto/) and what is being
+  // DONE in it (Planejamento/). Every node has a Sobre.md; a link is a markdown link,
+  // because that is what becomes an edge in the graph (step 8b) — a mention in prose is not an edge.
   //
-  // Cada pasta nasce com o arquivo que diz o que entra nela. Pasta vazia não ensina
-  // ninguém, e o resultado de pasta muda foi medido: relato empilhado na nota que
-  // carrega em toda sessão (18 seções num projeto real).
+  // Every folder is born with the file that says what goes in it. An empty folder
+  // teaches nobody, and the result of a mute folder was measured: reports piled into
+  // the note that loads in every session (18 sections in a real project).
   const dirs = ['Contexto/Fluxos', 'Contexto/Arquitetura', 'Planejamento/Manutencao', 'Planejamento/Novos', 'Fontes', 'Releases', 'Memoria'];
   if (TEM_FRONT) dirs.push('Contexto/Design');
   for (const d of dirs) fsw.mkdirSync(path.join(DOCS, d), { recursive: true });
@@ -2110,7 +2113,7 @@ referência de API, esquema de banco, glossário, transcrição de reunião.
 `);
 }
 
-// vault numa pasta separada é layout antigo deste script
+// a vault in a separate folder is this script's old layout
 const LEGADO = path.join(RAIZ, 'Obsidian');
 if (fs.existsSync(LEGADO) && path.resolve(LEGADO) !== path.resolve(DOCS)) {
   warn('a separate Obsidian/ folder exists — old layout. The knowledge base is .marvin/ now.');
@@ -2125,16 +2128,16 @@ if (fs.existsSync(LEGADO) && path.resolve(LEGADO) !== path.resolve(DOCS)) {
   info('  rm -rf on a junction can follow the link and delete the target.');
 }
 
-// ═══════════════════════════════════════════ 6. MEMÓRIA — junction invertida
+// ═══════════════════════════════════════════ 6. MEMORY — inverted junction
 log('\n\x1b[1m6. Memory (inverted junction — the step that versions it)\x1b[0m');
 if (WORKTREE) info('git worktree — this checkout gets its own junction; notes written here travel with this branch');
-// DEST, ehJunction e contarNotas moram lá em cima — o --check usa os três.
+// DEST, ehJunction and contarNotas live up top — --check uses all three.
 
 if (ehJunction(MEM)) {
   const alvo = fs.readlinkSync(MEM);
-  // A junction sobrevive ao destino: mover ou apagar o vault a deixa apontando para o
-  // nada, sem aviso (é a armadilha do AGENTS.md). Sem recriar aqui, os passos seguintes
-  // estouram ENOENT ao escrever a nota canônica.
+  // The junction outlives its target: moving or deleting the vault leaves it pointing at
+  // nothing, with no warning (it is the AGENTS.md trap). Without recreating it here, the
+  // next steps blow up with ENOENT when writing the canonical note.
   if (!fs.existsSync(DEST)) {
     warn('the junction exists but its target is gone — recreating ' + path.relative(RAIZ, DEST));
     fsw.mkdirSync(DEST, { recursive: true });
@@ -2142,20 +2145,20 @@ if (ehJunction(MEM)) {
   if (path.resolve(alvo) === path.resolve(DEST)) {
     ok('already inverted — ' + contarNotas(DEST) + ' notes in ' + path.relative(RAIZ, DEST));
   } else if (!fs.existsSync(alvo)) {
-    // Aponta para OUTRO lugar E esse lugar não existe: é órfã, não montagem alheia.
-    // Distinguir os dois casos é o que faltava — renomear o vault (ou aceitar o
-    // `.docs` -> `.marvin`) cai exatamente aqui, e antes o script só avisava. Duas
-    // ocorrências reais no mesmo dia foram o que trouxe este ramo.
+    // Points SOMEWHERE ELSE AND that place does not exist: it is orphaned, not someone
+    // else's mount. Telling the two apart is what was missing — renaming the vault (or
+    // accepting `.docs` -> `.marvin`) lands exactly here, and before the script only
+    // warned. Two real occurrences on the same day are what brought this branch.
     //
-    // Repontar é seguro porque não há nada no destino velho para perder: só o link
-    // morre, e o conteúdo vivo está em DEST. O invariante 1 vale sem drama.
+    // Repointing is safe because there is nothing at the old target to lose: only the
+    // link dies, and the live content is in DEST. Invariant 1 holds without drama.
     warn('the junction pointed somewhere that no longer exists: ' + alvo);
     fsw.unlinkSync(MEM);
     fsw.symlinkSync(DEST, MEM, 'junction');
     ok('repointed to ' + path.relative(RAIZ, DEST) + ' — ' + contarNotas(DEST) + ' notes');
   } else {
-    // O outro alvo EXISTE: aí é montagem de outra pessoa (ou outro projeto), e
-    // desfazer não é decisão deste script.
+    // The other target EXISTS: then it is someone else's mount (or another project's),
+    // and undoing it is not this script's call.
     warn('already a junction, but it points elsewhere: ' + alvo);
     info('the memory of this project is landing outside this repository.');
     info('nothing was touched — undoing someone else`s mount is not this script`s call.');
@@ -2163,24 +2166,24 @@ if (ehJunction(MEM)) {
 } else {
   fsw.mkdirSync(DEST, { recursive: true });
 
-  // O caminho da memória pode existir como diretório DE VERDADE, e por dois motivos
-  // bem diferentes: memória nativa antiga, com notas para migrar; ou a pasta do
-  // projeto mudou de lugar e o Claude Code criou um diretório vazio no caminho novo.
+  // The memory path may exist as a REAL directory, for two very different reasons:
+  // old native memory, with notes to migrate; or the project folder moved and Claude
+  // Code created an empty directory at the new path.
   //
-  // O segundo é o caso comum da segunda vez em diante, e era ele que derrubava a
-  // criação da junction com EEXIST — o script avisava e saía com código 0, deixando
-  // a memória desligada do repositório. Silêncio com cara de sucesso é o pior modo
-  // de falhar que este projeto conhece.
+  // The second is the common case from the second run on, and it was what knocked down
+  // the junction creation with EEXIST — the script warned and exited 0, leaving the
+  // memory disconnected from the repository. Silence that looks like success is the
+  // worst way to fail this project knows.
   const itens = fs.existsSync(MEM) ? fs.readdirSync(MEM) : [];
   if (itens.length) {
     const origem = contarNotas(MEM);
     fsw.cpSync(MEM, DEST, { recursive: true, force: true });
-    // Em --dry-run a cópia não aconteceu, então a contagem daria 0 e a conferência
-    // abortaria acusando uma perda que não existe. O invariante 1 vale para a
-    // execução real; aqui só anunciamos o que seria feito.
+    // In --dry-run the copy did not happen, so the count would be 0 and the check would
+    // abort reporting a loss that does not exist. Invariant 1 holds for the real run;
+    // here we only announce what would be done.
     const copiado = DRY ? origem : contarNotas(DEST);
-    // Contar só as notas não basta: o diretório pode ter subpasta ou anexo, e apagar
-    // o que não chegou ao destino é exatamente o que o invariante 1 proíbe.
+    // Counting only the notes is not enough: the directory may have a subfolder or an
+    // attachment, and deleting what did not reach the destination is exactly what invariant 1 forbids.
     const naoCopiado = DRY ? [] : itens.filter(n => !fs.existsSync(path.join(DEST, n)));
     if (copiado < origem || naoCopiado.length) {
       err(`ABORTED — copied ${copiado} of ${origem} notes. Nothing was deleted.`);
@@ -2190,7 +2193,7 @@ if (ehJunction(MEM)) {
     ok(`${copiado} notes copied to ${path.relative(RAIZ, DEST)} (verified)`);
     fsw.rmSync(MEM, { recursive: true, force: true });
   } else if (fs.existsSync(MEM)) {
-    // Vazio: não há o que conferir nem o que perder — e é ele que bloqueia a junction.
+    // Empty: nothing to check and nothing to lose — and it is what blocks the junction.
     fsw.rmSync(MEM, { recursive: true, force: true });
     ok('empty directory removed from the profile — it was blocking the junction');
   }
@@ -2203,13 +2206,13 @@ if (ehJunction(MEM)) {
     err('junction failed: ' + e.message);
     warn('the notes are saved in ' + DEST + ' — nothing was lost');
     warn('but the memory is NOT wired to the repository. Diagnose with:  marvin --check');
-    // Sair 0 aqui é como a memória fica desligada sem ninguém notar.
+    // Exiting 0 here is how the memory ends up disconnected without anyone noticing.
     process.exitCode = 1;
   }
 }
 
-// 00_Inicio.md era o nó raiz do layout antigo. No layout por grafo o nó raiz é
-// Contexto/Sobre.md (passo 5), e a montagem da junction já está no CLAUDE.md.
+// 00_Inicio.md was the root node of the old layout. In the graph layout the root node is
+// Contexto/Sobre.md (step 5), and the junction setup is already in the CLAUDE.md.
 const idx = path.join(DOCS, '00_Inicio.md');
 if (!LAYOUT_ANTIGO) { /* nada: Contexto/Sobre.md é a raiz */ }
 else if (!fs.existsSync(idx)) {
@@ -2265,7 +2268,7 @@ não conteúdo.
   ok('00_Inicio.md');
 } else info('00_Inicio.md already exists');
 
-// ═══════════════════════════════════════════ 6b. FONTES EXTERNAS
+// ═══════════════════════════════════════════ 6b. EXTERNAL SOURCES
 log('\n\x1b[1m6b. External sources (where user stories, tickets and specs live)\x1b[0m');
 const FONTES = path.join(DOCS, LAYOUT_ANTIGO ? '00_Fontes_Externas.md' : 'Fontes/Externas.md');
 const NOME_FONTES = path.relative(DOCS, FONTES).replace(/\\/g, '/');
@@ -2302,8 +2305,8 @@ if (encontradas.size) {
   for (const [nome, urls] of encontradas) { info(nome + ':'); [...urls].slice(0, 2).forEach(u => info('  ' + u)); }
 } else info('no tool URLs found in the docs');
 
-// Projeto migrado do layout antigo ainda tem o arquivo com o nome velho: é o mesmo
-// conteúdo, então conta como existente — senão nasce um em branco por cima (aconteceu).
+// A project migrated from the old layout still has the file under the old name: same
+// content, so it counts as existing — otherwise a blank one is born on top (it happened).
 const FONTES_ANTIGO = path.join(DOCS, '00_Fontes_Externas.md');
 if (fs.existsSync(FONTES)) {
   info(NOME_FONTES + ' already exists — not overwriting');
@@ -2399,9 +2402,9 @@ Sempre tenha um papel \`tl\` em **opus** que lê diff e é dono dos invariantes.
 ## O que ESTE projeto sugere
 
 ${(() => {
-  // Recomendação DERIVADA do diagnóstico, nunca um menu. O Marvin não escreve o agente
-  // (invariante 4), mas ficar calado diante de uma pasta vazia também não ajuda: a
-  // pergunta "quantos papéis?" tem resposta diferente em repo de uma stack e em monorepo.
+  // Recommendation DERIVED from the diagnosis, never a menu. Marvin does not write the
+  // agent (invariant 4), but staying silent in front of an empty folder does not help
+  // either: "how many roles?" has a different answer in a single-stack repo and in a monorepo.
   const lista = [...new Set([...stacks.values()].flatMap(s => [...s]))];
   const fronteiras = lista.length + SUBREPOS.length;
   const detectado = lista.length ? lista.join(', ') : 'nenhum marcador de stack';
@@ -2465,9 +2468,9 @@ Arquivo vazio commitado passa despercebido por meses.
   ok('README.md (guide on what to write)');
 } else info('README.md já existe');
 
-// Aqui havia um aviso de que o CLAUDE.md não existia — um passo antes do 7c criá-lo,
-// e mandando escrever nele o que é do AGENTS.md. Dizia o contrário da arquitetura que
-// este script monta: a fonte é o AGENTS.md, e o CLAUDE.md é ponteiro.
+// There used to be a warning here that CLAUDE.md did not exist — one step before 7c
+// creates it, and telling you to write in it what belongs to AGENTS.md. It said the
+// opposite of the architecture this script builds: the source is AGENTS.md, and CLAUDE.md is a pointer.
 
 // ═══════════════════════════════════════════ 7a. .claude/skills
 log('\n\x1b[1m7a. .claude/skills\x1b[0m');
@@ -2533,7 +2536,7 @@ puro e migra por copiar e colar — igual à persona dos agentes.
 } else info('README.md já existe');
 
 
-// ═══════════════════════════════════════════ 7b. PORTA DE ENTRADA
+// ═══════════════════════════════════════════ 7b. ENTRY POINT
 log('\n\x1b[1m7b. Entry point (/retomar + the canonical note)\x1b[0m');
 const cmdDir = path.join(RAIZ, '.claude', 'commands');
 fsw.mkdirSync(cmdDir, { recursive: true });
@@ -2588,10 +2591,10 @@ e **qual seria a primeira frase** do chat novo.
   ok('.claude/commands/retomar.md  → type /retomar in a new chat');
 } else info('/retomar already exists');
 
-// /us e /fechar: os dois gatilhos que faltavam. A regra "antes de qualquer US" e a regra
-// de fechar sessão existiam como texto; texto depende de alguém lembrar. Um comando dispara.
-// /us chama o `marvin --us`, que cria a cadeia de Sobre.md e o ponteiro — o agente só
-// preenche o que exige julgamento. /fechar é o par do /retomar. Só no layout por grafo.
+// /us and /fechar: the two missing triggers. The "before any US" rule and the close-session
+// rule existed as text; text depends on someone remembering. A command fires.
+// /us calls `marvin --us`, which creates the Sobre.md chain and the pointer — the agent
+// only fills what takes judgment. /fechar is the pair of /retomar. Graph layout only.
 if (!LAYOUT_ANTIGO) {
   const relDocs = path.relative(RAIZ, DOCS).replace(/\\/g, '/');   // o 7c declara o dele depois
   const cmdUs = path.join(cmdDir, 'us.md');
@@ -2658,17 +2661,17 @@ $ARGUMENTS
     ok('.claude/commands/fechar.md  → /fechar closes the session; the pair of /retomar');
   } else info('/fechar already exists');
 
-  // ── Hook de abertura de sessão. O `--status` sai != 0 quando a nota mente, mas só quem
-  // roda vê — e a nota de um projeto real chegou a 52 KB sem que ninguém rodasse. O hook
-  // SessionStart do Claude Code injeta a saída no contexto: o agente não pode ignorar.
-  // `--curto` sempre sai 0 (exit != 0 em hook vira erro visível) e custa ~150 tk. O `--html`
-  // junto regera o dashboard a cada abertura de sessão, em silêncio — é assim que ele se atualiza.
-  // Confiança MÉDIA: convenção de hook muda rápido — o aviso manda conferir (invariante 3).
-  // settings.json que já existe é de outra pessoa: NÃO faz merge — imprime o bloco e para.
+  // ── Session-start hook. `--status` exits != 0 when the note lies, but only whoever runs
+  // it sees — and a real project's note reached 52 KB without anyone running it. Claude
+  // Code's SessionStart hook injects the output into the context: the agent cannot ignore it.
+  // `--curto` always exits 0 (exit != 0 in a hook becomes a visible error) and costs ~150 tk.
+  // `--html` alongside regenerates the dashboard on every session start, silently — that is how it stays fresh.
+  // MEDIUM confidence: hook conventions change fast — the warning says to check (invariant 3).
+  // An existing settings.json is someone else's: NO merge — prints the block and stops.
   const settings = path.join(RAIZ, '.claude', 'settings.json');
-  // O comando aponta para O SCRIPT QUE MONTOU, não para `npx marvin-kb`: o npx baixa a
-  // versão publicada, e uma versão que não conhece `--status` ignoraria a flag e rodaria
-  // a montagem inteira a cada abertura de sessão. Mesma escolha do post-commit do 8b.
+  // The command points to THE SCRIPT THAT SCAFFOLDED, not to `npx marvin-kb`: npx downloads
+  // the published version, and a version that does not know `--status` would ignore the
+  // flag and run the whole scaffold on every session start. Same choice as 8b's post-commit.
   const comandoHook = fs.existsSync(path.join(RAIZ, 'marvin.mjs')) ? 'node marvin.mjs --status --curto --html'
     : 'node "' + process.argv[1].replace(/\\/g, '/') + '" --status --curto --html';
   const blocoHook = { hooks: { SessionStart: [{ matcher: '', hooks: [{ type: 'command', command: comandoHook }] }] } };
@@ -2689,8 +2692,8 @@ const ondeParamos = path.join(DEST, 'onde_paramos.md');
 if (fs.existsSync(ondeParamos)) {
   info('onde_paramos.md already exists');
 } else if (!LAYOUT_ANTIGO) {
-  // A nota do layout por grafo é só ponteiro. O estado de cada US mora no Sobre.md dela
-  // e só carrega quando é seguido — é a diferença entre 1 KB e 19 KB por sessão.
+  // The graph-layout note is pointers only. Each US's state lives in its Sobre.md and
+  // only loads when followed — it is the difference between 1 KB and 19 KB per session.
   fsw.writeFileSync(ondeParamos, `---
 name: onde-paramos
 aliases: ["onde-paramos", "ONDE PARAMOS"]
