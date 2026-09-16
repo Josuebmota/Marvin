@@ -88,6 +88,11 @@ Nada depende do que ela toca — folha do grafo.
 - **15/09/2026** — aberta como planejada, a partir da inspeção do HTML num projeto real.
   Fontes de referência do front lidas naquele projeto; o que serve está em *Escopo*, o que
   é identidade do produto dele foi descartado de propósito.
+- **15/09/2026** — primeira dobra no ar (Corrigir com link + 4 cards com delta, rede colapsada por
+  último, tokens do Open Props, paleta própria). A pedido do `po`: botão de tema (auto/claro/escuro,
+  `data-theme` + localStorage, sem piscar) e a rede com cara de cérebro — só CSS/SVG: gradiente
+  radial, brilho nos nós, US ativa respira, aresta `touches` pulsa; `prefers-reduced-motion` desliga.
+  O layout de força não mudou. Falta: Tendência com seletor (item 4) e custo por turno/dia (item 5).
 
 ## Evidência
 <!-- preenchido ao concluir: print da primeira dobra nos dois temas; diff vazio do historico.jsonl e do --status texto -->

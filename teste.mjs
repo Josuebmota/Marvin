@@ -901,7 +901,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const ordem = ['<div class="cards">', 'id="andamento"', 'id="tendencia"', 'id="tokens"', '<details class="rede"'].map(s => html.indexOf(s));
   checa('HTML: Corrigir/ok antes dos cards, cards antes de tudo, rede colapsada por último', (html.indexOf('class="tudo-ok"') >= 0 || html.indexOf('class="corrigir"') >= 0) && Math.min(html.indexOf('class="tudo-ok"') < 0 ? Infinity : html.indexOf('class="tudo-ok"'), html.indexOf('class="corrigir"') < 0 ? Infinity : html.indexOf('class="corrigir"')) < ordem[0] && ordem.every((p, i) => p >= 0 && (i === 0 || p > ordem[i - 1])) && !/<details class="rede"[^>]*\sopen/.test(html));
   checa('HTML: os cards trazem o delta desde o commit anterior', /class="delta (up|down|)/.test(html) && /desde o último commit/.test(html));
-  checa('HTML: tema claro e escuro por prefers-color-scheme, sem asset externo', html.includes(':root{color-scheme:light dark') && html.includes('@media(prefers-color-scheme:dark){:root{') && !/<link/.test(html) && !/@import/.test(html));
+  checa('HTML: tema claro e escuro por prefers-color-scheme, sem asset externo', html.includes(':root{color-scheme:light dark') && html.includes('@media(prefers-color-scheme:dark){:root:not([data-theme=light]){') && html.includes(':root[data-theme=dark]{') && html.includes('id="tema"') && !/<link/.test(html) && !/@import/.test(html));
   // e com problema real: US concluída ainda na nota → entra em Corrigir, com link relativo à página
   rodar(a, '--us', 'Novos/P/F/US-01-x');
   const usX = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'P', 'F', 'US-01-x', 'Sobre.md');
@@ -938,7 +938,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   rodar(a, '--us', 'Novos/E/F/US-1');
   rodar(a, '--status', '--html');
   const html = fs.readFileSync(path.join(a.proj, '.marvin', '.status', 'index.html'), 'utf8');
-  checa('o HTML traz a tabela por modelo e o aviso de estimativa', /claude-sonnet-5/.test(html) && /estimativa/.test(html));
+  checa('o HTML traz a tabela por modelo e o aviso de estimativa', /claude-sonnet-5/.test(html) && /custariam na API/.test(html));
   checa('o HTML desenha a rede da base — nós de doc com estado, sem lib', /id="rede-dados"/.test(html) && /"cat":"us"/.test(html) && /"estado":"ativa"/.test(html) && !/<script src=/.test(html));
   const curto = rodar(a, '--status', '--curto', '--html');
   checa('--curto --html regera o dashboard em silêncio (é o hook)', curto.status === 0 && !/index\.html/.test(curto.stdout) && fs.statSync(path.join(a.proj, '.marvin', '.status', 'index.html')).size > 1000);

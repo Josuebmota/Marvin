@@ -265,6 +265,32 @@ Além de criar, ele aponta problemas que passam despercebidos:
   feito já está no `git log`. O `--check` imprime a mesma conta
 - **Artefatos de orquestrador antigo** — só aparece se detectar
 
+### O painel — `marvin --status --html`
+
+`--status` é a régua em texto. `--html` escreve a mesma medida como página,
+`.marvin/.status/index.html` — arquivo único, sem lib, sem rede, abre em `file://` (o hook
+de SessionStart regenera a cada sessão aberta). De cima para baixo, na ordem em que você
+precisa:
+
+1. **Corrigir** — toda inconsistência que o status achou, cada uma com link para o arquivo.
+   Se não há nada, uma linha verde. É o motivo de abrir a página.
+2. **Quatro cards** — contexto fixo, US ativas, US concluídas, equivalente na API — cada
+   um com o delta desde o commit anterior. São links para a seção abaixo.
+3. **Em andamento** — as US da nota com badge de estado e o último Rumo.
+4. **Tendência** — um ponto por commit, do `historico.jsonl`.
+5. **Tokens** — por dia e por modelo, lidos das transcrições do Claude Code do projeto.
+6. **A rede** — a base como grafo (Epic → Feature → US → fluxos → o código que tocam),
+   colapsada por padrão; duplo clique abre o arquivo em outra aba.
+
+Claro e escuro seguem o sistema; o botão `tema` fixa um (fica no `localStorage`).
+
+**Sobre o card de custo.** Os tokens são *medidos*: todo bloco `usage` de toda mensagem do
+assistente em `~/.claude/projects/<slug>/*.jsonl`. O valor em dólar é o que esses tokens
+**custariam na tabela da API** (tabela datada dentro do script; cache read ≈ 0,1×, cache
+write ≈ 1,25×). Num plano fixo (Max) o gasto real é a mensalidade — o card diz quanto de API
+essa mensalidade está rendendo, não o que você pagou. Cache read costuma ser ~⅔ disso: cada
+turno relê o contexto inteiro.
+
 ## Flags
 
 <details>

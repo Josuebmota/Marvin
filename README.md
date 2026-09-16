@@ -269,6 +269,32 @@ Beyond creating things, it points out problems that slip by:
   what was done is already in `git log`. `--check` prints the same account
 - **Leftovers from old orchestration tools** — only shows up if detected
 
+### The dashboard — `marvin --status --html`
+
+`--status` is the text ruler. `--html` writes the same measurement as a page,
+`.marvin/.status/index.html` — a single file, no lib, no network, opens on `file://`
+(the SessionStart hook regenerates it every time a session opens). Top to bottom, in the
+order you need it:
+
+1. **Fix** — every inconsistency the status found, each linked to the file. If there is
+   nothing, one green line. This is the reason to open the page.
+2. **Four cards** — fixed context, active USs, concluded USs, API-equivalent cost — each
+   with the delta since the previous commit. They are links to the section below.
+3. **In progress** — the USs from the note with a state badge and their last Rumo.
+4. **Trend** — one point per commit, from `historico.jsonl`.
+5. **Tokens** — per day and per model, read from the Claude Code transcripts of the project.
+6. **The network** — the knowledge base as a graph (Epic → Feature → US → flows → the
+   code they touch), collapsed by default; double-click opens the file in a new tab.
+
+Light and dark follow the system; the `tema` button pins one (kept in `localStorage`).
+
+**About the cost card.** Tokens are *measured*: every `usage` block of every assistant
+message in `~/.claude/projects/<slug>/*.jsonl`. The dollar figure is what those tokens
+**would cost at API list prices** (dated table inside the script; cache read ≈ 0.1×, cache
+write ≈ 1.25×). On a fixed plan (Max) your real spend is the subscription — the card tells
+you how much of the API that subscription is buying, not what you paid. Cache read is
+usually ~⅔ of it: every turn re-reads the whole context.
+
 ## Flags
 
 <details>
