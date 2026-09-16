@@ -1,6 +1,7 @@
 <div align="center">
 
-<img src="docs/logo.svg" width="96" alt="Marvin">
+<img src="docs/logo.svg" width="96" alt="Marvin"><br>
+<img src="docs/mao.svg" width="600" alt="">
 
 # Marvin
 
@@ -277,12 +278,25 @@ precisa:
 2. **Quatro cards** — contexto fixo, US ativas, US concluídas, equivalente na API — cada
    um com o delta desde o commit anterior. São links para a seção abaixo.
 3. **Em andamento** — as US da nota com badge de estado e o último Rumo.
-4. **Tendência** — um ponto por commit, do `historico.jsonl`.
-5. **Tokens** — por dia e por modelo, lidos das transcrições do Claude Code do projeto.
-6. **A rede** — a base como grafo (Epic → Feature → US → fluxos → o código que tocam),
-   colapsada por padrão; duplo clique abre o arquivo em outra aba.
+4. **Tendência** — um gráfico, uma aba por métrica (contexto fixo, US, idade do grafo,
+   custo); um ponto por commit, do `historico.jsonl`.
+5. **Tokens** — por dia e por modelo, lidos das transcrições do Claude Code do projeto, com
+   custo por turno e por dia ao lado do total.
+6. **Planejamento** — a árvore inteira, Epic › Feature › US, em nós que abrem e fecham
+   (abertos onde há algo ativo). Cada nó mostra o estado, o último Rumo, um link que abre o
+   `Sobre.md` em outra aba, e **◎**, que abre a rede e foca aquele nó.
+7. **A rede** — a base como grafo (Epic → Feature → US → fluxos → o código que tocam),
+   colapsada por padrão. Clique num nó: ele ganha um anel, os vizinhos ficam acesos, o resto
+   apaga; clique no fundo para limpar. Duplo clique abre o arquivo em outra aba.
+
+A página é *derivada*: lê os nós, nunca escreve neles. Para mudar um nó, edite o `Sobre.md`
+dele (o link faz isso) — o próximo `--status --html` reflete.
 
 Claro e escuro seguem o sistema; o botão `tema` fixa um (fica no `localStorage`).
+Os parâmetros visuais (neutros quentes, rótulos de UI em mono, números tabulares, a grade de
+.5rem nos painéis) foram lidos da folha de estilo do animejs.com e traduzidos para a paleta do
+Marvin — nenhuma fonte, asset ou requisição sai do arquivo. A mãozinha pixel art andando no
+cabeçalho é o Thing, desenhada em rects de SVG; `prefers-reduced-motion` desliga.
 
 **Sobre o card de custo.** Os tokens são *medidos*: todo bloco `usage` de toda mensagem do
 assistente em `~/.claude/projects/<slug>/*.jsonl`. O valor em dólar é o que esses tokens

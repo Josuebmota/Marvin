@@ -1,6 +1,7 @@
 <div align="center">
 
-<img src="docs/logo.svg" width="96" alt="Marvin">
+<img src="docs/logo.svg" width="96" alt="Marvin"><br>
+<img src="docs/mao.svg" width="600" alt="">
 
 # Marvin
 
@@ -281,12 +282,26 @@ order you need it:
 2. **Four cards** — fixed context, active USs, concluded USs, API-equivalent cost — each
    with the delta since the previous commit. They are links to the section below.
 3. **In progress** — the USs from the note with a state badge and their last Rumo.
-4. **Trend** — one point per commit, from `historico.jsonl`.
-5. **Tokens** — per day and per model, read from the Claude Code transcripts of the project.
-6. **The network** — the knowledge base as a graph (Epic → Feature → US → flows → the
-   code they touch), collapsed by default; double-click opens the file in a new tab.
+4. **Trend** — one chart, a tab per metric (fixed context, USs, graph age, cost); one point
+   per commit, from `historico.jsonl`.
+5. **Tokens** — per day and per model, read from the Claude Code transcripts of the project,
+   with cost per turn and per day next to the total.
+6. **Planning** — the whole tree, Epic › Feature › US, as collapsible nodes (open where
+   something is active). Each node shows its state, its last Rumo, a link that opens the
+   `Sobre.md` in a new tab, and **◎**, which opens the network and focuses that node.
+7. **The network** — the knowledge base as a graph (Epic → Feature → US → flows → the
+   code they touch), collapsed by default. Click a node: it gets a ring, its neighbours
+   stay lit, everything else fades; click the background to clear. Double-click opens the
+   file in a new tab.
+
+The page is *derived*: it reads the nodes, it never writes them. To change a node, edit its
+`Sobre.md` (the link does that) — the next `--status --html` reflects it.
 
 Light and dark follow the system; the `tema` button pins one (kept in `localStorage`).
+Visual parameters (warm neutrals, monospace UI labels, tabular numbers, the .5rem grid on
+panels) were read from animejs.com's stylesheet and translated to Marvin's own palette — no
+font, no asset, no request leaves the file. The pixel-art hand walking the header is Thing,
+drawn as SVG rects; `prefers-reduced-motion` turns it off.
 
 **About the cost card.** Tokens are *measured*: every `usage` block of every assistant
 message in `~/.claude/projects/<slug>/*.jsonl`. The dollar figure is what those tokens

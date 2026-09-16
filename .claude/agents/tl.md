@@ -47,6 +47,13 @@ quatro invariantes do `AGENTS.md`. Relatório verde de agente não substitui o d
   bloco novo pergunta `LAYOUT_ANTIGO` — a junction aponta para onde as notas ESTÃO.
 - **Python para editar o `marvin.mjs` é armadilha de escape** (`\s`, `\``, `\`). Use o
   editor ou um `.mjs` no scratchpad.
+- **Bash `node -e "..."` com crase ou `$'` dentro também.** Em 16/09 um `.replace(a, "'$' + x")`
+  duplicou o arquivo inteiro (`$'` é "o resto do texto" no `String.replace`) — passe função:
+  `.replace(a, () => b)`. E o arquivo tem CRLF no working copy: `split('\n')` deixa `\r`
+  pendurado; normalize para LF antes e volte para CRLF depois.
+- **`git checkout <arquivo>` no meio da sessão apaga o trabalho não commitado.** Aconteceu
+  em 16/09 (tema + rede perdidos, refeitos do scratchpad). Antes de qualquer `checkout`/`stash`,
+  `git diff --stat` — e se tem coisa boa ali, commit parcial ou `git stash` nomeado.
 
 ## Como responder
 

@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: planejada
+estado: ativa
 pai: ../Sobre.md
 ---
 # US-15 — `--status --html` legível: hierarquia, tema e "o que fazer" primeiro
@@ -43,9 +43,12 @@ Padrão dos 4 cards de resumo clicáveis vem de dashboard financeiro de mercado.
 - [`status-html`](../../../../Contexto/Fluxos/status-html.md) — nota criada em 15/09/2026
 
 ## Código tocado
-- `marvin.mjs` — `escreverStatusHtml`: o template inteiro (CSS, ordem das seções, cards,
-  seletor de tendência, `<details>` da rede); a função de SVG de linha ganha o seletor
-- `teste.mjs` — o teste do `--html` confere ordem das seções e presença dos dois temas
+- `marvin.mjs` — `escreverStatusHtml`: o template inteiro (CSS, ordem das seções, cards, Corrigir,
+  abas da Tendência, árvore de Planejamento, foco na rede, mãozinha, botão de tema); `calcularStatus`
+  ganha `st.arvore` e o item da US ganha `arq` — só leitura, o ponto gravado não muda
+- `teste.mjs` — o teste do `--html` confere ordem das seções, Corrigir com link, dois temas + botão
+- `README.md` / `README.pt-BR.md` — seção do painel; `docs/mao.svg` no cabeçalho
+- `docs/mao.svg` — a mãozinha animada para o README (asset novo, ao lado de `logo.svg` e `demo.svg`)
 
 ## Time
 - `design` — hierarquia, tokens, tema. É a camada que esta US pede e as outras não.
@@ -93,6 +96,23 @@ Nada depende do que ela toca — folha do grafo.
   `data-theme` + localStorage, sem piscar) e a rede com cara de cérebro — só CSS/SVG: gradiente
   radial, brilho nos nós, US ativa respira, aresta `touches` pulsa; `prefers-reduced-motion` desliga.
   O layout de força não mudou. Falta: Tendência com seletor (item 4) e custo por turno/dia (item 5).
+- **16/09/2026** — `po` achou o visual genérico (cara de GitHub). Parâmetros lidos do `core.css` do
+  animejs.com e traduzidos: neutros quentes (`#1c1b1a`/`#252423`, claro `#f6f4f2`), rótulo de UI em mono
+  .75rem 600 uppercase, números tabulares em mono grande, grade de .5rem a 5% nos painéis, raio .25rem,
+  borda 1px sem sombra, escala de margem .25→3rem. Cores de nó da rede viraram tokens por tema. A paleta
+  de acento continua a nossa (verde do logo). Card de custo renomeado "equivalente na API" com a explicação
+  do Max; duplo clique no nó abre em outra aba; seção do painel nos dois READMEs.
+- **16/09/2026** — a pedido do `po`: seção **Planejamento** vira árvore Epic › Feature › US (`<details>`,
+  aberta onde há ativa; badge, último Rumo, link para o Sobre.md, botão ◎ que abre a rede e foca o nó);
+  **foco na rede** — clique num nó destaca ele e os vizinhos, clique no fundo limpa, `st.arvore` entra no
+  status sem tocar o ponto gravado; e a **mãozinha** pixel art (Thing) andando no cabeçalho — SVG de rects,
+  dois quadros por `steps()`, zero asset, `prefers-reduced-motion` desliga. Técnica vinda de pixel-art em
+  CSS (rects/box-shadow + steps), não de sprite baixado. **Editar nó na página não entra**: a página é
+  derivada e abre em `file://`, não tem como gravar — o nó É o `Sobre.md`, e o link abre ele.
+- **16/09/2026** — itens 4 e 5 do Escopo: Tendência virou **um** gráfico com abas (radio + CSS, sem
+  JS); custo **por turno** na tabela e **por turno / por dia** no cabeçalho de Tokens. A mãozinha ganhou
+  versão para o README (`docs/mao.svg`, animação CSS dentro do SVG — GitHub anima SVG em `<img>`).
+  Escopo inteiro entregue; falta a Evidência (print nos dois temas + diff vazio) para fechar.
 
 ## Evidência
 <!-- preenchido ao concluir: print da primeira dobra nos dois temas; diff vazio do historico.jsonl e do --status texto -->
