@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-15 — `--status --html` legível: hierarquia, tema e "o que fazer" primeiro
@@ -115,4 +115,11 @@ Nada depende do que ela toca — folha do grafo.
   Escopo inteiro entregue; falta a Evidência (print nos dois temas + diff vazio) para fechar.
 
 ## Evidência
-<!-- preenchido ao concluir: print da primeira dobra nos dois temas; diff vazio do historico.jsonl e do --status texto -->
+- **16/09/2026** — prints da primeira dobra deste repo (19 pontos no histórico), Edge headless com
+  `data-theme` forçado numa cópia temporária (`--force-dark-mode` não muda `prefers-color-scheme`):
+  [claro](evidencia-claro.png) · [escuro](evidencia-escuro.png). A primeira dobra responde sem rolar:
+  Corrigir + 4 cards com delta + US ativa com último Rumo. Aberto também no zino e no parci-invest
+  (os projetos que motivaram) — Corrigir apontou 1 item real no zino; prints deles ficam fora do repo público.
+- **16/09/2026** — `tl`: `--status` texto do script em `1249cfd` (antes da US) e do atual, no parci-invest:
+  `diff` vazio. O ponto do `historico.jsonl` gravado pelo script novo tem os mesmos campos de sempre.
+  `node teste.mjs`: 219 verdes.
