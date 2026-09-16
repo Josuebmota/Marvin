@@ -23,7 +23,6 @@ metadata:
 
 ## Em andamento
 
-- [US-14-codigo-em-ingles](../Planejamento/Manutencao/codigo/ingles/US-14-codigo-em-ingles/Sobre.md) — aberta 15/09/2026; destravada em 16/09 (US-15 fechou na 1.7.0); próximo: bloco 1 — comentários de `marvin.mjs` e `teste.mjs` para inglês, um commit, `dev-back`
 
 ## Travado
 

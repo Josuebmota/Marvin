@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-14-codigo-em-ingles
@@ -101,4 +101,7 @@ $1- **16/09/2026** — bloco 1 (comentários) feito: 493 linhas em `marvin.mjs`,
   de dado, e as do `historico.jsonl` já estão gravadas em três projetos. Escopo fechado aqui.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- **16/09/2026** — CI verde nos três SO no commit `2bbc90d` (run 35131574853: ubuntu, windows, macos — 219 checks).
+  Código byte a byte igual com comentários removidos (bloco 1); 41 arquivos gerados pelo script antigo e pelo novo
+  idênticos — scaffold com 7 adaptadores, `--us`, `--status` texto/`--curto`/`--html`, `--check`, `--fechar`,
+  `--dry-run`, `--help` (bloco 2). `AGENTS.md` com a convenção nova.
