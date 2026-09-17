@@ -12,7 +12,7 @@ trabalhar com agentes de IA. Documentação de uso: [README.md](README.md).
 
 | Arquivo | O que é |
 |---|---|
-| `marvin.mjs` | o script inteiro — ~1810 linhas, zero dependência |
+| `marvin.mjs` | o script inteiro — ~3750 linhas, zero dependência |
 | `teste.mjs` | smoke test dos invariantes — zero dependência |
 | `PROMPT.md` | o prompt que guia a escrita dos agentes (o script não escreve) |
 | `README.md` / `README.pt-BR.md` | documentação pública, inglês e português |
@@ -93,6 +93,8 @@ adaptador ausente.
   precisa de uma marca lá, senão quem montou o projeto na versão anterior nunca fica
   sabendo. É o ponto do código mais propenso a desincronizar — já falhou uma vez: não
   cobria o `.gitignore`, e por isso este repo ficou meses sem o bloco de segredos.
+  Entrada nova leva `desde: '<versão>'`; o carimbo em `ferramentas.md` (`marvin_montado:` /
+  `marvin:`, US-17) diz de que versão a base vem — o passo 10 imprime os dois juntos.
 - **Convenção de ferramenta muda rápido.** Cursor/Aider/Zed estão marcados como confiança
   média/baixa **de propósito**. Se confirmar alguma, atualize a tabela dos **dois**
   READMEs e o selo no `marvin.mjs` juntos.

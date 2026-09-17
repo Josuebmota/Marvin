@@ -10,6 +10,7 @@ pai: ../../README.md
 
 ## Filhos
 - [passo-3](passo-3/Sobre.md)
+- [atualizacoes](atualizacoes/Sobre.md)
 
 ## Rumo
 - **10/09/2026** — aberta.

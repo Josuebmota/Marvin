@@ -67,6 +67,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
 import readline from 'node:readline/promises';
+import { fileURLToPath } from 'node:url';
 
 const ROOT = process.cwd();
 
@@ -167,6 +168,8 @@ Flags:
                     commit in historico.jsonl: the trend of fixed context, USs, graph age
   --us <caminho>    open a US: Novos|Manutencao/<Epic>/<Feature>/<US> — creates the
                     Sobre.md chain that is missing and adds the pointer to the note
+     --refinada     the US is born \`estado: refinada\` — refined, in the queue, NOT in the
+                    note; /refinar uses it. --status groups refined USs into ilhas by file
   --fechar          read-only: what changed in git (uncommitted + today's commits) and is
                     in NO active US's "Código tocado" — the map is incomplete or the work
                     leaked. /fechar runs it
@@ -211,7 +214,9 @@ const fsw = !DRY ? fs : {
   // and the "nothing to do" message was unreachable. A plan that exaggerates has the
   // same disease as a plan that hides: both make you stop reading.
   mkdirSync:      (p) => { if (!fs.existsSync(p)) plan.push('create dir    ' + rel(p)); },
-  writeFileSync:  (p) => plan.push('create file   ' + rel(p)),
+  // An existing file is REWRITTEN, not created — the stamp (US-17) is the first write that edits
+  // a file the user already has, and "create" there would read as data loss.
+  writeFileSync:  (p) => plan.push((fs.existsSync(p) ? 'rewrite file  ' : 'create file   ') + rel(p)),
   appendFileSync: (p) => plan.push('append to     ' + rel(p)),
   cpSync:         (a, b) => plan.push('copy          ' + a + '  →  ' + rel(b)),
   rmSync:         (p) => plan.push('REMOVE        ' + p),
@@ -256,6 +261,21 @@ const DEST = path.join(DOCS, OLD_LAYOUT ? '08_Memoria' : 'Memoria');
 // real, empty directory at the new path and memory vanishes silently. The --status --curto hook flags it.
 const WORKTREE = (() => { try { return fs.statSync(path.join(ROOT, '.git')).isFile(); } catch { return false; } })();
 const isJunction = (p) => { try { return fs.lstatSync(p).isSymbolicLink(); } catch { return false; } };
+
+// ── The script's own version, and the one stamped on the base (US-17). The stamp lives in
+// the frontmatter of `.marvin/ferramentas.md` — the record of "this project uses X", and
+// marvin is one of the X. `marvin_montado` is written once and never again; `marvin` is the
+// last run, rewritten only when it changes. Step 10 finds missing blocks by marker, one by
+// one; the stamp answers the question the markers cannot: FROM which version am I migrating.
+const SELF_VERSION = (() => { try { return JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'package.json'), 'utf8')).version || '?'; } catch { return '?'; } })();
+const RECORD_FILE = path.join(DOCS, 'ferramentas.md');
+const stampOf = () => {
+  let t = ''; try { t = fs.readFileSync(RECORD_FILE, 'utf8'); } catch { return null; }
+  const fm = t.match(/^---\r?\n([\s\S]*?)\r?\n---/); if (!fm) return null;
+  const f = (k) => { const m = fm[1].match(new RegExp('^' + k + ':[ \\t]*(.+)$', 'm')); return m ? m[1].trim().replace(/^["']|["']$/g, '') : null; };
+  return { montado: f('marvin_montado'), ultima: f('marvin') };
+};
+let STAMP_BEFORE = null;   // what the record said BEFORE this run rewrote it — step 10 reports the migration from it
 
 // ── What loads in EVERY session, unasked: the source (AGENTS.md), the adapter
 // (CLAUDE.md, which does @AGENTS.md) and the note (through the junction). Measured in
@@ -416,8 +436,44 @@ const readNode = (file) => {
     .map(m => ({ data: new Date(+m[3], +m[2] - 1, +m[1]), texto: m[4].trim() }));
   const evidence = (txt.match(/^##\s+Evidência\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m) || [])[1] || '';
   const cleanEvidence = evidence.replace(/<!--[\s\S]*?-->/g, '').replace(/_\([^)]*\)_/g, '').trim();
+  const touched = (txt.match(/^##\s+Código tocado\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m) || [])[1] || '';
+  const tocados = [...new Set([...touched.matchAll(/^[ \t]*[-*][ \t]*`([^`]+)`/gm)].map(m => m[1].trim().replace(/\\/g, '/')))];
   return { arq: file, tipo: field('tipo'), estado: field('estado'), pai: field('pai'), titulo: title, rumo,
-           evidencia: cleanEvidence, comEvidencia: /\S/.test(cleanEvidence) };
+           evidencia: cleanEvidence, comEvidencia: /\S/.test(cleanEvidence), tocados };
+};
+// ── Ilhas (US-16): the USs in the queue (refinada + ativa) grouped by the FILE they share in
+// "Código tocado". An ilha is what one development session attacks in sequence, without
+// changing files midway — it orders, it does not parallelize. Measured in a real project
+// (Sept 2026): the files that collided most were touched by every feature; a file touched
+// by 3+ USs FROM 2+ FEATURES is "núcleo" and leaves the grouping, otherwise it swallows
+// everything into one ilha and says nothing. Same feature does not count: three USs of one
+// feature on one file are that feature's ilha, not a hub — measured on a 29-US queue, the
+// absolute rule turned 14 files into núcleo and left 4 USs with nothing to group by.
+// No graph needed: the file is the cut, as the human measured it.
+const NUCLEO_MIN = 3;
+const ilhasOf = (nodes) => {
+  const cand = nodes.filter(n => n.tipo === 'us' && (n.estado === 'refinada' || n.estado === 'ativa'));
+  const count = new Map(), feats = new Map();
+  for (const n of cand) for (const f of n.tocados) { count.set(f, (count.get(f) || 0) + 1); if (!feats.has(f)) feats.set(f, new Set()); feats.get(f).add(path.dirname(path.dirname(n.arq))); }
+  const nucleo = [...count].filter(([f, c]) => c >= NUCLEO_MIN && feats.get(f).size >= 2).map(([f]) => f).sort();
+  const isCore = new Set(nucleo);
+  const parent = new Map(cand.map((n, i) => [i, i]));
+  const find = (i) => { while (parent.get(i) !== i) { parent.set(i, parent.get(parent.get(i))); i = parent.get(i); } return i; };
+  const owner = new Map();   // file → first US index that touched it
+  cand.forEach((n, i) => { for (const f of n.tocados) { if (isCore.has(f)) continue; if (owner.has(f)) parent.set(find(i), find(owner.get(f))); else owner.set(f, i); } });
+  const groups = new Map();
+  cand.forEach((n, i) => { if (!n.tocados.some(f => !isCore.has(f))) return; const r = find(i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(n); });
+  const short = (n) => n.titulo.split(' — ')[0].trim();
+  const ilhas = [...groups.values()].map(us => {
+    const local = new Map();
+    for (const n of us) for (const f of n.tocados) if (!isCore.has(f)) local.set(f, (local.get(f) || 0) + 1);
+    const top = [...local].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
+    us.sort((a, b) => (a.estado === 'ativa' ? 0 : 1) - (b.estado === 'ativa' ? 0 : 1) || short(a).localeCompare(short(b)));
+    return { nome: path.basename(top).replace(/\.[^.]+$/, ''), arquivo: top, us: us.map(n => ({ id: short(n), titulo: n.titulo, estado: n.estado, arq: n.arq })), ativa: us.some(n => n.estado === 'ativa') };
+  }).sort((a, b) => (b.ativa ? 1 : 0) - (a.ativa ? 1 : 0) || b.us.length - a.us.length || a.nome.localeCompare(b.nome));
+  const semMapa = cand.filter(n => !n.tocados.length).map(short).sort();
+  const soNucleo = cand.filter(n => n.tocados.length && !n.tocados.some(f => !isCore.has(f))).map(short).sort();
+  return { ilhas, nucleo, semMapa, soNucleo, fila: cand.filter(n => n.estado === 'refinada').length };
 };
 const planningNodes = () => {
   const nodes = [];
@@ -959,7 +1015,7 @@ const computeStatus = () => {
   const byFile = new Map(nodes.map(n => [path.resolve(n.arq), n]));
   const parentOf = (n) => n.pai ? byFile.get(path.resolve(path.dirname(n.arq), n.pai)) || null : null;
   const chain = (n) => { const c = []; for (let p = parentOf(n); p; p = parentOf(p)) c.unshift(p.titulo); return c; };
-  const st = { ativas: [], avisos: [], problemas: 0, epics: [], release: null, contexto: fixedContext(), grafo: null, gastos: computeSpend(),
+  const st = { ativas: [], avisos: [], problemas: 0, epics: [], release: null, contexto: fixedContext(), grafo: null, gastos: computeSpend(), ilhas: ilhasOf(nodes),
                nos: { us: nodes.filter(n => n.tipo === 'us').length, concluidas: nodes.filter(n => n.tipo === 'us' && n.estado === 'concluida').length } };
   let note = ''; try { note = fs.readFileSync(path.join(DEST, 'onde_paramos.md'), 'utf8'); } catch {}
   const pointers = [...note.matchAll(/^- \[([^\]]+)\]\(([^)]+)\)(?:\s*[—-]+\s*(.*))?$/gm)];
@@ -977,7 +1033,7 @@ const computeStatus = () => {
   }
   if (!pointers.length) st.avisos.push({ nivel: 'info', texto: 'the note has no "- [US](path)" lines' });
   const sections = [...note.matchAll(/^##\s+(.+)$/gm)].map(m => m[1].trim());
-  const odd = sections.filter(s => !/^(Em andamento|Travado|Estado|Próxima|Depende|Primeira frase)/i.test(s));
+  const odd = sections.filter(s => !/^(Em andamento|Travado|Estado|Próxima|Depende|Primeira frase|Anotaç|Refin)/i.test(s));
   if (odd.length) { st.avisos.push({ nivel: 'warn', texto: `the note has ${odd.length} section(s) that look like a report: ${odd.slice(0, 3).map(s => '"' + s + '"').join(', ')}${odd.length > 3 ? '…' : ''} → Rumo of the US` }); st.problemas++; }
   const notInNote = nodes.filter(n => n.tipo === 'us' && n.estado === 'ativa' && !pointers.some(([, , h]) => path.resolve(DEST, h) === path.resolve(n.arq)));
   if (notInNote.length) st.avisos.push({ nivel: 'warn', texto: `${notInNote.length} US marked ativa but not in the note: ${notInNote.map(n => n.titulo.split(' — ')[0]).join(', ')}` });
@@ -1012,7 +1068,7 @@ const computeStatus = () => {
     const us = desc.filter(n => n.tipo === 'us'), feats = desc.filter(n => n.tipo === 'feature');
     const count = us.length ? us : feats;
     const c = (s) => count.filter(n => n.estado === s).length;
-    st.epics.push({ titulo: e.titulo, estado: e.estado, rotulo: us.length ? 'US' : 'features', total: count.length, concluidas: c('concluida'), canceladas: c('cancelada'), ativas: c('ativa') });
+    st.epics.push({ titulo: e.titulo, estado: e.estado, rotulo: us.length ? 'US' : 'features', total: count.length, concluidas: c('concluida'), canceladas: c('cancelada'), ativas: c('ativa'), refinadas: c('refinada') });
   }
   const rel = path.join(DOCS, 'Releases');
   let releases = []; try { releases = fs.readdirSync(rel).filter(f => f.endsWith('.md') && f !== 'README.md').sort(); } catch {}
@@ -1026,7 +1082,22 @@ const computeStatus = () => {
   return st;
 };
 
-const stateMark = (e) => e === 'ativa' ? '\x1b[32m●\x1b[0m' : e === 'concluida' ? '\x1b[34m✓\x1b[0m' : '\x1b[31m✗\x1b[0m';
+const stateMark = (e) => e === 'ativa' ? '\x1b[32m●\x1b[0m' : e === 'concluida' ? '\x1b[34m✓\x1b[0m' : e === 'refinada' ? '\x1b[2m○\x1b[0m' : '\x1b[31m✗\x1b[0m';
+// One line per ilha: what /retomar reads to offer "the ilha of the moment". In --curto it is
+// capped so the hook stays under its budget; the full list is in --status.
+const printIlhas = (il, short) => {
+  // Silent when there is nothing to choose from: one ilha of active USs is what "Em andamento" already shows.
+  if (!il.fila && il.ilhas.length < 2 && !il.semMapa.length) return;
+  // --curto has a budget (~200 tk): three ilhas, and lists become counts past four names.
+  const cap = (arr, what) => (short && arr.length > 4) ? arr.length + ' ' + what + ' — marvin --status' : arr.join(', ');
+  log('\x1b[1mIlhas\x1b[0m  (' + il.fila + ' US refinada(s) na fila · agrupadas pelo arquivo do Código tocado — uma ilha por vez, as US dela em ordem)');
+  const shown = short ? il.ilhas.slice(0, 3) : il.ilhas;
+  for (const i of shown) log(`  ${i.ativa ? '\x1b[32m▶\x1b[0m' : '▹'} ${i.nome}  \x1b[2m${i.us.length} US:\x1b[0m ${i.us.map(u => (u.estado === 'ativa' ? '●' : '○') + ' ' + u.id).join(' · ')}`);
+  if (il.ilhas.length > shown.length) info('  … +' + (il.ilhas.length - shown.length) + ' ilha(s) — marvin --status');
+  if (il.nucleo.length) info('  núcleo (≥' + NUCLEO_MIN + ' US, 2+ features): ' + cap(il.nucleo.map(f => path.basename(f)), 'arquivos') + ' — tl no diff, sempre');
+  if (il.soNucleo.length) info('  só núcleo: ' + cap(il.soNucleo, 'US') + ' — toca só arquivo de núcleo; sem ilha, com tl');
+  if (il.semMapa.length) warn('  sem mapa: ' + cap(il.semMapa, 'US') + ' — Código tocado vazio; sem arquivo, sem ilha');
+};
 const printStatus = (st, short) => {
   log('\x1b[1mEm andamento\x1b[0m  (onde_paramos.md → Sobre.md)');
   for (const a of st.ativas) {
@@ -1036,13 +1107,14 @@ const printStatus = (st, short) => {
     a.avisos.forEach(w => warn('  ' + w));
   }
   for (const w of st.avisos) (w.nivel === 'err' ? err : w.nivel === 'warn' ? warn : info)(w.texto);
+  printIlhas(st.ilhas, short);
   if (short) return;
   if (st.epics.length) {
     log('\n\x1b[1mEpics\x1b[0m');
     for (const e of st.epics) {
       const m = e.estado === 'ativa' ? '●' : e.estado === 'concluida' ? '✓' : '✗';
       if (!e.total) { log(`  ${m} ${e.titulo}  \x1b[2mno children yet\x1b[0m`); continue; }
-      log(`  ${m} ${e.titulo}  \x1b[2m${e.concluidas}/${e.total} ${e.rotulo} concluídas` + (e.canceladas ? ` · ${e.canceladas} cancelada(s)` : '') + (e.ativas ? ` · ${e.ativas} ativa(s)` : '') + '\x1b[0m');
+      log(`  ${m} ${e.titulo}  \x1b[2m${e.concluidas}/${e.total} ${e.rotulo} concluídas` + (e.canceladas ? ` · ${e.canceladas} cancelada(s)` : '') + (e.ativas ? ` · ${e.ativas} ativa(s)` : '') + (e.refinadas ? ` · ${e.refinadas} refinada(s)` : '') + '\x1b[0m');
     }
   }
   log('\n\x1b[1mReleases\x1b[0m');
@@ -1077,6 +1149,8 @@ if (hasFlag('--status')) {
   // repository. Warned here because it is the only place that runs in EVERY session; --check is on demand.
   if (fs.existsSync(DOCS) && !isJunction(MEM))
     log('  ! memória DESLIGADA deste repositório' + (WORKTREE ? ' (git worktree)' : '') + ' — rode `marvin` daqui antes de escrever qualquer nota; `marvin --check` explica');
+  // Base stamped by an older run: the nudge that makes migration visible where it matters, at session start.
+  { const stamp = stampOf(); if (stamp && stamp.ultima && stamp.ultima !== SELF_VERSION) log('  ! base montada com marvin ' + (stamp.montado || '?') + ', última passada ' + stamp.ultima + ' — este é ' + SELF_VERSION + ': rode `marvin` para ver o que entrou'); }
   if (HTML) { if (!SHORT) log(''); writeStatusHtml(st, SHORT); }
   if (!SHORT) log('\n' + (st.problemas ? `\x1b[33m${st.problemas} thing(s) to fix\x1b[0m` : '\x1b[32mall consistent\x1b[0m') + '\n');
   process.exit(SHORT ? 0 : st.problemas ? 1 : 0);
@@ -1093,7 +1167,8 @@ if (argUS || hasFlag('--us')) {
   if (OLD_LAYOUT) { err('old layout — run `marvin --migrar` first'); process.exit(1); }
   const parts = target.replace(/\\/g, '/').replace(/^\/|\/$/g, '').split('/');
   if (parts.length !== 4 || !['Novos', 'Manutencao'].includes(parts[0])) { err('expected 4 parts: Novos|Manutencao / <Epic> / <Feature> / <US>'); process.exit(2); }
-  log('\x1b[1m--us\x1b[0m — ' + target + '\n');
+  const REFINED = hasFlag('--refinada');   // born in the queue, not in the note (US-16)
+  log('\x1b[1m--us\x1b[0m — ' + target + (REFINED ? '  (refinada)' : '') + '\n');
   const today = (() => { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); })();
   const types = ['epic', 'feature', 'us'];
   for (let i = 1; i <= 3; i++) {
@@ -1102,7 +1177,7 @@ if (argUS || hasFlag('--us')) {
     const type = types[i - 1], name = parts[i];
     if (fs.existsSync(sobre)) { info(type + ': ' + parts.slice(0, i + 1).join('/') + ' already exists'); continue; }
     fsw.mkdirSync(dir, { recursive: true });
-    const header = `---\ntipo: ${type}\nestado: ativa\npai: ${i === 1 ? '../../README.md' : '../Sobre.md'}\n---\n# ${name}\n\n**Por quê:** _(uma linha)_\n**Pronto quando:** _(critério verificável)_\n`;
+    const header = `---\ntipo: ${type}\nestado: ${type === 'us' && REFINED ? 'refinada' : 'ativa'}\npai: ${i === 1 ? '../../README.md' : '../Sobre.md'}\n---\n# ${name}\n\n**Por quê:** _(uma linha)_\n**Pronto quando:** _(critério verificável)_\n`;
     const body = type === 'us' ? `
 ## Fluxos ligados
 _(link para ${path.relative(dir, path.join(DOCS, 'Contexto', 'Fluxos')).replace(/\\/g, '/')}/<fluxo>.md — fluxo sem nota ganha uma agora)_
@@ -1148,7 +1223,7 @@ _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
   let note = ''; try { note = fs.readFileSync(NOTE_US, 'utf8'); } catch {}
   const usState = (readNode(path.join(DOCS, 'Planejamento', ...parts, 'Sobre.md')) || {}).estado;
   if (!note) warn('onde_paramos.md not found — run marvin first');
-  else if (usState && usState !== 'ativa') info('onde_paramos.md — not pointed to: the US is ' + usState);
+  else if (usState && usState !== 'ativa') info('onde_paramos.md — not pointed to: the US is ' + usState + (usState === 'refinada' ? ' (in the queue; when work starts, set estado: ativa and run --us again for the pointer)' : ''));
   else if (note.includes('](' + relSobre + ')')) info('onde_paramos.md already points to it');
   else {
     const line = `- [${parts[3]}](${relSobre}) — aberta ${today}; próximo passo: _(uma frase)_`;
@@ -1529,6 +1604,24 @@ quem consegue ler o que a ferramenta produz — nem tudo é de todo agente.
 ` + newOnes.join('\n') + '\n');
     }
     ok(RECORD_REL + (rec ? ' updated' : ''));
+  }
+  // The version stamp (US-17). A record that already existed without a stamp was scaffolded
+  // by a version that did not stamp: `montado` is recorded as "< <this version>" — the truth,
+  // not a guess. `marvin:` (last run) is rewritten only when it differs, so a run on the same
+  // version writes nothing (invariant 2).
+  STAMP_BEFORE = stampOf();
+  let cur = ''; try { cur = fs.readFileSync(RECORD, 'utf8'); } catch {}
+  const fm = cur.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (fm && SELF_VERSION !== '?') {
+    let head = fm[1];
+    if (!/^marvin_montado:/m.test(head)) head += '\nmarvin_montado: ' + (rec ? '"< ' + SELF_VERSION + '"' : SELF_VERSION);
+    const last = (head.match(/^marvin:[ \t]*(.+)$/m) || [])[1];
+    if (!last) head += '\nmarvin: ' + SELF_VERSION;
+    else if (last.trim() !== SELF_VERSION) head = head.replace(/^marvin:[ \t]*.+$/m, 'marvin: ' + SELF_VERSION);
+    if (head !== fm[1]) {
+      fsw.writeFileSync(RECORD, cur.replace(fm[0], '---\n' + head + '\n---'));
+      ok(RECORD_REL + ': marvin ' + (last ? last.trim() + ' → ' : '') + SELF_VERSION);
+    }
   }
 }
 
@@ -2044,6 +2137,10 @@ Regras:
   cancela os filhos e abre novos — a entrada fica no Rumo do pai.
 - **Nada muda de pasta.** US concluída fica onde está, com \`estado: concluida\` e a
   evidência preenchida. Reabrir é outra release.
+- **Refinada não é ativa.** US que passou pelo crivo e ainda não começou é \`estado: refinada\`:
+  fica na fila, fora da nota; vira \`ativa\` quando alguém a pega (\`marvin --us\` de novo põe o
+  ponteiro). O \`--status\` agrupa as refinadas em **ilhas** pelo arquivo do *Código tocado* —
+  a ilha é o que uma sessão ataca em sequência, uma por vez.
 - **Aresta é link.** Fluxo ligado, código tocado e pai são links/caminhos — é o que o
   grafo lê.
 
@@ -2052,7 +2149,7 @@ Regras:
 \`\`\`markdown
 ---
 tipo: us            # epic | feature | us
-estado: ativa       # ativa | concluida | cancelada
+estado: ativa       # refinada | ativa | concluida | cancelada
 pai: ../Sobre.md
 ---
 # US-12 — <título em uma frase>
@@ -2563,7 +2660,17 @@ Retome o trabalho neste projeto.
    - **o próximo passo** e qual papel do time faz
    - **o que está travado** e por quê
    - se o registro divergir do código, **diga a divergência** — não escolha em silêncio
-
+${OLD_LAYOUT ? '' : `
+4. As **duas portas** — em palavras, não em número de US. O hook já imprimiu as ilhas
+   (\`marvin --status\` mostra todas): grupos de US refinadas que tocam o mesmo arquivo.
+   - **Desenvolver** — a ilha da vez (a que tem US ativa; senão a primeira) e as US dela, em
+     ordem. Uma ilha por vez, uma sessão de desenvolvimento por vez: sem branch nem worktree
+     por ilha. Ao pegar uma US \`refinada\`: \`estado: ativa\` no Sobre.md e \`marvin --us <caminho>\`
+     para o ponteiro na nota.
+   - **Refinar** — anotações sem US (as linhas ⚪ da nota): \`/refinar\`. Pode correr ao lado de
+     um chat de desenvolvimento — escreve em arquivos diferentes.
+   Pergunte: **"qual? (1 ou 2)"**.
+`}
 Não comece a trabalhar. Espere eu confirmar por onde ir.
 
 $ARGUMENTS
@@ -2660,6 +2767,44 @@ $ARGUMENTS
 `);
     ok('.claude/commands/fechar.md  → /fechar closes the session; the pair of /retomar');
   } else info('/fechar already exists');
+
+  // /refinar: between an annotation and a US there was no trigger — the US was born when
+  // someone started coding, or never. Refining is a session of its own (tl + po, no code);
+  // the US is born `refinada`, in the queue, and --status groups it into an ilha. Ran three
+  // times by hand in a real project on the day it was written (US-16).
+  const cmdRefine = path.join(cmdDir, 'refinar.md');
+  if (!fs.existsSync(cmdRefine)) {
+    fsw.writeFileSync(cmdRefine, `---
+description: Sessão de refino — eu + tl + po transformam anotações (print, frase, bug) em US refinada, com Pronto quando e Código tocado, na fila; nada de código
+---
+
+Sessão de **refino**. Aqui não se implementa: a saída é US com \`estado: refinada\`, na fila.
+Entrada: **$ARGUMENTS** (uma anotação, um print, uma linha ⚪ de
+\`${path.relative(ROOT, DEST).replace(/\\/g, '/')}/onde_paramos.md\`, ou "tudo que está ⚪").
+
+1. Leia a nota (as linhas ⚪ e as anotações sem US) e \`marvin --status\` (a fila e as ilhas que
+   já existem). Se um chat de desenvolvimento estiver aberto, ele escreve só a linha da US
+   dele na nota — você escreve só as suas. **Releia antes de salvar.**
+
+2. Para cada anotação, o **crivo \`tl\` + \`po\` em paralelo**:
+   - \`tl\`: causa com arquivo:linha (ler o código, não chutar) · risco (dado, invariante) ou zero ·
+     manutenção ou nova · escopo mínimo e o que NÃO entra · tamanho (1 chat / dividir).
+   - \`po\`: o que eu quero, nas minhas palavras · critério de aceite verificável · em que Epic e
+     Feature entra (existente ou nova, e por quê) · o que funde com o quê · ordem.
+   Onde os dois discordarem, me traga a divergência — não escolha em silêncio.
+
+3. Com os dois pareceres: \`marvin --us <caminho> --refinada\` (a US nasce na fila, fora da nota)
+   e preencha o \`Sobre.md\`: **Por quê** · **Pronto quando** · **Não entra** · **Código tocado**
+   (o arquivo:linha do \`tl\` é isto — é o que define a ilha) · **Time**. Depois
+   \`marvin --us <caminho>\` de novo: o *Impacto* sai do grafo, se houver.
+
+4. Pergunta que só eu respondo fica na US como \`❓\` — não invente a resposta.
+
+5. Me mostre, em uma tabela: US · ilha (o \`marvin --status\` diz) · o que bloqueia. **Não comece
+   a implementar** — desenvolver é outro chat: \`/retomar\` e a porta 1.
+`);
+    ok('.claude/commands/refinar.md  → /refinar turns an annotation into a refined US, in the queue');
+  } else info('/refinar already exists');
 
   // ── Session-start hook. `--status` exits != 0 when the note lies, but only whoever runs
   // it sees — and a real project's note reached 52 KB without anyone running it. Claude
@@ -3550,6 +3695,13 @@ const UPDATES = [
     o_que: 'the "Ferramentas" section on ponytail — what it does not replace (appears with --use=ponytail)' },
   { arquivo: '.claude/agents/README.md', marca: /Ponytail: em que papel entra/, soCom: PONYTAIL,
     o_que: 'the ponytail role table — which roles carry the ladder (dev yes, tl/po/scout no)' },
+  // Refined USs and ilhas (US-16). /refinar itself is created by 7b when missing; what an
+  // older base lacks is the door in /retomar and the fourth state in the planning README.
+  { arquivo: '.claude/commands/retomar.md', marca: /duas portas/i, soCom: !OLD_LAYOUT, desde: '1.8.0',
+    o_que: 'the "duas portas" step — develop the ilha of the moment, or /refinar' },
+  { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
+    marca: /refinada/, soCom: !OLD_LAYOUT, desde: '1.8.0',
+    o_que: 'the `estado: refinada` — a refined US waits in the queue, not in the note; --status groups them into ilhas' },
 ];
 
 const missing = UPDATES.filter(a => {
@@ -3562,7 +3714,8 @@ const missing = UPDATES.filter(a => {
 if (missing.length) {
   log('\n\x1b[1m10. Updates this project does not have yet\x1b[0m');
   log('   (the file already existed, so no step above touched it — that is deliberate)');
-  for (const f of missing) warn(f.arquivo + ' — missing ' + f.o_que);
+  { const stamp = STAMP_BEFORE; if (stamp && (stamp.montado || stamp.ultima)) info('base montada com marvin ' + (stamp.montado || '?') + ' · última passada ' + (stamp.ultima || '?') + ' · este é ' + SELF_VERSION); }
+  for (const f of missing) warn(f.arquivo + ' — missing ' + f.o_que + (f.desde ? '  (desde ' + f.desde + ')' : ''));
   info('nothing was rewritten: these files are yours and may have been edited on purpose.');
   info('to see the current text of each block, generate a clean project in a throwaway');
   info('directory:  mkdir /tmp/marvin-ref && cd /tmp/marvin-ref && node <path>/marvin.mjs --no-git');

@@ -336,6 +336,8 @@ usually ~⅔ of it: every turn re-reads the whole context.
                   price table) and how much of each turn is the fixed context
 --us <path>       opens a US: Novos|Manutencao/<Epic>/<Feature>/<US>. Creates the
                   Sobre.md chain that is missing and adds the pointer to the note
+   --refinada     the US is born `estado: refinada` — refined, in the queue, NOT in the
+                  note. /refinar uses it; --status groups refined USs into ilhas by file
 --fechar          read-only: what changed in git (uncommitted + today's commits) and is
                   in NO active US's "Código tocado" — the map is incomplete or the work
                   leaked. /fechar runs it
@@ -361,16 +363,29 @@ usually ~⅔ of it: every turn re-reads the whole context.
 
 ### The three triggers
 
-A rule that lives in a file depends on someone remembering it. Three commands fire it:
+A rule that lives in a file depends on someone remembering it. Four commands fire it:
 
 | When | Command | What it does |
 |---|---|---|
-| opening a session | SessionStart hook → `marvin --status --curto --html` (also regenerates the dashboard), then `/retomar` | reads the note, follows the pointers, checks against `git log` |
+| opening a session | SessionStart hook → `marvin --status --curto --html` (also regenerates the dashboard), then `/retomar` | reads the note, follows the pointers, checks against `git log`; then offers **two doors**: develop the ilha of the moment, or refine |
+| refining | `/refinar` → `marvin --us <path> --refinada` | `tl` + `po` turn an annotation into a US with *Pronto quando* and *Código tocado*, born `refinada`: in the queue, not in the note. No code |
 | starting work | `/us <path>` → `marvin --us` | creates the `Sobre.md` chain and the pointer; the agent then maps, proposes the team and the skills |
 | releasing | `marvin --release <v>` | writes `Releases/<v>.md` from the concluded USs and takes them out of the note |
 | closing | `/fechar` | Rumo entry per US touched, note rewritten as pointers, agents updated in layers, `--status`, and whether it is time for a new chat |
 
 `/retomar` and `/fechar` are the pair; `--status` is the ruler between them.
+
+**Ilhas.** `--status` groups the refined and active USs by the file they share in *Código
+tocado*: an ilha is what one development session attacks in sequence, without changing files
+midway. A file touched by 3+ USs is *núcleo* and leaves the grouping (otherwise it swallows
+everything into one ilha) — it gets `tl` on the diff, always. One ilha at a time, one
+development session at a time: it orders, it does not parallelize. Born from a real project
+that tried "one team, one branch, one worktree per ilha" and undid it the same day — three
+hand-kept state files had diverged before the first ilha ran.
+
+**The version stamp.** `.marvin/ferramentas.md` carries `marvin_montado:` (written once) and
+`marvin:` (the last run). A base scaffolded by an older version gets one line at session start
+— *base montada com 1.5.0, este é 1.8.0* — and step 10 says what came in since.
 
 ### The graph, working for you
 
@@ -627,7 +642,7 @@ rather than final text.
 node teste.mjs
 ```
 
-219 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
+236 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

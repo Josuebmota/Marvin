@@ -331,6 +331,8 @@ turno relê o contexto inteiro.
                   preços datada) e quanto de cada turno é o contexto fixo
 --us <caminho>    abre uma US: Novos|Manutencao/<Epic>/<Feature>/<US>. Cria a cadeia de
                   Sobre.md que falta e põe o ponteiro na nota
+   --refinada     a US nasce `estado: refinada` — refinada, na fila, FORA da nota. O /refinar
+                  usa; o --status agrupa as refinadas em ilhas por arquivo
 --fechar          só leitura: o que mudou no git (não commitado + commits de hoje) e NÃO
                   está no "Código tocado" de nenhuma US ativa — o mapa está incompleto ou o
                   trabalho vazou. O /fechar roda
@@ -356,16 +358,29 @@ turno relê o contexto inteiro.
 
 ### Os três gatilhos
 
-Regra que mora num arquivo depende de alguém lembrar. Três comandos a disparam:
+Regra que mora num arquivo depende de alguém lembrar. Quatro comandos a disparam:
 
 | Quando | Comando | O que faz |
 |---|---|---|
-| abrir a sessão | hook SessionStart → `marvin --status --curto --html` (regera o dashboard também), depois `/retomar` | lê a nota, segue os ponteiros, confere contra o `git log` |
+| abrir a sessão | hook SessionStart → `marvin --status --curto --html` (regera o dashboard também), depois `/retomar` | lê a nota, segue os ponteiros, confere contra o `git log`; depois oferece **duas portas**: desenvolver a ilha da vez, ou refinar |
+| refinar | `/refinar` → `marvin --us <caminho> --refinada` | `tl` + `po` transformam anotação em US com *Pronto quando* e *Código tocado*, nascida `refinada`: na fila, fora da nota. Sem código |
 | começar trabalho | `/us <caminho>` → `marvin --us` | cria a cadeia de `Sobre.md` e o ponteiro; o agente mapeia, propõe o time e as skills |
 | lançar | `marvin --release <v>` | escreve `Releases/<v>.md` a partir das US concluídas e as tira da nota |
 | fechar | `/fechar` | entrada no Rumo por US tocada, nota reescrita como ponteiros, agentes atualizados em camadas, `--status`, e se é hora de chat novo |
 
 `/retomar` e `/fechar` são o par; o `--status` é a régua entre os dois.
+
+**Ilhas.** O `--status` agrupa as US refinadas e ativas pelo arquivo que compartilham no
+*Código tocado*: uma ilha é o que uma sessão de desenvolvimento ataca em sequência, sem trocar
+de arquivo no meio. Arquivo tocado por 3+ US é *núcleo* e sai do agrupamento (senão engole tudo
+numa ilha só) — leva `tl` no diff, sempre. Uma ilha por vez, uma sessão de desenvolvimento por
+vez: ilha ordena, não paraleliza. Nasceu de um projeto real que tentou "um time, uma branch, um
+worktree por ilha" e desfez no mesmo dia — três arquivos de estado à mão divergiram antes de a
+primeira ilha rodar.
+
+**O carimbo de versão.** `.marvin/ferramentas.md` carrega `marvin_montado:` (escrito uma vez) e
+`marvin:` (a última passada). Base montada por versão antiga ganha uma linha ao abrir a sessão —
+*base montada com 1.5.0, este é 1.8.0* — e o passo 10 diz o que entrou desde então.
 
 ### O grafo trabalhando a favor
 
@@ -613,7 +628,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-219 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
+236 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

@@ -23,6 +23,10 @@
  *  10. the canonical commands come from the MANIFEST — and the manager, from the lockfile
  *  11. the note promises three questions and delivers three, with a destination for the overflow
  *  12. git worktree: the hook reports memory disconnected before marvin runs there (needs git)
+ *  13. --us --refinada is born in the queue, not in the note; --status groups the queue into
+ *      ilhas by shared file, a file in 3+ USs is núcleo, an unmapped US is "sem mapa"
+ *  14. the version stamp: written once, not rewritten on the same version, and the hook
+ *      warns when the base is behind
  *
  * HERMETIC: every case runs with HOME and USERPROFILE pointing at a temporary
  * directory. Without that the test would create junctions in the real profile of
@@ -1017,6 +1021,60 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
     check('depois de montar, o hook cala', after.status === 0 && !/DESLIGADA/.test(after.stdout));
     git('worktree', 'remove', '--force', wt);
   }
+  cleanup(a);
+}
+
+// ── 13. Refined USs and ilhas (US-16). Five USs: 01+02 (F1) share a.js, 03 (F2) shares b.js
+// with the active 05 (F2), core.js is in three of them across two features (núcleo), 04 has
+// no Código tocado. The grouping is the one non-trivial logic added since the graph — this
+// is its one runnable check.
+{
+  const a = arena('ilhas');
+  run(a, '--no-git', '--no-questions');
+  const feat = { 'US-01': 'F1', 'US-02': 'F1', 'US-03': 'F2', 'US-04': 'F1', 'US-05': 'F2' };
+  for (const u of ['US-01', 'US-02', 'US-03', 'US-04']) run(a, '--us', 'Novos/E1/' + feat[u] + '/' + u, '--refinada');
+  run(a, '--us', 'Novos/E1/F2/US-05');
+  const sobre = (u) => path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E1', feat[u], u, 'Sobre.md');
+  const note = fs.readFileSync(path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md'), 'utf8');
+  check('--us --refinada nasce com estado: refinada', /^estado: refinada$/m.test(fs.readFileSync(sobre('US-01'), 'utf8')));
+  check('US refinada NÃO entra na nota', !note.includes('US-01/Sobre.md'));
+  check('US sem --refinada continua ativa e na nota', /^estado: ativa$/m.test(fs.readFileSync(sobre('US-05'), 'utf8')) && note.includes('US-05/Sobre.md'));
+  const touch = (u, files) => {
+    const t = fs.readFileSync(sobre(u), 'utf8').replace(/## Código tocado\n_\([^)]*\)_\n/, '## Código tocado\n' + files.map(f => '- `' + f + '`' + NLQ).join(''));
+    fs.writeFileSync(sobre(u), t);
+  };
+  touch('US-01', ['src/a.js', 'src/core.js']); touch('US-02', ['src/a.js', 'src/core.js']);
+  touch('US-03', ['src/b.js', 'src/core.js']); touch('US-05', ['src/b.js']);
+  const out = run(a, '--status', '--curto').stdout;
+  check('--curto imprime as ilhas', /Ilhas/.test(out) && /4 US refinada/.test(out));
+  check('01 e 02 caem na mesma ilha (a.js)', /▹ a\s+2 US: ○ US-01 · ○ US-02/.test(out), out);
+  check('a ilha com US ativa vem primeiro (▶ b)', /▶ b\s+2 US: ● US-05 · ○ US-03/.test(out), out);
+  check('arquivo em 3 US de 2 features é núcleo e não engole as ilhas', /núcleo \(≥3 US, 2\+ features\): core\.js/.test(out), out);
+  check('US sem Código tocado é "sem mapa"', /sem mapa[^\n]*US-04/.test(out), out);
+  check('refinada não dispara "ativa but not in the note"', !/marked ativa but not in the note/.test(out), out);
+  check('/refinar é gerado', fs.existsSync(path.join(a.proj, '.claude', 'commands', 'refinar.md')));
+  check('/retomar tem as duas portas', /duas portas/.test(fs.readFileSync(path.join(a.proj, '.claude', 'commands', 'retomar.md'), 'utf8')));
+  cleanup(a);
+}
+
+// ── 14. Version stamp (US-17). The record is the user's file: written once, rewritten only
+// when the version changes, and the hook is where a base left behind gets noticed.
+{
+  const a = arena('carimbo');
+  const version = JSON.parse(fs.readFileSync(path.join(HERE, 'package.json'), 'utf8')).version;
+  run(a, '--no-git', '--no-questions');
+  const rec = path.join(a.proj, '.marvin', 'ferramentas.md');
+  const read = () => fs.readFileSync(rec, 'utf8');
+  check('ferramentas.md carimba marvin_montado e marvin', new RegExp('^marvin_montado: ' + version + '$', 'm').test(read()) && new RegExp('^marvin: ' + version + '$', 'm').test(read()));
+  const before = read();
+  const again = run(a, '--no-git', '--no-questions');
+  check('mesma versão: 2ª passada não reescreve o registro', read() === before && !/ferramentas\.md: marvin/.test(again.stdout));
+  check('mesma versão: o hook cala', !/base montada com marvin/.test(run(a, '--status', '--curto').stdout));
+  fs.writeFileSync(rec, read().replace(/^marvin: .+$/m, 'marvin: 0.0.1'));
+  check('base atrás: o hook avisa em uma linha', /base montada com marvin[^\n]*última passada 0\.0\.1/.test(run(a, '--status', '--curto').stdout));
+  const up = run(a, '--no-git', '--no-questions').stdout;
+  check('base atrás: a passada avança o carimbo e diz de onde', /marvin 0\.0\.1 → /.test(up) && new RegExp('^marvin: ' + version + '$', 'm').test(read()));
+  check('marvin_montado nunca é reescrito', new RegExp('^marvin_montado: ' + version + '$', 'm').test(read()));
   cleanup(a);
 }
 

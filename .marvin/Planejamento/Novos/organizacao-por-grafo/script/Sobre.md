@@ -18,6 +18,7 @@ pai: ../Sobre.md
 - [US-09-rede-e-auto-update](US-09-rede-e-auto-update/Sobre.md)
 - [US-10-grafo-a-nosso-favor](US-10-grafo-a-nosso-favor/Sobre.md)
 - [US-15-status-html-legivel](US-15-status-html-legivel/Sobre.md)
+- [US-16-refinar-e-ilhas](US-16-refinar-e-ilhas/Sobre.md)
 
 ## Rumo
 - **10/09/2026** — aberta.
