@@ -23,8 +23,6 @@ metadata:
 
 ## Em andamento
 
-- [US-16-refinar-e-ilhas](../Planejamento/Novos/organizacao-por-grafo/script/US-16-refinar-e-ilhas/Sobre.md) — implementada e testada (236 verdes); próximo: commit, CI nos três SO, `--release 1.8.0`
-- [US-17-carimbo-de-versao](../Planejamento/Manutencao/diagnostico/atualizacoes/US-17-carimbo-de-versao/Sobre.md) — implementada e testada; sai na 1.8.0 junto com a US-16
 
 ## Travado
 

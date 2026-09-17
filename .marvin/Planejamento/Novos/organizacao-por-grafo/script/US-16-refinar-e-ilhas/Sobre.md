@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-16 — `/refinar`, US `refinada` e ilhas derivadas do `Código tocado`
@@ -54,4 +54,4 @@ nenhuma nova.
 - **17/09/2026** — implementada: `--us --refinada`; `readNode` lê o `Código tocado`; `ilhasOf` (união por arquivo, núcleo ≥3 US, sem mapa) no `computeStatus`; `printIlhas` no `--status` e no `--curto` (cala quando há uma ilha só e fila vazia); `/refinar` gerado; `/retomar` com as duas portas; `refinada` no README de Planejamento e nas marcas do passo 10 (`desde: 1.8.0`); caso 13 no `teste.mjs` (11 checks). Decisão do Josué que moldou tudo: ilha **ordena**, não paraleliza — uma sessão de desenvolvimento por vez; refinar pode correr ao lado porque escreve em arquivos disjuntos. Próximo: commit, CI verde nos três SO, `--release 1.8.0`.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+**17/09/2026** — commit `a205546`, CI verde nos três SO (run 35262684329: ubuntu, windows, macos — 236 checks). No Parci: 29 US `refinada`, 12 ilhas no hook, carimbo `"< 1.7.1"` → `1.7.1`.

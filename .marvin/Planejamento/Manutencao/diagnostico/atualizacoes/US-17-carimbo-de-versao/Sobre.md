@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-17 — o `marvin` crava a versão com que montou a base
@@ -42,4 +42,4 @@ nenhuma.
 - **17/09/2026** — implementada: `SELF_VERSION` lida do `package.json` ao lado do script (`import.meta.url`); carimbo no frontmatter de `ferramentas.md` no fim do bloco 0b (`marvin_montado` uma vez — `"< X"` em base que já existia sem carimbo —, `marvin` só quando muda); `STAMP_BEFORE` guarda o que o registro dizia antes da passada para o passo 10 dizer *montado com X · última passada Y · este é Z*; `desde:` por entrada nova; uma linha no `--status --curto` quando a base está atrás. Caso 14 no `teste.mjs` (6 checks). Próximo: junto com a US-16, `--release 1.8.0` — o carimbo do Parci vai dizer `1.7.1 → 1.8.0` na primeira passada depois de publicar.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+**17/09/2026** — commit `a205546`, CI verde nos três SO (run 35262684329: ubuntu, windows, macos — 236 checks). No Parci: 29 US `refinada`, 12 ilhas no hook, carimbo `"< 1.7.1"` → `1.7.1`.
