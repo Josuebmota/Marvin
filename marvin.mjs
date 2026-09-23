@@ -623,16 +623,49 @@ const docsGraph = (ids, subRepos = []) => {
       if (targetId && targetId !== id) edge(id, targetId, 'references');
     }
     // ## Código tocado
+    // A bullet is `path` — `symbol`: the symbol NARROWS the file, it never replaces it.
+    // Until 1.8.0 a symbol the graph does not hold dropped the whole FILE from the US, with
+    // no fallback — `Impacto` then printed "folha do grafo" and "no other US on this code"
+    // for a US that shared a core file with twenty others. Measured on a real vault:
+    // removing three pairs of backticks took one US from "0 other US" to 20, and another
+    // to 35. The graph indexes top-level symbols only, so every local const, nested field
+    // and config key hit this. A symbol that does not resolve now costs GRANULARITY, and
+    // never the file.
     const section = body.match(/^##\s+Código tocado\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
     if (section) {
-      for (const m of section[1].matchAll(/^[ \t]*[-*][ \t]*`([^`]+)`(?:[ \t]*[—-]+[ \t]*`([^`]+)`)?/gm)) {
+      const bullet = /^[ \t]*[-*][ \t]*`([^`]+)`(?:[ \t]*[—-]+[ \t]*`([^`]+)`)?/;
+      for (const line of section[1].split('\n')) {
+        const m = line.match(bullet);
+        if (!m) continue;
         const codeFile = m[1].trim(), fn = m[2] && m[2].trim().replace(/\(\)$/, '');
         const fileId = idOf(codeFile);
         const targetId = fn ? fileId + '_' + fn.replace(/[^A-Za-z0-9]+/g, '_').toLowerCase() : fileId;
-        if (ids.has(targetId)) { edge(id, targetId, 'touches'); continue; }
-        if (!fs.existsSync(path.join(ROOT, codeFile))) warnings.push(rel + ': `' + codeFile + '` does not exist in the repository');
+        if (ids.has(targetId)) edge(id, targetId, 'touches');
+        else if (!fs.existsSync(path.join(ROOT, codeFile))) {
+          // "does not exist" is the NORMAL state of a refined US whose code is not written
+          // yet, so on its own it cannot mean error. A typo does mean error, and the two
+          // printed the same sentence: on one vault 3 wrong paths hid among 54 future
+          // files. Same basename elsewhere in the graph = say so, and the typo surfaces.
+          const alike = [...ids].filter((x) => x !== fileId && x.endsWith('_' + idOf(path.basename(codeFile))));
+          warnings.push(rel + ': `' + codeFile + '` does not exist in the repository'
+            + (alike.length ? ' — but the graph has ' + alike.slice(0, 2).join(', ') + '; wrong path?' : ''));
+        }
         else if (!ids.has(fileId)) warnings.push(rel + ': `' + codeFile + '` is not in the graph — rebuild it (' + (subRepos.length ? 'marvin --graphify --graphify-rebuild' : 'graphify update .') + ')');
-        else warnings.push(rel + ': `' + fn + '` is not in `' + codeFile + '` — renamed?');
+        else {
+          // The FILE is in the graph: keep it. And stop guessing "renamed?" — that word
+          // sends the reader hunting for dead code when the symbol is merely local.
+          edge(id, fileId, 'touches');
+          warnings.push(rel + ': `' + fn + '` is not a node in `' + codeFile + '` — local symbol (only top-level is indexed), or renamed. The file still counts.');
+        }
+        // Only the FIRST path of a bullet is read. Until 1.8.0 the others vanished without
+        // a word, so `a.ts` / `b.ts` in one bullet mapped half the US in silence. Only the
+        // part before the em-dash is scanned: a path cited in the prose after it is a
+        // reference, not a second touched file.
+        const head = line.slice(0, m[0].length).split(/[ \t]+[—-]+[ \t]+/)[0];
+        for (const t of head.matchAll(/`([^`]+)`/g)) {
+          const other = t[1].trim();
+          if (other !== codeFile) warnings.push(rel + ': `' + other + '` shares a bullet with `' + codeFile + '` — one path per bullet; this one is NOT in the graph');
+        }
       }
     }
   }
