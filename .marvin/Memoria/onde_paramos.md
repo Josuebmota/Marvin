@@ -27,6 +27,6 @@ nada.
 
 ## Travado
 
-- **A US-18 está implementada e verde (237), mas NÃO publicada.** O `marvin` que os projetos
-  rodam é a cópia npm `1.8.0`; enquanto não sair release, o `Impacto` continua afirmando "folha do
-  grafo" para US que dividem arquivo de núcleo. Decisão do Josué: rodar `--release`.
+- **1.8.1 (US-18) com tag, falta o `npm publish`** — é credencial, quem roda é o Josué
+  (receita: skill `publicar-no-npm`). Até sair, o `marvin` dos projetos é o 1.8.0 e o `Impacto`
+  segue dizendo "folha do grafo" para US que dividem arquivo de núcleo.
