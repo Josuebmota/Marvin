@@ -1,0 +1,1 @@
+- [onde_paramos](onde_paramos.md) — ÚNICA porta de entrada do Marvin. Só ponteiros para as US em andamento — sempre sobrescrita.

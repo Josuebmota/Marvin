@@ -13,10 +13,16 @@
 `/retomar` num chat novo — lê `.marvin/Memoria/onde_paramos.md` e confere contra o `git log`
 antes de acreditar no que está escrito.
 
-## Modelo por papel
+## Referência de modelos — Claude Code
 
-Os papéis estão no `AGENTS.md`. Aqui só o mapeamento, que vai no frontmatter de cada
-`.claude/agents/*.md`:
+Os papéis estão no `AGENTS.md`. A tabela abaixo é uma referência de partida para
+Claude Code, não uma escolha permanente por papel nem equivalência com outras LLMs.
+No piloto da US-19, siga [o fluxo de delegação](.marvin/Contexto/Fluxos/delegacao.md)
+para escolher por tarefa e conferir a configuração aplicada. O `model` do frontmatter
+de `.claude/agents/*.md` é a configuração de partida; Opus no `tl` é a referência
+inicial Claude, não escolha obrigatória por papel. A seleção começa na atividade,
+domínio e skills e usa as capacidades efetivamente disponíveis; plugin instalado
+não fixa fornecedor para delegação ou revisão.
 
 | Precisa de | Modelo |
 |---|---|

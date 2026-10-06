@@ -243,6 +243,42 @@ mesmo com terminal.
 *Alcance* é a coluna que importa: diz quem consegue consumir o que a ferramenta produz.
 Ferramenta cuja saída só um agente lê é decisão, não padrão.
 
+### Disponibilidade de IA — configuração inicial local
+
+Na **2.0.0**, a atividade orienta papéis, skills e escolhas elegíveis de modelo/esforço;
+o papel deixa de prescrever fornecedor. Declarações de disponibilidade e glossário
+apoiam essa decisão sem transformar o Marvin em motor de inferência.
+
+Com terminal, o Marvin pergunta qual ferramenta executa a sessão, quais IAs você tem,
+como acessa cada uma e se já estão configuradas nessa ferramenta. Foco inicial de
+estudo: Claude, Codex/OpenAI, MiniMax, DeepSeek, Gemini, Grok e Jev; novas inclusões
+dependem do humano. Uma opção capaz pode assumir vários papéis.
+
+As declarações ficam em `<vault>/.local/disponibilidade.json`, excluído por um
+`.gitignore` local mesmo com `--no-git`. Nenhuma credencial, autenticação ou chamada
+de inferência. Escolhas existentes nunca são sobrescritas; edite esse JSON local
+para alterá-las e reconfirme acesso antes de usar. Configuração declarada não prova
+execução. Inventário ausente significa **não informado**, não ausência de acesso.
+Sem terminal ou com `--no-questions`, as perguntas ficam pendentes; para scripts:
+
+```bash
+marvin --tools=codex --executor=codex --ai=codex:subscription:yes
+marvin --tools=opencode --executor=opencode --ai=deepseek:api:yes --ai=minimax:api:unknown
+```
+
+`--executor` declara a ferramenta da sessão; `--tools` gera adaptadores. Nenhum dos
+dois conecta provedores. Acessos: `subscription`, `api`, `local`, `unknown`;
+configuração: `yes`, `no`, `unknown`. `--ai=none` declara nenhum acesso. Dry-run
+nunca pergunta sobre IA nem grava escolhas; declarações por flags aparecem no plano.
+Entradas inválidas falham antes de qualquer escrita.
+
+O `Contexto/IA.md` gerado (`IA.md` no vault antigo) guarda procedimento do glossário,
+referências datadas e política: atividade/domínio → papéis → skills → capacidades →
+modelo/ferramenta/esforço elegíveis. É consultado por ponteiro, sem carregar todo o
+catálogo em cada sessão. Não promete fornecedor fixo, migração automática por quota
+ou economia medida. Jev decide entre opções estruturadas; acesso ao texto da MiniMax
+não comprova acesso à geração de vídeo.
+
 ## Diagnóstico
 
 Além de criar, ele aponta problemas que passam despercebidos:
@@ -628,7 +664,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-237 verificações, zero dependência, ~2 segundos. Cobre os invariantes que protegem o disco
+263 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

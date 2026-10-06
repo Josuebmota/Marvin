@@ -41,8 +41,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { spawnSync, spawn } from 'node:child_process';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SCRIPT = path.join(HERE, 'marvin.mjs');
@@ -84,6 +84,32 @@ function run({ proj: proj, lar: home }, ...flags) {
     cwd: proj,
     encoding: 'utf8',
     env: { ...process.env, HOME: home, USERPROFILE: home },
+  });
+}
+
+// Exercise real readline with a TTY marker and prompt-driven pipe input. No mocked
+// answers API: a missing/repeated prompt or a hung question times out and fails.
+function runInteractive({ proj, lar }, answers, ...flags) {
+  return new Promise(resolve => {
+    const driver = 'process.argv.splice(1, 0, ' + JSON.stringify(SCRIPT) + '); process.stdin.isTTY = true; await import('
+      + JSON.stringify(pathToFileURL(SCRIPT).href) + ');';
+    const child = spawn(process.execPath, ['--input-type=module', '--eval', driver, '--', ...flags], {
+      cwd: proj, env: { ...process.env, HOME: lar, USERPROFILE: lar },
+    });
+    let stdout = '', stderr = '', pending = '', index = 0;
+    const timer = setTimeout(() => child.kill(), 30000);
+    child.stdout.on('data', bytes => {
+      const text = bytes.toString(); stdout += text; pending += text;
+      while (index < answers.length && pending.includes(answers[index][0])) {
+        const [prompt, answer] = answers[index++];
+        pending = pending.slice(pending.indexOf(prompt) + prompt.length);
+        if (answer === null) child.stdin.end();
+        else child.stdin.write(answer + '\n');
+      }
+    });
+    child.stderr.on('data', bytes => { stderr += bytes; });
+    child.on('error', e => { clearTimeout(timer); resolve({ status: null, stdout, stderr: e.message }); });
+    child.on('close', status => { clearTimeout(timer); resolve({ status, stdout, stderr }); });
   });
 }
 
@@ -1088,6 +1114,131 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   check('o adaptador aponta para o AGENTS.md',
         fs.existsSync(p) && /AGENTS\.md/.test(fs.readFileSync(p, 'utf8')));
   cleanup(a);
+}
+
+// ── 15. Availability declarations: no auth, no inference, no overwritten choices.
+{
+  const inventory = a => path.join(a.proj, '.marvin', '.local', 'disponibilidade.json');
+  const a = arena('ai-one');
+  const one = run(a, '--no-git', '--no-questions', '--executor=codex', '--ai=codex:subscription:yes');
+  check('um acesso sem Claude cria inventário', one.status === 0 && fs.existsSync(inventory(a)), one.stderr);
+  if (fs.existsSync(inventory(a))) {
+    const first = fs.readFileSync(inventory(a), 'utf8');
+    const record = JSON.parse(first);
+    check('declaração não vira execução testada', record.executor === 'codex' && record.providers.length === 1
+      && record.providers[0].id === 'codex' && record.providers[0].configured === 'yes'
+      && record.providers[0].tested === 'not-confirmed');
+    run(a, '--no-git', '--executor=other', '--ai=deepseek:api:no');
+    check('rerun preserva escolhas', fs.readFileSync(inventory(a), 'utf8') === first);
+    fs.writeFileSync(inventory(a), '{invalid');
+    const badRecord = run(a, '--no-git');
+    check('inventário inválido falha sem sobrescrever', badRecord.status !== 0 && fs.readFileSync(inventory(a), 'utf8') === '{invalid');
+  } else {
+    check('declaração não vira execução testada', false);
+    check('rerun preserva escolhas', false);
+    check('inventário inválido falha sem sobrescrever', false);
+  }
+  check('inventário tem exclusão local mesmo com --no-git', fs.existsSync(path.join(a.proj, '.marvin', '.local', '.gitignore'))
+    && /^\/disponibilidade\.json$/m.test(fs.readFileSync(path.join(a.proj, '.marvin', '.local', '.gitignore'), 'utf8')));
+  cleanup(a);
+
+  const b = arena('ai-all');
+  const ids = ['claude', 'codex', 'minimax', 'deepseek', 'gemini', 'grok', 'jev'];
+  const all = run(b, '--executor=opencode', ...ids.map(id => '--ai=' + id + ':api:unknown'));
+  check('todas as sete opções em outro executor', all.status === 0 && fs.existsSync(inventory(b))
+    && JSON.parse(fs.readFileSync(inventory(b), 'utf8')).providers.length === 7, all.stderr);
+  const ignored = spawnSync('git', ['check-ignore', '.marvin/.local/disponibilidade.json'], { cwd: b.proj, encoding: 'utf8' });
+  check('git ignora inventário local', ignored.status === 0, ignored.stderr);
+  cleanup(b);
+
+  const c = arena('ai-unknown');
+  const unknown = run(c, '--no-git', '--no-questions');
+  check('sem TTY/perguntas não inventa disponibilidade', unknown.status === 0 && !fs.existsSync(inventory(c))
+    && /availability not declared/.test(unknown.stdout), unknown.stderr);
+  check('orientação gerada funciona por ponteiro', /Disponibilidade de IA/.test(fs.readFileSync(path.join(c.proj, 'AGENTS.md'), 'utf8'))
+    && fs.existsSync(path.join(c.proj, '.marvin', 'Contexto', 'IA.md'))
+    && !/^model:/m.test(fs.readFileSync(path.join(c.proj, '.claude', 'agents', 'README.md'), 'utf8')));
+  const noQuestions = await runInteractive(c, [], '--no-git', '--no-questions');
+  check('--no-questions com TTY não trava em perguntas', noQuestions.status === 0 && !fs.existsSync(inventory(c)), noQuestions.stderr);
+  cleanup(c);
+
+  const d = arena('ai-dry');
+  const dry = run(d, '--dry-run', '--executor=other', '--ai=jev:api:no');
+  check('dry-run planeja disponibilidade sem escrever', dry.status === 0 && /disponibilidade\.json/.test(dry.stdout)
+    && files(d.proj).length === 0 && !fs.existsSync(memoryPath(d.lar, d.proj)));
+  cleanup(d);
+
+  for (const args of [ ['--executor=bad', '--ai=codex:api:yes'], ['--executor=codex', '--ai=bad:api:yes'],
+    ['--executor=codex', '--ai=codex:password:yes'], ['--executor=codex', '--ai=codex:api:maybe'],
+    ['--ai=codex:api:yes'], ['--executor=codex', '--ai=codex:api:yes', '--ai=codex:local:no'] ]) {
+    const e = arena('ai-invalid');
+    const invalid = run(e, ...args);
+    check('entrada inválida falha antes de escrever: ' + args.join(' '), invalid.status !== 0 && files(e.proj).length === 0
+      && !fs.existsSync(memoryPath(e.lar, e.proj)));
+    cleanup(e);
+  }
+  const f = arena('ai-none');
+  run(f, '--no-git', '--executor=other', '--ai=none');
+  check('nenhum acesso declarado difere de não informado', fs.existsSync(inventory(f))
+    && JSON.parse(fs.readFileSync(inventory(f), 'utf8')).providers.length === 0);
+  cleanup(f);
+
+  const g = arena('ai-ignore-existing');
+  fs.writeFileSync(path.join(g.proj, '.gitignore'), '# user rules\n*.user\n');
+  fs.mkdirSync(path.join(g.proj, '.marvin', '.local'), { recursive: true });
+  fs.writeFileSync(path.join(g.proj, '.marvin', '.local', '.gitignore'), '!compartilhado.md\n');
+  fs.writeFileSync(path.join(g.proj, '.marvin', '.local', 'compartilhado.md'), '# user file\n');
+  run(g, '--no-questions', '--executor=codex', '--ai=codex:api:yes');
+  check('ignore existente não é sobrescrito', fs.readFileSync(path.join(g.proj, '.gitignore'), 'utf8') === '# user rules\n*.user\n'
+    && spawnSync('git', ['check-ignore', '.marvin/.local/disponibilidade.json'], { cwd: g.proj }).status === 0
+    && spawnSync('git', ['check-ignore', '.marvin/.local/compartilhado.md'], { cwd: g.proj }).status === 1
+    && fs.readFileSync(path.join(g.proj, '.marvin', '.local', '.gitignore'), 'utf8').startsWith('!compartilhado.md\n'));
+  fs.unlinkSync(path.join(g.proj, '.marvin', '.local', '.gitignore'));
+  run(g, '--no-git');
+  check('inventário existente recupera exclusão ausente', fs.existsSync(path.join(g.proj, '.marvin', '.local', '.gitignore')));
+  cleanup(g);
+
+  const h = arena('ai-old-vault');
+  fs.mkdirSync(path.join(h.proj, 'Docs', '08_Memoria'), { recursive: true });
+  run(h, '--no-git', '--executor=other', '--ai=gemini:local:unknown');
+  check('vault antigo reutilizado sem criar .marvin/Contexto', fs.existsSync(path.join(h.proj, 'Docs', '.local', 'disponibilidade.json'))
+    && fs.existsSync(path.join(h.proj, 'Docs', 'IA.md')) && !fs.existsSync(path.join(h.proj, '.marvin'))
+    && !fs.existsSync(path.join(h.proj, 'Docs', 'Contexto')));
+  cleanup(h);
+
+  const i = arena('ai-interactive');
+  fs.mkdirSync(path.join(i.proj, '.marvin', 'Memoria'), { recursive: true });
+  fs.writeFileSync(path.join(i.proj, '.marvin', 'ferramentas.md'), '| graphify | não | | |\n| ponytail | não | | |\n');
+  fs.mkdirSync(path.join(i.proj, '.marvin', 'Fontes'), { recursive: true });
+  fs.writeFileSync(path.join(i.proj, '.marvin', 'Fontes', 'Externas.md'), '# existing sources\n');
+  const interactive = await runInteractive(i, [
+    ['Session tool (', 'bad'], ['Session tool (', 'codex'], ['Available AI (', 'jev'],
+    ['jev access (', 'password'], ['jev access (', 'api'], ['already configured in codex?', 'no'],
+  ], '--no-git');
+  check('perguntas TTY validam e registram sem configurar provedor', interactive.status === 0 && fs.existsSync(inventory(i))
+    && JSON.parse(fs.readFileSync(inventory(i), 'utf8')).source === 'prompt'
+    && JSON.parse(fs.readFileSync(inventory(i), 'utf8')).providers[0].configured === 'no', interactive.stderr + interactive.stdout.slice(-400));
+  const hook = JSON.parse(fs.readFileSync(path.join(i.proj, '.claude', 'settings.json'), 'utf8')).hooks.SessionStart[0].hooks[0].command;
+  check('driver TTY preserva o caminho real do hook', hook === 'node "' + SCRIPT.replace(/\\/g, '/') + '" --status --curto --html');
+  cleanup(i);
+
+  for (const answers of [ [['Session tool (', null]], [['Session tool (', 'codex'], ['Available AI (', 'jev'], ['jev access (', null]] ]) {
+    const cancelledArena = arena('ai-cancelled');
+    const cancelled = await runInteractive(cancelledArena, answers, '--no-git');
+    check('EOF no onboarding aborta sem gravar respostas parciais', cancelled.status === 1
+      && /AI setup cancelled/.test(cancelled.stdout) && !/unsettled top-level await/.test(cancelled.stderr)
+      && files(cancelledArena.proj).length === 0 && !fs.existsSync(memoryPath(cancelledArena.lar, cancelledArena.proj)), cancelled.stderr);
+    cleanup(cancelledArena);
+  }
+
+  const j = arena('ai-guide-existing');
+  fs.mkdirSync(path.join(j.proj, '.marvin', 'Contexto'), { recursive: true });
+  const guide = path.join(j.proj, '.marvin', 'Contexto', 'IA.md');
+  fs.writeFileSync(guide, '# user guide\n');
+  const existing = run(j, '--no-git', '--no-questions');
+  check('guia existente preservado com aviso de atualização', fs.readFileSync(guide, 'utf8') === '# user guide\n'
+    && /Contexto\/IA\.md — missing[\s\S]*desde 2\.0\.0/.test(existing.stdout));
+  cleanup(j);
 }
 
 // ── LAST. The number of checks claimed in the READMEs matches the real one.

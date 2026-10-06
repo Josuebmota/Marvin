@@ -7,18 +7,25 @@ Um `.md` por papel:
 name: qa
 description: quando usar este papel — é isto que decide se ele é chamado
 tools: Read, Grep, Glob, Bash
-model: haiku | sonnet | opus
+model: sonnet
 ---
 ```
 
-## Modelo por papel
+## Referência de modelos — Claude Code
+
+Modelos de partida, não escolhas permanentes por papel. No piloto local da US-19,
+escolha por tarefa seguindo [o fluxo de delegação](../../.marvin/Contexto/Fluxos/delegacao.md).
+O frontmatter dá a configuração inicial; registre o que a ferramenta realmente aplicou
+quando puder conferir. Não trate esse mapeamento como equivalência com outras LLMs.
 
 - **haiku** — só recuperação delimitada (achar arquivo, símbolo, uso).
   Erra onde a tarefa exige segurar um invariante e notar o que está *faltando*.
 - **sonnet** — implementação, QA, documentação.
 - **opus** — julgamento: arquitetura, conservação de dado, revisão de diff.
 
-Sempre tenha um papel `tl` em **opus** que lê diff e é dono dos invariantes.
+Sempre tenha um papel `tl` que lê diff e é dono dos invariantes. Opus é a referência
+inicial Claude; a escolha efetiva segue tarefa, risco, capacidades e acesso, sem
+equivalência automática com outros modelos. Instalar um plugin não fixa o revisor.
 
 ## O que ESTE projeto sugere
 
@@ -30,9 +37,9 @@ Detectado aqui: **Node/JS**.
   deste código entra no contexto de toda sessão e não devolve nada. Genérico é pior que
   ausente — é por isso que o marvin gera esta pasta e não os agentes.
 
-> Este repositório **não tem agente nenhum escrito**, e isso é coerente: são ~1810 linhas
-> num arquivo só, que cabem inteiras na cabeça de quem lê. Papel aqui seria contexto fixo
-> pago em toda sessão sem devolver nada — exatamente o que o passo 4 acusa nos outros.
+> Este repositório tem os papéis `po` e `tl` escritos, com escopo e armadilhas concretas.
+> Outros papéis só ganham arquivo quando a atividade exigir; o Marvin não escreve
+> agentes genéricos para preencher a pasta.
 
 ### Ponytail: em que papel entra
 
@@ -48,11 +55,12 @@ não regra; o corpo de cada agente é seu. Aqui, `tl` e `po` existem e **não** 
 | `po` | **não** | questiona requisito — a escada começa depois disso |
 | `scout` | **não** | recuperação em haiku; não escreve código |
 
-## Subagente NÃO tem memória
+## Contexto da delegação
 
-Cada um nasce com contexto limpo: não vê a conversa, não vê a memória do
-projeto, não vê o que outro agente fez. Ele sabe só (1) o próprio .md,
-(2) o prompt que recebe, (3) o que ler do disco.
+Os agentes Claude deste repo não configuram memória persistente. O prompt de delegação
+deve dizer o objetivo, os arquivos relevantes e as armadilhas; não dependa de histórico
+que não foi fornecido. Contexto herdado ou fork depende da ferramenta usada e deve ser
+registrado no piloto, porque também muda o custo.
 
 **Por isso o .md dele É a memória dele.** Escreva as armadilhas concretas
 lá dentro. Genérico ("você é um dev sênior de React") não vale nada;

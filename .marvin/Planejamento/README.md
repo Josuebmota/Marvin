@@ -13,6 +13,12 @@ Regras:
   evidência preenchida. Reabrir é outra release.
 - **Aresta é link.** Fluxo ligado, código tocado e pai são links/caminhos — é o que o
   grafo lê.
+- **Time decide por tarefa.** Ao abrir uma US ou antes de executar uma tarefa dela,
+  seguir [delegação](../Contexto/Fluxos/delegacao.md): decompor atividade/domínio,
+  escolher papéis e skills, consultar capacidades sob demanda e selecionar
+  modelo/ferramenta/esforço entre acessos elegíveis, sem fornecedor fixo. Registrar solicitado versus
+  aplicado. Herança inclui origem; limitações ficam explícitas. Verificação e subida
+  de capacidade seguem esse fluxo; mudanças de escolha ficam no *Rumo*.
 
 ## O formato — um só para Epic, Feature e US
 
@@ -37,10 +43,14 @@ pai: ../Sobre.md
 - `src/checkout/pagamento.ts` — `calcularEstorno`
 
 ## Time
-<!-- proposto ANTES de começar, pela regra do AGENTS.md. Base: tl · po · dev-front · dev-back · qa · scout.
-     Mais a camada da atividade (design, dba, sec, infra) quando ela pede. -->
-- tl, po, dev-back, qa, scout
-- dba — a US muda o schema de pagamentos
+<!-- proposto ANTES de começar, pela regra do AGENTS.md e do fluxo delegação.
+     Só os papéis usados; a camada da atividade quando necessária. Preencher modelo
+     domínio/etapa, capacidade, motivo da escolha, modelo concreto e esforço suportado;
+     os placeholders abaixo não configuram execução. Skills ficam na seção própria. -->
+- dev-back · fornecedor/<modelo> · <ferramenta> · esforço solicitado: <valor suportado>
+  — implementar <tarefa>; aplicado: não confirmado; check: <verificação pelo risco>
+- tl · fornecedor/<modelo> · <ferramenta> · esforço solicitado: <valor suportado>
+  — revisar diff; aplicado: não confirmado
 
 ## Skills
 <!-- procedimento que esta atividade vai repetir; vira SKILL.md na segunda vez -->

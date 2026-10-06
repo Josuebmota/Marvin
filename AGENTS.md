@@ -127,6 +127,12 @@ atividade toca, propor o time dela (num projeto de uma pessoa, `tl` + `dev-back`
 `scout` bastam; `po` é o dono), propor as skills que ela vai repetir, registrar na seção
 *Time* e *Skills* da US.
 
+No piloto local da US-19, decomponha atividade/domínio, escolha papéis e skills e
+consulte capacidades sob demanda. Escolha e registre fornecedor/modelo, ferramenta,
+esforço e motivo por etapa entre acessos elegíveis, sem marca fixa, seguindo
+[o fluxo de delegação](.marvin/Contexto/Fluxos/delegacao.md).
+Esforço menor nunca reduz a verificação dos invariantes.
+
 Num projeto privado — o caso de uso normal — a memória guarda decisão de produto e id de
 cliente, e é por isso que o script avisa **"repo PRIVADO, sempre"**. Aqui o conteúdo é
 sobre uma ferramenta pública, então não há o que proteger.

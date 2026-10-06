@@ -246,6 +246,42 @@ asking. Flip it with `--use=<tool>`; `--no-questions` records `não` even with a
 *Reach* is the column that matters: it says who can consume what the tool produces.
 A tool whose output only one agent reads is a decision, not a default.
 
+### AI availability — local onboarding
+
+In **2.0.0**, the activity guides roles, skills and eligible model/effort choices;
+roles no longer prescribe a provider. Availability declarations and the glossary
+support that decision without making marvin an inference engine.
+
+With a terminal, marvin asks which tool runs the session, which AI options you have,
+how you access each one, and whether you have configured it in that tool. Initial
+study scope: Claude, Codex/OpenAI, MiniMax, DeepSeek, Gemini, Grok and Jev; additions
+remain a human decision. One capable option can cover several roles.
+
+Declarations go to `<vault>/.local/disponibilidade.json`, excluded by a local
+`.gitignore` even with `--no-git`. No credentials, authentication or inference calls.
+Existing choices are never overwritten; edit that local JSON to change them and
+reconfirm access before use. Declared configuration does not prove execution.
+An absent inventory means **unknown**, not no access. Without a terminal or with
+`--no-questions`, marvin skips this onboarding; use flags for unattended setup:
+
+```bash
+marvin --tools=codex --executor=codex --ai=codex:subscription:yes
+marvin --tools=opencode --executor=opencode --ai=deepseek:api:yes --ai=minimax:api:unknown
+```
+
+`--executor` declares the session tool; `--tools` generates adapters. Neither connects
+providers. Access values: `subscription`, `api`, `local`, `unknown`; configuration
+values: `yes`, `no`, `unknown`. `--ai=none` declares no available options. Dry-run
+never asks AI questions or writes choices; declarations supplied by flags appear in
+the plan. Invalid declarations fail before writing.
+
+The generated `Contexto/IA.md` (`IA.md` in an old vault) holds the glossary procedure,
+dated reference links and selection policy: activity/domain → roles → skills →
+capabilities → eligible model/tool/effort. It is consulted by pointer, not loaded
+as a full catalog every session. No fixed provider, automatic quota takeover or
+measured savings are promised. Jev supports structured decisions rather than text
+generation; a MiniMax text connection does not establish access to video.
+
 ## Diagnostics
 
 Beyond creating things, it points out problems that slip by:
@@ -642,7 +678,7 @@ rather than final text.
 node teste.mjs
 ```
 
-237 checks, no dependencies, ~2 seconds. It covers the invariants that protect other
+263 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

@@ -19,12 +19,12 @@ metadata:
 > - Criar `onde_paramos_<data>.md` **ou uma seção de relato aqui dentro** é o mesmo erro:
 >   o histórico já está no `git log`, e o porquê já está no Rumo da US.
 
-**Atualizado:** 05/10/2026
+**Atualizado:** 06/10/2026
 
 ## Em andamento
 
-- [US-19-papel-modelo-esforco](../Planejamento/Novos/time/roteamento/US-19-papel-modelo-esforco/Sobre.md) — aberta 05/10/2026; próximo passo: `po` confirma o *Pronto quando* e responde às perguntas abertas, começando por "esforço por chamada existe?" (`scout`)
+- [US-19-papel-modelo-esforco](../Planejamento/Novos/time/roteamento/US-19-papel-modelo-esforco/Sobre.md) — onboarding implementado; próximo passo: operar glossário e medir 3–4 US para avaliar ajustes da política
 
 ## Travado
 
-nada.
+- US-19 — faltam amostras comparáveis antes/depois; detalhes no nó acima

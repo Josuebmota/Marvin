@@ -15,7 +15,16 @@ se eu passei só o nome, pergunte em qual Epic e Feature ela entra (liste os que
      `.marvin/Contexto/Fluxos/` ganha uma agora. Preencha *Fluxos ligados* e *Código tocado*
      (crase com o caminho, e a função depois de um traço — é o que liga a US ao grafo).
    - **Propor o time** desta US, a partir da base do `AGENTS.md`: só os papéis que ela usa,
-     mais a camada da atividade (design, dba, sec, infra) se ela pede. Escreva em *Time*.
+     mais a camada da atividade (design, dba, sec, infra) se ela pede. Siga
+     `.marvin/Contexto/Fluxos/delegacao.md`: decomponha atividade/domínio, classifique
+     risco e escolha papéis e skills por etapa. Consulte o glossário sob demanda e
+     confira capacidade, acesso, integração e orçamento antes de selecionar
+     fornecedor/modelo concreto, ferramenta e esforço suportado, sem preferência
+     fixa por marca. Registre etapa/domínio, capacidade e motivo da escolha. Escreva
+     em *Time* o solicitado e o aplicado observável (com fonte), ou herdado (origem),
+     não aplicável ou não confirmado; controle ausente exige limitação explícita.
+     Antes de executar cada tarefa, confira essa escolha e a verificação pelo risco;
+     mudanças e escaladas vão no *Rumo*, conforme o mesmo fluxo.
    - **Propor skills**: procedimento que a US vai repetir vai em *Skills* como proposta.
    - **Por quê** e **Pronto quando** — se eu não disse, pergunte; não invente.
    - Com o *Código tocado* preenchido, rode `marvin --us <caminho>` **de novo**: o grafo escreve a

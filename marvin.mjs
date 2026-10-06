@@ -65,7 +65,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { execSync } from 'node:child_process';
+import { execSync, execFileSync } from 'node:child_process';
 import readline from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 
@@ -160,6 +160,13 @@ Flags:
                     Never overwrites a post-commit you already have
   --use=<tool>      record \`sim\` for an optional tool without asking (alias: --usar=)
   --no-questions    assume \`não\` for every optional tool, even with a terminal
+                    skip AI availability questions; undeclared access stays unknown
+  --executor=<id>   declare the session tool (${VALID_TOOLS.join(', ')}, other)
+  --ai=<id>:<access>:<configured>  declare available AI; repeat for multiple options
+                    ids: claude,codex,minimax,deepseek,gemini,grok,jev
+                    access: subscription,api,local,unknown; configured: yes,no,unknown
+                    requires --executor; --ai=none declares no access
+                    local inventory only: no authentication, inference or routing
   --status          dashboard, read-only: active USs with their last Rumo, progress per
                     Epic, last release, fixed context, graph age. Exits non-zero when the
                     note and the nodes disagree. Run it when you open a session
@@ -195,6 +202,41 @@ Docs: README.md (English) · README.pt-BR.md (Português)
 `);
   process.exit(0);
 }
+
+// Availability is a declaration, not an operational router configuration. Validate
+// even in dry-run, before ANY write. Closed values also keep secrets out of prompts.
+const AI_IDS = ['claude', 'codex', 'minimax', 'deepseek', 'gemini', 'grok', 'jev'];
+const AI_EXECUTORS = [...VALID_TOOLS, 'other'];
+const AI_ACCESS = ['subscription', 'api', 'local', 'unknown'];
+const AI_CONFIGURED = ['yes', 'no', 'unknown'];
+const validAvailability = r => r && r.schema === 1 && AI_EXECUTORS.includes(r.executor)
+  && ['flags', 'prompt'].includes(r.source) && Array.isArray(r.providers)
+  && r.providers.every(p => p && AI_IDS.includes(p.id) && AI_ACCESS.includes(p.access)
+    && AI_CONFIGURED.includes(p.configured) && p.tested === 'not-confirmed')
+  && new Set(r.providers.map(p => p.id)).size === r.providers.length;
+const parseAI = (values) => {
+  if (values.length === 1 && values[0] === 'none') return [];
+  if (!values.length) throw new Error('choose AI ids or none');
+  const providers = values.map(v => {
+    const [id, access, configured, ...extra] = v.split(':');
+    if (extra.length || !AI_IDS.includes(id) || !AI_ACCESS.includes(access) || !AI_CONFIGURED.includes(configured))
+      throw new Error('use --ai=<id>:<subscription|api|local|unknown>:<yes|no|unknown> (see --help)');
+    return { id, access, configured, tested: 'not-confirmed' };
+  });
+  if (new Set(providers.map(p => p.id)).size !== providers.length) throw new Error('declare each AI only once');
+  return providers;
+};
+let availabilityFlags = null;
+try {
+  const executors = process.argv.filter(a => a === '--executor' || a.startsWith('--executor='));
+  const ais = process.argv.filter(a => a === '--ai' || a.startsWith('--ai='));
+  if (executors.length || ais.length) {
+    const executor = executors[0]?.slice('--executor='.length);
+    if (executors.length !== 1 || !AI_EXECUTORS.includes(executor) || !ais.length)
+      throw new Error('provide one --executor=<id> and --ai declarations (see --help)');
+    availabilityFlags = { schema: 1, executor, source: 'flags', providers: parseAI(ais.map(a => a.slice('--ai='.length))) };
+  }
+} catch (e) { err('AI availability: ' + e.message); process.exit(1); }
 
 // ── --dry-run. Every operation that CHANGES the disk goes through `fsw` / `exec`;
 // reads stay on `fs` directly. A new write that bypasses this makes the dry-run
@@ -1535,6 +1577,76 @@ if (hasFlag('--migrar')) {
   process.exit(0);
 }
 
+// ── 0a. AI availability: local declarations only, no credential discovery or calls.
+const AVAILABILITY = path.join(DOCS, '.local', 'disponibilidade.json');
+const AVAILABILITY_REL = path.relative(ROOT, AVAILABILITY).replace(/\\/g, '/');
+const AI_GUIDE = OLD_LAYOUT ? 'IA.md' : 'Contexto/IA.md';
+const ignoreAvailability = () => {
+  fsw.mkdirSync(path.dirname(AVAILABILITY), { recursive: true });
+  const ignore = path.join(path.dirname(AVAILABILITY), '.gitignore');
+  const ignored = fs.existsSync(ignore) ? fs.readFileSync(ignore, 'utf8') : '';
+  if (ignored.trimEnd().split(/\r?\n/).at(-1) !== '/disponibilidade.json') {
+    if (fs.existsSync(ignore)) fsw.appendFileSync(ignore, (ignored.endsWith('\n') ? '' : '\n') + '/disponibilidade.json\n');
+    else fsw.writeFileSync(ignore, '/disponibilidade.json\n');
+  }
+};
+{
+  if (fs.existsSync(AVAILABILITY)) {
+    try {
+      if (!validAvailability(JSON.parse(fs.readFileSync(AVAILABILITY, 'utf8')))) throw new Error('invalid schema');
+    } catch { err(AVAILABILITY_REL + ' is invalid — repair it locally; nothing overwritten'); process.exit(1); }
+    info(AVAILABILITY_REL + ' already exists — choices preserved; reconfirm before use');
+    if (availabilityFlags) warn('AI flags do not overwrite existing choices; edit ' + AVAILABILITY_REL + ' locally');
+    ignoreAvailability();
+    try {
+      const tracked = execFileSync('git', ['ls-files', '--', AVAILABILITY_REL], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+      if (tracked) warn(AVAILABILITY_REL + ' is already tracked — ignore does not untrack it; remove it from the index yourself');
+    } catch { /* A project without git still has the local exclusion. */ }
+  } else {
+    let record = availabilityFlags;
+    if (!record && !NO_QUESTIONS && process.stdin.isTTY && !DRY) {
+      const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+      const cancellation = new AbortController();
+      rl.once('close', () => cancellation.abort());
+      rl.once('SIGINT', () => rl.close());
+      let cancelled = false;
+      // Retry invalid closed choices; never persist partial answers or ask for keys.
+      const choose = async (question, accepted) => {
+        for (;;) {
+          const value = (await rl.question(question, { signal: cancellation.signal })).trim().toLowerCase();
+          if (accepted(value)) return value;
+          warn('choose one of the listed values; do not enter credentials');
+        }
+      };
+      try {
+        log('\n  AI availability — declarations only; no connection or paid calls.');
+        const executor = await choose('  Session tool (' + AI_EXECUTORS.join(', ') + '): ', v => AI_EXECUTORS.includes(v));
+        const selected = await choose('  Available AI (' + AI_IDS.join(', ') + '; comma-separated, none, or Enter to skip): ',
+          v => !v || v === 'none' || (v.split(',').every(id => AI_IDS.includes(id.trim()))
+            && new Set(v.split(',').map(id => id.trim())).size === v.split(',').length));
+        if (selected) {
+          const providers = [];
+          for (const id of selected === 'none' ? [] : selected.split(',').map(id => id.trim())) {
+            const access = await choose('  ' + id + ' access (' + AI_ACCESS.join(', ') + '): ', v => AI_ACCESS.includes(v));
+            const configured = await choose('  ' + id + ' already configured in ' + executor + '? (yes,no,unknown): ', v => AI_CONFIGURED.includes(v));
+            providers.push({ id, access, configured, tested: 'not-confirmed' });
+          }
+          record = { schema: 1, executor, source: 'prompt', providers };
+        }
+      } catch (e) {
+        if (e.name === 'AbortError') cancelled = true;
+        else throw e;
+      } finally { rl.close(); }
+      if (cancelled) { err('AI setup cancelled — no availability saved'); process.exit(1); }
+    }
+    if (record) {
+      ignoreAvailability();
+      fsw.writeFileSync(AVAILABILITY, JSON.stringify(record, null, 2) + '\n');
+      ok(AVAILABILITY_REL + ' — declared only, execution not confirmed; local ignore written');
+    } else warn('AI availability not declared — use an interactive run or --executor=<id> --ai=<id>:<access>:<configured>');
+  }
+}
+
 // ── 0b. Optional tools: the `.marvin/ferramentas.md` record.
 //
 // Nobody discovers a flag that only exists in --help. So, without `--graphify`, the
@@ -1981,6 +2093,66 @@ const writeIfMissing = (rel, content) => {
   return true;
 };
 
+writeIfMissing(AI_GUIDE, `# Disponibilidade de IA e glossário
+
+O usuário controla quais opções estudar. Foco inicial: Claude, Codex/OpenAI, MiniMax,
+DeepSeek, Gemini, Grok e Jev. Acrescente opções somente por inclusão confirmada;
+aprofundar evidência de uso não autoriza ampliar a lista sozinho. Consulte apenas
+as entradas pertinentes à atividade, sem carregar todo o catálogo em cada sessão.
+
+## Inventário local
+
+Leia \`${AVAILABILITY_REL}\` quando precisar selecionar capacidades. Ausente significa
+**não informado**, não ausência de acesso. O Marvin pergunta uma vez com terminal;
+sem terminal/--no-questions deixa pendente, ou aceita --executor e --ai (ver --help).
+Edite o JSON local para mudar escolhas; reexecutar preserva o arquivo, mesmo com flags.
+Ele registra ferramenta da sessão, opções, modalidade e configuração **declaradas**;
+tested: not-confirmed não é prova de execução. Reconfirme antes de usar: acesso muda.
+Não guardar credenciais, orçamento pessoal ou dados de conta na base versionada.
+Assinatura no cliente oficial, API e execução local não são intercambiáveis;
+login, skill instalada e marca do fornecedor não comprovam modelo/modalidade acessível.
+O inventário não configura adaptadores, modelos, esforço ou chamadas. --tools escolhe
+adaptadores; --executor declara a sessão. Fora do Claude Code, a mesma base/AGENTS.md
+vale, mas delegação entre fornecedores exige integração efetiva no executor escolhido.
+
+## Pesquisa e escolha por atividade
+
+Atividade/domínio → papéis → skills → capacidades → modelo/ferramenta/esforço elegíveis.
+Uma opção capaz pode assumir vários papéis; ter todas não exige usar todas. Sem marca
+fixa, registrar em Time/Skills da US etapa, capacidade, fornecedor/modelo concreto,
+integração, esforço solicitado/aplicado e motivo. Verificar pelo risco; esforço menor
+nunca reduz revisão/testes. Documentado, declarado e testado são estados diferentes.
+Sem capacidade/integração, orientar configuração e realizar só as etapas possíveis.
+Indisponibilidade refaz a seleção preservando objetivo, restrições, resultados e checks;
+não repetir efeito externo sem conferir estado. Sem opção elegível, manter pendente.
+Não há router de inferência nem migração automática da sessão quando sua quota acaba.
+Não declarar economia sem comparação completa em atividades reais.
+
+## Entradas do glossário
+
+Registre sob demanda modelo concreto, modalidades, controle de esforço e seu alcance,
+integração, fonte oficial/data, limitações, acesso reconfirmado e evidência da atividade
+(check, resultado, retrabalho e métricas disponíveis). Preserve evidência anterior.
+Sem pesquisa, marque não confirmado; nomes iguais de esforço não provam equivalência.
+Fonte da API não comprova suporte no app/CLI. Nenhum ranking é preenchido pelo script.
+
+Referências iniciais pesquisadas em 05–06/10/2026; suporte documentado, acesso e execução
+não confirmados. Confira atualidade e modelo concreto antes de usar:
+- Claude: [modelos](https://platform.claude.com/docs/en/models/overview) e
+  [subagentes/controles](https://code.claude.com/docs/en/sub-agents).
+- Codex/OpenAI: [reasoning](https://developers.openai.com/api/docs/guides/reasoning) e
+  [subagentes](https://learn.chatgpt.com/docs/agent-configuration/subagents).
+- MiniMax: [geração de vídeo](https://platform.minimax.io/docs/guides/video-generation).
+  Acesso ao chat não comprova acesso a vídeo; roteiro e geração podem exigir etapas distintas.
+- DeepSeek: [thinking](https://api-docs.deepseek.com/guides/thinking_mode/).
+- Gemini: [thinking](https://ai.google.dev/gemini-api/docs/generate-content/thinking).
+- Grok: [reasoning](https://docs.x.ai/developers/model-capabilities/text/reasoning).
+- Jev/TypeSafe: [skill/API](https://docs.typesafe.ai/agent-skill) e
+  [limitações](https://docs.typesafe.ai/model-jaggedness/jev-1.13).
+  Decisões estruturadas; não gera texto/código/vídeo. Candidato a triagem é hipótese
+  a validar, não dependência obrigatória. Schema correto não garante decisão correta.
+`);
+
 if (OLD_LAYOUT) {
   // ── Layout by file type (08_Memoria/, 10_Decisoes/…). Keeps working where it is:
   // the junction points to the notes, /retomar reads the same note. What changed is
@@ -2142,6 +2314,9 @@ faz o time crescer em camadas em vez de nascer genérico.
 1. **Mapear o que a atividade toca:** o fluxo, a arquitetura, o código. Fluxo que ainda
    não tem nota em \`../Contexto/Fluxos/\` ganha uma agora — é assim que ela cresce.
 2. **Propor o time desta atividade** e registrar na seção *Time* do \`Sobre.md\` da US.
+   Consulte \`../${AI_GUIDE}\` e o inventário local antes de escolher modelo/esforço:
+   atividade, domínio, papéis, skills e capacidades vêm antes da marca. Registre por
+   etapa modelo/integração, motivo e solicitado/aplicado; declaração não prova acesso.
    A base é sempre esta; o que a atividade não usa **não é criado**:
 
    | Papel | Dono de | Precisa de |
@@ -2444,7 +2619,7 @@ if (fs.existsSync(SOURCES)) {
   warn('00_Fontes_Externas.md is the old name — move it to ' + SOURCES_NAME + ' (nothing written)');
 } else {
   let answers = null;
-  if (process.stdin.isTTY) {
+  if (process.stdin.isTTY && !NO_QUESTIONS && !DRY) {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     log('');
     log('  Outside this repo memory and docs, where does the product truth live?');
@@ -2516,18 +2691,16 @@ Um \`.md\` por papel:
 name: qa
 description: quando usar este papel — é isto que decide se ele é chamado
 tools: Read, Grep, Glob, Bash
-model: haiku | sonnet | opus
+# Omita model para herdar; se definir, use um modelo válido nesta ferramenta.
 ---
 \`\`\`
 
-## Modelo por papel
+## Modelo por atividade
 
-- **haiku** — só recuperação delimitada (achar arquivo, símbolo, uso).
-  Erra onde a tarefa exige segurar um invariante e notar o que está *faltando*.
-- **sonnet** — implementação, QA, documentação.
-- **opus** — julgamento: arquitetura, conservação de dado, revisão de diff.
-
-Sempre tenha um papel \`tl\` em **opus** que lê diff e é dono dos invariantes.
+Papel define responsabilidade. Atividade, capacidade e acesso determinam modelo e
+esforço; consulte \`${path.relative(ROOT, path.join(DOCS, AI_GUIDE)).replace(/\\/g, '/')}\`.
+Registre solicitado/aplicado em Time e Skills da US; não fixe fornecedor pelo plugin.
+O papel \`tl\` lê diff e é dono dos invariantes, com capacidade adequada ao risco.
 
 ## O que ESTE projeto sugere
 
@@ -2758,6 +2931,8 @@ se eu passei só o nome, pergunte em qual Epic e Feature ela entra (liste os que
    - **Propor o time** desta US, a partir da base do \`AGENTS.md\`: só os papéis que ela usa,
      mais a camada da atividade (design, dba, sec, infra) se ela pede. Escreva em *Time*.
    - **Propor skills**: procedimento que a US vai repetir vai em *Skills* como proposta.
+   - **Escolher capacidades**: consulte \`${relDocs}/${AI_GUIDE}\` e o inventário local;
+     registre modelo/integração/esforço solicitado e aplicado, sem fornecedor fixo.
    - **Por quê** e **Pronto quando** — se eu não disse, pergunte; não invente.
    - Com o *Código tocado* preenchido, rode \`marvin --us <caminho>\` **de novo**: o grafo escreve a
      seção *Impacto* — quem depende do que a US toca, e que outras US passam por ali.
@@ -3012,13 +3187,19 @@ ${TEST_BUILD_LINE}- Nunca commitar secret, \`.env\` ou credencial
 |---|---|---|
 | _(preencher)_ | | julgamento / implementação / recuperação |
 
-A coluna **"precisa de"** é o que é portátil: *julgamento* pede o modelo mais capaz que
-a ferramenta oferecer; *implementação* aceita o intermediário; *recuperação* (achar
-arquivo, símbolo, uso) aceita o mais barato. O mapeamento para modelo concreto é
-específico da ferramenta.
+A coluna **"precisa de"** descreve a responsabilidade. O modelo e o esforço dependem
+da capacidade exigida em cada etapa, do risco e dos acessos disponíveis; consulte
+o guia de IA abaixo. Não fixar um degrau por papel nem escolher marca pelo plugin.
 
 Regra: mudança que toque um invariante passa pelo papel de revisão **antes** de fechar.
 Relatório verde de agente não substitui ler o diff.
+
+## Disponibilidade de IA
+
+Antes de escolher modelo/esforço por atividade, consulte
+[\`${relDocs}/${AI_GUIDE}\`](${relDocs}/${AI_GUIDE}) e seu inventário local.
+Declare acessos uma vez no onboarding; reconfirme antes de executar. Papel/skill não
+fixam fornecedor; uma opção pode cobrir vários papéis. Sem integração, informe o limite.
 
 ## Conhecimento e memória
 
@@ -3106,19 +3287,12 @@ const adapters = {
 \`/retomar\` num chat novo — lê \`${relMem}/onde_paramos.md\` e confere contra o \`git log\`
 antes de acreditar no que está escrito.
 
-## Modelo por papel
+## Modelo por atividade
 
-Os papéis estão no \`AGENTS.md\`. Aqui só o mapeamento, que vai no frontmatter de cada
-\`.claude/agents/*.md\`:
-
-| Precisa de | Modelo |
-|---|---|
-| julgamento | **opus** |
-| implementação | **sonnet** |
-| recuperação delimitada | **haiku** |
-
-**Haiku só para recuperação** — erra onde a tarefa exige segurar um invariante e notar
-o que está *faltando*.
+Papéis e skills não fixam fornecedor/modelo. Consulte \`${relDocs}/${AI_GUIDE}\`,
+confira acesso e integração nesta sessão e registre esforço solicitado/aplicado na US.
+O frontmatter de \`.claude/agents/*.md\` usa controles próprios do Claude Code;
+suporte em outra API/CLI não prova execução aqui. Plugin instalado não fixa o revisor.
 
 ## Memória
 
@@ -3656,6 +3830,20 @@ if (legacy.length) {
 // version number is one more derived artifact — and derived artifacts age in silence,
 // which is the disease this whole project fights.
 const UPDATES = [
+  { arquivo: path.relative(ROOT, path.join(DOCS, AI_GUIDE)).replace(/\\/g, '/'),
+    marca: /##\s+Inventário\s+local[\s\S]*?##\s+Pesquisa\s+e\s+escolha\s+por\s+atividade[\s\S]*?##\s+Entradas\s+do\s+glossário/,
+    desde: '2.0.0', o_que: 'the local inventory, activity selection and glossary sections' },
+  { arquivo: 'AGENTS.md', marca: /Disponibilidade\s+de\s+IA/, desde: '2.0.0',
+    o_que: 'the AI availability pointer — declaration is not verified access' },
+  { arquivo: '.claude/agents/README.md', marca: /Modelo\s+por\s+atividade/, desde: '2.0.0',
+    o_que: 'activity-based model/effort selection without a fixed provider' },
+  { arquivo: 'CLAUDE.md', marca: /Modelo\s+por\s+atividade/, desde: '2.0.0',
+    o_que: 'activity-based model/effort selection in Claude Code' },
+  { arquivo: '.claude/commands/us.md', marca: /Escolher\s+capacidades/, soCom: !OLD_LAYOUT, desde: '2.0.0',
+    o_que: 'the availability/glossary selection step' },
+  { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
+    marca: /declaração\s+não\s+prova\s+acesso/, soCom: !OLD_LAYOUT, desde: '2.0.0',
+    o_que: 'activity-based availability selection when proposing the team' },
   { arquivo: '.claude/skills/README.md', marca: /Skill, agente ou command/i,
     o_que: 'the skill vs. agent vs. command discriminator (and the 2x rule)' },
   // A rule lives where it fires (11/09): closing a session → /retomar; portability → Sobre.md;
