@@ -780,6 +780,55 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── 9q-b. US-23b: "Código tocado" in a parent folder with repos/<x>. Needs git (sub-repo
+//      detection) but not graphify: the graph.json is synthetic, ids as merge-graphs writes them.
+{
+  const hasGit = spawnSync('git', ['--version'], { encoding: 'utf8' }).status === 0;
+  if (!hasGit) { console.log('  - 9q-b pulado: git ausente (7 checks)'); skipped += 7; }
+  else {
+    const a = arena('docgrafo-aninhado');
+    spawnSync('git', ['init', '-q', '.'], { cwd: a.proj });
+    fs.writeFileSync(path.join(a.proj, '.gitignore'), 'repos/\n');
+    for (const [r, files] of [['svc-a', ['a.js', 'dup.js']], ['svc-b', ['b.js', 'dup.js']]]) {
+      const dir = path.join(a.proj, 'repos', r);
+      fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
+      spawnSync('git', ['init', '-q', '.'], { cwd: dir });
+      for (const f of files) fs.writeFileSync(path.join(dir, 'src', f), 'export const x = 1' + NLQ);
+    }
+    run(a, '--no-git');
+    const feat = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E1', 'F1');
+    fs.mkdirSync(feat, { recursive: true });
+    fs.writeFileSync(path.join(feat, 'Sobre.md'), '---' + NLQ + 'tipo: feature' + NLQ + '---' + NLQ + '# F1' + NLQ);
+    const mkUs = (n, est, lines) => {
+      const d = path.join(feat, 'US-' + n); fs.mkdirSync(d, { recursive: true });
+      fs.writeFileSync(path.join(d, 'Sobre.md'), ['---', 'tipo: us', 'estado: ' + est, 'pai: ../Sobre.md', '---', '# US-' + n + ' — teste',
+        '## Código tocado', ...lines, '', '## Rumo', '- **07/10/2026** — teste', ''].join(NLQ));
+    };
+    mkUs(1, 'refinada', ['- `repos/svc-a/src/a.js`', '- `src/b.js`', '- `src/dup.js`', '- `src/nada.js`']);
+    mkUs(2, 'refinada', ['- `repos/svc-b/src/b.js`']);
+    const output = path.join(a.proj, 'graphify-out'); fs.mkdirSync(output, { recursive: true });
+    const code = (repo, local, file) => ({ id: repo + '::' + local, repo, local_id: local, label: file, file_type: 'code', source_file: file, _origin: 'ast' });
+    fs.writeFileSync(path.join(output, 'graph.json'), JSON.stringify({ directed: true, edges: [], nodes: [
+      code('repos__svc-a', 'src_a', 'src/a.js'), code('repos__svc-b', 'src_b', 'src/b.js'),
+      code('repos__svc-a', 'src_dup', 'src/dup.js'), code('repos__svc-b', 'src_dup', 'src/dup.js')] }));
+    const r = run(a, '--no-git', '--graphify');
+    const g = JSON.parse(fs.readFileSync(path.join(output, 'graph.json'), 'utf8'));
+    const touched = new Set((g.edges || g.links || []).filter(e => e.relation === 'touches' && /us_1_sobre$/.test(e.source)).map(e => e.target));
+    check('caminho COM prefixo resolve para o nó do sub-repo', touched.has('repos__svc-a::src_a'), [...touched].join(','));
+    check('caminho SEM prefixo, achado em um só repo, liga', touched.has('repos__svc-b::src_b'), [...touched].join(','));
+    check('caminho em dois repos é ambíguo: avisa e não liga a nenhum', /`src\/dup\.js` is ambiguous/.test(r.stdout) && ![...touched].some(t => /src_dup/.test(t)));
+    check('caminho que não existe em nenhum cai no aviso de sempre', /`src\/nada\.js` does not exist/.test(r.stdout));
+    const st = run(a, '--status').stdout.replace(/\x1b\[[0-9;]*m/g, '');
+    const ilhas = st.slice(st.indexOf('Ilhas'));
+    check('--status: o mesmo arquivo, com e sem prefixo, é uma ilha só', /[▹▶] \S+\s+2 US:.*US-1.*US-2/.test(ilhas), ilhas.slice(0, 400));
+    const ru = run(a, '--us', 'Novos/E1/F1/US-1'); 
+    const imp = fs.readFileSync(path.join(feat, 'US-1', 'Sobre.md'), 'utf8');
+    check('--us: o Impacto enxerga os nós dos sub-repos (2 resolvidos)', /Toca 2 nó\(s\) de código/.test(imp), imp.slice(imp.indexOf('## Impacto')).slice(0, 300));
+    check('o sub-repo não ganha arquivo novo do marvin', !fs.existsSync(path.join(a.proj, 'repos', 'svc-a', 'graphify-out')));
+    cleanup(a);
+  }
+}
+
 // ── 9r. --us: the physical trigger of the "before any US" rule. Creates the missing
 //     Sobre.md chain, adds the child to the existing parent, puts the pointer in the note
 //     — and running again duplicates nothing. /us and /fechar are born in 7b.

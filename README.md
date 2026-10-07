@@ -678,7 +678,7 @@ rather than final text.
 node teste.mjs
 ```
 
-268 checks, no dependencies. It covers the invariants that protect other
+275 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

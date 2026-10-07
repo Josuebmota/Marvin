@@ -664,7 +664,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-268 verificações, zero dependência. Cobre os invariantes que protegem o disco
+275 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

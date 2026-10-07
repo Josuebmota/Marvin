@@ -467,6 +467,25 @@ if (CHECK) {
   process.exit(problems ? 1 : 0);
 }
 
+// ── Repos under the root (`.git` at depth 1-2), filesystem only: --status runs without
+// --graphify, so no git call and no SUBREPOS. Lets a "Código tocado" path be written with
+// or without the repo prefix and still be ONE file (US-23b). Lazy: only a vault with a
+// Sobre.md that lists "Código tocado" pays the scan.
+let repoDirsCache;
+const repoDirs = () => repoDirsCache || (repoDirsCache = (() => {
+  const dirs = (rel) => { try { return fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })
+    .filter(e => e.isDirectory() && !e.name.startsWith('.') && e.name !== 'node_modules')
+    .map(e => rel ? rel + '/' + e.name : e.name); } catch { return []; } };
+  const hasGit = (r) => fs.existsSync(path.join(ROOT, r, '.git'));
+  return dirs('').flatMap(t => hasGit(t) ? [t] : dirs(t).filter(hasGit));
+})());
+const canonFile = (f) => {
+  const repos = repoDirs();
+  if (!repos.length || repos.some(r => f.startsWith(r + '/')) || fs.existsSync(path.join(ROOT, f))) return f;
+  const hits = repos.filter(r => fs.existsSync(path.join(ROOT, r, f)));
+  return hits.length === 1 ? hits[0] + '/' + f : f;   // zero or ambiguous: leave it, docsGraph warns
+};
+
 // ── Reading nodes. Every Sobre.md has frontmatter (tipo, estado, pai), a title and a
 // Rumo section with "- **dd/mm/yyyy** — …" entries. That is all --status and --us need.
 const readNode = (file) => {
@@ -479,7 +498,7 @@ const readNode = (file) => {
   const evidence = (txt.match(/^##\s+Evidência\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m) || [])[1] || '';
   const cleanEvidence = evidence.replace(/<!--[\s\S]*?-->/g, '').replace(/_\([^)]*\)_/g, '').trim();
   const touched = (txt.match(/^##\s+Código tocado\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m) || [])[1] || '';
-  const tocados = [...new Set([...touched.matchAll(/^[ \t]*[-*][ \t]*`([^`]+)`/gm)].map(m => m[1].trim().replace(/\\/g, '/')))];
+  const tocados = [...new Set([...touched.matchAll(/^[ \t]*[-*][ \t]*`([^`]+)`/gm)].map(m => canonFile(m[1].trim().replace(/\\/g, '/'))))];
   return { arq: file, tipo: field('tipo'), estado: field('estado'), pai: field('pai'), titulo: title, rumo,
            evidencia: cleanEvidence, comEvidencia: /\S/.test(cleanEvidence), tocados };
 };
@@ -593,11 +612,32 @@ const printSpend = (g, fixedTk) => {
   }
 };
 
+// Sub-repos as the graph itself records them (`repo` on each node, '/' written as '__'), for the
+// callers that read graph.json without the --graphify detection (--us, --status --html).
+// ponytail: assumes no '__' in a sub-repo path; the node's own `repo` is the real key.
+const subReposOfGraph = (nodes) => [...new Set([...nodes].map(n => n.repo).filter(r => r && r !== '_root'))].map(r => r.replace(/__/g, '/'));
+
 // ── The docs side of the graph, as a function: 8b appends it to graph.json, --status --html
 // draws it. `ids` are the code nodes that exist (empty without graphify: then only doc↔doc).
 const docsGraph = (ids, subRepos = []) => {
   const idOf = (rel) => rel.replace(/\\/g, '/').replace(/\.[^./]+$/, '')
     .replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
+  // In a multi-repo graph code ids are `<repo>::<local id>` (what merge-graphs writes; repo =
+  // the destination dir name, '/' -> '__', '_root' for the root). A path with the repo prefix
+  // names it; without, the repo(s) where the file EXISTS decide — one hit links, two or more
+  // is ambiguous and links nothing. Without sub-repos nothing changes.
+  const resolveCode = (codeFile) => {
+    const rel = codeFile.replace(/\\/g, '/');
+    const plain = { fileId: idOf(rel), abs: path.join(ROOT, rel) };
+    if (!subRepos.length) return plain;
+    const mk = (repo, local) => ({ fileId: (repo === '.' ? '_root' : repo.replace(/\//g, '__')) + '::' + idOf(local),
+      abs: path.join(ROOT, repo, local) });
+    const pre = subRepos.find(r => rel.startsWith(r + '/'));
+    if (pre) return mk(pre, rel.slice(pre.length + 1));
+    const hits = [...subRepos, '.'].filter(r => fs.existsSync(path.join(ROOT, r, rel)));
+    if (hits.length > 1) return { ambiguous: hits };
+    return hits.length ? mk(hits[0], rel) : plain;
+  };
   const strip = (txt) => txt.replace(/```[\s\S]*?```/g, '').replace(/<!--[\s\S]*?-->/g, '');
   const docs = [];
   (function walkDocs(dir, depth = 0) {
@@ -680,10 +720,15 @@ const docsGraph = (ids, subRepos = []) => {
         const m = line.match(bullet);
         if (!m) continue;
         const codeFile = m[1].trim(), fn = m[2] && m[2].trim().replace(/\(\)$/, '');
-        const fileId = idOf(codeFile);
+        const res = resolveCode(codeFile);
+        if (res.ambiguous) {
+          warnings.push(rel + ': `' + codeFile + '` is ambiguous — it exists in ' + res.ambiguous.join(' and ') + '; write it with the repo prefix. Linked to none');
+          continue;
+        }
+        const fileId = res.fileId;
         const targetId = fn ? fileId + '_' + fn.replace(/[^A-Za-z0-9]+/g, '_').toLowerCase() : fileId;
         if (ids.has(targetId)) edge(id, targetId, 'touches');
-        else if (!fs.existsSync(path.join(ROOT, codeFile))) {
+        else if (!fs.existsSync(res.abs)) {
           // "does not exist" is the NORMAL state of a refined US whose code is not written
           // yet, so on its own it cannot mean error. A typo does mean error, and the two
           // printed the same sentence: on one vault 3 wrong paths hid among 54 future
@@ -742,7 +787,7 @@ const loadGraph = () => {
 // Which code nodes each US touches — through the same parser as 8b. Returns Map usId → {no, ids}.
 const touchedByUS = (graph) => {
   const ids = new Set(graph ? graph.nos.keys() : []);
-  const { novosNos: newNodes, novasArestas: newEdges } = docsGraph(ids);
+  const { novosNos: newNodes, novasArestas: newEdges } = docsGraph(ids, subReposOfGraph(graph ? graph.nos.values() : []));
   const us = new Map();
   for (const n of newNodes) if (n.tipo === 'us') us.set(n.id, { no: n, ids: new Set() });
   for (const e of newEdges) if (e.relation === 'touches' && us.has(e.source)) us.get(e.source).ids.add(e.target);
@@ -882,7 +927,7 @@ const writeStatusHtml = (st, quiet = false) => {
     const GRAPH_R = path.join(ROOT, 'graphify-out', 'graph.json');
     let code = new Map();
     try { const gj = JSON.parse(fs.readFileSync(GRAPH_R, 'utf8')); for (const n of gj.nodes || []) if (n._origin !== 'marvin') code.set(n.id, n); } catch {}
-    const { novosNos: newNodes, novasArestas: newEdges } = docsGraph(new Set(code.keys()));
+    const { novosNos: newNodes, novasArestas: newEdges } = docsGraph(new Set(code.keys()), subReposOfGraph(code.values()));
     const relDocs = path.relative(ROOT, DOCS).replace(/\\/g, '/');
     const nodes = new Map();
     for (const n of newNodes) {
