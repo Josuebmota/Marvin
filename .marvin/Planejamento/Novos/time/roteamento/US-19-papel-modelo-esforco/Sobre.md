@@ -226,6 +226,25 @@ referências datadas não são um catálogo mantido de modelos ou prova de execu
 Suporte documentado; acesso e execução neste piloto **não confirmados**. Não tratar
 Jev como endpoint de chat intercambiável nem como gerador de código ou vídeo.
 
+### FreeLLMAPI — gateway de failover por cota — visto em 07/10/2026
+
+Executor/gateway, não capacidade de modelo. Seguimento na
+[US-20](../US-20-failover-de-executor-por-cota/Sobre.md).
+
+- **Fonte:** reel do @99hud (Hudson Brendon), via análise automática do vídeo no vidIQ.
+  **Não é documentação oficial**; o repositório não foi consultado.
+- **O que o reel afirma, não verificado:** projeto open-source de um autor no GitHub,
+  34 provedores, 635 modelos e 7,4 bilhões de tokens grátis por mês; liga o Claude Code
+  a modelos gratuitos com um comando; ao bater o limite (erro 429) troca para o próximo
+  modelo e deixa um resumo (feito, falta fazer, arquivos) para o novo continuar.
+- **Estado:** documentado — não, só vídeo de terceiros · acesso — não confirmado ·
+  testado — não.
+- **A conferir antes de qualquer uso:** como se liga ao Claude Code e qual o alcance
+  (chamada, agente ou sessão); critério de ordem dos modelos; política de dados e
+  termos dos planos gratuitos; quota real; controle de esforço, que o reel não mostra.
+  A troca automática conflita com o registro de modelo aplicado: sem aviso, é troca
+  silenciosa. Não importar credenciais de assinatura para um gateway.
+
 ## Fluxos ligados
 - [delegacao](../../../../../Contexto/Fluxos/delegacao.md)
 
@@ -352,6 +371,11 @@ Nada depende do que ela toca — folha do grafo.
 - [US-18 — símbolo que não resolve não pode derrubar o arquivo](../../../organizacao-por-grafo/script/US-18-simbolo-nao-derruba-o-arquivo/Sobre.md) — 1 nó(s) em comum
 
 ## Rumo
+- **07/10/2026** — Josué trouxe um segundo reel (@99hud, **FreeLLMAPI**), diferente do
+  @donimas. Ele cobre o que esta US deixou fora, a troca de modelo por cota, e vira a
+  [US-20](../US-20-failover-de-executor-por-cota/Sobre.md). Aqui só entrou a entrada
+  do glossário (*FreeLLMAPI*, acima); o failover continua fora do piloto. Reel lido pelo
+  vidIQ; o `watch` com Gemini deu 503. Atualização documental, sem checks executados.
 - **06/10/2026** — usuário escolheu **2.0.0** como versão desse fundamento. Versão
   local 1.9.0 foi substituída antes de publicação; pacote e seis marcas de migração
   agora usam 2.0.0. READMEs explicam a seleção por atividade e o limite de execução;

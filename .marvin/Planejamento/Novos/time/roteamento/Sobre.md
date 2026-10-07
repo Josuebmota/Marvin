@@ -11,6 +11,7 @@ pelas capacidades disponíveis, com conhecimento curado sob demanda.
 
 ## Filhos
 - [US-19-papel-modelo-esforco](US-19-papel-modelo-esforco/Sobre.md)
+- [US-20-failover-de-executor-por-cota](US-20-failover-de-executor-por-cota/Sobre.md)
 
 ## Rumo
 - **06/10/2026** — escopo da US-19 ampliado e confirmado: seleção neutra por atividade

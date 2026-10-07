@@ -24,6 +24,7 @@ metadata:
 ## Em andamento
 
 - [US-19-papel-modelo-esforco](../Planejamento/Novos/time/roteamento/US-19-papel-modelo-esforco/Sobre.md) — onboarding implementado; próximo passo: operar glossário e medir 3–4 US para avaliar ajustes da política
+- [US-20-failover-de-executor-por-cota](../Planejamento/Novos/time/roteamento/US-20-failover-de-executor-por-cota/Sobre.md) — aberta 07/10/2026; próximo passo: achar a fonte oficial do FreeLLMAPI e o `po` decidir se o onboarding ganha opção "gateway"
 
 ## Travado
 
