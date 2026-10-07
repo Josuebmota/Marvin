@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: refinada
 pai: ../Sobre.md
 ---
 # US-20 — handoff de executor por cota: o novo modelo refaz o de-para e segue
@@ -25,11 +25,9 @@ não num chat nem numa ferramenta.
 3. Ensaio **documental**, sem chamada paga: a partir só do *Time* e do *Rumo* de uma US
    existente, um segundo leitor (`po` ou `tl`) diz qual é a próxima etapa, qual capacidade
    falta e o que conferir, sem perguntar nada. Se não consegue, o formato está incompleto.
-4. O `po` decide e registra no *Rumo* se o onboarding ganha a opção "gateway". Tende a
-   "não": a documentação do Claude Code não suporta rotear para modelo não-Claude.
-5. A divisão "bom para" declarada (US-19, 07/10) está registrada como declaração, não medida.
-6. **Só se** o formato do *Time* for levado ao template gerado pelo script: entrada
-   nova na tabela `ATUALIZACOES`, `npm run test` e `tl` lendo o diff.
+4. **Decidido (`po`, 07/10/2026): o onboarding NÃO ganha a opção "gateway".** A documentação do Claude Code não suporta rotear para modelo não-Claude; mexe com credencial de terceiro; e oferecer isso seria inventar convenção de ferramenta (invariante 3). Reabre só com fato novo (suporte oficial). Registrado no *Rumo*.
+
+**Cortado pelo `po` (07/10/2026):** o item 5 (a divisão "bom para" como declaração) vira **uma linha no *Rumo* da US-19**, não item de pronto daqui; e o item 6 (levar o formato ao template gerado, `ATUALIZACOES`, `tl` no diff do script) espera a **segunda vez** que o handoff for usado de verdade. Hoje não houve nenhuma parada por cota registrada: a US é especulação até o ensaio (item 3) provar o formato. Item 1: a regra tem de dizer "ao fechar **cada** etapa" — estado atualizado só no fim cumpre a letra e esvazia o handoff.
 
 **Não entra:** instalar ou configurar gateway, importar credenciais de assinatura,
 troca de sessão sem humano (quem abre a nova sessão é a pessoa), detectar cota restante
@@ -61,6 +59,7 @@ Nenhuma nova. Se o gateway entrar no registro de ferramentas, reutilizar
 `adaptador-de-ferramenta`.
 
 ## Rumo
+- **07/10/2026** — revisada por `po` e `tl`. **3ª da fila** (itens 1 e 3, só documentação; pode correr em paralelo às outras). `tl` aprovou o `b88b291` e o passo de handoff em `delegacao.md:112-139`. Gateway: **descartado** (item 4). Ressalva do `tl`, não bloqueia: `delegacao.md:137-139` cita a documentação do Claude Code dentro de um passo que se diz neutro de ferramenta. Itens 5 e 6 cortados (ver "Cortado").
 - **07/10/2026** — reescrita de *failover* para **handoff assistido**. O Josué descreveu
   o desenho: o novo modelo lê o que foi feito e refaz o de-para de papel, capacidade e
   modelo. Percebido que o ponto frágil é o registro: quando a cota acaba, o executor já

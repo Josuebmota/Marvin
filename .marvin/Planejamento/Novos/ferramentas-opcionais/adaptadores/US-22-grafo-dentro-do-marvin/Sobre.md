@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: adiada
 pai: ../Sobre.md
 name: US-22-grafo-dentro-do-marvin
 description: "O grafo sai de graphify-out/ na raiz e passa a viver dentro do .marvin/ — tudo que o Marvin deriva num lugar só, uma única decisão de versionar (US-21)."
@@ -59,6 +59,7 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **07/10/2026** — aberta e refinada (pedido do Josué). Depende de medir o `graphify query --graph`. **Não implementar.**
+- **07/10/2026** — **adiada** (recomendação do `po`, aplicada na refinação). "Polui a raiz" é estética; os 16 MB não causaram dano registrado. `graphify-out/` é convenção do graphify — `query`, `affected`, `explain` e o hook leem dali — então mover briga com a ferramenta (invariante 3), exige migração conferida (invariante 1) e talvez uma junction a mais. A US-21 resolve a dor medida sem mover nada. Volta à fila só se alguém medir um problema real com a pasta na raiz. Reversível: foi ideia do Josué, e ele pode reabrir.
 
 ## Evidência
 <!-- preenchido ao concluir -->

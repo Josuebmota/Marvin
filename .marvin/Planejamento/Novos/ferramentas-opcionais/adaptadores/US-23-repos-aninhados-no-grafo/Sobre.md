@@ -10,20 +10,26 @@ description: "Pasta-mãe com os repos em repos/<x>: o --graphify não acha os su
 **Por quê:** medido em 07/10/2026 numa pasta-mãe com `repos/parci-front` e `repos/parci-invest-service` (os dois com `.git`, ignorados pela raiz): `marvin --graphify` gerou **8.409 nós e 0 deles de `repos/`** — 3.118 de `.marvin`, 2.783 de `.claude` e 2.783 de `.agents` — e **360 links** de "Código tocado" caíram em "does not exist in the repository". É exatamente o defeito que o README descreve para monorepo (o grafo indexa tudo menos o produto), e nada avisou. Três causas:
 1. **Detecção só olha os filhos diretos da raiz** — `SUBREPOS` varre `fs.readdirSync(ROOT)` (`marvin.mjs:~1792-1803`); `repos/<x>` está a dois níveis, então nunca entra na lista.
 2. **O "Código tocado" é resolvido contra a raiz** — `docsGraph` faz `path.join(ROOT, codeFile)` (`marvin.mjs:~686`). A US de um repo diz `src/utils/calculos.ts` (relativo ao repo dele); na pasta-mãe só existe `repos/parci-front/src/utils/calculos.ts`.
-3. **Ruído:** `.agents/` espelha `.claude/` (as mesmas skills, 2.783 nós a mais) e não está em `IGNORE` (`marvin.mjs:~1780`).
+3. **Ruído:** `.agents/` espelha `.claude/` (as mesmas skills, 2.783 nós a mais). Corrigido pelo `tl` em 07/10: o `IGNORE` (`marvin.mjs:~1780`) **não chega** ao `graphify extract` (`marvin.mjs:~3556` extrai `"."` inteiro), e diretório com ponto já é pulado nas varreduras do script. Pôr `.agents` no `IGNORE` não muda o grafo; o ponto de corte é a **extração**.
 
-**Pronto quando:**
-1. Sub-repo = diretório com `.git`, **ignorado pela raiz**, até profundidade 2 (`repos/<x>`), ou lista explícita (`--repos-dir=repos`, registrada em `ferramentas.md`). Um sub-repo que a raiz **não** ignora continua fora da lista (senão entra duas vezes).
+**Dividida em duas (`po`, 07/10/2026)** — cada uma paga sozinha:
+
+**US-23a — detecção, merge e ruído**
+1. Sub-repo = diretório com `.git`, **ignorado pela raiz**, até profundidade 2 (`repos/<x>`). Um sub-repo que a raiz **não** ignora continua fora da lista (senão entra duas vezes).
 2. `--graphify` na pasta-mãe indexa cada sub-repo e faz o merge. **Trava:** num fixture com 2 sub-repos aninhados, o grafo tem nós de **ambos**; com a guarda removida a contagem do sub-repo cai a 0 → vermelho.
-3. **Resolução de "Código tocado" com sub-repos:** caminho com prefixo (`repos/parci-front/src/a.ts`) resolve; caminho **sem** prefixo tenta cada sub-repo — **um** achado liga; **dois ou mais** → aviso "ambíguo: existe em A e em B" e não liga a nenhum; **zero** → o aviso de hoje. ❓ **Medir antes:** como o `graphify merge-graphs` nomeia os ids dos nós (com o prefixo do sub-repo ou não) — o `idOf` do Marvin precisa casar.
-4. `--us` (Impacto) e `--status` (ilhas) agrupam pelo **arquivo resolvido** — o mesmo arquivo, escrito com e sem prefixo, é uma ilha só.
-5. `.agents/` e `.codex/` (configuração de ferramenta, não produto) ficam fora da **extração de código** do grafo.
-6. O `CLAUDE.md` gerado lista os sub-repos aninhados e repete o aviso de que `graphify update .` é o comando errado de atualização.
+3. `.agents/` fica fora da **extração de código** do grafo (não basta o `IGNORE`, ver causa 3).
+4. O `CLAUDE.md` gerado lista os sub-repos aninhados e repete o aviso de que `graphify update .` é o comando errado de atualização.
+
+**US-23b — resolução de "Código tocado" e ilhas**
+5. Caminho com prefixo (`repos/parci-front/src/a.ts`) resolve; **sem** prefixo tenta cada sub-repo — **um** achado liga; **dois ou mais** → aviso "ambíguo: existe em A e em B" e não liga a nenhum; **zero** → o aviso de hoje. O `idOf` do Marvin casa com o prefixo que o `merge-graphs` já aplica (`repo::`, `repo-2::`; ver `marvin.mjs:~3591`) — **já medido, não medir de novo**. **Trava:** um teste com o caminho com prefixo, sem prefixo e ambíguo.
+6. `--us` (Impacto) e `--status` (ilhas) agrupam pelo **arquivo resolvido** — o mesmo arquivo, escrito com e sem prefixo, é uma ilha só.
+
+**Cortado pelo `po` (07/10/2026):** `--repos-dir` e o registro dele em `ferramentas.md` (a profundidade 2 cobre o caso medido; a flag espera um segundo caso) e `.codex/` (não medido).
 
 **Não entra:** onde o grafo mora (US-22); a escolha de versionar (US-21).
 
 ## Código tocado
-- `marvin.mjs` — `SUBREPOS` (~1792-1803), `IGNORE` (~1780), `docsGraph` (~598 e a resolução em ~686), o laço `for target of ['.', ...subRepos]` do bloco 8b, a geração do `CLAUDE.md` do graphify
+- `marvin.mjs` — **23a:** `SUBREPOS` (~1792-1803), o laço `for target of ['.', ...subRepos]` do bloco 8b e a extração (~3556), a geração do `CLAUDE.md` do graphify. **23b:** `docsGraph` (~598 e a resolução em ~686), `idOf`
 - `teste.mjs` — fixture com 2 sub-repos aninhados e as travas
 - `README.md` e `README.pt-BR.md` — a seção de monorepo
 
@@ -59,6 +65,7 @@ Nada depende do que ela toca — folha do grafo.
 - [US-19 — a atividade escolhe papéis, skills, modelos e esforço conforme capacidades disponíveis](../../../time/roteamento/US-19-papel-modelo-esforco/Sobre.md) — 1 nó(s) em comum
 
 ## Rumo
+- **07/10/2026** — revisada por `po` e `tl`: **1ª da fila** (única com medição forte), dividida em 23a e 23b, ordem 23a → 23b. Causa 3 e "medir antes" corrigidos (ver acima). Ordem geral: 23a → 23b → US-21 → US-20 (itens 1 e 3) → US-22 adiada.
 - **07/10/2026** — aberta e refinada (pedido do Josué, depois de medir 0 nós de `repos/` num projeto real). Ordem sugerida: **US-23 antes da US-22** (sem os repos no grafo, mover o grafo de lugar só muda de endereço um grafo vazio). **Não implementar.**
 
 ## Evidência
