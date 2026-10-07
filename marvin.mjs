@@ -1792,13 +1792,24 @@ const IGNORE = new Set(['node_modules', 'dist', 'build', 'bin', 'obj', '__pycach
 const SUBREPOS = [];
 if (GRAPHIFY) {
   try {
-    for (const e of fs.readdirSync(ROOT, { withFileTypes: true })) {
-      if (!e.isDirectory() || e.name.startsWith('.') || IGNORE.has(e.name)) continue;
-      if (!fs.existsSync(path.join(ROOT, e.name, '.git'))) continue;
+    const subdirs = (rel) => fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })
+      .filter(e => e.isDirectory() && !e.name.startsWith('.') && !IGNORE.has(e.name))
+      .map(e => rel ? rel + '/' + e.name : e.name);
+    // Depth 2: `repos/<x>` (a parent folder holding the repos) is as common as `<x>`.
+    // A top-level dir that is itself a repo is not descended into — its children are its own.
+    const consider = (rel) => {
       // Exits != 0 when NOT ignored — and also when there is no git here.
       try {
-        execSync('git check-ignore -q "' + e.name + '"', { cwd: ROOT, stdio: 'ignore' });
-        SUBREPOS.push(e.name);
+        execSync('git check-ignore -q "' + rel + '"', { cwd: ROOT, stdio: 'ignore' });
+        SUBREPOS.push(rel);
+      } catch {}
+    };
+    for (const top of subdirs('')) {
+      if (fs.existsSync(path.join(ROOT, top, '.git'))) { consider(top); continue; }
+      try {
+        for (const child of subdirs(top)) {
+          if (fs.existsSync(path.join(ROOT, child, '.git'))) consider(child);
+        }
       } catch {}
     }
   } catch {}
@@ -3531,6 +3542,13 @@ if (GRAPHIFY) {
       info('graph.json already exists — not rebuilding (running twice must not overwrite)');
       info('to rebuild after code changes:  marvin --graphify --graphify-rebuild');
     } else {
+      // `.agents/` mirrors `.claude/` (same skills, ~2.8k duplicate nodes). The script's
+      // IGNORE never reaches `graphify extract`; `.graphifyignore` is what it reads.
+      const gfi = path.join(ROOT, '.graphifyignore');
+      if (!fs.existsSync(gfi) && fs.existsSync(path.join(ROOT, '.agents'))) {
+        fsw.writeFileSync(gfi, '# espelho de .claude/ — duplica o grafo sem acrescentar código\n.agents/\n');
+        ok('.graphifyignore written (.agents/ stays out of the extraction)');
+      }
       if (subRepos.length) {
         info(subRepos.length + ' gitignored sub-repo(s) — the root scan would MISS these,');
         info('so each one is indexed on its own and merged at the end:');
@@ -3546,7 +3564,7 @@ if (GRAPHIFY) {
           // .gitignore. Writing inside the sub-repo would dirty someone else's repository —
           // none of them has `graphify` in its own .gitignore.
           for (const target of ['.', ...subRepos]) {
-            const name = target === '.' ? '_root' : target;
+            const name = target === '.' ? '_root' : target.replace(/\//g, '__');
             const destination = path.join(OUT_DIR, 'repos', name);
             // try PER SUB-REPO, not around the loop: `graphify extract` exits != 0
             // when the target produces no node at all — a still-empty sub-repo (only

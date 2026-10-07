@@ -481,6 +481,37 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
     check('ele nomeia o sub-repo ignorado', /svc-a/.test(txt));
     check('ele desaconselha o `graphify update .`', /Não rode/.test(txt));
     cleanup(a);
+
+    // 23a: the repos live under a parent folder (`repos/<x>`), two levels down.
+    const n = arena('monorepo-aninhado');
+    spawnSync('git', ['init', '-q', '.'], { cwd: n.proj });
+    for (const r of ['svc-a', 'svc-b']) {
+      const dir = path.join(n.proj, 'repos', r, 'src');
+      fs.mkdirSync(dir, { recursive: true });
+      spawnSync('git', ['init', '-q', '.'], { cwd: path.join(n.proj, 'repos', r) });
+      fs.writeFileSync(path.join(dir, r + '.ts'), 'export function f_' + r.replace('-', '_') + '() { return 1 }\n');
+    }
+    fs.writeFileSync(path.join(n.proj, '.gitignore'), 'repos/\n');
+    run(n, '--no-git', '--graphify');
+    const nt = fs.existsSync(path.join(n.proj, 'CLAUDE.md')) ? fs.readFileSync(path.join(n.proj, 'CLAUDE.md'), 'utf8') : '';
+    check('sub-repos aninhados em repos/<x> são detectados e nomeados', /repos\/svc-a/.test(nt) && /repos\/svc-b/.test(nt));
+    check('o CLAUDE.md aninhado desaconselha o `graphify update .`', /Não rode/.test(nt));
+    // Real extraction needs the binary (CI does not have it) — same skip as 9f.
+    if (spawnSync('graphify', ['--version'], { encoding: 'utf8', shell: true }).status !== 0) {
+      console.log('  - 9e (grafo aninhado) pulado: graphify ausente no PATH (3 checks)'); skipped += 3;
+    } else {
+      fs.mkdirSync(path.join(n.proj, '.agents', 'x'), { recursive: true });
+      fs.writeFileSync(path.join(n.proj, '.agents', 'x', 'espelho.py'), 'def espelho_unico(): return 1\n');
+      fs.rmSync(path.join(n.proj, 'graphify-out'), { recursive: true, force: true });
+      run(n, '--no-git', '--graphify');
+      let nodes = [];
+      try { nodes = JSON.parse(fs.readFileSync(path.join(n.proj, 'graphify-out', 'graph.json'), 'utf8')).nodes || []; } catch {}
+      const has = (s) => nodes.filter(x => JSON.stringify(x).includes(s)).length;
+      check('o grafo tem nós dos DOIS sub-repos aninhados', has('svc_a') > 0 && has('svc_b') > 0);
+      check('.agents/ fica fora da extração', has('espelho_unico') === 0);
+      check('.graphifyignore é criado', fs.existsSync(path.join(n.proj, '.graphifyignore')));
+    }
+    cleanup(n);
   }
 }
 

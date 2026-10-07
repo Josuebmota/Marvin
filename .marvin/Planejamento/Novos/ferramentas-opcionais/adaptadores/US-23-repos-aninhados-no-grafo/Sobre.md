@@ -65,6 +65,7 @@ Nada depende do que ela toca — folha do grafo.
 - [US-19 — a atividade escolhe papéis, skills, modelos e esforço conforme capacidades disponíveis](../../../time/roteamento/US-19-papel-modelo-esforco/Sobre.md) — 1 nó(s) em comum
 
 ## Rumo
+- **07/10/2026** — **23a implementada, sem commit**; `tl` aprovou, 268 checks verdes. Detecção em profundidade 2, nome do destino com `/`→`__`, `.graphifyignore` com `.agents/` (só se `.agents/` existe e o arquivo não). Medido: nós dos dois sub-repos, zero de `.agents/`. Lacuna conhecida: o `.graphifyignore` fica só na raiz — `.agents/` dentro de um sub-repo não foi testado. **Próximo: 23b** (resolução de Código tocado + ilhas).
 - **07/10/2026** — revisada por `po` e `tl`: **1ª da fila** (única com medição forte), dividida em 23a e 23b, ordem 23a → 23b. Causa 3 e "medir antes" corrigidos (ver acima). Ordem geral: 23a → 23b → US-21 → US-20 (itens 1 e 3) → US-22 adiada.
 - **07/10/2026** — aberta e refinada (pedido do Josué, depois de medir 0 nós de `repos/` num projeto real). Ordem sugerida: **US-23 antes da US-22** (sem os repos no grafo, mover o grafo de lugar só muda de endereço um grafo vazio). **Não implementar.**
 
