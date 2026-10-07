@@ -67,7 +67,18 @@ Marvin guarda conhecimento e orienta a escolha; a sessão principal aplica a pol
 plugins/gateways executam chamadas. Indisponibilidade refaz a seleção da etapa,
 preservando contexto e progresso, sem substituir uma capacidade ausente por outra.
 Troca automática quando a própria sessão principal perde quota exige executor
-externo e continua fora da implementação deste piloto.
+externo e continua fora da implementação deste piloto. O **handoff assistido** — a
+pessoa abre outra sessão e o novo modelo refaz o de-para de modelo/ferramenta/esforço
+mantendo papel e capacidade — é a [US-20](../US-20-handoff-de-executor-por-cota/Sobre.md).
+
+### Divisão declarada pelo Josué — 07/10/2026
+
+Declaração de uso, **não medida** e não ranking: Claude e Codex em conjunto para
+planejar, arquitetar e revisar; MiniMax para vídeo, **se** o acesso ao modelo de vídeo
+for confirmado; as demais opções entram conforme o uso. Quem é a sessão principal é
+quem tem cota no momento, e o outro vira delegado. Cada linha ganha evidência (tarefa,
+configuração, check, resultado) quando for usada numa atividade real, sem apagar a
+declaração original.
 
 ### Foco de estudo e disponibilidade — confirmado em 06/10/2026
 
@@ -229,7 +240,7 @@ Jev como endpoint de chat intercambiável nem como gerador de código ou vídeo.
 ### FreeLLMAPI — gateway de failover por cota — visto em 07/10/2026
 
 Executor/gateway, não capacidade de modelo. Seguimento na
-[US-20](../US-20-failover-de-executor-por-cota/Sobre.md).
+[US-20](../US-20-handoff-de-executor-por-cota/Sobre.md).
 
 - **Fonte:** reel do @99hud (Hudson Brendon), via análise automática do vídeo no vidIQ.
   **Não é documentação oficial**; o repositório não foi consultado.
@@ -237,7 +248,18 @@ Executor/gateway, não capacidade de modelo. Seguimento na
   34 provedores, 635 modelos e 7,4 bilhões de tokens grátis por mês; liga o Claude Code
   a modelos gratuitos com um comando; ao bater o limite (erro 429) troca para o próximo
   modelo e deixa um resumo (feito, falta fazer, arquivos) para o novo continuar.
-- **Estado:** documentado — não, só vídeo de terceiros · acesso — não confirmado ·
+- **Fonte oficial, consultada em 07/10/2026** (resumo de página, não leitura integral):
+  [repositório](https://github.com/tashfeenahmed/freellmapi) descreve roteador **local**
+  com um endpoint compatível com OpenAI, 34 provedores gratuitos, seis estratégias de
+  roteamento, failover com espera e rotação de chaves, provedor customizado para
+  endpoints compatíveis, licença MIT e aviso de "uso pessoal/experimental".
+  Confirma os números do reel. **Não confirmado:** como o comando de setup para Claude
+  Code resolve o formato de API.
+- **Limite do lado do Claude Code**, [documentação oficial](https://code.claude.com/docs/en/llm-gateway):
+  a Anthropic não endossa gateways de terceiros e **não suporta rotear o Claude Code
+  para modelos não-Claude por gateway nenhum**. Com credencial de gateway ativa, a
+  cobrança é por token e a assinatura não se aplica.
+- **Estado:** documentado — sim, pelo repositório · acesso — não confirmado ·
   testado — não.
 - **A conferir antes de qualquer uso:** como se liga ao Claude Code e qual o alcance
   (chamada, agente ou sessão); critério de ordem dos modelos; política de dados e
@@ -343,6 +365,7 @@ conferir configuração, mas não é comparação em 3–4 US. Ganho **não demo
 - [ ] Medir antes/depois em 3–4 US reais com atribuição completa.
 - [x] Implementar o onboarding de disponibilidade autorizado, cobrindo uma/várias opções e outros executores.
 - [ ] Decidir ajustes da regra nos templates com os números do piloto; orientação inicial já antecipada por autorização.
+- [ ] Handoff entre executores por cota — movido para a [US-20](../US-20-handoff-de-executor-por-cota/Sobre.md).
 
 **Checks do piloto de 05/10:** `git diff --check`, links relativos dos 8 documentos,
 `marvin --fechar` e `marvin --status --curto` passaram. `npm run test`: **237 passaram**
@@ -371,9 +394,14 @@ Nada depende do que ela toca — folha do grafo.
 - [US-18 — símbolo que não resolve não pode derrubar o arquivo](../../../organizacao-por-grafo/script/US-18-simbolo-nao-derruba-o-arquivo/Sobre.md) — 1 nó(s) em comum
 
 ## Rumo
+- **07/10/2026** — refinamento. Registrada a **divisão declarada** (Claude e Codex
+  juntos, MiniMax para vídeo se houver acesso) como declaração, não medida, e o
+  handoff assistido ficou na US-20. A regra desta US não muda: papel e capacidade vêm
+  da atividade; modelo, ferramenta e esforço vêm do acesso. Documental; `po` e `tl` ainda
+  não revisaram esta atualização.
 - **07/10/2026** — Josué trouxe um segundo reel (@99hud, **FreeLLMAPI**), diferente do
   @donimas. Ele cobre o que esta US deixou fora, a troca de modelo por cota, e vira a
-  [US-20](../US-20-failover-de-executor-por-cota/Sobre.md). Aqui só entrou a entrada
+  [US-20](../US-20-handoff-de-executor-por-cota/Sobre.md). Aqui só entrou a entrada
   do glossário (*FreeLLMAPI*, acima); o failover continua fora do piloto. Reel lido pelo
   vidIQ; o `watch` com Gemini deu 503. Atualização documental, sem checks executados.
 - **06/10/2026** — usuário escolheu **2.0.0** como versão desse fundamento. Versão

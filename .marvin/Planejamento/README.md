@@ -46,11 +46,14 @@ pai: ../Sobre.md
 <!-- proposto ANTES de começar, pela regra do AGENTS.md e do fluxo delegação.
      Só os papéis usados; a camada da atividade quando necessária. Preencher modelo
      domínio/etapa, capacidade, motivo da escolha, modelo concreto e esforço suportado;
-     os placeholders abaixo não configuram execução. Skills ficam na seção própria. -->
+     os placeholders abaixo não configuram execução. Skills ficam na seção própria.
+     Estado por etapa: pendente | em andamento | feita (<evidência>). Atualize ao fechar
+     cada etapa, DURANTE o trabalho: o executor pode parar a qualquer momento (cota) e
+     quem assume só tem isto e o Rumo. -->
 - dev-back · fornecedor/<modelo> · <ferramenta> · esforço solicitado: <valor suportado>
-  — implementar <tarefa>; aplicado: não confirmado; check: <verificação pelo risco>
+  — implementar <tarefa>; estado: pendente; aplicado: não confirmado; check: <verificação pelo risco>
 - tl · fornecedor/<modelo> · <ferramenta> · esforço solicitado: <valor suportado>
-  — revisar diff; aplicado: não confirmado
+  — revisar diff; estado: pendente; aplicado: não confirmado
 
 ## Skills
 <!-- procedimento que esta atividade vai repetir; vira SKILL.md na segunda vez -->

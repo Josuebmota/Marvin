@@ -12,6 +12,9 @@ pai: ../Sobre.md
 - [US-11-ferramentas-opcionais](US-11-ferramentas-opcionais/Sobre.md)
 - [US-11a-registro-e-graphify](US-11a-registro-e-graphify/Sobre.md)
 - [US-11b-ponytail-e-papeis](US-11b-ponytail-e-papeis/Sobre.md)
+- [US-21-usuario-escolhe-versionar-o-derivado](US-21-usuario-escolhe-versionar-o-derivado/Sobre.md)
+- [US-22-grafo-dentro-do-marvin](US-22-grafo-dentro-do-marvin/Sobre.md)
+- [US-23-repos-aninhados-no-grafo](US-23-repos-aninhados-no-grafo/Sobre.md)
 
 ## Rumo
 - **15/09/2026** — aberta com a US-11. No mesmo dia o Impacto acusou escopo largo (6 nós, 4 comunidades); **US-11 cancelada e fatiada** em 11a (registro + graphify) e 11b (ponytail + papéis). O Sobre.md da 11 fica como registro das decisões comuns.

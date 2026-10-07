@@ -19,12 +19,12 @@ metadata:
 > - Criar `onde_paramos_<data>.md` **ou uma seção de relato aqui dentro** é o mesmo erro:
 >   o histórico já está no `git log`, e o porquê já está no Rumo da US.
 
-**Atualizado:** 06/10/2026
+**Atualizado:** 07/10/2026
 
 ## Em andamento
 
 - [US-19-papel-modelo-esforco](../Planejamento/Novos/time/roteamento/US-19-papel-modelo-esforco/Sobre.md) — onboarding implementado; próximo passo: operar glossário e medir 3–4 US para avaliar ajustes da política
-- [US-20-failover-de-executor-por-cota](../Planejamento/Novos/time/roteamento/US-20-failover-de-executor-por-cota/Sobre.md) — aberta 07/10/2026; próximo passo: achar a fonte oficial do FreeLLMAPI e o `po` decidir se o onboarding ganha opção "gateway"
+- [US-20-handoff-de-executor-por-cota](../Planejamento/Novos/time/roteamento/US-20-handoff-de-executor-por-cota/Sobre.md) — escrita 07/10/2026; próximo passo: `po` e `tl` revisam o formato do Time e o passo de handoff, e o ensaio documental (item 3)
 
 ## Travado
 
