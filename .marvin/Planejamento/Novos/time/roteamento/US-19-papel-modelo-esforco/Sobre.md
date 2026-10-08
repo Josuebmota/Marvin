@@ -394,6 +394,7 @@ Nada depende do que ela toca — folha do grafo.
 - [US-18 — símbolo que não resolve não pode derrubar o arquivo](../../../organizacao-por-grafo/script/US-18-simbolo-nao-derruba-o-arquivo/Sobre.md) — 1 nó(s) em comum
 
 ## Rumo
+- **08/10/2026** — regra externa de um reel ("nunca faça sozinho, sempre delegue" + "complexo=Opus, simples=modelo mais simples") avaliada por `po` e `tl`. A de modelo já é a tabela do `CLAUDE.md` e não fixa fornecedor; a de delegação entrou no `AGENTS.md` **reescrita** (sessão principal coordena e delega; trivial não delega; subagente não delega; código ou invariante passa pelo `tl`), sem o "sempre" literal, que contradiz `delegacao.md` passo 1. **Hipótese para a medição de 3–4 US:** delegar mais reduz retrabalho ou só aumenta custo? Não gerar isso no template de `marvin.mjs` antes de haver número (invariante 4).
 - **07/10/2026** — refinamento. Registrada a **divisão declarada** (Claude e Codex
   juntos, MiniMax para vídeo se houver acesso) como declaração, não medida, e o
   handoff assistido ficou na US-20. A regra desta US não muda: papel e capacidade vêm

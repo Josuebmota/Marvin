@@ -1,7 +1,7 @@
 ---
 name: tl
 description: Dono dos invariantes do marvin.mjs e de ler o diff. Chame antes de fechar qualquer mudança no script — e sempre que a mudança escrever no disco de alguém.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, Agent
 model: opus
 ---
 

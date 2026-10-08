@@ -16,6 +16,7 @@ pai: ../Sobre.md
 - [US-22-grafo-dentro-do-marvin](US-22-grafo-dentro-do-marvin/Sobre.md)
 - [US-23-repos-aninhados-no-grafo](US-23-repos-aninhados-no-grafo/Sobre.md)
 - [US-24-fechar-por-sub-repo](US-24-fechar-por-sub-repo/Sobre.md)
+- [US-25-avaliar-superpowers-e-octopus](US-25-avaliar-superpowers-e-octopus/Sobre.md)
 
 ## Rumo
 - **15/09/2026** — aberta com a US-11. No mesmo dia o Impacto acusou escopo largo (6 nós, 4 comunidades); **US-11 cancelada e fatiada** em 11a (registro + graphify) e 11b (ponytail + papéis). O Sobre.md da 11 fica como registro das decisões comuns.

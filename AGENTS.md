@@ -12,7 +12,7 @@ trabalhar com agentes de IA. Documentação de uso: [README.md](README.md).
 
 | Arquivo | O que é |
 |---|---|
-| `marvin.mjs` | o script inteiro — ~3750 linhas, zero dependência |
+| `marvin.mjs` | o script inteiro — ~4000 linhas, zero dependência |
 | `teste.mjs` | smoke test dos invariantes — zero dependência |
 | `PROMPT.md` | o prompt que guia a escrita dos agentes (o script não escreve) |
 | `README.md` / `README.pt-BR.md` | documentação pública, inglês e português |
@@ -65,8 +65,14 @@ bloco de escrita é guardado por `if (!fs.existsSync(...))`.
 aviso mandando conferir. **Adaptador que não carrega falha em silêncio** — pior que
 adaptador ausente.
 
-**4. Não escrever conteúdo que exige conhecer o projeto.** Agentes, skills e o corpo do
-`AGENTS.md` são do humano. Genérico é pior que ausente.
+**4. O script não escreve conteúdo que exige conhecer o projeto.** O corpo de agentes, de
+skills e do `AGENTS.md` nunca sai do `marvin.mjs`: genérico é pior que ausente. Agentes e
+skills nascem **por atividade**, escritos pelo `tl` e pelo `po` com o dono, a partir da US que
+os pede e com as armadilhas concretas do código que ela toca; ficam registrados no
+*Time*/*Skills* dela e só viram arquivo com uma armadilha concreta (agente) ou na segunda
+execução (skill). O script pode **mostrar** o que o diagnóstico sugere; quem decide e escreve
+é quem conhece o projeto. (Mudado em 08/10/2026 por decisão do dono: antes dizia "são do
+humano"; o sujeito passou a ser a atividade.)
 
 ## Armadilhas
 
@@ -99,7 +105,8 @@ adaptador ausente.
   média/baixa **de propósito**. Se confirmar alguma, atualize a tabela dos **dois**
   READMEs e o selo no `marvin.mjs` juntos.
 - **Não usar `Date.now()` nem `Math.random()`** — o script precisa ser determinístico
-  para ser idempotente.
+  para ser idempotente. Única exceção tolerada: `days()` (`marvin.mjs:552`), idade só exibida
+  no `--status` e no `index.html` derivado e git-ignorado; nada disso vai para arquivo versionado.
 
 ## A memória deste repo é versionada — e pública
 
@@ -133,6 +140,13 @@ esforço e motivo por etapa entre acessos elegíveis, sem marca fixa, seguindo
 [o fluxo de delegação](.marvin/Contexto/Fluxos/delegacao.md).
 Esforço menor nunca reduz a verificação dos invariantes.
 
+**A sessão principal coordena e delega:** etapa de implementação, revisão ou pesquisa vai para o
+papel adequado; mudança de código ou invariante sempre passa pelo `tl` antes de fechar. Não
+delegue leitura ou correção trivial cujo contexto custaria mais que a tarefa (passo 1 do fluxo
+de delegação). Subagente só delega se o papel listar `Agent` em `tools` no frontmatter (a plataforma
+permite até 3 camadas); hoje `po` e `tl` listam (desde 08/10/2026) e podem chamar um papel de apoio para uma leitura
+delimitada; dev, qa e demais papéis só ganham `Agent` se a etapa pedir.
+
 Num projeto privado — o caso de uso normal — a memória guarda decisão de produto e id de
 cliente, e é por isso que o script avisa **"repo PRIVADO, sempre"**. Aqui o conteúdo é
 sobre uma ferramenta pública, então não há o que proteger.
@@ -164,6 +178,13 @@ stdlib → …). Vale para quem **implementa**. Ele **não substitui**: os invar
 o `tl` lendo diff, o `po` questionando requisito, nem o `teste.mjs` — o "um check" dele é o
 piso, não o teto. Quais papéis o carregam: `.claude/agents/README.md`. Ativo nesta máquina =
 `~/.claude/.ponytail-active`; instalado sem ativo não faz nada. Registro: `.marvin/ferramentas.md`.
+
+**Graphify** — **neste repo, obrigatório na triagem** (dono, 08/10/2026; para os projetos que o
+Marvin monta continua opcional): o `tl` e o `po` partem do grafo
+(*Impacto* e ilhas da US) para decidir quem toca. Instala-se à parte
+(`uv tool install graphifyy`); **não** é dependência npm, o `package.json` continua sem
+`dependencies`. Grafo ausente ou velho vira registro explícito no *Time*, nunca omissão.
+Para localizar arquivo ou símbolo, Grep/Glob é mais barato. Fluxo: `delegacao.md` > Triagem.
 
 ## Higiene de sessão
 
