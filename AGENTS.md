@@ -133,6 +133,11 @@ esforço e motivo por etapa entre acessos elegíveis, sem marca fixa, seguindo
 [o fluxo de delegação](.marvin/Contexto/Fluxos/delegacao.md).
 Esforço menor nunca reduz a verificação dos invariantes.
 
+**A sessão principal coordena e delega:** etapa de implementação, revisão ou pesquisa vai para o
+papel adequado; mudança de código ou invariante sempre passa pelo `tl` antes de fechar. Não
+delegue leitura ou correção trivial cujo contexto custaria mais que a tarefa (passo 1 do fluxo
+de delegação). Subagentes não delegam: executam a etapa recebida e devolvem.
+
 Num projeto privado — o caso de uso normal — a memória guarda decisão de produto e id de
 cliente, e é por isso que o script avisa **"repo PRIVADO, sempre"**. Aqui o conteúdo é
 sobre uma ferramenta pública, então não há o que proteger.
