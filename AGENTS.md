@@ -137,7 +137,8 @@ Esforço menor nunca reduz a verificação dos invariantes.
 papel adequado; mudança de código ou invariante sempre passa pelo `tl` antes de fechar. Não
 delegue leitura ou correção trivial cujo contexto custaria mais que a tarefa (passo 1 do fluxo
 de delegação). Subagente só delega se o papel listar `Agent` em `tools` no frontmatter (a plataforma
-permite até 3 camadas); hoje `po` e `tl` não listam, então executam a etapa e devolvem.
+permite até 3 camadas); hoje `po` e `tl` listam (desde 08/10/2026) e podem chamar um papel de apoio para uma leitura
+delimitada; dev, qa e demais papéis só ganham `Agent` se a etapa pedir.
 
 Num projeto privado — o caso de uso normal — a memória guarda decisão de produto e id de
 cliente, e é por isso que o script avisa **"repo PRIVADO, sempre"**. Aqui o conteúdo é
