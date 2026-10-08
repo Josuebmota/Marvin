@@ -652,8 +652,10 @@ Use both. Ask that plugin what to adopt; run Marvin for the structure that holds
 
 Marvin does say something about roles, but only what it can derive: the generated
 `.claude/agents/README.md` names the stacks it found and tells you how many roles that
-implies — one per boundary in a polyglot repo or a monorepo, two in a single-stack one. It
-never writes the agents themselves. An agent without the scars of *this* codebase is fixed
+implies — one per boundary in a polyglot repo or a monorepo; with a single boundary,
+`dev-front` and `dev-back` can be one `dev` and the rest of the base holds just the same.
+The same suggestion is printed in the terminal (read-only) while the folder has no agent
+yet. It counts sub-repos ignored by the root only when run with `--graphify`. It never writes the agents themselves. An agent without the scars of *this* codebase is fixed
 context in every session that gives nothing back.
 
 Likewise for long, unattended execution: [Superpowers](https://github.com/obra/superpowers)
@@ -689,7 +691,7 @@ rather than final text.
 node teste.mjs
 ```
 
-275 checks, no dependencies. It covers the invariants that protect other
+286 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

@@ -1321,6 +1321,91 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(j);
 }
 
+// ── 12. US-26: team suggestion printed in the terminal (read-only) + triage update mark
+// Frontier = directory with a stack marker, not marker type. Printed only while
+// .claude/agents has no *.md besides the README.
+{
+  const a = arena('time1');
+  const r = run(a, '--no-git');
+  check('uma fronteira (só package.json): sugere 1 e um dev único',
+        /1 frontier\(s\) detected/.test(r.stdout) && /base roles: tl, po, dev, qa, scout/.test(r.stdout), r.stdout.slice(-600));
+  cleanup(a);
+
+  const b = arena('time2');
+  fs.unlinkSync(path.join(b.proj, 'package.json'));
+  fs.mkdirSync(path.join(b.proj, 'web')); fs.mkdirSync(path.join(b.proj, 'api'));
+  fs.writeFileSync(path.join(b.proj, 'web', 'package.json'), '{"name":"web"}\n');
+  fs.writeFileSync(path.join(b.proj, 'api', 'go.mod'), 'module api\n');
+  const rb = run(b, '--no-git');
+  check('package.json + go.mod em subpastas: 2 fronteiras, dev-front e dev-back separados',
+        /2 frontier\(s\) detected/.test(rb.stdout) && /base roles: tl, po, dev-front, dev-back, qa, scout/.test(rb.stdout));
+  cleanup(b);
+
+  const c = arena('time3');
+  fs.writeFileSync(path.join(c.proj, 'tsconfig.json'), '{}\n');
+  const rc = run(c, '--no-git');
+  check('package.json + tsconfig.json na raiz: 1 fronteira (regressão da contagem por marcador)',
+        /1 frontier\(s\) detected/.test(rc.stdout) && !/2 frontier/.test(rc.stdout));
+  cleanup(c);
+
+  const d = arena('time4');
+  const before = fs.readdirSync(d.proj).sort().join(',');
+  const rd = run(d, '--no-git', '--dry-run');
+  check('--dry-run imprime a sugestão e não cria arquivo',
+        /Suggested team/.test(rd.stdout) && /design \/ dba \/ sec \/ infra/.test(rd.stdout)
+        && fs.readdirSync(d.proj).sort().join(',') === before);
+  cleanup(d);
+
+  const e = arena('time5');
+  fs.mkdirSync(path.join(e.proj, '.claude', 'agents'), { recursive: true });
+  fs.writeFileSync(path.join(e.proj, '.claude', 'agents', 'algo.md'), '---\nname: algo\n---\n');
+  const re = run(e, '--no-git');
+  check('com um agente já escrito a sugestão não é impressa', !/Suggested team/.test(re.stdout));
+  cleanup(e);
+
+  // Ignored sub-repo WITH a marker inside is one frontier, not two (walk does not skip it).
+  // Detection runs at the top and needs git only, not the graphify binary (same as 9e).
+  if (spawnSync('git', ['--version'], { encoding: 'utf8' }).status !== 0) {
+    console.log('  - 12 (sub-repo) pulado: git ausente nesta máquina (2 checks)'); skipped += 2;
+  } else {
+    const g = arena('time-subrepo');
+    fs.unlinkSync(path.join(g.proj, 'package.json'));
+    spawnSync('git', ['init', '-q', '.'], { cwd: g.proj });
+    fs.mkdirSync(path.join(g.proj, 'app'));
+    spawnSync('git', ['init', '-q', '.'], { cwd: path.join(g.proj, 'app') });
+    fs.writeFileSync(path.join(g.proj, 'app', 'package.json'), '{"name":"app"}\n');
+    fs.writeFileSync(path.join(g.proj, '.gitignore'), 'app/\n');
+    const rg = run(g, '--no-git', '--graphify');
+    check('sub-repo ignorado com package.json dentro: 1 fronteira no terminal, não 2',
+          /1 frontier\(s\) detected/.test(rg.stdout) && !/2 frontier/.test(rg.stdout), rg.stdout.slice(-600));
+    const ar = path.join(g.proj, '.claude', 'agents', 'README.md');
+    check('o agents/README gerado também conta 1 fronteira',
+          fs.existsSync(ar) && /Uma fronteira só/.test(fs.readFileSync(ar, 'utf8')));
+    cleanup(g);
+  }
+
+  const z = arena('time0');
+  fs.unlinkSync(path.join(z.proj, 'package.json'));
+  const rz = run(z, '--no-git');
+  check('nenhum marcador: o terminal não diz "0 frontier(s)"',
+        /no stack marker found — single dev/.test(rz.stdout) && !/0 frontier/.test(rz.stdout));
+  cleanup(z);
+
+  // Triage text (desde 2.1.0): old base is flagged by step 10, new is not, twice does not duplicate.
+  const f = arena('triagem');
+  run(f, '--no-git');
+  const plan = path.join(f.proj, '.marvin', 'Planejamento', 'README.md');
+  const fresh = run(f, '--no-git');
+  check('base nova com a triagem: o passo 10 não acusa', !/desde 2\.1\.0/.test(fresh.stdout));
+  const txt = fs.readFileSync(plan, 'utf8');
+  check('rodar duas vezes não duplica a triagem', (txt.match(/grafo é opcional/g) || []).length === 1);
+  fs.writeFileSync(plan, txt.replace(/\*\*Quem faz a triagem:\*\*[\s\S]*?grafo ausente" na US\.\n/, ''));
+  const old = run(f, '--no-git');
+  check('base antiga sem a triagem: o passo 10 acusa com desde 2.1.0',
+        /Planejamento\/README\.md — missing[\s\S]*desde 2\.1\.0/.test(old.stdout), old.stdout.slice(-500));
+  cleanup(f);
+}
+
 // ── LAST. The number of checks claimed in the READMEs matches the real one.
 //
 // It has drifted THREE times in this repository: 26 when there were 28, 48 when there
