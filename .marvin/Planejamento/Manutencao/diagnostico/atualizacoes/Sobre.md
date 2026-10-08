@@ -10,6 +10,7 @@ pai: ../Sobre.md
 
 ## Filhos
 - [US-17-carimbo-de-versao](US-17-carimbo-de-versao/Sobre.md)
+- [US-27-atualizar-a-base-do-marvin](US-27-atualizar-a-base-do-marvin/Sobre.md)
 
 ## Rumo
 - **17/09/2026** — aberta, com a primeira US.

@@ -1879,6 +1879,22 @@ const stacks = new Map();
 if (stacks.size) for (const [d, t] of stacks) info(d.padEnd(40) + [...t].join(' + '));
 else warn('no stack marker found');
 
+// Team suggestion DERIVED from the diagnosis. A frontier is a DIRECTORY with a stack marker
+// (stacks.size) or an ignored sub-repo — not a marker type: package.json + tsconfig.json in
+// one folder is one frontier. Pure read; the generated agents/README.md and the closing
+// terminal output both call it, so the number can never differ between them.
+function suggestTeam() {
+  const list = [...new Set([...stacks.values()].flatMap(s => [...s]))];
+  // A sub-repo with a marker inside is already a key of `stacks` (walk does not skip it):
+  // count only the ones without. Keys use the OS separator, SUBREPOS always '/'.
+  const dirs = [...stacks.keys()].map(d => d.replace(/\\/g, '/'));
+  const frontiers = stacks.size + SUBREPOS.filter(r => !dirs.some(d => d === r || d.startsWith(r + '/'))).length;
+  const base = frontiers > 1
+    ? ['tl', 'po', 'dev-front', 'dev-back', 'qa', 'scout']
+    : ['tl', 'po', 'dev', 'qa', 'scout'];
+  return { list, frontiers, base, optional: ['design', 'dba', 'sec', 'infra'] };
+}
+
 // Is there a front end? Read from the dependencies of the package.json files found — fact, not guess.
 // Only decides whether the Contexto/Design/ folder is born in step 5.
 const HAS_FRONT = [...stacks.keys()].some(d => {
@@ -2386,6 +2402,13 @@ faz o time crescer em camadas em vez de nascer genérico.
 
    Mais a **camada da atividade**, quando ela pede: \`design\` se há tela nova, \`dba\` se há
    schema ou migração, \`sec\` se há auth ou dado sensível, \`infra\` se há deploy ou CI.
+
+   **Quem faz a triagem:** o \`tl\` junto com o \`po\`, com o contexto inteiro da US. Eles
+   definem quem toca, quais agentes e skills (só os que a atividade usa), esforço e modelo,
+   e registram em *Time*/*Skills* da US. Agente ou skill novos nascem aqui: o agente só vira
+   arquivo com uma armadilha concreta; a skill, na segunda execução.
+   **O grafo é opcional:** se existir, a triagem parte do *Impacto*; se não, use Grep e
+   registre "grafo ausente" na US.
 3. **Atualizar os agentes em camadas:** \`.claude/agents/<papel>.md\` recebe as armadilhas
    descobertas **nesta** atividade — acrescenta, não reescreve o que já valia. Um papel só
    existe como arquivo depois de ter uma armadilha concreta para carregar.
@@ -2764,8 +2787,7 @@ ${(() => {
   // Recommendation DERIVED from the diagnosis, never a menu. Marvin does not write the
   // agent (invariant 4), but staying silent in front of an empty folder does not help
   // either: "how many roles?" has a different answer in a single-stack repo and in a monorepo.
-  const list = [...new Set([...stacks.values()].flatMap(s => [...s]))];
-  const frontiers = list.length + SUBREPOS.length;
+  const { list, frontiers } = suggestTeam();
   const detected = list.length ? list.join(', ') : 'nenhum marcador de stack';
   return `Detectado aqui: **${detected}**` +
     (SUBREPOS.length ? `, mais ${SUBREPOS.length} sub-repositório(s) ignorado(s) pela raiz` : '') + `.
@@ -2774,6 +2796,9 @@ ${(() => {
   ? `- **Um papel por fronteira, não um revisor universal.** São ${frontiers} fronteiras aqui.
   Um único revisor que atravessa todas não segura o invariante de nenhuma — ele vira
   genérico, que é o modo de falhar deste arquivo.`
+  : frontiers === 0
+  ? `- **Nenhum marcador de stack encontrado:** um \`dev\` único até aparecer um. O resto da base
+  (\`tl\`, \`po\`, \`qa\`, \`scout\`) vale igual.`
   : `- **Uma fronteira só:** \`dev-front\` e \`dev-back\` da base do \`AGENTS.md\` podem ser um
   \`dev\` único aqui. O resto da base (\`tl\`, \`po\`, \`qa\`, \`scout\`) vale igual.`);
 })()}
@@ -3296,7 +3321,8 @@ memória" não dispara nunca — ou dispara sempre, que é pior.
 **Nenhuma US começa sem a passada de \`${relDocs}/Planejamento/README.md\`:** mapear o que a
 atividade toca, propor o time dela em camadas (\`tl\`, \`po\` · \`dev-front\`, \`dev-back\`, \`qa\` ·
 \`scout\`, mais a camada da atividade), propor as skills que ela vai repetir. A regra inteira
-mora lá porque é lá que ela dispara — aqui só o lembrete.
+mora lá porque é lá que ela dispara — aqui só o lembrete. A triagem do \`tl\` com o \`po\`
+(quem toca, agentes e skills, esforço e modelo) é registrada em *Time*/*Skills* da US.
 
 ${PONYTAIL ? `## Ferramentas
 
@@ -3907,6 +3933,11 @@ const UPDATES = [
   { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
     marca: /declaração\s+não\s+prova\s+acesso/, soCom: !OLD_LAYOUT, desde: '2.0.0',
     o_que: 'activity-based availability selection when proposing the team' },
+  { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
+    marca: /grafo\s+é\s+opcional/, soCom: !OLD_LAYOUT, desde: '2.1.0',
+    o_que: 'the triage by tl + po (who works, which agents/skills, effort and model) and the optional graph rule' },
+  { arquivo: 'AGENTS.md', marca: /triagem\s+do\s+`tl`\s+com\s+o\s+`po`/, desde: '2.1.0',
+    o_que: 'the pointer to the tl + po triage in "Antes de qualquer US"' },
   { arquivo: '.claude/skills/README.md', marca: /Skill, agente ou command/i,
     o_que: 'the skill vs. agent vs. command discriminator (and the 2x rule)' },
   // A rule lives where it fires (11/09): closing a session → /retomar; portability → Sobre.md;
@@ -4029,6 +4060,21 @@ if (!GRAPHIFY) {
   log('  It needs graphify on PATH:  uv tool install graphifyy  ·  pipx install graphifyy');
   log('  then  marvin --use=graphify  (recorded in ' + RECORD_REL + ').');
   log('  Read the trade-offs in the README first — a stale graph answers with confidence.');
+}
+
+// Team suggestion, read-only: printed only while the agents folder holds nothing but the
+// README (afterwards it would be noise on every run). The folder may not exist in --dry-run.
+{
+  let hasAgents = false;
+  try { hasAgents = fs.readdirSync(agentsDir).some(f => /\.md$/i.test(f) && f.toLowerCase() !== 'readme.md'); } catch {}
+  if (!hasAgents) {
+    const t = suggestTeam();
+    log('\n\x1b[1mSuggested team for this project:\x1b[0m');
+    info(t.frontiers === 0 ? 'no stack marker found — single dev until one appears'
+      : t.frontiers + ' frontier(s) detected' + (t.frontiers > 1 ? ' — one dev role per frontier, not a universal reviewer' : ' — dev-front and dev-back can be a single dev'));
+    info('base roles: ' + t.base.join(', '));
+    info('optional layer (' + t.optional.join(' / ') + ') enters when the activity asks for it');
+  }
 }
 
 log('\n\x1b[1mLeft for you to write by hand:\x1b[0m');

@@ -37,9 +37,10 @@ Detectado aqui: **Node/JS**.
   deste código entra no contexto de toda sessão e não devolve nada. Genérico é pior que
   ausente — é por isso que o marvin gera esta pasta e não os agentes.
 
-> Este repositório tem os papéis `po` e `tl` escritos, com escopo e armadilhas concretas.
-> Outros papéis só ganham arquivo quando a atividade exigir; o Marvin não escreve
-> agentes genéricos para preencher a pasta.
+> Este repositório tem os papéis `po`, `tl`, `dev-back`, `qa` e `scout` escritos, com escopo e
+> armadilhas concretas (decisão do dono, 08/10/2026). Os demais (`design`, `dba`, `sec`,
+> `infra`) só ganham arquivo quando a atividade exigir; o Marvin não escreve agentes
+> genéricos para preencher a pasta.
 
 ### Ponytail: em que papel entra
 

@@ -20,7 +20,14 @@ Se o Rumo tem entrada de sessão autônoma anterior, continue dela.
 
 Trabalhe **só** dentro do *Código tocado* da US. Arquivo fora dele que precisa mudar → é
 dependência (trava abaixo), não licença. **Nunca apague, mova ou renomeie** nada; nunca rode
-`git reset`, `git checkout --`, `rm -rf`. Invariante 1 vale dobrado sem ninguém olhando.
+`git reset`, `git checkout --`, `git stash`, `rm -rf`; nunca `push`, merge, publish nem tag.
+Invariante 1 vale dobrado sem ninguém olhando.
+
+**Estado por etapa, ao fechar cada uma — não só no passo 3.** A cota pode acabar no meio e
+quem assume (outro executor, a pedido do humano — ver o handoff em
+[delegacao](../../.marvin/Contexto/Fluxos/delegacao.md)) só tem o *Time* e o *Rumo*. Ao terminar
+cada etapa, atualize o estado dela no *Time* (`feita` com a evidência) e, ao começar, marque
+`em andamento`; o passo 3 é o fechamento, não o único registro.
 
 **Trava = qualquer coisa que o *Pronto quando* não decide.** Escolha de produto, nome de coisa
 que aparece para o usuário, dúvida sobre requisito, mudança fora do *Código tocado*, teste que
