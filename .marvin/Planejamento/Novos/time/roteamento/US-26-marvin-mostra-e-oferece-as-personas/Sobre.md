@@ -14,13 +14,16 @@ pai: ../Sobre.md
 4. Mitigar esforço e modelo, **possivelmente com o graphify**, para economizar tokens. Hoje o script **mede** tokens (`--status`) mas não economiza, e o graphify só localiza código, gera *Impacto* e agrupa ilhas — não escolhe modelo nem esforço; o próprio texto gerado diz "não declarar economia sem comparação" (`marvin.mjs:2183`).
 5. **"Deixar as personas criadas."**
 
-**Pergunta aberta (bloqueia o item 5):** criar personas **colide com o invariante 4** do `AGENTS.md` ("agentes, skills e o corpo do `AGENTS.md` são do humano; genérico é pior que ausente") e com o "deliberadamente não faz" do README. O `po` e o dono decidem antes de qualquer código. Caminhos a pesar, sem escolher aqui: (a) **só mostrar** o catálogo e a contagem no terminal (não escreve nada, não fere o invariante); (b) oferecer, **por pergunta explícita e uma vez**, gravar um *esqueleto* com o papel, as ferramentas e a régua de escopo, deixando o corpo "com as cicatrizes deste código" para o humano, e aviso de que é ponto de partida; (c) manter como está e só corrigir a promessa do README. O invariante 2 (idempotência) e o 1 (nunca sobrescrever agente existente) valem para (b).
+**Item 5 decidido (dono, 08/10/2026):** o invariante 4 pode mudar, e *skills e agentes são definidos por atividade*. Modelo: o dono é PM e TM e passa a demanda; o `tl` e o `po` fazem a triagem (quem toca, quais agentes e skills, esforço e modelo), sujeitos eles mesmos a esforço e modelo por atividade. **Aplicado em 08/10/2026:** nova redação do invariante 4 no `AGENTS.md` e a seção *Triagem* em `delegacao.md`. **O script continua sem escrever corpo de persona na instalação** — `po` e `tl` descartaram o esqueleto gerado (genérico é "papel vazio para preencher a pasta", `marvin.mjs:2780`), e o `tl` desaconselha; reabre só se o dono insistir, com as salvaguardas do parecer (`existsSync`, `fsw`, pergunta com TTY, `ATUALIZACOES` com `desde:`, teste de dois runs).
+
+**"Sempre graphify" ficou condicional**, por parecer do `po` e do `tl`: o graphify não existe nesta máquina, e o texto gerado já mede que para localizar o Grep é bem mais barato. A regra escrita é: com grafo fresco, a triagem parte do *Impacto*; sem, usa Grep e registra. Economia de tokens continua hipótese da US-19.
 
 **Pronto quando** (proposto; o `po` corta):
-1. **Item 1, só leitura:** a saída do `marvin` na montagem imprime a sugestão que já é calculada (número de fronteiras, papéis da base e a camada opcional `design`/`dba`/`sec`/`infra`), em inglês no código e com as chaves de tradução já usadas; **sem escrever arquivo novo**. Um teste em `teste.mjs` trava o texto no caso de stack única e no de várias fronteiras.
+0. **Pré-condição (bug achado pelo `tl`):** `frontiers = list.length + SUBREPOS.length` (`marvin.mjs:2767-2768`) conta tipos de marcador, não fronteiras — um projeto TS comum (`package.json` + `tsconfig.json`) cai em "2 fronteiras". Consertar contando diretórios (`stacks.size`) mais sub-repos, antes de imprimir.
+1. **Item 1, só leitura:** a saída do `marvin` na montagem imprime a sugestão (número de fronteiras, papéis da base e a camada opcional `design`/`dba`/`sec`/`infra`), em inglês fixo como o resto da saída (**não há camada de tradução**), **só quando `.claude/agents` não tem nenhum `*.md` além do README**; a conta vira função nomeada (hoje é anônima no template). **Sem escrever arquivo novo**, então não mexe em `ATUALIZACOES`. Testes em `teste.mjs` via `run()`: só `package.json` → 1 fronteira e `dev` único; `package.json` + `go.mod` em subpastas → 2; `package.json` + `tsconfig.json` → 1; dry-run imprime e não grava.
 2. **Promessa corrigida:** `README.md` e `README.pt-BR.md` (no mesmo commit) deixam de dizer "dois papéis em stack única" e descrevem o que o código faz.
 3. **Itens 2–4:** o `po` diz, com base no que já existe em `delegacao.md` e no `/us`, **o que é lacuna real e o que só falta o dono ler**; só vira trabalho o que ele marcar como medido. Nenhuma promessa de "economia de tokens" sem a medição de 3–4 US da US-19.
-4. **Item 5:** decisão registrada no *Rumo* (a, b ou c). Se (b), a US se divide.
+4. **Item 5:** feito (invariante 4 e *Triagem*, acima). Fica: levar a triagem ao template gerado (`/us` e `Planejamento/README.md`) é **outra US, só com medição** (2 US daqui com triagem explícita) e exige `ATUALIZACOES`.
 
 ## Fluxos ligados
 - [delegação](../../../../Contexto/Fluxos/delegacao.md) — onde o papel certo por atividade já é descrito (itens 2 e 4)
@@ -49,7 +52,8 @@ Decomposição ([delegação](../../../../Contexto/Fluxos/delegacao.md)): **julg
 - _proposta, só na segunda vez:_ um passo "mostrar o catálogo de papéis" reutilizável, caso outra US precise imprimir o mesmo.
 
 ## Rumo
-- **08/10/2026** — aberta a partir da conversa: o dono pensava que o Marvin já criava as personas e as chamava por atividade. Medido: não cria, e o terminal não mostra a contagem. Pergunta aberta registrada acima (item 5 × invariante 4). Nada implementado.
+- **08/10/2026** — aberta a partir da conversa: o dono pensava que o Marvin já criava as personas e as chamava por atividade. Medido: não cria, e o terminal não mostra a contagem. Nada implementado de código.
+- **08/10/2026** — o dono liberou mudar o invariante 4 ("skills e agentes são definidos por atividade") e descreveu o modelo PM → `tl`+`po` (triagem) → time. `po` e `tl` (Opus) opinaram: o modelo já é o `/us` + `delegacao.md`, faltava dono para a triagem e o terminal mudo; persona só vira arquivo com armadilha concreta; "sempre graphify" → condicional. Aplicado só em texto (`AGENTS.md` invariante 4; `delegacao.md` *Triagem*). **Próximo:** consertar a contagem de fronteiras e imprimir a sugestão (itens 0–2).
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->

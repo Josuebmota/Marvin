@@ -45,6 +45,27 @@ não presumir que todas as opções geram texto, código ou vídeo.
    destino, motivo e check com resultado. Se já estiver no topo disponível, escalar
    ao humano e manter a tarefa pendente; não inventar outro degrau.
 
+## Triagem — quem decide o time da atividade (US-26, 08/10/2026)
+
+O dono (PM) passa a demanda; o **`tl` e o `po` fazem a triagem juntos**, com o contexto
+inteiro da US: quem deve tocar, quais agentes e skills a atividade pede (só os que ela usa,
+mais `design`/`dba`/`sec`/`infra` quando for o caso), com que **esforço** e **modelo**. É o
+passo 2 do `/us`, agora com dono explícito; não é uma etapa nova.
+
+- **Registro:** o resultado vai no *Time*/*Skills* da US. Agente ou skill novos nascem aí; só
+  viram arquivo em `.claude/agents/` ou `.claude/skills/` com uma armadilha concreta (agente)
+  ou na segunda execução (skill). Quem escreve o corpo é o `tl`+`po`, não o script.
+- **O `tl` e o `po` também são escolhidos por atividade.** O `model:` do frontmatter é só o
+  padrão; a chamada Agent aceita `model` por chamada. O esforço **não** tem override na chamada:
+  vem do frontmatter ou é herdado da sessão — registrar "herdado (sessão)" é a limitação
+  explícita. Esforço menor nunca reduz a revisão dos invariantes.
+- **Grafo na triagem, quando houver:** se `graphify-out/graph.json` existir e estiver mais
+  novo que o código, o `tl`/`po` partem da seção *Impacto* e das ilhas da US (quem depende do
+  que ela toca, e qual o tamanho). Se não, registram "grafo ausente ou velho" no *Time* e usam
+  Grep/Glob — a triagem **não fica bloqueada** por falta de grafo. Para **localizar** arquivo ou
+  símbolo, Grep/Glob é mais barato (medido: ~1.650 tk pelo grafo contra ~18 com glob). Que o
+  grafo economize tokens na triagem é **hipótese**, medida na US-19, nunca promessa.
+
 ## Glossário de capacidades — escopo confirmado em 06/10/2026
 
 Registro curado que cresce com as atividades e os acessos usados, não pesquisa

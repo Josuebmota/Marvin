@@ -65,8 +65,14 @@ bloco de escrita é guardado por `if (!fs.existsSync(...))`.
 aviso mandando conferir. **Adaptador que não carrega falha em silêncio** — pior que
 adaptador ausente.
 
-**4. Não escrever conteúdo que exige conhecer o projeto.** Agentes, skills e o corpo do
-`AGENTS.md` são do humano. Genérico é pior que ausente.
+**4. O script não escreve conteúdo que exige conhecer o projeto.** O corpo de agentes, de
+skills e do `AGENTS.md` nunca sai do `marvin.mjs`: genérico é pior que ausente. Agentes e
+skills nascem **por atividade**, escritos pelo `tl` e pelo `po` com o dono, a partir da US que
+os pede e com as armadilhas concretas do código que ela toca; ficam registrados no
+*Time*/*Skills* dela e só viram arquivo com uma armadilha concreta (agente) ou na segunda
+execução (skill). O script pode **mostrar** o que o diagnóstico sugere; quem decide e escreve
+é quem conhece o projeto. (Mudado em 08/10/2026 por decisão do dono: antes dizia "são do
+humano"; o sujeito passou a ser a atividade.)
 
 ## Armadilhas
 
