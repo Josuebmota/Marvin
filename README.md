@@ -559,7 +559,11 @@ graphify-out/
 extracting from the root alone indexes everything *except* your code. Measured on a monorepo
 with four sub-repos: 2,783 of its 2,854 nodes came from `.claude/` and **none** from the
 product — and nothing along the way said so. Marvin finds the sub-repos the root ignores,
-indexes each on its own, and merges them into one graph.
+indexes each on its own, and merges them into one graph. It looks two levels down, so a
+parent folder holding `repos/<x>` works too, and it writes a `.graphifyignore` that keeps
+`.agents/` (a mirror of `.claude/`) out of the extraction. A path in a US's "Código tocado"
+can carry the repo prefix (`repos/web/src/a.ts`) or not: without it, the one repo that has
+the file wins, and a file present in two is reported as ambiguous and linked to neither.
 
 Community naming is the one part that needs an LLM, so by default they stay `Community 0`,
 `Community 1`. Two flags cover the rest:

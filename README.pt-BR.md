@@ -554,7 +554,11 @@ graphify-out/
 `.gitignore`, então extrair só da raiz indexa tudo *menos* o seu código. Medido num monorepo
 de quatro sub-repos: 2.783 dos 2.854 nós vinham de `.claude/` e **nenhum** do produto — e
 nada no caminho avisava. O Marvin acha os sub-repos que a raiz ignora, indexa cada um e
-mescla tudo num grafo só.
+mescla tudo num grafo só. Ele olha dois níveis abaixo, então uma pasta-mãe com `repos/<x>`
+também funciona, e grava um `.graphifyignore` que deixa `.agents/` (espelho do `.claude/`)
+fora da extração. O caminho no "Código tocado" de uma US pode ter o prefixo do repo
+(`repos/web/src/a.ts`) ou não: sem ele, vale o único repo que tem o arquivo, e arquivo
+presente em dois é avisado como ambíguo e não liga a nenhum.
 
 Nomear as comunidades é a única parte que exige LLM, então por padrão elas ficam
 `Community 0`, `Community 1`. Duas flags cobrem o resto:
