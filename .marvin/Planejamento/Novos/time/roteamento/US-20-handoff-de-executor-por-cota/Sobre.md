@@ -18,7 +18,9 @@ não num chat nem numa ferramenta.
 **Pronto quando:**
 1. O formato do *Time* ganha **estado por etapa** (`pendente`, `em andamento`, `feita`
    com evidência), documentado em `Planejamento/README.md`, com a regra de atualizar
-   ao fechar cada etapa, não no fim.
+   ao fechar cada etapa, não no fim. **Vale também para o `/continuar`** (sessão autônoma): ele
+   grava o estado no *Time* ao fechar cada etapa, não só no *Rumo* do passo 3 — feito em
+   08/10/2026 em `.claude/commands/continuar.md`.
 2. [delegacao](../../../../../Contexto/Fluxos/delegacao.md) ganha o passo de **handoff**, escrito
    sem depender de ferramenta (o `/retomar` é do Claude Code), com o de-para, a lacuna
    explícita e a verificação do que o anterior fez.
@@ -32,6 +34,13 @@ não num chat nem numa ferramenta.
 **Não entra:** instalar ou configurar gateway, importar credenciais de assinatura,
 troca de sessão sem humano (quem abre a nova sessão é a pessoa), detectar cota restante
 (as ferramentas não expõem de forma confiável), medir economia e ranking permanente.
+
+**Ajuste de 08/10/2026 (dono do projeto, vindo da US-25):** o trabalho longo por horas já é o
+`/continuar`; o que faltava era ele gravar o estado por etapa **durante** o trabalho, porque quem
+perde a cota não chega ao passo 3. Reabrir a troca *sem humano* foi **proposto e não escolhido**:
+fica fora, como acima. Paradas obrigatórias mantidas no `/continuar` (acrescentado `git stash`,
+`push`, merge, publish e tag). Um commit local por etapa como ponto de retomada, sugerido pelo
+`tl`, **não entrou**: contradiz o "sem commit" do `/continuar`, em que o diff é a evidência do humano.
 
 ## Fluxos ligados
 - [delegacao](../../../../../Contexto/Fluxos/delegacao.md)
@@ -59,6 +68,7 @@ Nenhuma nova. Se o gateway entrar no registro de ferramentas, reutilizar
 `adaptador-de-ferramenta`.
 
 ## Rumo
+- **08/10/2026** — o `/continuar` passa a gravar o estado por etapa no *Time* (ver *Ajuste de 08/10/2026*). Origem: pareceres de `po` e `tl` na [US-25](../../../ferramentas-opcionais/adaptadores/US-25-avaliar-superpowers-e-octopus/Sobre.md). Falta o item 3 (ensaio documental), de preferência sobre uma US que o `/continuar` deixou pela metade.
 - **07/10/2026** — revisada por `po` e `tl`. **3ª da fila** (itens 1 e 3, só documentação; pode correr em paralelo às outras). `tl` aprovou o `b88b291` e o passo de handoff em `delegacao.md:112-139`. Gateway: **descartado** (item 4). Ressalva do `tl`, não bloqueia: `delegacao.md:137-139` cita a documentação do Claude Code dentro de um passo que se diz neutro de ferramenta. Itens 5 e 6 cortados (ver "Cortado").
 - **07/10/2026** — reescrita de *failover* para **handoff assistido**. O Josué descreveu
   o desenho: o novo modelo lê o que foi feito e refaz o de-para de papel, capacidade e
