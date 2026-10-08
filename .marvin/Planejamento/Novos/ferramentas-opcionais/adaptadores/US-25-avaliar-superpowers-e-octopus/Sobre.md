@@ -61,3 +61,4 @@ Decomposição (conforme [delegação](../../../../Contexto/Fluxos/delegacao.md)
 - Leitura dos repositórios e pareceres do `po` e do `tl`: *Rumo* acima (clones em `obra/superpowers@8ca22db` e `nyldn/claude-octopus@4d152db`).
 - Commits na branch `claude/marvin-reference-xpxy32`: `f6e323c` (abertura), `f537266` (leitura), `0bf6370` (pareceres), `c3b99b7` (US-20 e `/continuar`) e o commit desta frase nos READMEs.
 - `node teste.mjs`: 268 passaram antes de cada commit; `git diff --check` limpo. Nenhuma mudança em `marvin.mjs`.
+- PR #1 mesclado na `main` (`2688f80`), com o CI verde em Linux, Windows e macOS; validada pelo dono em 08/10/2026 e registrada na release 2.1.0.
