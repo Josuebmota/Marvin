@@ -578,6 +578,14 @@ only and throws the sub-repos away. Marvin writes that warning into the generate
 naming the sub-repos, so the agent doesn't wreck the graph by following graphify's own
 instructions. The right refresh is `marvin --graphify --graphify-rebuild`.
 
+**Versioning the derived output.** By default `graphify-out/` (and `.marvin/.status/` from
+`--status --html`) go into `.gitignore`. If you want them in git, run
+`marvin --track=grafo,status` (`--untrack=` undoes it). The choice is recorded as
+`versiona: grafo=sim, status=não` in the header of `.marvin/ferramentas.md` and read on later
+runs; the flag wins over the record, and with neither Marvin keeps ignoring them and says it
+assumed so. With `sim`, Marvin never adds the line — and if it is already in `.gitignore` it
+warns you to remove it, but never edits the file for you.
+
 ### Refreshing it automatically
 
 The graph ages with every commit and never says so. `--graphify-git-hook` closes that gap by
@@ -691,7 +699,7 @@ rather than final text.
 node teste.mjs
 ```
 
-286 checks, no dependencies. It covers the invariants that protect other
+300 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

@@ -1407,6 +1407,65 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(f);
 }
 
+// ── 9z. US-21: --track/--untrack — the owner decides whether the derived output is versioned.
+//     The graph is synthetic (no graphify binary needed). Run the guards removed to see red.
+{
+  const gi = (x) => path.join(x.proj, '.gitignore');
+  const readGi = (x) => fs.existsSync(gi(x)) ? fs.readFileSync(gi(x), 'utf8') : null;
+  const withGraph = (x) => { fs.mkdirSync(path.join(x.proj, 'graphify-out'), { recursive: true }); fs.writeFileSync(path.join(x.proj, 'graphify-out', 'graph.json'), JSON.stringify({ directed: true, nodes: [], edges: [] })); };
+  const derive = (x, ...f) => { run(x, '--no-git', '--graphify', ...f); return run(x, '--no-git', '--status', '--html', ...f); };
+
+  // (a) no record, no flag → the line is added (compatibility)
+  const a = arena('versiona-a'); run(a, '--no-git'); withGraph(a); fs.writeFileSync(gi(a), 'x\n');
+  const ra = derive(a);
+  check('US-21 (a): sem registro e sem flag, acrescenta graphify-out/ e .marvin/.status/', /^graphify-out\/$/m.test(readGi(a)) && /^\.marvin\/\.status\/$/m.test(readGi(a)));
+  check('US-21 (a): a saída diz que assumiu `não`', /assumed `não`/.test(ra.stdout));
+  cleanup(a);
+
+  // (b) sim, in a project with NO .gitignore: step 8 creates it without the graph line; nothing is added afterwards
+  const b = arena('versiona-b'); const rb0 = run(b, '--track=grafo,status'); withGraph(b);
+  const giB = readGi(b);
+  check('US-21 (b): o passo 8 cria o .gitignore sem graphify-out/', giB !== null && !/graphify-out/.test(giB), String(giB).slice(0, 200));
+  const rec = () => fs.readFileSync(path.join(b.proj, '.marvin', 'ferramentas.md'), 'utf8');
+  check('US-21: a escolha vai para o ferramentas.md', /^versiona: grafo=sim, status=sim$/m.test(rec()), rb0.stdout.slice(-300));
+  const rb = derive(b);   // no flag: reads the record
+  check('US-21 (b): --graphify e --status --html deixam o .gitignore byte a byte igual', readGi(b) === giB && !/chose to version/.test(rb.stdout));
+  const before = rec(); run(b, '--track=grafo,status');
+  check('US-21: repetir a flag não reescreve o registro', rec() === before);
+  run(b, '--untrack=grafo');
+  check('US-21: --untrack flipa só o item pedido', /^versiona: grafo=não, status=sim$/m.test(rec()));
+  run(b, '--no-git', '--graphify', '--track=grafo');
+  check('US-21: a flag vence o registro', readGi(b) === giB && /^versiona: grafo=sim/m.test(rec()));
+  cleanup(b);
+
+  // (c) the line is already there and the owner chose sim → warning, nothing removed
+  const c = arena('versiona-c'); run(c, '--no-git'); withGraph(c);
+  const text = '# meu\ngraphify-out/\n.marvin/.status/\n'; fs.writeFileSync(gi(c), text);
+  const rc = derive(c, '--track=grafo,status');
+  check('US-21 (c): linha presente com sim → avisa e não remove', readGi(c) === text && /graphify-out\/ is in \.gitignore/.test(run(c, '--no-git', '--graphify').stdout));
+  check('US-21 (c): o aviso do .status (writeStatusHtml) aparece sozinho, na saída do --status --html', /\.marvin\/\.status\/ is in \.gitignore but you chose to version it/.test(rc.stdout), rc.stdout.slice(-400));
+  // --status --html --track holds for this run only: says so, and records nothing
+  const recC = () => fs.readFileSync(path.join(c.proj, '.marvin', 'ferramentas.md'), 'utf8');
+  const beforeC = recC(), rs = run(c, '--no-git', '--status', '--html', '--untrack=status');
+  check('US-21: --status --html com --track avisa que vale só nesta execução e não grava', /holds for this run only/.test(rs.stdout) && recC() === beforeC, rs.stdout.slice(-300));
+  // ferramentas.md without frontmatter: warns, does not record
+  fs.writeFileSync(path.join(c.proj, '.marvin', 'ferramentas.md'), '# sem cabeçalho\n');
+  const rn = run(c, '--no-git', '--track=grafo');
+  check('US-21: ferramentas.md sem frontmatter avisa e não grava', /has no frontmatter/.test(rn.stdout) && !/versiona:/.test(fs.readFileSync(path.join(c.proj, '.marvin', 'ferramentas.md'), 'utf8')), rn.stdout.slice(-300));
+  cleanup(c);
+
+  // dry-run in a new project: the template is not on disk yet, so no false "not recorded"
+  const e = arena('versiona-e'); const re = run(e, '--dry-run', '--track=grafo');
+  check('US-21: dry-run com --track num projeto novo não diz "not recorded"', !/not recorded/.test(re.stdout) && /would record versiona: grafo=sim/.test(re.stdout), re.stdout.slice(-300));
+  cleanup(e);
+
+  // invalid arguments abort before ANY write
+  const d = arena('versiona-d');
+  const r1 = run(d, '--track=banana'), r2 = run(d, '--track=grafo', '--untrack=grafo'), r3 = run(d, '--track'), r4 = run(d, '--track=');
+  check('US-21: argumento inválido, conflito, flag sem valor e --track= vazio abortam sem escrever', [r1, r2, r3, r4].every(r => r.status === 1) && files(d.proj).length === 0);
+  cleanup(d);
+}
+
 // ── LAST. The number of checks claimed in the READMEs matches the real one.
 //
 // It has drifted THREE times in this repository: 26 when there were 28, 48 when there

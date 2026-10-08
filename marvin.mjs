@@ -167,6 +167,11 @@ Flags:
                     access: subscription,api,local,unknown; configured: yes,no,unknown
                     requires --executor; --ai=none declares no access
                     local inventory only: no authentication, inference or routing
+  --track=<list>    version the derived output instead of git-ignoring it: grafo (graphify-out/),
+  --untrack=<list>  status (.marvin/.status/). Recorded in .marvin/ferramentas.md as
+                    \`versiona: grafo=sim, status=não\`; the flag wins over the record, and with
+                    neither the derived output is NOT versioned. A line already in .gitignore
+                    is reported, never removed
   --status          dashboard, read-only: active USs with their last Rumo, progress per
                     Epic, last release, fixed context, graph age. Exits non-zero when the
                     note and the nodes disagree. Run it when you open a session
@@ -202,6 +207,35 @@ Docs: README.md (English) · README.pt-BR.md (Português)
 `);
   process.exit(0);
 }
+
+// --track / --untrack (US-21): whether the DERIVED output (graph, status page) is versioned is
+// the repository owner's call. Validated here, before any write, like --ai/--executor.
+const TRACKABLE = ['grafo', 'status'];
+const trackFlag = {};   // item -> true (--track) | false (--untrack); absent = no flag
+try {
+  for (const [flag, val] of [['--track', true], ['--untrack', false]]) {
+    for (const a of process.argv.filter(a => a === flag || a.startsWith(flag + '='))) {
+      const items = a.slice(flag.length + 1).split(',').map(s => s.trim().toLowerCase());
+      if (!items.length || items.some(i => !TRACKABLE.includes(i)))
+        throw new Error('use ' + flag + '=' + TRACKABLE.join(',') + ' (see --help)');
+      for (const i of items) {
+        if (i in trackFlag && trackFlag[i] !== val) throw new Error(i + ' is in both --track and --untrack');
+        trackFlag[i] = val;
+      }
+    }
+  }
+} catch (e) { err('versioning: ' + e.message); process.exit(1); }
+// The record lives in the frontmatter of ferramentas.md: `versiona: grafo=sim, status=não`.
+const trackRecord = () => {
+  let t = ''; try { t = fs.readFileSync(RECORD_FILE, 'utf8'); } catch { return {}; }
+  const fm = (t.match(/^---\r?\n([\s\S]*?)\r?\n---/) || [])[1] || '';
+  const line = (fm.match(/^versiona:[ \t]*(.+)$/m) || [])[1] || '';
+  return Object.fromEntries([...line.matchAll(/(grafo|status)[ \t]*=[ \t]*(sim|n[aã]o)/gi)]
+    .map(m => [m[1].toLowerCase(), /^sim$/i.test(m[2])]));
+};
+// flag > record > false (the pre-US-21 behavior: git-ignore it)
+const tracks = (item) => item in trackFlag ? trackFlag[item] : (trackRecord()[item] ?? false);
+const trackAssumed = (item) => !(item in trackFlag) && !(item in trackRecord());
 
 // Availability is a declaration, not an operational router configuration. Validate
 // even in dry-run, before ANY write. Closed values also keep secrets out of prompts.
@@ -834,9 +868,12 @@ const writeStatusHtml = (st, quiet = false) => {
   const gi = path.join(ROOT, '.gitignore');
   if (fs.existsSync(gi)) {
     const txt = fs.readFileSync(gi, 'utf8');
-    if (!txt.split(/\r?\n/).some(l => l.trim() === relStatus || l.trim() === relStatus.replace(/\/$/, ''))) {
+    const listed = txt.split(/\r?\n/).some(l => l.trim() === relStatus || l.trim() === relStatus.replace(/\/$/, ''));
+    if (tracks('status')) {   // US-21: the owner versions it — never add the line, never remove it either
+      if (listed) warn(relStatus + ' is in .gitignore but you chose to version it — remove the line');
+    } else if (!listed) {
       fsw.appendFileSync(gi, (txt.endsWith('\n') ? '' : '\n') + '\n# status do marvin: DERIVADO, não versionar\n' + relStatus + '\n');
-      ok(relStatus + ' added to .gitignore');
+      ok(relStatus + ' added to .gitignore' + (trackAssumed('status') ? ' (no `versiona:` choice recorded — assumed `não`; --track=status to version it)' : ''));
     }
   }
   // the series
@@ -1264,6 +1301,7 @@ if (hasFlag('--status')) {
   if (OLD_LAYOUT) { if (!SHORT) warn('old layout — --status reads Planejamento/<Epic>/<Feature>/<US>/Sobre.md. Run `marvin --migrar` first.'); process.exit(SHORT ? 0 : 1); }
   const st = computeStatus();
   printStatus(st, SHORT);
+  if (Object.keys(trackFlag).length && !SHORT) warn('--track/--untrack in --status holds for this run only — run marvin --track=' + Object.keys(trackFlag).join(',') + ' (or --untrack=) without --status to record it');
   // The session opened at a path with no junction (worktree, fresh clone, moved folder):
   // everything the agent writes to memory lands in a real directory and never reaches the
   // repository. Warned here because it is the only place that runs in EVERY session; --check is on demand.
@@ -1789,6 +1827,12 @@ Registro de "este projeto usa X". O \`marvin\` pergunta uma vez e escreve aqui; 
 mudar, edite a coluna **usa** ou rode \`marvin --use=<ferramenta>\`. **Alcance** diz
 quem consegue ler o que a ferramenta produz — nem tudo é de todo agente.
 
+**Versionar o derivado:** por padrão o grafo (\`graphify-out/\`) e a página de status
+(\`.marvin/.status/\`) vão para o \`.gitignore\`. Para versioná-los, rode
+\`marvin --track=grafo,status\` (ou \`--untrack=\` para voltar): a escolha fica na linha
+\`versiona:\` do cabeçalho deste arquivo e o \`marvin\` passa a ler dela. Linha que já está no
+\`.gitignore\` o \`marvin\` avisa, nunca remove.
+
 | ferramenta | usa | alcance | data |
 |---|---|---|---|
 ` + newOnes.join('\n') + '\n');
@@ -1811,6 +1855,20 @@ quem consegue ler o que a ferramenta produz — nem tudo é de todo agente.
     if (head !== fm[1]) {
       fsw.writeFileSync(RECORD, cur.replace(fm[0], '---\n' + head + '\n---'));
       ok(RECORD_REL + ': marvin ' + (last ? last.trim() + ' → ' : '') + SELF_VERSION);
+    }
+  }
+  // Versioning choice (US-21): only a flag writes it, and only when it changes the line.
+  if (Object.keys(trackFlag).length) {
+    const merged = { ...trackRecord(), ...trackFlag };
+    const value = TRACKABLE.filter(i => i in merged).map(i => i + '=' + (merged[i] ? 'sim' : 'não')).join(', ');
+    let t = ''; try { t = fs.readFileSync(RECORD, 'utf8'); } catch {}
+    const m = t.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    if (!t) info(RECORD_REL + ': would record versiona: ' + value);   // dry-run: the template is not on disk yet
+    else if (!m) warn(RECORD_REL + ' has no frontmatter — `versiona: ' + value + '` not recorded; the flag only holds for this run');
+    else if ((m[1].match(/^versiona:[ \t]*(.+)$/m) || [])[1]?.trim() !== value) {
+      const head = /^versiona:/m.test(m[1]) ? m[1].replace(/^versiona:[ \t]*.+$/m, () => 'versiona: ' + value) : m[1] + '\nversiona: ' + value;
+      fsw.writeFileSync(RECORD, t.replace(m[0], () => '---\n' + head + '\n---'));
+      ok(RECORD_REL + ': versiona: ' + value);
     }
   }
 }
@@ -3520,9 +3578,10 @@ if (!NO_GIT) {
       '# segredos e dados — NUNCA', '**/credentials/', '**/data/', '.env', '.env.*', '*.pem', '*.key', '',
       '# artefatos de ferramenta de orquestração', '.swarm/', '.claude-flow/', '.hive-mind/',
       '*.rvf', '*.rvf.lock', 'ruvector.db', '.claude/settings.local.json', '',
-      '# grafo de código: DERIVADO. Versionar artefato derivado é como ele fica velho',
-      '# em silêncio e passa a mentir com a autoridade de quem foi commitado.',
-      'graphify-out/', '',
+      ...(tracks('grafo') ? [] : [
+        '# grafo de código: DERIVADO. Versionar artefato derivado é como ele fica velho',
+        '# em silêncio e passa a mentir com a autoridade de quem foi commitado.',
+        'graphify-out/', '']),
       '# lixo — shell mal-formado, temporários, locks',
       '*.log', '*.tmp', '*.temp', '*.bak', '*.orig', '*.rej', '*.swp', '~$*',
       'nul', 'NUL', 'Thumbs.db', '.DS_Store', '',
@@ -3593,10 +3652,13 @@ if (GRAPHIFY) {
     const gi2 = path.join(ROOT, '.gitignore');
     if (fs.existsSync(gi2)) {
       const txt = fs.readFileSync(gi2, 'utf8');
-      if (!/^graphify-out\/?\s*$/m.test(txt)) {
+      const listed = /^graphify-out\/?\s*$/m.test(txt);
+      if (tracks('grafo')) {   // US-21: the owner versions it — never add the line, never remove it either
+        if (listed) warn('graphify-out/ is in .gitignore but you chose to version it — remove the line');
+      } else if (!listed) {
         fsw.appendFileSync(gi2, (txt.endsWith('\n') ? '' : '\n') +
           '\n# grafo de código: DERIVADO, não versionar\ngraphify-out/\n');
-        ok('graphify-out/ added to .gitignore');
+        ok('graphify-out/ added to .gitignore' + (trackAssumed('grafo') ? ' (no `versiona:` choice recorded — assumed `não`; --track=grafo to version it)' : ''));
       } else info('graphify-out/ is already in .gitignore');
     }
 
@@ -3938,6 +4000,10 @@ const UPDATES = [
     o_que: 'the triage by tl + po (who works, which agents/skills, effort and model) and the optional graph rule' },
   { arquivo: 'AGENTS.md', marca: /triagem\s+do\s+`tl`\s+com\s+o\s+`po`/, desde: '2.1.0',
     o_que: 'the pointer to the tl + po triage in "Antes de qualquer US"' },
+  // US-21: the versioning choice is recorded in ferramentas.md (`versiona:`); an older record does
+  // not explain --track/--untrack, so nobody learns the derived output can be versioned.
+  { arquivo: path.relative(ROOT, RECORD).replace(/\\/g, '/'), marca: /Versionar\s+o\s+derivado/, desde: '2.2.0',
+    o_que: 'the "Versionar o derivado" note — --track/--untrack and the `versiona:` line' },
   { arquivo: '.claude/skills/README.md', marca: /Skill, agente ou command/i,
     o_que: 'the skill vs. agent vs. command discriminator (and the 2x rule)' },
   // A rule lives where it fires (11/09): closing a session → /retomar; portability → Sobre.md;

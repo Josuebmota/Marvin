@@ -573,6 +573,14 @@ raiz e joga fora os sub-repos. O Marvin escreve esse aviso no `CLAUDE.md` gerado
 sub-repos, para o agente não destruir o grafo seguindo a instrução do próprio graphify. O
 comando certo é `marvin --graphify --graphify-rebuild`.
 
+**Versionando o derivado.** Por padrão `graphify-out/` (e `.marvin/.status/`, do
+`--status --html`) vão para o `.gitignore`. Se você quer no git, rode
+`marvin --track=grafo,status` (`--untrack=` desfaz). A escolha fica registrada como
+`versiona: grafo=sim, status=não` no cabeçalho de `.marvin/ferramentas.md` e é lida nas
+passadas seguintes; a flag vence o registro, e sem nenhum dos dois o Marvin continua
+ignorando e diz que assumiu. Com `sim`, ele nunca acrescenta a linha — e se ela já está no
+`.gitignore`, avisa para você remover, mas não edita o arquivo por você.
+
 ### Atualizando sozinho
 
 O grafo envelhece a cada commit e nunca avisa. O `--graphify-git-hook` fecha essa lacuna
@@ -677,7 +685,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-286 verificações, zero dependência. Cobre os invariantes que protegem o disco
+300 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:
