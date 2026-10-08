@@ -59,12 +59,17 @@ passo 2 do `/us`, agora com dono explícito; não é uma etapa nova.
   padrão; a chamada Agent aceita `model` por chamada. O esforço **não** tem override na chamada:
   vem do frontmatter ou é herdado da sessão — registrar "herdado (sessão)" é a limitação
   explícita. Esforço menor nunca reduz a revisão dos invariantes.
-- **Grafo na triagem, quando houver:** se `graphify-out/graph.json` existir e estiver mais
-  novo que o código, o `tl`/`po` partem da seção *Impacto* e das ilhas da US (quem depende do
-  que ela toca, e qual o tamanho). Se não, registram "grafo ausente ou velho" no *Time* e usam
-  Grep/Glob — a triagem **não fica bloqueada** por falta de grafo. Para **localizar** arquivo ou
-  símbolo, Grep/Glob é mais barato (medido: ~1.650 tk pelo grafo contra ~18 com glob). Que o
-  grafo economize tokens na triagem é **hipótese**, medida na US-19, nunca promessa.
+- **Grafo na triagem — obrigatório neste repo (dono, 08/10/2026; nos projetos que o Marvin
+  monta continua opcional):** o `tl` e o `po` **sempre** partem do
+  grafo: a seção *Impacto* e as ilhas da US dizem quem depende do que ela toca e qual o
+  tamanho. O graphify é uma ferramenta **obrigatória da triagem**, instalada à parte
+  (`uv tool install graphifyy` ou `pipx install graphifyy` — não é pacote npm, e o
+  `package.json` continua sem dependências). Se o grafo faltar ou estiver velho
+  (`marvin --graphify`), a triagem **não segue em silêncio**: registra "grafo ausente ou
+  velho" no *Time*, diz o que ficou sem *Impacto* e só então usa Grep/Glob como fallback
+  declarado. Para **localizar** arquivo ou símbolo, Grep/Glob continua mais barato (medido:
+  ~1.650 tk pelo grafo contra ~18 com glob). Que o grafo economize tokens na triagem é
+  **hipótese**, medida na US-19, nunca promessa.
 
 ## Glossário de capacidades — escopo confirmado em 06/10/2026
 

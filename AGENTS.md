@@ -12,7 +12,7 @@ trabalhar com agentes de IA. Documentação de uso: [README.md](README.md).
 
 | Arquivo | O que é |
 |---|---|
-| `marvin.mjs` | o script inteiro — ~3750 linhas, zero dependência |
+| `marvin.mjs` | o script inteiro — ~4000 linhas, zero dependência |
 | `teste.mjs` | smoke test dos invariantes — zero dependência |
 | `PROMPT.md` | o prompt que guia a escrita dos agentes (o script não escreve) |
 | `README.md` / `README.pt-BR.md` | documentação pública, inglês e português |
@@ -105,7 +105,8 @@ humano"; o sujeito passou a ser a atividade.)
   média/baixa **de propósito**. Se confirmar alguma, atualize a tabela dos **dois**
   READMEs e o selo no `marvin.mjs` juntos.
 - **Não usar `Date.now()` nem `Math.random()`** — o script precisa ser determinístico
-  para ser idempotente.
+  para ser idempotente. Única exceção tolerada: `days()` (`marvin.mjs:552`), idade só exibida
+  no `--status` e no `index.html` derivado e git-ignorado; nada disso vai para arquivo versionado.
 
 ## A memória deste repo é versionada — e pública
 
@@ -177,6 +178,13 @@ stdlib → …). Vale para quem **implementa**. Ele **não substitui**: os invar
 o `tl` lendo diff, o `po` questionando requisito, nem o `teste.mjs` — o "um check" dele é o
 piso, não o teto. Quais papéis o carregam: `.claude/agents/README.md`. Ativo nesta máquina =
 `~/.claude/.ponytail-active`; instalado sem ativo não faz nada. Registro: `.marvin/ferramentas.md`.
+
+**Graphify** — **neste repo, obrigatório na triagem** (dono, 08/10/2026; para os projetos que o
+Marvin monta continua opcional): o `tl` e o `po` partem do grafo
+(*Impacto* e ilhas da US) para decidir quem toca. Instala-se à parte
+(`uv tool install graphifyy`); **não** é dependência npm, o `package.json` continua sem
+`dependencies`. Grafo ausente ou velho vira registro explícito no *Time*, nunca omissão.
+Para localizar arquivo ou símbolo, Grep/Glob é mais barato. Fluxo: `delegacao.md` > Triagem.
 
 ## Higiene de sessão
 
