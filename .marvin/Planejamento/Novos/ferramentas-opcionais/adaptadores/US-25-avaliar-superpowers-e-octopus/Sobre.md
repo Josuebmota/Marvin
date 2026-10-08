@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-25 — avaliar Superpowers e Claude Octopus contra o fluxo do Marvin
@@ -55,6 +55,9 @@ Decomposição (conforme [delegação](../../../../Contexto/Fluxos/delegacao.md)
   - **`tl` — handoff autônomo longo:** hoje **bloqueia**, porque contradiz `US-20:32` e `delegacao.md:107-109,115`; reabrir é decisão do `po` com o fato novo no Rumo. Cenário que quebra: o executor A perde a cota no meio da etapa sem gravar o estado, o B lê "em andamento" e refaz sobre trabalho não commitado, ou roda `git checkout`/`stash` (já apagou trabalho em 16/09). O "Ruling e segue" do Superpowers (`subagent-driven-development/SKILL.md:19-31`), por horas, decide sozinho o que aqui é do humano. Estado só no `Sobre.md` (*Time* por etapa + *Rumo*) **mais um commit local por etapa** como ponto de retomada; nunca em `.octo/`. Paradas obrigatórias mesmo em modo autônomo: apagar/sobrescrever sem copiar e conferir; `checkout`/`stash`/`reset` com diff pendente; push, merge, publish, tag; rodar `marvin` em outro repo ou mexer em junction; credencial, provedor pago ou orçamento; mudar invariantes ou o corpo do `AGENTS.md`; `teste.mjs` vermelho; plano quebrado. Cada parada deixa a etapa `pendente` com o motivo.
   - **Convergência dos dois:** (b) agora, em uma frase nos dois READMEs; (a) parado até a US-19 medir; a ideia nova vira **ajuste na US-20** (item 1 estendido ao `/continuar` + ensaio documental + as paradas do `tl`), sem tocar o `marvin.mjs`. **Falta a decisão do dono:** reabrir ou não a troca de executor *sem humano* (hoje cortada).
 - **08/10/2026 — decisão do dono: opção 1, recorte mínimo.** A ideia de trabalho longo com troca de executor vira **ajuste na [US-20](../../../time/roteamento/US-20-handoff-de-executor-por-cota/Sobre.md)**: o `/continuar` grava o estado por etapa no *Time* e ganha `stash`/`push`/merge/publish/tag nas travas. Não reabre a troca sem humano; não toca o `marvin.mjs`; sem commit por etapa (contradiz o "sem commit" do `/continuar`). **Pendente da US-25:** a frase do Superpowers nos dois READMEs e o Octopus parado até a US-19 medir.
+- **08/10/2026 — fechada.** Entregue: frase sobre o Superpowers nos dois READMEs (`README.md` e `README.pt-BR.md`, na seção *Related* / *Relacionado*, fora da tabela *Optional tools*); ajuste do `/continuar` e da US-20 (commit `c3b99b7`). **Fica de fora, de propósito:** adaptador do Octopus (parado até a US-19 medir 3–4 US e dizer quem decide o modelo) e a troca de executor sem humano.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- Leitura dos repositórios e pareceres do `po` e do `tl`: *Rumo* acima (clones em `obra/superpowers@8ca22db` e `nyldn/claude-octopus@4d152db`).
+- Commits na branch `claude/marvin-reference-xpxy32`: `f6e323c` (abertura), `f537266` (leitura), `0bf6370` (pareceres), `c3b99b7` (US-20 e `/continuar`) e o commit desta frase nos READMEs.
+- `node teste.mjs`: 268 passaram antes de cada commit; `git diff --check` limpo. Nenhuma mudança em `marvin.mjs`.

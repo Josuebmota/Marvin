@@ -24,7 +24,7 @@ metadata:
 ## Em andamento
 
 - [US-19-papel-modelo-esforco](../Planejamento/Novos/time/roteamento/US-19-papel-modelo-esforco/Sobre.md) — onboarding implementado; próximo passo: operar glossário e medir 3–4 US para avaliar ajustes da política
-- [US-25-avaliar-superpowers-e-octopus](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-25-avaliar-superpowers-e-octopus/Sobre.md) — aberta 08/10/2026; `po` e `tl` opinaram (ver Rumo); próximo passo: o dono decidir se reabre a troca de executor sem humano (US-20) — senão, só citar o Superpowers nos dois READMEs e fechar
+- [US-25-avaliar-superpowers-e-octopus](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-25-avaliar-superpowers-e-octopus/Sobre.md) — concluída 08/10/2026 (frase nos READMEs + ajuste da US-20); Octopus parado até a US-19 medir; falta o humano validar e sair daqui
 - Fila refinada em 07/10/2026 (`po` + `tl`), nesta ordem: [US-23](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-23-repos-aninhados-no-grafo/Sobre.md) (23a commitada; 23b implementada, falta commitar e fechar) → [US-21](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-21-usuario-escolhe-versionar-o-derivado/Sobre.md) (só flags) → [US-20](../Planejamento/Novos/time/roteamento/US-20-handoff-de-executor-por-cota/Sobre.md) (itens 1 e 3, documentação). [US-22](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-22-grafo-dentro-do-marvin/Sobre.md) adiada
 
 ## Travado

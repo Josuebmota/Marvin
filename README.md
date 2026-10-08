@@ -656,6 +656,13 @@ implies — one per boundary in a polyglot repo or a monorepo, two in a single-s
 never writes the agents themselves. An agent without the scars of *this* codebase is fixed
 context in every session that gives nothing back.
 
+Likewise for long, unattended execution: [Superpowers](https://github.com/obra/superpowers)
+is a separate plugin that runs a plan through one fresh subagent per task, with a review after
+each. It complements Marvin rather than competing with it, but it keeps its own specs and plans
+in `docs/superpowers/`, so use it for the *execution* and keep the decisions in the
+`Sobre.md` of each US. Marvin neither detects nor configures it, so it is not in the
+*Optional tools* table.
+
 ## Requirements
 
 Node 18+. No dependencies.

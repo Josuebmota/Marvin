@@ -648,6 +648,13 @@ gerado nomeia as stacks encontradas e diz quantos papéis aquilo implica — um 
 num repo poliglota ou num monorepo, dois num de stack única. Ele nunca escreve os agentes.
 Agente sem as cicatrizes **deste** código é contexto fixo em toda sessão que não devolve nada.
 
+O mesmo vale para execução longa e sem supervisão: o [Superpowers](https://github.com/obra/superpowers)
+é um plugin à parte que roda um plano com um subagente novo por tarefa e uma revisão a cada
+uma. Ele complementa o Marvin, não concorre, mas guarda specs e planos próprios em
+`docs/superpowers/` — então use-o para a *execução* e mantenha as decisões no `Sobre.md` de cada
+US. O Marvin não o detecta nem o configura, por isso ele não está na tabela *Ferramentas
+opcionais*.
+
 ## Requisitos
 
 Node 18+. Nenhuma dependência.
