@@ -19,11 +19,12 @@ metadata:
 > - Criar `onde_paramos_<data>.md` **ou uma seção de relato aqui dentro** é o mesmo erro:
 >   o histórico já está no `git log`, e o porquê já está no Rumo da US.
 
-**Atualizado:** 07/10/2026
+**Atualizado:** 08/10/2026
 
 ## Em andamento
 
 - [US-19-papel-modelo-esforco](../Planejamento/Novos/time/roteamento/US-19-papel-modelo-esforco/Sobre.md) — onboarding implementado; próximo passo: operar glossário e medir 3–4 US para avaliar ajustes da política
+- [US-25-avaliar-superpowers-e-octopus](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-25-avaliar-superpowers-e-octopus/Sobre.md) — aberta 08/10/2026; próximo passo: ler os repositórios obra/superpowers e nyldn/claude-octopus (só há o reel) e decidir adaptar / citar / descartar
 - Fila refinada em 07/10/2026 (`po` + `tl`), nesta ordem: [US-23](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-23-repos-aninhados-no-grafo/Sobre.md) (23a commitada; 23b implementada, falta commitar e fechar) → [US-21](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-21-usuario-escolhe-versionar-o-derivado/Sobre.md) (só flags) → [US-20](../Planejamento/Novos/time/roteamento/US-20-handoff-de-executor-por-cota/Sobre.md) (itens 1 e 3, documentação). [US-22](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-22-grafo-dentro-do-marvin/Sobre.md) adiada
 
 ## Travado
