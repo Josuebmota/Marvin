@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-26 — o Marvin mostra, na instalação, quais personas o projeto pede
@@ -61,4 +61,8 @@ Decomposição ([delegação](../../../../Contexto/Fluxos/delegacao.md)): **julg
   - **Achado (dogfooding):** `node marvin.mjs --dry-run` sobre este repo acusa 10 itens no passo 10 — a base do próprio Marvin está atrás do que o produto gera (marcas de 2.0.0, 2.1.0 e duas de 1.8.0 em `AGENTS.md`, `CLAUDE.md`, `.claude/agents/README.md`, `.claude/commands/us.md`, `retomar.md` e `Planejamento/README.md`). Atualizar a base do Marvin com o que o próprio Marvin gera é **trabalho próprio, a abrir como US**, depois deste produto.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- PR #1 mesclado na `main` (`2688f80`), com o CI verde em Linux, Windows e macOS.
+- `node teste.mjs`: **286 passaram, 0 falharam, 0 pulados** (graphify instalado); o total declarado nos dois READMEs é 286.
+- Revisões: `qa` (achou o `3.**Atualizar` quebrado no template, corrigido) e `tl` (achou a dupla contagem de sub-repo e aprovou a correção final).
+- Validada pelo dono em 08/10/2026 ("pode seguir" → "bora resolver isso antes"), registrada na release 2.1.0.
+- Fica fora, de propósito: levar a triagem ao template **com medição** (US-19) e o esqueleto de persona gerado pelo script.
