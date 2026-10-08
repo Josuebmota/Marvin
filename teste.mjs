@@ -1380,7 +1380,8 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
           /1 frontier\(s\) detected/.test(rg.stdout) && !/2 frontier/.test(rg.stdout), rg.stdout.slice(-600));
     const ar = path.join(g.proj, '.claude', 'agents', 'README.md');
     check('o agents/README gerado também conta 1 fronteira',
-          fs.existsSync(ar) && /Uma fronteira só/.test(fs.readFileSync(ar, 'utf8')));
+          fs.existsSync(ar) && /Uma fronteira só/.test(fs.readFileSync(ar, 'utf8'))
+          && /mais 1 sub-repositório/.test(fs.readFileSync(ar, 'utf8')));
     cleanup(g);
   }
 
