@@ -19,12 +19,12 @@ metadata:
 > - Criar `onde_paramos_<data>.md` **ou uma seção de relato aqui dentro** é o mesmo erro:
 >   o histórico já está no `git log`, e o porquê já está no Rumo da US.
 
-**Atualizado:** 08/10/2026
+**Atualizado:** 09/10/2026
 
 ## Em andamento
 
 - [US-19-papel-modelo-esforco](../Planejamento/Novos/time/roteamento/US-19-papel-modelo-esforco/Sobre.md) — onboarding implementado; próximo passo: operar glossário e medir 3–4 US para avaliar ajustes da política
-- [US-27-atualizar-a-base-do-marvin](../Planejamento/Manutencao/diagnostico/atualizacoes/US-27-atualizar-a-base-do-marvin/Sobre.md) — aberta 08/10/2026; próximo passo: `dev-back` aplica os 10 itens do passo 10 (lista no `Sobre.md`), `qa` roda o `--dry-run`, `tl` lê o diff
+- [US-27-atualizar-a-base-do-marvin](../Planejamento/Manutencao/diagnostico/atualizacoes/US-27-atualizar-a-base-do-marvin/Sobre.md) — implementação validada em 09/10/2026; falta registrar evidência em `Releases/<versao>.md` para concluir
 - [US-21](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-21-usuario-escolhe-versionar-o-derivado/Sobre.md) — implementada, aprovada pelo `tl` e commitada (`527d96c`); falta `package.json` 2.2.0 e Releases
 - [US-28-modelos-por-papel-claude-e-chatgpt](../Planejamento/Novos/time/roteamento/US-28-modelos-por-papel-claude-e-chatgpt/Sobre.md) — 28a redigida, ensaiada e aprovada por `po` + `tl`; 28b aguarda segunda triagem real com diferença de disponibilidade
 

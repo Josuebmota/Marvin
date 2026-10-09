@@ -134,6 +134,10 @@ atividade toca, propor o time dela (num projeto de uma pessoa, `tl` + `dev-back`
 `scout` bastam; `po` é o dono), propor as skills que ela vai repetir, registrar na seção
 *Time* e *Skills* da US.
 
+Na triagem do `tl` com o `po`, declare a Disponibilidade de IA para a etapa: fornecedor,
+modelo, ferramenta e esforço são escolhas por atividade entre acessos elegíveis. Declaração
+não prova acesso; registre como não confirmado quando não houver evidência observável.
+
 No piloto local da US-19, decomponha atividade/domínio, escolha papéis e skills e
 consulte capacidades sob demanda. Escolha e registre fornecedor/modelo, ferramenta,
 esforço e motivo por etapa entre acessos elegíveis, sem marca fixa, seguindo

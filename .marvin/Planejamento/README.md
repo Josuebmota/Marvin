@@ -17,15 +17,21 @@ Regras:
   seguir [delegação](../Contexto/Fluxos/delegacao.md): decompor atividade/domínio,
   escolher papéis e skills, consultar capacidades sob demanda e selecionar
   modelo/ferramenta/esforço entre acessos elegíveis, sem fornecedor fixo. Registrar solicitado versus
-  aplicado. Herança inclui origem; limitações ficam explícitas. Verificação e subida
+  aplicado. A declaração não prova acesso: confirme-o ou registre como não confirmado.
+  Herança inclui origem; limitações ficam explícitas. Verificação e subida
   de capacidade seguem esse fluxo; mudanças de escolha ficam no *Rumo*.
+
+Na triagem do `tl` com o `po`, decidam quem trabalha, quais agentes e skills usar e o
+modelo, ferramenta e esforço por etapa. O grafo é opcional nos projetos montados pelo
+Marvin; neste repositório, Graphify é obrigatório na triagem. Se estiver ausente, velho ou
+indisponível, registrem a limitação e usem Grep/Glob como fallback para localizar arquivos.
 
 ## O formato — um só para Epic, Feature e US
 
 ```markdown
 ---
 tipo: us            # epic | feature | us
-estado: ativa       # ativa | concluida | cancelada
+estado: ativa       # ativa | refinada | concluida | cancelada
 pai: ../Sobre.md
 ---
 # US-12 — <título em uma frase>
@@ -69,3 +75,6 @@ pai: ../Sobre.md
 
 *Código tocado* usa crase com o caminho a partir da raiz do repositório, e o nome da
 função depois de um traço — é assim que o grafo liga a US ao nó de código.
+
+Uma US com `estado: refinada` espera na fila, não em `onde_paramos.md`; `marvin --status`
+agrupa as refinadas em ilhas.

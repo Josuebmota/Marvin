@@ -14,7 +14,7 @@ se eu passei só o nome, pergunte em qual Epic e Feature ela entra (liste os que
    - **Mapear** o que a US toca: fluxo, arquitetura, código. Fluxo que ainda não tem nota em
      `.marvin/Contexto/Fluxos/` ganha uma agora. Preencha *Fluxos ligados* e *Código tocado*
      (crase com o caminho, e a função depois de um traço — é o que liga a US ao grafo).
-   - **Propor o time** desta US, a partir da base do `AGENTS.md`: só os papéis que ela usa,
+   - **Escolher capacidades e propor o time** desta US, a partir da base do `AGENTS.md`: só os papéis que ela usa,
      mais a camada da atividade (design, dba, sec, infra) se ela pede. Siga
      `.marvin/Contexto/Fluxos/delegacao.md`: decomponha atividade/domínio, classifique
      risco e escolha papéis e skills por etapa. Consulte o glossário sob demanda e

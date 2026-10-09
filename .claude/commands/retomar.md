@@ -14,7 +14,10 @@ Retome o trabalho neste projeto.
    `git status --short` nos repositórios que importam. Se o registro disser que algo foi
    corrigido, confirme no código.
 
-3. Me diga, em no máximo 10 linhas:
+3. Apresente as **duas portas** para continuar: desenvolver a ilha da vez ou refinar uma
+   anotação com `/refinar`. Indique qual encaixa no estado registrado.
+
+4. Me diga, em no máximo 10 linhas:
    - **onde paramos** (uma frase)
    - **o próximo passo** e qual papel do time faz
    - **o que está travado** e por quê

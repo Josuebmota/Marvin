@@ -32,5 +32,11 @@ com fontes datadas, controles e limitações. Fonte documentada, acesso declarad
 execução testada são estados diferentes. Uso real acrescenta evidência, preservando
 resultados anteriores; fontes da API não comprovam suporte no executor.
 
+**Analogia informal do dono (09/10/2026):** entre três opções selecionadas de cada
+fornecedor, Luna ↔ Sonnet, Sol ↔ Opus e Astra ↔ Fable ajudam a lembrar a posição
+relativa na lista. Os pares não afirmam equivalência de capacidade, desempenho,
+custo ou esforço. Para escolher, use a atividade, as capacidades documentadas no
+[mapa](mapa-capacidades.md) e a disponibilidade confirmada.
+
 Jev é estudado para decisões estruturadas, sem geração de texto. MiniMax exige
 conferência de modelo e acesso próprios para vídeo; conexão ao chat não os comprova.

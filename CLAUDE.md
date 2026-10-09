@@ -13,7 +13,7 @@
 `/retomar` num chat novo — lê `.marvin/Memoria/onde_paramos.md` e confere contra o `git log`
 antes de acreditar no que está escrito.
 
-## Referência de modelos — Claude Code
+## Modelo por atividade — Claude Code
 
 Os papéis estão no `AGENTS.md`. A tabela abaixo é uma referência de partida para
 Claude Code, não uma escolha permanente por papel nem equivalência com outras LLMs.
@@ -32,6 +32,13 @@ não fixa fornecedor para delegação ou revisão.
 
 **Haiku só para recuperação** — erra onde a tarefa exige segurar um invariante e notar
 o que está *faltando*.
+
+## Grafo de código
+
+Graphify é obrigatório na triagem deste repositório. Antes de apoiar uma decisão no grafo,
+confira se está atualizado; grafo antigo ou consulta indisponível deve ser registrado como
+limitação, com Grep/Glob como fallback para localizar arquivos e símbolos. Não declare que
+uma consulta ou atualização ocorreu sem evidência.
 
 ## Memória
 

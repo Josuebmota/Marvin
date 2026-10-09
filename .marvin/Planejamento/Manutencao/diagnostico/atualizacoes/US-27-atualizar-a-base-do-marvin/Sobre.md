@@ -39,19 +39,23 @@ pai: ../Sobre.md
 > Nenhum arquivo de código (`marvin.mjs` fica de fora). Sem nó de código, o grafo não calcula *Impacto*.
 
 ## Time
-Decomposição ([delegação](../../../../Contexto/Fluxos/delegacao.md)): **escrita de texto** nos 6 arquivos → **conferência** pelo dry-run → **revisão** do que muda de sentido (o `tl` lê o diff do `AGENTS.md`/`CLAUDE.md`, que têm invariantes). Risco baixo-médio: texto, mas `AGENTS.md` é fonte de verdade. Check: `git diff --check`, `node marvin.mjs --dry-run --no-questions` e `node teste.mjs`. Modelo, ferramenta e esforço concretos: a definir na execução; menor esforço não reduz a verificação.
-- `dev-back` · capacidade: edição de texto guiada por regex · modelo/ferramenta/esforço: a definir na execução
-  — itens 1–10, um arquivo por vez, dry-run a cada um; estado: pendente; aplicado: não confirmado
-- `qa` · capacidade: verificação sem editar · modelo/ferramenta/esforço: a definir na execução
-  — dry-run limpo, testes verdes, nenhum conteúdo próprio perdido; estado: pendente; aplicado: não confirmado
-- `tl` · capacidade: julgamento sobre invariantes · modelo/ferramenta/esforço: a definir na execução
-  — ler o diff de `AGENTS.md` e `CLAUDE.md`; estado: pendente; aplicado: não confirmado
+Decomposição ([delegação](../../../../Contexto/Fluxos/delegacao.md)): **escrita de texto** nos 6 arquivos → **conferência** pelo dry-run → **revisão** do que muda de sentido (o `tl` lê o diff do `AGENTS.md`/`CLAUDE.md`, que têm invariantes). Risco baixo-médio: texto, mas `AGENTS.md` é fonte de verdade. Check: `git diff --check`, `node marvin.mjs --dry-run --no-questions` e `node teste.mjs`. Na triagem obrigatória, Graphify estava velho (14/09/2026), sem nó da US-27; a consulta falhou (`uv trampoline failed to canonicalize script path`). Fallback declarado: US-27, links e `rg`; *Impacto* ficou indisponível.
+- `dev-back` · capacidade: edição de texto guiada pelas marcas de `UPDATES` · fornecedor/ferramenta: OpenAI/Codex, agente via `collaboration.spawn_agent`; modelo e esforço herdados da sessão, nível não confirmado
+  — aplicar itens 1–10 nos seis arquivos, um por vez, com dry-run após cada arquivo; estado: concluído; configuração aplicada: não confirmada
+- `qa` · capacidade: verificação sem editar · fornecedor/ferramenta: OpenAI/Codex, agente via `collaboration.spawn_agent`; modelo e esforço herdados da sessão, nível não confirmado
+  — confirmar dry-run limpo e suíte de teste; estado: concluído. Dry-run final: código 0, sem itens pendentes no passo 10 e sem escrita; `npm run test`: 300 passaram, 0 falharam. A primeira tentativa no sandbox não conseguiu criar junctions temporárias do Windows; fora do sandbox, o teste hermético passou.
+- `tl` · capacidade: julgamento sobre invariantes · fornecedor/ferramenta: OpenAI/Codex, agente via `collaboration.spawn_agent`; modelo e esforço herdados da sessão, nível não confirmado
+  — revisar o diff nos seis arquivos; estado: aprovado, sem achados; `git diff --check` passou; configuração aplicada: não confirmada
 
 ## Skills
 - Nenhuma nova. (Se o passo "ler a marca, escrever a frase, rodar o dry-run" se repetir numa 2ª atualização, vira skill.)
 
 ## Rumo
+- **09/10/2026** — itens 1–10 aplicados nos seis arquivos; dry-run final sem pendências e suíte com 300 testes verdes. `tl` aprovou os textos e invariantes; `git diff --check` limpo. Implementação validada; a US segue ativa até registrar em `Releases/<versao>.md`, conforme a regra da nota de entrada.
+- **09/10/2026** — retomada para aplicar os 10 itens. `po` + `tl` já fizeram a triagem de segunda utilização do mapa da US-28: `dev-back` edita, `qa` confere e `tl` revisa `AGENTS.md`/`CLAUDE.md`; sem skill nova. Execução delegada a `dev-back` Codex, com modelo/esforço herdados e não confirmados. Grafo velho sem nó da US; consulta falhou, fallback em US, links e `rg` registrado em *Time*.
 - **08/10/2026** — aberta como consequência da US-26 ("primeiro o produto, depois a base dele": `po` e dono). Lista dos 10 itens vem do dry-run, sem escrever nada. Nada aplicado ainda. **Próximo passo:** `dev-back` aplica os itens 1–10 e o `qa` roda o dry-run; o `tl` lê o diff.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node marvin.mjs --dry-run --no-questions`: código 0, dez marcas do passo 10 atendidas, nenhuma escrita executada.
+- `npm run test`: 300 passaram, 0 falharam.
+- Revisão `tl`: aprovada; `git diff --check`: sem erros.

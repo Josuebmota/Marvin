@@ -15,7 +15,7 @@ Referência: reel do @donimas (*AI Levels*, ep. 01), visto em 05/10/2026, só pe
 *Middle* (modelo à mão, esforço sempre alto), *Senior* (mais barato primeiro, verifica, sobe se
 falhar), *GOAT* (router escolhe modelo **e** esforço, verifica pelo risco, feedback). Custo por
 tarefa resolvida: $5,10 → $0,32. ⚠️ É **simulação** (*"simulated workload · real Claude prices"*),
-não medição. O Marvin hoje está no nível *Middle*.
+não medição. Na análise inicial de 05/10, o Marvin estava no nível *Middle*.
 
 ## Portabilidade — requisito confirmado em 05/10/2026
 
@@ -394,6 +394,7 @@ Nada depende do que ela toca — folha do grafo.
 - [US-18 — símbolo que não resolve não pode derrubar o arquivo](../../../organizacao-por-grafo/script/US-18-simbolo-nao-derruba-o-arquivo/Sobre.md) — 1 nó(s) em comum
 
 ## Rumo
+- **09/10/2026** — Josué confirmou que quer aplicar ao Marvin a organização apresentada nos [reels de GPT](https://www.instagram.com/reels/DeHdXeWsgph/) e [Claude](https://www.instagram.com/p/DeFS0Fes8yu/): escolher modelo e esforço por etapa, começar pela opção elegível de menor custo, verificar pelo risco e subir se a capacidade não bastar. Objetivo declarado: tentar reduzir custo mantendo o resultado exigido. Os valores dos reels são simulações de seis tarefas, não medição do Marvin; economia permanece hipótese até a linha de base comparável de 3–4 US prevista nos critérios 4–5. O "router" continua sendo a sessão principal seguindo a regra escrita, sem software novo ou chamadas adicionais autorizadas.
 - **08/10/2026** — regra externa de um reel ("nunca faça sozinho, sempre delegue" + "complexo=Opus, simples=modelo mais simples") avaliada por `po` e `tl`. A de modelo já é a tabela do `CLAUDE.md` e não fixa fornecedor; a de delegação entrou no `AGENTS.md` **reescrita** (sessão principal coordena e delega; trivial não delega; subagente não delega; código ou invariante passa pelo `tl`), sem o "sempre" literal, que contradiz `delegacao.md` passo 1. **Hipótese para a medição de 3–4 US:** delegar mais reduz retrabalho ou só aumenta custo? Não gerar isso no template de `marvin.mjs` antes de haver número (invariante 4).
 - **07/10/2026** — refinamento. Registrada a **divisão declarada** (Claude e Codex
   juntos, MiniMax para vídeo se houver acesso) como declaração, não medida, e o

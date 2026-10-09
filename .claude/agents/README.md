@@ -11,7 +11,7 @@ model: sonnet
 ---
 ```
 
-## Referência de modelos — Claude Code
+## Modelo por atividade — Claude Code
 
 Modelos de partida, não escolhas permanentes por papel. No piloto local da US-19,
 escolha por tarefa seguindo [o fluxo de delegação](../../.marvin/Contexto/Fluxos/delegacao.md).
