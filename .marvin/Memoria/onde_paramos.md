@@ -25,7 +25,7 @@ metadata:
 
 - [US-19-papel-modelo-esforco](../Planejamento/Novos/time/roteamento/US-19-papel-modelo-esforco/Sobre.md) — onboarding implementado; próximo passo: operar glossário e medir 3–4 US para avaliar ajustes da política
 - [US-27-atualizar-a-base-do-marvin](../Planejamento/Manutencao/diagnostico/atualizacoes/US-27-atualizar-a-base-do-marvin/Sobre.md) — aberta 08/10/2026; próximo passo: `dev-back` aplica os 10 itens do passo 10 (lista no `Sobre.md`), `qa` roda o `--dry-run`, `tl` lê o diff
-- [US-21](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-21-usuario-escolhe-versionar-o-derivado/Sobre.md) — implementada e aprovada pelo `tl` em 08/10/2026, **não commitada**; falta commit, `package.json` 2.2.0 e Releases
+- [US-21](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-21-usuario-escolhe-versionar-o-derivado/Sobre.md) — implementada, aprovada pelo `tl` e commitada (`527d96c`); falta `package.json` 2.2.0 e Releases
 - Fila refinada em 07/10/2026 (`po` + `tl`), nesta ordem: US-23 (fechada na 2.0.1) → US-21 (acima) → [US-20](../Planejamento/Novos/time/roteamento/US-20-handoff-de-executor-por-cota/Sobre.md) (itens 1 e 3, documentação). [US-22](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-22-grafo-dentro-do-marvin/Sobre.md) adiada
 
 ## Travado
