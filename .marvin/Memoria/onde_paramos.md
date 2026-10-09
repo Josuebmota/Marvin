@@ -23,7 +23,7 @@ metadata:
 
 ## Em andamento
 
-- [US-19-papel-modelo-esforco](../Planejamento/Novos/time/roteamento/US-19-papel-modelo-esforco/Sobre.md) — onboarding implementado; próximo passo: operar glossário e medir 3–4 US para avaliar ajustes da política
+- [US-19-papel-modelo-esforco](../Planejamento/Novos/time/roteamento/US-19-papel-modelo-esforco/Sobre.md) — medição bloqueada: histórico não tem pares atribuíveis; instrumentar 3–4 tarefas reais futuras antes de executá-las
 - [US-20-handoff-de-executor-por-cota](../Planejamento/Novos/time/roteamento/US-20-handoff-de-executor-por-cota/Sobre.md) — concluída e aprovada pelo `tl`; aguarda a próxima release já motivada para entrar no índice, sem bump por documentação interna
 - [US-28-modelos-por-papel-claude-e-chatgpt](../Planejamento/Novos/time/roteamento/US-28-modelos-por-papel-claude-e-chatgpt/Sobre.md) — 28a redigida, ensaiada e aprovada por `po` + `tl`; 28b aguarda segunda triagem real com diferença de disponibilidade
 
@@ -31,4 +31,4 @@ metadata:
 
 ## Travado
 
-- US-19 — faltam amostras comparáveis antes/depois; detalhes no nó acima
+- US-19 — faltam 3–4 pares comparáveis com contexto, checks, configuração e custo atribuíveis; não repetir trabalho concluído. Detalhes e candidatas no nó acima.

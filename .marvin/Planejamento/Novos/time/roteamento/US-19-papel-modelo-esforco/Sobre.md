@@ -324,16 +324,17 @@ de fornecedor, modelo, ferramenta e esforço será decidida na abertura de cada 
 entre capacidades elegíveis; para as etapas abaixo, a configuração exata e o acesso
 do executor ainda não estão confirmados.
 
-**Próxima etapa: 1, pendente.** `po` + `tl` devem selecionar 3–4 US reais com tarefas
-comparáveis e definir contexto inicial, checks e unidade de comparação. Evidência para
-fechá-la: lista das US e registro desses três elementos. O modelo, ferramenta, esforço
-e acesso dos executores serão escolhidos entre opções elegíveis quando a etapa começar;
-nenhum está confirmado agora.
+**Etapa 1 pendente, bloqueada por falta de amostras elegíveis.** `po` + `tl` devem
+selecionar 3–4 US reais com tarefas comparáveis e definir contexto inicial, checks e
+unidade de comparação. Evidência para fechá-la: lista das US e registro desses três
+elementos. O modelo, ferramenta, esforço e acesso dos executores serão escolhidos entre
+opções elegíveis quando a etapa começar; nenhum está confirmado agora.
 **Capacidade necessária:** seleção de escopo/produto pelo `po` e desenho de checks e
 protocolo de medição pelo `tl`. A coleta de custos para as etapas posteriores depende
 de fonte e acesso a métricas, ainda não confirmados.
 1. `po` + `tl` — selecionar 3–4 US reais com critérios comparáveis e fixar contexto,
-   checks e unidade de medição; estado: pendente; aplicado: não confirmado.
+   checks e unidade de medição; estado: pendente (histórico sem pares atribuíveis);
+   aplicado: não confirmado.
 2. `scout` + papel executor definido na US escolhida — operar o glossário em atividade
    real, registrando fonte/data, capacidade documentada, acesso e execução como estados
    distintos; estado: pendente; aplicado: não confirmado.
@@ -441,6 +442,13 @@ Nada depende do que ela toca — folha do grafo.
 - **09/10/2026** — terceira leitura independente do `tl`, limitada a *Time* e *Rumo*,
   identificou etapa 1, capacidades de `po`/`tl`, configurações não confirmadas e
   evidência. O formato passou no ensaio; seleção e medição seguem pendentes.
+- **09/10/2026** — triagem da etapa 1 por `po` e `tl`: US-16, US-18, US-11a e US-14
+  ficam só como candidatas, não como amostras, pois faltam sessões, configurações e custos
+  atribuíveis por tarefa para pares anterior × política atual. US-08 tem custo agregado,
+  mas sessões não atribuídas. Não repetir trabalho concluído nem converter histórico
+  incompleto em baseline. Para retomar, selecionar 3–4 US futuras reais e, antes de cada
+  execução, fixar contexto/checks e registrar sessões, configurações, fonte/custo,
+  resultado aprovado, retrabalho e tempo. Sem par comparável, não alegar economia.
 - **09/10/2026** — Josué confirmou que quer aplicar ao Marvin a organização apresentada nos [reels de GPT](https://www.instagram.com/reels/DeHdXeWsgph/) e [Claude](https://www.instagram.com/p/DeFS0Fes8yu/): escolher modelo e esforço por etapa, começar pela opção elegível de menor custo, verificar pelo risco e subir se a capacidade não bastar. Objetivo declarado: tentar reduzir custo mantendo o resultado exigido. Os valores dos reels são simulações de seis tarefas, não medição do Marvin; economia permanece hipótese até a linha de base comparável de 3–4 US prevista nos critérios 4–5. O "router" continua sendo a sessão principal seguindo a regra escrita, sem software novo ou chamadas adicionais autorizadas.
 - **08/10/2026** — regra externa de um reel ("nunca faça sozinho, sempre delegue" + "complexo=Opus, simples=modelo mais simples") avaliada por `po` e `tl`. A de modelo já é a tabela do `CLAUDE.md` e não fixa fornecedor; a de delegação entrou no `AGENTS.md` **reescrita** (sessão principal coordena e delega; trivial não delega; subagente não delega; código ou invariante passa pelo `tl`), sem o "sempre" literal, que contradiz `delegacao.md` passo 1. **Hipótese para a medição de 3–4 US:** delegar mais reduz retrabalho ou só aumenta custo? Não gerar isso no template de `marvin.mjs` antes de haver número (invariante 4).
 - **07/10/2026** — refinamento. Registrada a **divisão declarada** (Claude e Codex
