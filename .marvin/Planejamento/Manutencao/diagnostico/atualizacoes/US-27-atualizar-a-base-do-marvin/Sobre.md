@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-27 — atualizar a base do Marvin com o que o próprio Marvin gera
@@ -51,7 +51,7 @@ Decomposição ([delegação](../../../../Contexto/Fluxos/delegacao.md)): **escr
 - Nenhuma nova. (Se o passo "ler a marca, escrever a frase, rodar o dry-run" se repetir numa 2ª atualização, vira skill.)
 
 ## Rumo
-- **09/10/2026** — itens 1–10 aplicados nos seis arquivos; dry-run final sem pendências e suíte com 300 testes verdes. `tl` aprovou os textos e invariantes; `git diff --check` limpo. Implementação validada; a US segue ativa até registrar em `Releases/<versao>.md`, conforme a regra da nota de entrada.
+- **09/10/2026** — itens 1–10 aplicados nos seis arquivos; dry-run final sem pendências e suíte com 300 testes verdes. `tl` aprovou os textos e invariantes; `git diff --check` limpo. Release 2.2.0 registrada junto com a US-21.
 - **09/10/2026** — retomada para aplicar os 10 itens. `po` + `tl` já fizeram a triagem de segunda utilização do mapa da US-28: `dev-back` edita, `qa` confere e `tl` revisa `AGENTS.md`/`CLAUDE.md`; sem skill nova. Execução delegada a `dev-back` Codex, com modelo/esforço herdados e não confirmados. Grafo velho sem nó da US; consulta falhou, fallback em US, links e `rg` registrado em *Time*.
 - **08/10/2026** — aberta como consequência da US-26 ("primeiro o produto, depois a base dele": `po` e dono). Lista dos 10 itens vem do dry-run, sem escrever nada. Nada aplicado ainda. **Próximo passo:** `dev-back` aplica os itens 1–10 e o `qa` roda o dry-run; o `tl` lê o diff.
 

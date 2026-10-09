@@ -317,6 +317,32 @@ invariantes/diff. Revisões especializadas de JavaScript e código foram delegad
 Modelo/esforço herdados, aplicação não conferida; nenhuma inferência por provedor
 externo. O inventário local não é configuração operacional de roteamento.
 
+### Ensaio do formato por etapa — decisão do PO, 09/10/2026
+
+Executar em ordem e atualizar o estado com evidência ao fechar cada etapa. A alocação
+de fornecedor, modelo, ferramenta e esforço será decidida na abertura de cada etapa,
+entre capacidades elegíveis; para as etapas abaixo, a configuração exata e o acesso
+do executor ainda não estão confirmados.
+
+**Próxima etapa: 1, pendente.** `po` + `tl` devem selecionar 3–4 US reais com tarefas
+comparáveis e definir contexto inicial, checks e unidade de comparação. Evidência para
+fechá-la: lista das US e registro desses três elementos. O modelo, ferramenta, esforço
+e acesso dos executores serão escolhidos entre opções elegíveis quando a etapa começar;
+nenhum está confirmado agora.
+**Capacidade necessária:** seleção de escopo/produto pelo `po` e desenho de checks e
+protocolo de medição pelo `tl`. A coleta de custos para as etapas posteriores depende
+de fonte e acesso a métricas, ainda não confirmados.
+1. `po` + `tl` — selecionar 3–4 US reais com critérios comparáveis e fixar contexto,
+   checks e unidade de medição; estado: pendente; aplicado: não confirmado.
+2. `scout` + papel executor definido na US escolhida — operar o glossário em atividade
+   real, registrando fonte/data, capacidade documentada, acesso e execução como estados
+   distintos; estado: pendente; aplicado: não confirmado.
+3. `qa` + `tl` — registrar por US sessões atribuíveis, configurações efetivamente
+   conferidas, verificações, tentativas, retrabalho, tempo e custo disponível; estado:
+   pendente; aplicado: não confirmado.
+4. `po` + `tl` — comparar somente amostras com atribuição suficiente, registrar
+   limitações e decidir ajustes nos templates; estado: pendente; aplicado: não confirmado.
+
 ## Skills
 - `rotear-tarefa` — proposta: decompor atividade/domínio, escolher papéis e skills,
   conferir capacidades/acessos e selecionar modelo/ferramenta/esforço. Vira `SKILL.md` se repetir.
@@ -394,6 +420,27 @@ Nada depende do que ela toca — folha do grafo.
 - [US-18 — símbolo que não resolve não pode derrubar o arquivo](../../../organizacao-por-grafo/script/US-18-simbolo-nao-derruba-o-arquivo/Sobre.md) — 1 nó(s) em comum
 
 ## Rumo
+- **09/10/2026** — o `po` decidiu aplicar à US-19 o formato por etapa definido em
+  `.marvin/Planejamento/README.md` e reensaiá-lo usando o trabalho já previsto nesta
+  US: operar o glossário em atividades reais e medir antes/depois em 3–4 US, conforme
+  o protocolo acima. As etapas e estados estão registrados em *Time*; executor,
+  fornecedor, modelo, ferramenta, esforço e acesso serão confirmados ao iniciar cada
+  etapa, sem pressupor a configuração herdada. Na triagem, Graphify continua obrigatório
+  neste repositório, mas o grafo disponível é de 14/09, está velho e não mostra o
+  impacto atual; buscas textuais (`rg`/Grep/Glob) ficam registradas como fallback para
+  localizar os arquivos até o grafo ser atualizado.
+- **09/10/2026** — após o primeiro ensaio, explicitei a próxima retomada no *Time*:
+  etapa 1, selecionar 3–4 US reais e registrar contexto, checks e unidade de comparação.
+  A evidência para fechá-la também está escrita; modelo, ferramenta, esforço e acesso
+  continuam sem confirmação até o executor iniciar.
+- **09/10/2026** — segunda leitura independente do `po`, limitada a *Time* e *Rumo*,
+  identificou a etapa 1, os papéis, as configurações ainda não confirmadas e a evidência,
+  mas não nomeou explicitamente as capacidades necessárias. O `tl` apontou a lacuna;
+  o ensaio da US-20 ainda não passou. A seleção e medição continuam pendentes, sem
+  ganho alegado.
+- **09/10/2026** — terceira leitura independente do `tl`, limitada a *Time* e *Rumo*,
+  identificou etapa 1, capacidades de `po`/`tl`, configurações não confirmadas e
+  evidência. O formato passou no ensaio; seleção e medição seguem pendentes.
 - **09/10/2026** — Josué confirmou que quer aplicar ao Marvin a organização apresentada nos [reels de GPT](https://www.instagram.com/reels/DeHdXeWsgph/) e [Claude](https://www.instagram.com/p/DeFS0Fes8yu/): escolher modelo e esforço por etapa, começar pela opção elegível de menor custo, verificar pelo risco e subir se a capacidade não bastar. Objetivo declarado: tentar reduzir custo mantendo o resultado exigido. Os valores dos reels são simulações de seis tarefas, não medição do Marvin; economia permanece hipótese até a linha de base comparável de 3–4 US prevista nos critérios 4–5. O "router" continua sendo a sessão principal seguindo a regra escrita, sem software novo ou chamadas adicionais autorizadas.
 - **08/10/2026** — regra externa de um reel ("nunca faça sozinho, sempre delegue" + "complexo=Opus, simples=modelo mais simples") avaliada por `po` e `tl`. A de modelo já é a tabela do `CLAUDE.md` e não fixa fornecedor; a de delegação entrou no `AGENTS.md` **reescrita** (sessão principal coordena e delega; trivial não delega; subagente não delega; código ou invariante passa pelo `tl`), sem o "sempre" literal, que contradiz `delegacao.md` passo 1. **Hipótese para a medição de 3–4 US:** delegar mais reduz retrabalho ou só aumenta custo? Não gerar isso no template de `marvin.mjs` antes de haver número (invariante 4).
 - **07/10/2026** — refinamento. Registrada a **divisão declarada** (Claude e Codex

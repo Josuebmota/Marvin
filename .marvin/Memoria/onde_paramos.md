@@ -24,11 +24,10 @@ metadata:
 ## Em andamento
 
 - [US-19-papel-modelo-esforco](../Planejamento/Novos/time/roteamento/US-19-papel-modelo-esforco/Sobre.md) — onboarding implementado; próximo passo: operar glossário e medir 3–4 US para avaliar ajustes da política
-- [US-27-atualizar-a-base-do-marvin](../Planejamento/Manutencao/diagnostico/atualizacoes/US-27-atualizar-a-base-do-marvin/Sobre.md) — implementação validada em 09/10/2026; falta registrar evidência em `Releases/<versao>.md` para concluir
-- [US-21](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-21-usuario-escolhe-versionar-o-derivado/Sobre.md) — implementada, aprovada pelo `tl` e commitada (`527d96c`); falta `package.json` 2.2.0 e Releases
+- [US-20-handoff-de-executor-por-cota](../Planejamento/Novos/time/roteamento/US-20-handoff-de-executor-por-cota/Sobre.md) — concluída e aprovada pelo `tl`; aguarda a próxima release já motivada para entrar no índice, sem bump por documentação interna
 - [US-28-modelos-por-papel-claude-e-chatgpt](../Planejamento/Novos/time/roteamento/US-28-modelos-por-papel-claude-e-chatgpt/Sobre.md) — 28a redigida, ensaiada e aprovada por `po` + `tl`; 28b aguarda segunda triagem real com diferença de disponibilidade
 
-- Fila refinada em 07/10/2026 (`po` + `tl`), nesta ordem: US-23 (fechada na 2.0.1) → US-21 (acima) → [US-20](../Planejamento/Novos/time/roteamento/US-20-handoff-de-executor-por-cota/Sobre.md) (itens 1 e 3, documentação). [US-22](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-22-grafo-dentro-do-marvin/Sobre.md) adiada
+- Fila refinada em 07/10/2026 (`po` + `tl`), nesta ordem: US-23 (fechada na 2.0.1) → US-21 (fechada na 2.2.0) → [US-20](../Planejamento/Novos/time/roteamento/US-20-handoff-de-executor-por-cota/Sobre.md) (itens 1 e 3, documentação). [US-22](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-22-grafo-dentro-do-marvin/Sobre.md) adiada
 
 ## Travado
 

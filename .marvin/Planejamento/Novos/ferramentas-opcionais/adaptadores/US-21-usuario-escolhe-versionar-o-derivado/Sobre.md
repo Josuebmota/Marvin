@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-21-usuario-escolhe-versionar-o-derivado
 description: "O Marvin acrescenta graphify-out/ e .marvin/.status/ ao .gitignore sem perguntar. O usuário escolhe se versiona o grafo e o status — uma vez, registrado em ferramentas.md."
@@ -60,9 +60,10 @@ Nada depende do que ela toca — folha do grafo.
 - [US-19 — a atividade escolhe papéis, skills, modelos e esforço conforme capacidades disponíveis](../../../time/roteamento/US-19-papel-modelo-esforco/Sobre.md) — 2 nó(s) em comum
 
 ## Rumo
-- **08/10/2026** — **implementada, não commitada.** `dev-back` fez as flags (`--track`/`--untrack`, registro `versiona:` no frontmatter do `ferramentas.md`, os três lugares do `.gitignore`); `qa` conferiu dry-run, validação e idempotência; `tl` bloqueou na 1ª leitura (dry-run de projeto novo dizia "not recorded"; `--status --track` não avisava que vale só na execução) e aprovou na 2ª. `desde: '2.2.0'` na `ATUALIZACOES` com marca no parágrafo "Versionar o derivado" (não em `versiona:`, que só existe com flag); o `ferramentas.md` deste repo ganhou o parágrafo. Aceito: o laço de ferramentas do passo 0 acrescenta linhas a `ferramentas.md` sem frontmatter (anterior à US, cosmético). Sugestão aberta do `tl`: o teste "sem frontmatter" comparar byte a byte após um run sem flag. **Falta:** commit, subir `package.json` para 2.2.0 e registrar em `Releases/`. Próxima da fila: US-20 (itens 1 e 3, documentação).
+- **09/10/2026** — implementação no commit `527d96c`; `qa` conferiu dry-run, validação e idempotência; `tl` aprovou após duas correções (a 1ª revisão encontrou "not recorded" no dry-run de projeto novo e falta de aviso de escopo do `--status --track`). `desde: '2.2.0'` na `ATUALIZACOES`; o `ferramentas.md` deste repo ganhou o parágrafo. Aceito: o laço de ferramentas do passo 0 acrescenta linhas a `ferramentas.md` sem frontmatter (anterior à US, cosmético). Versão 2.2.0 e release registrados em 09/10/2026.
 - **07/10/2026** — aberta e refinada (pedido do Josué). **Não implementar.**
 - **07/10/2026** — revisada por `po` e `tl`. Ordem: **2ª**, depois da US-23. Escopo reduzido às flags (ver "Cortado"). O `tl` achou o terceiro lugar que escreve a linha (passo 8) e a entrada em `ATUALIZACOES`. Não contradiz "derivado nunca é versionado": o Marvin continua não versionando por padrão, só para de impor isso no repositório dos outros.
 
 ## Evidência
-- **08/10/2026** — `node teste.mjs`: 300 passaram, 0 falharam (eram 286); 6 checks novos travam (a) compat, (b) `.gitignore` byte a byte com `sim`, (c) aviso sem remover, dry-run e `--status`. Com as duas correções removidas, 2 ficam vermelhos. `tl` aprovou. Sem commit ainda.
+- **08/10/2026** — `node teste.mjs`: 300 passaram, 0 falharam (eram 286); 6 checks novos travam (a) compat, (b) `.gitignore` byte a byte com `sim`, (c) aviso sem remover, dry-run e `--status`. Com as duas correções removidas, 2 ficam vermelhos. `tl` aprovou.
+- **09/10/2026** — release 2.2.0 registrada junto com a US-27; `package.json` está em 2.2.0.

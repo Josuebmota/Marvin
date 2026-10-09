@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-20 — handoff de executor por cota: o novo modelo refaz o de-para e segue
@@ -50,24 +50,29 @@ Nenhum por ora: os itens 1–5 são documentação. O item 6, se decidido, toca 
 nesse caso entra aqui com a função e o *Impacto* é gerado depois.
 
 ## Time
-Proposto; a reescrita de 07/10 foi feita pela sessão principal. Claude Code, Claude
-Sonnet 5.5, esforço herdado da sessão (valor não conferido). Revisão do `po` e do `tl`
-ainda **pendente**.
+Triagem e escolha do ensaio atual pelo `po`; a configuração dos agentes delegados nesta
+sessão é herdada e não confirmada.
 
-- `po` · Anthropic/Claude Sonnet 5.5 · Claude Code · esforço solicitado: herdado (sessão)
-  — dono do item 4 e de barrar o que for especulação; estado: pendente; aplicado: não confirmado.
-- `dev-back` · Anthropic/Claude Sonnet 5.5 · Claude Code · esforço solicitado: herdado
-  (sessão) — itens 1, 2 e 5 (texto); estado: em andamento (itens 1, 2 e 5 escritos,
-  falta revisão); aplicado: não confirmado; check: `git diff --check` e links.
-- `qa` · mesma configuração · item 3, o ensaio documental; estado: pendente.
-- `tl` · Anthropic/Claude Sonnet 5.5 · Claude Code · esforço solicitado: herdado (sessão)
-  — ler o diff; estado: pendente. Vira `npm run test` se o item 6 entrar.
+- `po` · OpenAI/Codex · agente via `collaboration.spawn_agent` · modelo/esforço: não confirmados
+  — escolher a US-19 como base e fazer a segunda leitura independente; estado: feita.
+- `dev-back` · OpenAI/Codex · agente via `collaboration.spawn_agent` · modelo/esforço: não confirmados
+  — aplicar o formato de estado por etapa ao plano existente da US-19; estado: feita
+  (quatro etapas ordenadas registradas em `US-19/Sobre.md`); configuração: não confirmada.
+- `tl` · OpenAI/Codex · agente via `collaboration.spawn_agent` · modelo/esforço: não confirmados
+  — a primeira leitura independente não identificou a etapa; a revisão da segunda
+  identificou falta de capacidade explícita; a terceira leitura independente identificou
+  a etapa, os papéis/capacidades, as lacunas e a evidência; revisão final aprovada;
+  estado: feita.
 
 ## Skills
 Nenhuma nova. Se o gateway entrar no registro de ferramentas, reutilizar
 `adaptador-de-ferramenta`.
 
 ## Rumo
+- **09/10/2026** — retomada após a US-21: o `po` escolheu aplicar o formato por etapa à US-19 e repetir o ensaio. Não há registro verificável de uma US interrompida pelo `/continuar`; por isso, não inventar um caso. Graphify está velho (14/09/2026) e não dá impacto atual; busca textual é o fallback. O ensaio anterior foi parcial e o item 3 segue pendente até um segundo leitor identificar, sem perguntas, a próxima etapa, a capacidade necessária/ausente e o que verificar.
+- **09/10/2026** — ensaio inicial do Codex/ChatGPT usou a nota da US inteira e foi parcial; não contou como teste independente. Primeira leitura independente (TL, apenas *Time*/*Rumo* da US-19) não identificou a próxima etapa nem o check. Segunda leitura independente (PO, mesmas seções) identificou a etapa 1, papéis, lacunas de configuração e evidência, mas não nomeou a capacidade necessária. A revisão do TL manteve o item 3 bloqueado por essa lacuna e pediu que as tentativas fossem distinguidas com clareza no Rumo. Capacidade explicitada na US-19; item 3 ainda pendente até novo ensaio.
+- **09/10/2026** — terceira leitura independente (TL, sem histórico da conversa, apenas *Time*/*Rumo* da US-19) passou: identificou etapa 1, `po` para seleção de escopo/produto e `tl` para checks/protocolo; apontou modelo/ferramenta/esforço/acesso ainda não confirmados e a dependência futura de fonte/acesso a métricas; nomeou a lista das US, contexto, checks e unidade como evidência. Item 3 satisfeito; revisão final do diff pendente.
+- **09/10/2026** — revisão final do `tl` aprovada após corrigir a capacidade explícita, distinguir as tentativas e alinhar o ponteiro de memória. Critérios 1–4 atendidos; US-20 concluída.
 - **09/10/2026** — **ensaio documental (item 3) feito pelo Codex/ChatGPT**, só leitura, sem perguntar nada. Itens 1 e 2 conferidos escritos: estado por etapa em `Planejamento/README.md:50`, regra por etapa em `continuar.md:26`, passo de handoff em `delegacao.md:138-165` (as linhas citadas em 07/10 mudaram). **Resultado: ensaio só parcial.** A US-27 não serviu (Time todo `pendente`, nada aplicado). Na US-19 o leitor achou a próxima etapa (revisar a atualização de 07/10, pendente de `po`/`tl`) e o de-para, mas **não** o destino do modelo, e apontou lacunas do formato: sem estado padronizado por etapa na US-19, sem evidência ligada a cada conclusão, sem referência ao diff a revisar e sem ordem das pendências. Leitura: o formato existe, mas a US-19 não o aplica; o item 3 não provou retomada segura. **Falta:** repetir o ensaio sobre uma US que o `/continuar` deixou pela metade com o formato aplicado, ou aplicar o formato à US-19 e reensaiar. Itens 1 e 2 prontos; a US segue `refinada`.
 - **08/10/2026** — o `/continuar` passa a gravar o estado por etapa no *Time* (ver *Ajuste de 08/10/2026*). Origem: pareceres de `po` e `tl` na [US-25](../../../ferramentas-opcionais/adaptadores/US-25-avaliar-superpowers-e-octopus/Sobre.md). Falta o item 3 (ensaio documental), de preferência sobre uma US que o `/continuar` deixou pela metade.
 - **07/10/2026** — revisada por `po` e `tl`. **3ª da fila** (itens 1 e 3, só documentação; pode correr em paralelo às outras). `tl` aprovou o `b88b291` e o passo de handoff em `delegacao.md:112-139`. Gateway: **descartado** (item 4). Ressalva do `tl`, não bloqueia: `delegacao.md:137-139` cita a documentação do Claude Code dentro de um passo que se diz neutro de ferramenta. Itens 5 e 6 cortados (ver "Cortado").
@@ -85,4 +90,6 @@ Nenhuma nova. Se o gateway entrar no registro de ferramentas, reutilizar
   não-Claude. Posta na mesma feature da US-19 por escolha do Josué.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- Ensaio documental independente pelo `po` em 09/10/2026, lendo apenas *Time* e *Rumo* da US-19; identificou etapa, papéis, configurações não confirmadas e evidência, mas omitiu a capacidade necessária. Reprovado pelo `tl` por essa lacuna; não conta como conclusão do item 3.
+- Reensaio independente pelo `tl` em 09/10/2026, lendo apenas *Time* e *Rumo*: identificou próxima etapa, capacidades, lacunas de configuração e evidência sem perguntas.
+- Revisão final do diff aprovada pelo `tl`; `git diff --check` sem erros.
