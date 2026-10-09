@@ -17,6 +17,8 @@ adaptadores; `--executor` declara a sessão; nenhum conecta fornecedores.
 ## Pesquisa e escolha por atividade
 
 Atividade/domínio → papéis → skills → capacidades → modelo/ferramenta/esforço elegíveis.
+Na triagem, consulte o [mapa de capacidades](mapa-capacidades.md) para os papéis e
+modelos já documentados; lacunas ou informação vencida voltam à pesquisa sob demanda.
 Uma opção capaz pode assumir vários papéis. Ter todas não exige usar todas; skill e
 plugin instalados não provam acesso, modelo concreto ou delegação nativa.
 Registre escolha e configuração solicitada/aplicada na US; verifique pelo risco.

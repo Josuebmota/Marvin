@@ -13,6 +13,7 @@ pelas capacidades disponíveis, com conhecimento curado sob demanda.
 - [US-19-papel-modelo-esforco](US-19-papel-modelo-esforco/Sobre.md)
 - [US-20-handoff-de-executor-por-cota](US-20-handoff-de-executor-por-cota/Sobre.md)
 - [US-26-marvin-mostra-e-oferece-as-personas](US-26-marvin-mostra-e-oferece-as-personas/Sobre.md)
+- [US-28-modelos-por-papel-claude-e-chatgpt](US-28-modelos-por-papel-claude-e-chatgpt/Sobre.md)
 
 ## Rumo
 - **07/10/2026** — aberta a [US-20](US-20-handoff-de-executor-por-cota/Sobre.md): handoff

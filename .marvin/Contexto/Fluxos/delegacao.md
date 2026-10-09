@@ -18,8 +18,9 @@ não presumir que todas as opções geram texto, código ou vídeo.
    necessário e verificação por etapa. Escolher os papéis pelo trabalho e pelo
    `description` do agente, e as skills pelo procedimento necessário. Só delegar
    etapas cuja independência ou especialização justifique o contexto adicional.
-2. **Escolher a menor configuração adequada:** consultar as capacidades pertinentes
-   no glossário; pesquisar lacunas ou informação desatualizada sob demanda. Filtrar
+2. **Escolher a menor configuração adequada:** consultar o
+   [mapa de capacidades](../mapa-capacidades.md) para Claude/OpenAI e as capacidades
+   pertinentes no glossário; pesquisar lacunas ou informação desatualizada sob demanda. Filtrar
    modelo concreto, ferramenta/integração e capacidade pelo acesso autorizado,
    compatibilidade, quota conhecida e orçamento. Login detectado não prova chamada
    bem-sucedida; quota desconhecida é não confirmada. Escolher entre as opções
@@ -56,9 +57,11 @@ passo 2 do `/us`, agora com dono explícito; não é uma etapa nova.
   viram arquivo em `.claude/agents/` ou `.claude/skills/` com uma armadilha concreta (agente)
   ou na segunda execução (skill). Quem escreve o corpo é o `tl`+`po`, não o script.
 - **O `tl` e o `po` também são escolhidos por atividade.** O `model:` do frontmatter é só o
-  padrão; a chamada Agent aceita `model` por chamada. O esforço **não** tem override na chamada:
-  vem do frontmatter ou é herdado da sessão — registrar "herdado (sessão)" é a limitação
-  explícita. Esforço menor nunca reduz a revisão dos invariantes.
+  padrão; a chamada Agent aceita `model` por chamada. Em Claude Code v2.1.292+,
+  [a chamada Agent também aceita `effort`](https://code.claude.com/docs/en/sub-agents#choose-an-effort-level),
+  que prevalece sobre o frontmatter; `CLAUDE_CODE_EFFORT_LEVEL` prevalece sobre ambos.
+  Em versão anterior, usar frontmatter ou herança da sessão e registrar a origem.
+  Conferir versão e configuração aplicada. Esforço menor nunca reduz a revisão dos invariantes.
 - **Grafo na triagem — obrigatório neste repo (dono, 08/10/2026; nos projetos que o Marvin
   monta continua opcional):** o `tl` e o `po` **sempre** partem do
   grafo: a seção *Impacto* e as ilhas da US dizem quem depende do que ela toca e qual o
@@ -167,9 +170,9 @@ documentação do Claude Code não suporta.
 ## Controles e limites — conferidos em 05/10/2026
 
 - [Claude Code](https://code.claude.com/docs/en/sub-agents): `model` por chamada;
-  `effort` no frontmatter, com herança da sessão quando omitido. A documentação não
-  descreve override equivalente de esforço na chamada Agent. Herança é fallback
-  local quando apropriado, com origem registrada, não regra universal.
+  `effort` no frontmatter, com herança da sessão quando omitido. `effort` por invocação
+  exige Claude Code v2.1.292+ (fonte revista em 09/10/2026). Conferir versão e
+  configuração aplicada; herança é fallback local, não regra universal.
 - [Codex](https://learn.chatgpt.com/docs/agent-configuration/subagents): spawn aceita
   modelo/esforço; sem configuração, herda do pai. Modelo escolhido pelo spawn ou
   default sem esforço configurado usa o default do modelo. O TOML customizado
