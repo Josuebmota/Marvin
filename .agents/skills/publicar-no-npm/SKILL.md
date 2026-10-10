@@ -25,8 +25,20 @@ node teste.mjs
 npm pack --dry-run
 ```
 
-O tarball tem que ter só script + documentação (7 arquivos, ~95 kB). `.marvin/` e `.Codex/`
+O tarball tem que ter só script + documentação (7 arquivos, ~95 kB). `.marvin/` e `.claude/`
 não vão — é o `files` do `package.json` que manda.
+
+## Tag e Releases antes do push
+
+```bash
+git tag -l "v$(node -p "require('./package.json').version")"
+```
+
+Vazio = falta a tag. Crie no commit que subiu a versão (`git tag -a v<versao> <commit> -m "Marvin <versao>"`)
+— o `--follow-tags` abaixo só leva tag que existe. A 2.1.0 e a 2.2.0 foram publicadas sem tag
+e só ganharam `v2.1.0`/`v2.2.0` em 10/10/2026. Confira também se `.marvin/Releases/<versao>.md`
+lista **toda** US com `estado: concluida` que ainda está na nota: a US-20 ficou de fora da 2.2.0
+e o hook seguiu acusando.
 
 ## Push antes do publish
 
