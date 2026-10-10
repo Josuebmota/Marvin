@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-28 — mapa de personas, skills e modelos (Claude e ChatGPT/Codex) e arranjos por disponibilidade
@@ -21,28 +21,28 @@ O mapa só vale para quem tem o fornecedor. Ter o Codex configurado **não** é 
 
 ## Divisão decidida pelo `po` — 09/10/2026
 
-**28a entra agora; 28b fica separada e condicionada a uso real.** O problema observado é a escolha por premissa na triagem da US-19; ainda não há número de buscas repetidas, tokens gastos nessa pesquisa ou tarefas comparáveis que prove economia. O mínimo que paga é uma referência curta para uma escolha real, com fonte e limite explícitos. O mapa não escolhe o time sozinho.
+**28a: mapa concluído. 28b: não necessária no escopo atual; a política foi incorporada à US-19.** Os dois reels que motivaram o pedido descrevem o mesmo princípio: selecionar modelo e esforço por tarefa, começar pela opção elegível de menor custo, verificar e escalar se necessário. Esse princípio já está na US-19; uma matriz separada de arranjos por fornecedor duplicaria a regra. A organização está adotada, mas a economia do Marvin ainda depende da medição prevista na US-19.
 
 **US-28a — o mapa (três camadas independentes de fornecedor)**
 1. **Personas:** para cada papel, a **capacidade que ele exige** (julgar, implementar, verificar, recuperar, desenhar, modelar dados, auditar segurança, infra). Papéis escritos hoje: `po`, `tl`, `dev-back`, `qa`, `scout`. Papéis só da base do `AGENTS.md`, sem arquivo: `dev-front`, `design`, `dba`, `sec`, `infra`. **O mapa descreve o perfil de capacidade; não escreve o corpo do agente** (invariante 4: agente só vira arquivo com armadilha concreta do código).
 2. **Skills:** quais existem e foram pertinentes à triagem real (incluindo `adaptador-de-ferramenta`, `publicar-no-npm` quando aplicáveis), que papel as usa e em que etapa; registrar ponytail para implementação e graphify para triagem no alcance já decidido.
 3. **Modelos Claude e OpenAI/Codex:** registrar capacidade documentada pertinente à etapa, modelo concreto, ferramenta onde o controle de esforço foi confirmado, fonte oficial datada e estado (documentado / acesso / testado). Papel é filtro de responsabilidade; **não há modelo padrão por papel**, nem equivalência de esforço entre fornecedores. Vazio e "não confirmado" são respostas válidas; palpite sem fonte não entra.
 
-**US-28b — hipótese em espera, sem implementação nesta passada.** Só abrir após a segunda triagem real que use o mapa e mostre uma decisão diferente por disponibilidade, com acesso e verificação registrados. O mínimo, se isso ocorrer, é registrar no fluxo existente como selecionar uma configuração elegível para aquela etapa. Um, dois ou mais fornecedores não justificam uma matriz fixa de arranjos: a US-19 já filtra acesso/capacidade e a [US-20](../US-20-handoff-de-executor-por-cota/Sobre.md) cuida do handoff por cota. Sem esse fato novo, 28b não paga.
+**US-28b — absorvida pela US-19; sem matriz ou implementação própria.** Se uma triagem real revelar uma lacuna que a política da US-19 não resolva, reabrir com esse caso concreto, acesso e verificação registrados. Um, dois ou mais fornecedores não justificam uma matriz fixa: a US-19 já seleciona por tarefa entre configurações elegíveis, e a [US-20](../US-20-handoff-de-executor-por-cota/Sobre.md) trata o handoff por cota.
 
 **Pronto quando (US-28a):**
 - inventário de personas e skills existentes, sem criar agentes ou skills; referência curta, carregada só na escolha, com fonte oficial datada para cada afirmação sobre modelo/controle;
 - numa etapa real da US-19, segundo leitor identifica papel, skill, capacidade e opção elegível **ou** registra lacuna que exige pesquisa sob demanda; confere acesso e esforço na ferramenta antes de afirmar execução;
 - `git diff --check`, links relativos e revisão `po` + `tl`.
 
-**Pronto quando (US-28b, se aberta):** duas triagens reais registram a diferença de disponibilidade e a regra mínima resolve a escolha nelas sem contrariar o fluxo da US-19; mesma verificação pelo risco em ambas. Ensaio de quatro cenários inventados não conta como evidência.
+**US-28b não tem critério de entrega próprio enquanto estiver absorvida.** Uma lacuna concreta numa triagem real pode justificar reabertura, sem cenários inventados.
 
 **Tensão com a US-19 resolvida:** sua regra continua sendo atividade → capacidade → opção elegível. Tabela de "bom para", "evitar quando", vencedor por papel ou divisão fixa entre marcas seria ranking antecipado e sai. Fontes oficiais datadas descrevem suporte e limites, não superioridade. A US-19 não precisa de exceção.
 
-**Não entra:** MiniMax, DeepSeek, Gemini, Grok, Jev e demais (glossário sob demanda); preço e benchmark; **medir a economia** (item 4 da US-19: o mapa não prova que gasta menos, só deixa a escolha mais barata de fazer); traduzir esforço entre fornecedores (nome igual não prova equivalência); escrever o corpo de `dev-front`, `design`, `dba`, `sec`, `infra`; o script ler o mapa; mexer no `CLAUDE.md`/`AGENTS.md`.
+**Não entra:** MiniMax, DeepSeek, Gemini, Grok, Jev e demais (glossário sob demanda); preço e benchmark; medir economia nesta US (isso permanece na US-19); traduzir esforço entre fornecedores (nome igual não prova equivalência); escrever o corpo de `dev-front`, `design`, `dba`, `sec`, `infra`; o script ler o mapa; mexer no `CLAUDE.md`/`AGENTS.md`.
 
 ## Fluxos ligados
-- [delegacao](../../../../../Contexto/Fluxos/delegacao.md) — o passo de escolha pode consultar o mapa; arranjo segue condicionado a 28b
+- [delegacao](../../../../../Contexto/Fluxos/delegacao.md) — o passo de escolha pode consultar o mapa; a política por tarefa e sua medição pertencem à US-19
 - [IA](../../../../../Contexto/IA.md) — o glossário aponta para o mapa
 
 ## Código tocado
@@ -68,6 +68,8 @@ Decomposição ([delegacao](../../../../../Contexto/Fluxos/delegacao.md)): **inv
 - Nenhuma nova. Se "pesquisar fonte oficial → registrar linha datada" se repetir para outro fornecedor, vira skill na segunda vez.
 
 ## Rumo
+- **10/10/2026** — retomada no Claude Code, depois das etapas no Codex. Nada foi refeito: divisão, inventário e mapa já estavam fechados. Lado Claude conferido na ferramenta: CLI 2.1.292, sessão em `claude-opus-5-5` com esforço `medium`; registrado no [mapa](../../../../../Contexto/mapa-capacidades.md) como acesso observado, sem cota nem desempenho. Sonnet/Haiku/Fable seguem só documentados. 28b **não reaberta**: a troca Codex → Claude foi de executor, não mudou papel, capacidade nem escolha, então não é a lacuna concreta que a reabertura exige. Graphify não consultado: alteração só de documentação, sem nó de código.
+- **09/10/2026** — o Josué esclareceu que os dois reels de OpenAI e Claude enviados nesta conversa são a origem da proposta de roteamento por tarefa e que esperava ver essa organização incorporada ao Marvin. O `po` verificou que o princípio já pertence à US-19; 28b como matriz de arranjos duplicaria seu escopo, então fica absorvida, reabrível só diante de lacuna concreta numa triagem real. Valores dos vídeos são simulação, não evidência de economia do Marvin. A analogia Luna/Sonnet, Sol/Opus e Astra/Fable é mnemônica informal registrada no glossário, sem equivalência técnica. A medição de economia, inclusive Graphify quando aplicável a perguntas estruturais, segue na US-19. US-28 concluída: 28a aprovada e conteúdo de 28b absorvido; não há matriz nem ganho medido a publicar nesta US.
 - **09/10/2026** — Josué propôs Luna ↔ Sonnet, Sol ↔ Opus e Astra ↔ Fable como referência para o glossário. O `po` delimitou os pares como mnemônico informal de posição relativa entre três opções escolhidas de cada fornecedor, sem equivalência de capacidade, desempenho, custo ou esforço; registrado em `IA.md`, sem mudar o mapa oficial nem a regra de seleção da US-19. Graphify segue velho e esta alteração documental não tem nó de código/*Impacto*; triagem por links e `rg`.
 - **09/10/2026** — segundo uso real do mapa na etapa pendente da US-27 (10 avisos do passo 10 em seis arquivos): `po` e `tl` identificaram `dev-back` para editar, `qa` para conferir e `tl` para revisar `AGENTS.md`/`CLAUDE.md`; nenhuma skill nova, Ponytail na implementação e Graphify na triagem. O grafo de 14/09 está velho, sem nó da US-27 ou *Impacto* atual; a consulta Graphify falhou (`uv trampoline failed to canonicalize script path`), então foram usados US, links e `rg` como fallback declarado. Codex funciona nesta sessão; `claude --version` mostra Claude Code 2.1.292 instalado, mas acesso, cota de novas chamadas, modelo concreto e esforço aplicado não estão confirmados. Não foi observada escolha diferente por disponibilidade: `po` manteve a 28b em espera e `tl` aprovou a triagem. A US-27 não foi executada.
 - **09/10/2026** — 28a redigida e aprovada por `po` (escopo) e `tl` (coerência). O ensaio na etapa pendente da US-19 de operar o glossário identificou `scout`, recuperação de fonte oficial e nenhuma skill nova; Luna/Codex é candidato documentado para pesquisa delimitada, mas o inventário local de disponibilidade está ausente, então acesso, cota e esforço aplicado seguem lacunas e não há execução elegível confirmada. `tl` encontrou e a sessão principal corrigiu a frase antiga que negava `effort` por invocação no Claude Code; revisão pontual aprovada. 28b segue condicionada à segunda triagem real com diferença de disponibilidade.

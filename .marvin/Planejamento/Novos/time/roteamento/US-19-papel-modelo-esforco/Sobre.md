@@ -119,7 +119,7 @@ Escrita por `fsw`; segredos ficam na configuração local da ferramenta, fora da
 
 ## Critérios de conclusão
 
-**Pronto quando:** _(critérios do piloto; medição e publicação npm ainda pendentes)_
+**Pronto para uso** _(a adoção não depende da medição de economia; publicação npm segue seu próprio fluxo)_:
 1. Cada US registra a combinação por etapa em *Time* e *Skills*, decidida na abertura/refino pelos gatilhos
    existentes (`/us` e Planejamento/README; `/refinar` onde já existir):
    etapa, domínio, papel, capacidade, modelo e esforço, com o fornecedor, a ferramenta,
@@ -134,15 +134,6 @@ Escrita por `fsw`; segredos ficam na configuração local da ferramenta, fora da
    degrau acima (modelo ou esforço suportado), e o **Rumo** registra origem, destino,
    motivo e resultado da verificação. No topo disponível, manter pendente e escalar
    ao humano. Esse é o feedback.
-4. Uma **linha de base medida** antes e depois, em 3 ou 4 US deste repo, usando os dados
-   disponíveis na ferramenta (`cost-report` onde houver métricas compatíveis).
-   Contar sessão principal, delegações, verificações e retrabalho; custo por tarefa
-   aprovada, não só por chamada. Distinguir custo estimado de cobrança efetiva e
-   consumo de assinatura; tokens isolados não provam economia entre fornecedores.
-   Sem a medição, não se sabe se chegou ao GOAT ou só ficou mais complicado.
-5. Só com número na mão a política é considerada validada para economia em outros
-   projetos. A autorização de 06/10 antecipou onboarding, fontes e orientação portátil
-   nos templates, sem configurar modelos, executar integrações ou prometer economia.
 6. A regra pode ser aplicada com diferentes fornecedores, mantendo as mesmas
    verificações. Os controles usados no piloto têm fonte oficial e configuração
    conferida ou limitação explícita. Demais combinações são verificadas sob demanda.
@@ -155,6 +146,27 @@ Escrita por `fsw`; segredos ficam na configuração local da ferramenta, fora da
    de uma opção, várias/todas e executor diferente de Claude Code. Perguntas e registro
    distinguem acesso de integração executável; sem configuração ou capacidade, a
    limitação é explícita. Conferir também repetição, execução sem perguntas e dry-run.
+
+**Para validar a economia — não bloqueia o uso da política:**
+
+4. Uma **linha de base medida** antes e depois, em 3 ou 4 US reais do Marvin ou de
+   projetos que o Josué autorizar explicitamente para este piloto, usando os dados
+   disponíveis na ferramenta (`cost-report` onde houver métricas compatíveis).
+   Comparações pareadas ficam dentro do mesmo projeto e classe de tarefa; não somar
+   domínios diferentes como se fossem equivalentes. Contar sessão principal,
+   delegações, verificações, retrabalho e, quando a pergunta for estrutural, o uso do
+   Graphify (consulta, cobertura/idade do grafo, tokens atribuíveis quando disponíveis
+   e eventual fallback); custo por tarefa aprovada, não só por chamada. Não generalizar
+   a economia observada numa consulta
+   para tarefas ou projetos diferentes.
+   Distinguir custo estimado de cobrança efetiva e consumo de assinatura; tokens
+   isolados não provam economia entre fornecedores. Sem a medição, não se sabe se
+   chegou ao GOAT ou só ficou mais complicado.
+5. Só com número na mão a **economia** é considerada validada para as tarefas e contextos
+   medidos; a política pode ser aplicada antes disso, sem alegar ganho comprovado.
+   Extrapolar economia para outro projeto continua hipótese. A autorização
+   de 06/10 antecipou onboarding, fontes e orientação portátil nos templates, sem
+   configurar modelos, executar integrações ou prometer economia.
 
 **Não entra:** router automático como peça de software. Aqui o "router" é a sessão principal
 seguindo uma regra escrita. Peça nova para manter, sem ganho medido, é exatamente o que o `po`
@@ -326,9 +338,11 @@ do executor ainda não estão confirmados.
 
 **Etapa 1 pendente, bloqueada por falta de amostras elegíveis.** `po` + `tl` devem
 selecionar 3–4 US reais com tarefas comparáveis e definir contexto inicial, checks e
-unidade de comparação. Evidência para fechá-la: lista das US e registro desses três
-elementos. O modelo, ferramenta, esforço e acesso dos executores serão escolhidos entre
-opções elegíveis quando a etapa começar; nenhum está confirmado agora.
+unidade de comparação. O Josué autorizou usar bases de projetos externos neste piloto;
+o `po` decidiu ampliar o conjunto elegível, mantendo cada comparação dentro do mesmo
+projeto e classe de tarefa. Evidência para fechar a etapa: lista das US e registro
+desses três elementos. O modelo, ferramenta, esforço e acesso dos executores serão
+escolhidos entre opções elegíveis quando a etapa começar; nenhum está confirmado agora.
 **Capacidade necessária:** seleção de escopo/produto pelo `po` e desenho de checks e
 protocolo de medição pelo `tl`. A coleta de custos para as etapas posteriores depende
 de fonte e acesso a métricas, ainda não confirmados.
@@ -356,7 +370,8 @@ antecipa onboarding e orientação nos templates; benchmark continua pendente.
 ## Protocolo de medição — pronto para uso, comparação pendente
 
 1. Selecionar 3–4 US reais com critérios verificáveis e tarefas comparáveis; não abrir
-   US fictícias nem repetir trabalho só para produzir números. Fixar contexto inicial,
+   US fictícias nem repetir trabalho só para produzir números. As comparações pareadas
+   devem permanecer no mesmo projeto e classe de tarefa. Fixar contexto inicial,
    verificação e unidade de comparação antes de executar.
 2. Registrar por tarefa os turnos/sessões que pertencem a ela, incluindo subagentes,
    intervalo da medição, modelo/controle aplicado, revisão, tentativas e tempo. Se
@@ -421,6 +436,20 @@ Nada depende do que ela toca — folha do grafo.
 - [US-18 — símbolo que não resolve não pode derrubar o arquivo](../../../organizacao-por-grafo/script/US-18-simbolo-nao-derruba-o-arquivo/Sobre.md) — 1 nó(s) em comum
 
 ## Rumo
+- **09/10/2026** — Josué esclareceu que não é necessário comprovar economia antes de aplicar a organização dos reels: a medição valida a alegação de economia, não autoriza ou bloqueia o uso da política. Ela já pode orientar tarefas reais; registrar as medições quando houver dados atribuíveis, sem repetir trabalho concluído nem criar tarefas para fabricar amostra.
+- **09/10/2026** — por autorização explícita do Josué, o conjunto de evidências da
+  US-19 foi ampliado para incluir bases externas usadas por ele. Decisão do `po`:
+  amostras só contam se houver tarefas reais comparáveis no mesmo projeto e classe;
+  não misturar domínios como um par. Auditoria inicial encontrou apenas custos e uso
+  agregados sem atribuição suficiente a tarefas, além de configurações de acesso/modelo/
+  esforço não confirmadas; nenhuma amostra elegível ou economia foi registrada. Dados
+  identificáveis e medições dos projetos permanecem nas bases privadas correspondentes.
+  Próximo: triar uma tarefa real antes de começar, fixar contexto/checks/unidade e
+  registrar configuração e fonte de métricas por sessão. A consulta direta à CLI do
+  Graphify falhou (`uv trampoline failed to canonicalize script path`); leitura de
+  `.status/historico.jsonl`, leituras pontuais e `rg`/Grep foram o fallback. Um grafo
+  estava desatualizado e outra base não tinha grafo; não foi feito rebuild só para
+  fabricar amostra.
 - **09/10/2026** — o `po` decidiu aplicar à US-19 o formato por etapa definido em
   `.marvin/Planejamento/README.md` e reensaiá-lo usando o trabalho já previsto nesta
   US: operar o glossário em atividades reais e medir antes/depois em 3–4 US, conforme
@@ -449,7 +478,8 @@ Nada depende do que ela toca — folha do grafo.
   incompleto em baseline. Para retomar, selecionar 3–4 US futuras reais e, antes de cada
   execução, fixar contexto/checks e registrar sessões, configurações, fonte/custo,
   resultado aprovado, retrabalho e tempo. Sem par comparável, não alegar economia.
-- **09/10/2026** — Josué confirmou que quer aplicar ao Marvin a organização apresentada nos [reels de GPT](https://www.instagram.com/reels/DeHdXeWsgph/) e [Claude](https://www.instagram.com/p/DeFS0Fes8yu/): escolher modelo e esforço por etapa, começar pela opção elegível de menor custo, verificar pelo risco e subir se a capacidade não bastar. Objetivo declarado: tentar reduzir custo mantendo o resultado exigido. Os valores dos reels são simulações de seis tarefas, não medição do Marvin; economia permanece hipótese até a linha de base comparável de 3–4 US prevista nos critérios 4–5. O "router" continua sendo a sessão principal seguindo a regra escrita, sem software novo ou chamadas adicionais autorizadas.
+- **09/10/2026** — Josué esclareceu que os dois [reels de OpenAI](https://www.instagram.com/reels/DeHdXeWsgph/) e [Claude](https://www.instagram.com/p/DeFS0Fes8yu/) são a motivação para **adotar no Marvin** a organização por tarefa: escolher modelo e esforço conforme a capacidade necessária, começar pela configuração elegível de menor custo, verificar pelo risco e subir se a capacidade falhar. O router é a sessão principal seguindo essa política; não é software novo. Objetivo declarado: reduzir custo mantendo o resultado exigido. Os valores dos reels são simulações das mesmas seis tarefas, não medição do Marvin; a economia segue pendente da linha de base comparável de 3–4 US nos critérios 4–5. Luna/Sonnet, Sol/Opus e Astra/Fable ficam como mnemônicos informais do dono, sem equivalência afirmada de capacidade, desempenho, custo ou esforço.
+- **09/10/2026** — Graphify entra na medição da US-19 como estratégia de economia de contexto quando a pergunta é estrutural e a consulta substitui leitura ampla. Há medição local anterior de **9,3× contra ler o repositório inteiro**, mas isso não prova ganho médio por tarefa nem em bases externas. Registrar pergunta, cobertura/idade do grafo, tokens atribuíveis quando disponíveis, consulta/fallback, custo de atualização e resultado verificado. Para bases montadas pelo Marvin, Graphify continua opcional; não instalar nem ativar hook automaticamente. Neste repositório, a regra local de triagem continua exigindo Graphify e registra grafo ausente/velho e fallback.
 - **08/10/2026** — regra externa de um reel ("nunca faça sozinho, sempre delegue" + "complexo=Opus, simples=modelo mais simples") avaliada por `po` e `tl`. A de modelo já é a tabela do `CLAUDE.md` e não fixa fornecedor; a de delegação entrou no `AGENTS.md` **reescrita** (sessão principal coordena e delega; trivial não delega; subagente não delega; código ou invariante passa pelo `tl`), sem o "sempre" literal, que contradiz `delegacao.md` passo 1. **Hipótese para a medição de 3–4 US:** delegar mais reduz retrabalho ou só aumenta custo? Não gerar isso no template de `marvin.mjs` antes de haver número (invariante 4).
 - **07/10/2026** — refinamento. Registrada a **divisão declarada** (Claude e Codex
   juntos, MiniMax para vídeo se houver acesso) como declaração, não medida, e o

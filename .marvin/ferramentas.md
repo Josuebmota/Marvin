@@ -2,6 +2,8 @@
 name: ferramentas
 description: Ferramentas opcionais que ESTE projeto usa — e o que cada uma alcança
 tags: [referencia]
+marvin_montado: "< 2.2.0"
+marvin: 2.2.0
 ---
 # Ferramentas opcionais
 

@@ -60,3 +60,10 @@ efetivamente aplicado e desempenho por etapa **não confirmados**. Antes de regi
 uma escolha na US, confirme disponibilidade e controle no executor. Falta de entrada
 ou informação vencida volta à pesquisa oficial sob demanda pelo
 [fluxo de delegação](Fluxos/delegacao.md).
+
+**Observado em 10/10/2026 (Claude Code, Windows):** CLI `2.1.292`, portanto com `effort`
+por invocação de subagente; sessão principal rodando `claude-opus-5-5` em esforço
+`medium` (metadados da sessão no app desktop). Isso confirma **acesso** a esse modelo
+nesse nível, não cota, nem desempenho por etapa. Sonnet, Haiku e Fable seguem só
+documentados: o `model` do frontmatter dos agentes é configuração de partida, não prova
+de acesso. Codex continua sem confirmação de modelo e esforço aplicados.
