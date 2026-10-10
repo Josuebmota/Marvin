@@ -433,7 +433,7 @@ question while you work. So the script asks, at the moments it already owns:
 |---|---|
 | `marvin --us` (second run, with *Código tocado* filled) | **Impacto** — who depends on what the US touches (2 levels), and which other USs go through the same code. Written into the US as a derived section |
 | `marvin --status` | **Collision** — two active USs touching the same function, or one touching code that depends on the other's. **Spread** — a US across 4+ communities |
-| `marvin --fechar` | **Drift** — code that changed today and is in no active US's *Código tocado* |
+| `marvin --fechar` | **Drift** — code that changed today and is in no active US's *Código tocado*; covers the root and every `repos/<x>` sub-repo |
 
 All deterministic, no LLM. graphify did the extraction; marvin ties the answer to the node.
 
@@ -699,7 +699,7 @@ rather than final text.
 node teste.mjs
 ```
 
-300 checks, no dependencies. It covers the invariants that protect other
+310 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

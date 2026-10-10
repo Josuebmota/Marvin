@@ -1447,12 +1447,23 @@ _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
 if (hasFlag('--fechar')) {
   log('\x1b[1m--fechar\x1b[0m — drift between the diff and the active USs (read-only)\n');
   if (OLD_LAYOUT) { warn('old layout — run `marvin --migrar` first'); process.exit(1); }
-  const git = (args) => { try { return execSync('git ' + args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); } catch { return ''; } };
-  const changed = new Set();
-  for (const l of git('status --porcelain --untracked-files=all').split(/\r?\n/)) { const f = l.slice(3).trim().replace(/^.* -> /, ''); if (f) changed.add(f.replace(/\\/g, '/')); }
-  for (const l of git('log --since=midnight --name-only --format=').split(/\r?\n/)) if (l.trim()) changed.add(l.trim());
+  // US-24: git runs at the root AND in every sub-repo (a nested .git hides its files from the
+  // root's status). null = git refused (not '' = clean): a silent "clean" is the failure this guards.
+  const git = (r, args) => { try { return execSync('git ' + args, { cwd: path.join(ROOT, r), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); } catch { return null; } };
+  const changed = new Map();   // file (prefixed with the sub-repo) → repo ('' = root)
+  for (const r of ['', ...repoDirs()]) {
+    // a broken/empty .git is skipped by git, which then walks UP to the parent repo: --show-prefix
+    // is non-empty exactly then, so the folder is not a repo of its own
+    if (r && git(r, 'rev-parse --show-prefix') !== '\n') { warn(r + ' has a .git that git does not accept as a repository — its changes are NOT checked'); continue; }
+    const pre = r ? r + '/' : '';
+    // -z: NUL-separated and never quoted (plain output quotes names with spaces/non-ASCII, and the
+    // quote hid the extension). A rename/copy is "XY new\0old\0": the origin record is skipped.
+    const st = (git(r, 'status --porcelain -z --untracked-files=all') || '').split('\0');
+    for (let i = 0; i < st.length; i++) { const f = st[i].slice(3); if (/[RC]/.test(st[i].slice(0, 2))) i++; if (f && !f.endsWith('/')) changed.set(pre + f, r); }
+    for (const f of (git(r, 'log --since=midnight --name-only --format= -z') || '').split('\0')) if (f.trim()) changed.set(pre + f, r);
+  }
   const CODE_EXT_F = /\.(js|mjs|cjs|jsx|ts|tsx|py|go|rs|java|kt|rb|php|cs|c|h|cpp|hpp|swift|scala|ex|exs|lua|sh|sql)$/i;
-  const changedCode = [...changed].filter(f => CODE_EXT_F.test(f) && !f.startsWith(path.relative(ROOT, DOCS).replace(/\\/g, '/') + '/'));
+  const changedCode = [...changed.keys()].filter(f => CODE_EXT_F.test(f) && !f.startsWith(path.relative(ROOT, DOCS).replace(/\\/g, '/') + '/'));
   if (!changed.size) { ok('nothing changed since midnight and nothing uncommitted'); process.exit(0); }
   info(changed.size + ' file(s) changed (uncommitted + commits since midnight), ' + changedCode.length + ' of them code');
   const graph = loadGraph();
@@ -1462,8 +1473,18 @@ if (hasFlag('--fechar')) {
   const todayStr = (() => { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); })();
   const concludedToday = (t) => { const n = readNode(path.join(ROOT, t.no.source_file)); const u = n && n.rumo.length ? n.rumo[n.rumo.length - 1].data : null; return !!u && String(u.getDate()).padStart(2, '0') + '/' + String(u.getMonth() + 1).padStart(2, '0') + '/' + u.getFullYear() === todayStr; };
   const active = [...all.values()].filter(t => t.no.estado === 'ativa' || (t.no.estado === 'concluida' && concludedToday(t)));
-  // files each active US declares: via the graph node (source_file) or, without a graph, via the backtick
-  const filesOf = (t) => { const s = new Set(); for (const id of t.ids) { const n = graph && graph.nos.get(id); if (n && n.source_file) s.add(n.source_file.replace(/\\/g, '/')); } return s; };
+  // files each active US declares: the graph node (source_file) plus the backtick paths of its
+  // Sobre.md (readNode → canonFile, the US-23b resolution), so it works without a graph too
+  const filesOf = (t) => {
+    const s = new Set(); for (const id of t.ids) { const n = graph && graph.nos.get(id); if (n && n.source_file) s.add(canonFile(n.source_file.replace(/\\/g, '/'))); }
+    const rn = readNode(path.join(ROOT, t.no.source_file));
+    for (const f of rn ? rn.tocados : []) {
+      s.add(f);
+      if (repoDirs().length && !repoDirs().some(r => f.startsWith(r + '/')) && !fs.existsSync(path.join(ROOT, f)) && repoDirs().filter(r => fs.existsSync(path.join(ROOT, r, f))).length > 1)
+        warn(t.no.label.split(' — ')[0] + ': `' + f + '` is ambiguous (exists in 2+ repos) — it covers nothing; write it with the repos/<x>/ prefix');
+    }
+    return s;
+  };
   const covered = new Map();
   for (const t of active) for (const f of filesOf(t)) covered.set(f, t);
   const outside = changedCode.filter(f => !covered.has(f));
@@ -1472,7 +1493,10 @@ if (hasFlag('--fechar')) {
   if (!active.length) warn('no active US with "Código tocado" — the diff belongs to nobody on record');
   if (outside.length) {
     warn(outside.length + ' changed code file(s) are in NO active US — the map is incomplete, or the work leaked out of scope:');
+    outside.sort((x, y) => (changed.get(x) || '').localeCompare(changed.get(y) || '') || x.localeCompare(y));   // grouped by repo; '' (root) first
+    let lastRepo;
     outside.slice(0, 15).forEach(f => {
+      if (repoDirs().length && changed.get(f) !== lastRepo) { lastRepo = changed.get(f); info((lastRepo || '(root)') + ':'); }
       // hint: does some active US depend on this file (2 levels)? then it is probably hers.
       let hint = '';
       if (graph) {
@@ -3104,7 +3128,7 @@ Feche a sessão. O par do \`/retomar\`: nada do que foi descoberto hoje pode fic
    acrescentando. Procedimento que rodou pela **segunda** vez → skill.
 
 5. Rode \`marvin --fechar\` — ele cruza o diff com o *Código tocado* das US ativas e acusa o que
-   mudou sem dono. Corrija o *Código tocado* (ou abra a US que faltava) e rode \`marvin --us <caminho>\`
+   mudou sem dono. Ele confere o diff por repo (a raiz e cada sub-repo em \`repos/\`). Corrija o *Código tocado* (ou abra a US que faltava) e rode \`marvin --us <caminho>\`
    de novo: o *Impacto* é regerado. Depois \`marvin --status\` — se acusar algo, conserte antes de fechar.
 
 6. Diga se é hora de um chat novo — a regra está no rodapé do \`/retomar\` — e, se for, **qual
@@ -4033,6 +4057,9 @@ const UPDATES = [
   // warning, not these marks — demanding a graph section in an old AGENTS.md would be noise.
   { arquivo: '.claude/commands/fechar.md', marca: /--fechar/, soCom: !OLD_LAYOUT,
     o_que: 'the `marvin --fechar` step — drift between the diff and the active USs' },
+  // US-24: --fechar runs git in each sub-repo; the step that says so is new in the template.
+  { arquivo: '.claude/commands/fechar.md', marca: /por\s+repo\b/, soCom: !OLD_LAYOUT, desde: '2.3.0',
+    o_que: 'the `marvin --fechar` check of the diff per repo (the root and each repos/<x> sub-repo)' },
   { arquivo: '.claude/commands/us.md', marca: /Impacto/, soCom: !OLD_LAYOUT,
     o_que: 'the second `marvin --us` run that writes the Impacto section from the graph' },
   { arquivo: '.claude/settings.json', marca: /--status --curto/, soCom: !OLD_LAYOUT,

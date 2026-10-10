@@ -428,7 +428,7 @@ aparece como pergunta na hora de trabalhar. Então o script pergunta, nos moment
 |---|---|
 | `marvin --us` (segunda rodada, com *Código tocado* preenchido) | **Impacto** — quem depende do que a US toca (2 níveis) e que outras US passam pelo mesmo código. Escrito na US como seção derivada |
 | `marvin --status` | **Colisão** — duas US ativas na mesma função, ou uma tocando código que depende do que a outra toca. **Dispersão** — US em 4+ comunidades |
-| `marvin --fechar` | **Deriva** — código que mudou hoje e não está no *Código tocado* de nenhuma US ativa |
+| `marvin --fechar` | **Deriva** — código que mudou hoje e não está no *Código tocado* de nenhuma US ativa; cobre a raiz e cada sub-repo em `repos/<x>` |
 
 Tudo determinístico, zero LLM. O graphify fez a extração; o marvin liga a resposta ao nó.
 
@@ -685,7 +685,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-300 verificações, zero dependência. Cobre os invariantes que protegem o disco
+310 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

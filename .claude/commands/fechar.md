@@ -19,7 +19,7 @@ Feche a sessão. O par do `/retomar`: nada do que foi descoberto hoje pode ficar
    acrescentando. Procedimento que rodou pela **segunda** vez → skill.
 
 5. Rode `marvin --fechar` — ele cruza o diff com o *Código tocado* das US ativas e acusa o que
-   mudou sem dono. Corrija o *Código tocado* (ou abra a US que faltava) e rode `marvin --us <caminho>`
+   mudou sem dono. Ele confere o diff por repo (a raiz e cada sub-repo em `repos/`). Corrija o *Código tocado* (ou abra a US que faltava) e rode `marvin --us <caminho>`
    de novo: o *Impacto* é regerado. Depois `marvin --status` — se acusar algo, conserte antes de fechar.
 
 6. Diga se é hora de um chat novo — a regra está no rodapé do `/retomar` — e, se for, **qual

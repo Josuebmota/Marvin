@@ -1099,6 +1099,69 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── 9z-b. US-24: --fechar looks at every sub-repo, not only the root. A nested .git hides its
+//      files from the root's status, so with git at the root alone the drift passes silent.
+{
+  const hasGit = spawnSync('git', ['--version'], { encoding: 'utf8' }).status === 0;
+  if (!hasGit) { console.log('  - 9z-b pulado: git ausente (10 checks)'); skipped += 10; }
+  else {
+    const a = arena('fechar-subrepo');
+    spawnSync('git', ['init', '-q', '.'], { cwd: a.proj });
+    fs.writeFileSync(path.join(a.proj, '.gitignore'), 'repos/\n');
+    for (const [r, files] of [['svc-a', ['a.js', 'dup.js']], ['svc-b', ['b.js', 'dup.js']]]) {
+      const dir = path.join(a.proj, 'repos', r);
+      fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
+      spawnSync('git', ['init', '-q', '.'], { cwd: dir });
+      for (const f of files) fs.writeFileSync(path.join(dir, 'src', f), 'export const x = 1' + NLQ);
+    }
+    run(a, '--no-git');
+    const feat = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E1', 'F1');
+    fs.mkdirSync(feat, { recursive: true });
+    fs.writeFileSync(path.join(feat, 'Sobre.md'), '---' + NLQ + 'tipo: feature' + NLQ + '---' + NLQ + '# F1' + NLQ);
+    const mkUs = (n, est, lines) => {
+      const d = path.join(feat, 'US-' + n); fs.mkdirSync(d, { recursive: true });
+      fs.writeFileSync(path.join(d, 'Sobre.md'), ['---', 'tipo: us', 'estado: ' + est, 'pai: ../Sobre.md', '---', '# US-' + n + ' — teste',
+        '## Código tocado', ...lines, '', '## Rumo', '- **07/10/2026** — teste', ''].join(NLQ));
+    };
+    const strip = (s) => s.replace(/\x1b\[[0-9;]*m/g, '');
+    const f0 = run(a, '--fechar'); const o0 = strip(f0.stdout);
+    check('--fechar acusa código mudado num sub-repo fora de toda US, com o prefixo', f0.status !== 0 && /repos\/svc-a\/src\/a\.js/.test(o0) && /repos\/svc-b\/src\/b\.js/.test(o0) && /in NO active US/.test(o0), o0.slice(-500));
+    mkUs(1, 'ativa', ['- `repos/svc-a/src/a.js`', '- `src/b.js`', '- `src/dup.js`']);
+    const f1 = run(a, '--fechar'); const o1 = strip(f1.stdout);
+    check('declarado COM prefixo cobre o arquivo do sub-repo', /repos\/svc-a\/src\/a\.js\s+→ US-1/.test(o1), o1.slice(-500));
+    check('declarado SEM prefixo (um só repo o tem) resolve pelo canonFile', /repos\/svc-b\/src\/b\.js\s+→ US-1/.test(o1), o1.slice(-500));
+    check('nome sem prefixo em dois repos é avisado como ambíguo e não cobre nada', /`src\/dup\.js` is ambiguous/.test(o1) && f1.status !== 0 && /repos\/svc-a\/src\/dup\.js/.test(o1), o1.slice(-500));
+    mkUs(1, 'ativa', ['- `repos/svc-a/src/a.js`', '- `src/b.js`', '- `repos/svc-a/src/dup.js`', '- `repos/svc-b/src/dup.js`']);
+    const f2 = run(a, '--fechar');
+    check('tudo declarado, com e sem prefixo: sai 0', f2.status === 0 && /every changed code file is declared/.test(f2.stdout), strip(f2.stdout).slice(-500));
+    fs.mkdirSync(path.join(a.proj, 'repos', 'ruim', '.git'), { recursive: true });
+    fs.writeFileSync(path.join(a.proj, 'repos', 'ruim', 'x.js'), 'export const x = 1' + NLQ);
+    const f3 = run(a, '--fechar'); const o3 = strip(f3.stdout);
+    check('.git que o git recusa: avisa, não confere aquela pasta e não derruba o comando', /repos\/ruim has a \.git that git does not accept/.test(o3) && f3.status === 0 && !/repos\/ruim\/x\.js/.test(o3), o3.slice(-500));
+    fs.rmSync(path.join(a.proj, 'repos', 'ruim'), { recursive: true, force: true });
+    for (const r of ['', 'repos/svc-a', 'repos/svc-b']) {   // everything committed "yesterday": all three repos clean
+      const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t', GIT_AUTHOR_DATE: '2020-01-01T00:00:00', GIT_COMMITTER_DATE: '2020-01-01T00:00:00' };
+      spawnSync('git', ['add', '-A'], { cwd: path.join(a.proj, r), env });
+      spawnSync('git', ['commit', '-q', '-m', 'base'], { cwd: path.join(a.proj, r), env });
+    }
+    const f4 = run(a, '--fechar');
+    check('sub-repos limpos e sem commit de hoje: "nothing changed" (só quando todos estão limpos)', f4.status === 0 && /nothing changed/.test(f4.stdout), strip(f4.stdout).slice(-300));
+    fs.writeFileSync(path.join(a.proj, 'repos', 'svc-b', 'src', 'novo.js'), 'export const y = 2' + NLQ);
+    const f5 = run(a, '--fechar');
+    check('um só sub-repo sujo basta para acusar (exit != 0)', f5.status !== 0 && /repos\/svc-b\/src\/novo\.js/.test(f5.stdout) && !/nothing changed/.test(f5.stdout), strip(f5.stdout).slice(-300));
+    // names with spaces: plain porcelain/log quote them and the quote hid the extension (drift passed silent)
+    const svcA = path.join(a.proj, 'repos', 'svc-a'), envA = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t', GIT_AUTHOR_DATE: '2020-01-01T00:00:00', GIT_COMMITTER_DATE: '2020-01-01T00:00:00' };
+    for (const n of ['mod x.js', 'old name.js']) fs.writeFileSync(path.join(svcA, 'src', n), 'export const m = 1' + NLQ);
+    spawnSync('git', ['add', '-A'], { cwd: svcA, env: envA }); spawnSync('git', ['commit', '-q', '-m', 'espacos'], { cwd: svcA, env: envA });
+    fs.appendFileSync(path.join(svcA, 'src', 'mod x.js'), '// mudou' + NLQ);
+    spawnSync('git', ['mv', 'src/old name.js', 'src/new name.js'], { cwd: svcA });
+    const f6 = run(a, '--fechar');
+    check('nome com espaço, alterado e renomeado, num sub-repo: os dois são acusados', f6.status !== 0 && /repos\/svc-a\/src\/mod x\.js/.test(f6.stdout) && /repos\/svc-a\/src\/new name\.js/.test(f6.stdout) && !/old name\.js/.test(f6.stdout), strip(f6.stdout).slice(-400));
+    check('o template do /fechar diz "por repo"', /por repo/.test(fs.readFileSync(path.join(a.proj, '.claude', 'commands', 'fechar.md'), 'utf8')));
+    cleanup(a);
+  }
+}
+
 // ── 9aa. git worktree (US-13). Memory follows the cwd: in the worktree Claude Code creates
 //     a real, empty directory, and nothing warns. The hook (--status --curto, runs in EVERY
 //     session) has to flag it BEFORE marvin runs there; after, it goes quiet. Running marvin
