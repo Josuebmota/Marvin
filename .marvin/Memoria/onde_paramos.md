@@ -23,6 +23,7 @@ metadata:
 
 ## Em andamento
 
-- [US-19-papel-modelo-esforco](../Planejamento/Novos/time/roteamento/US-19-papel-modelo-esforco/Sobre.md) — política já pode ser aplicada; medir economia nas próximas tarefas reais comparáveis, sem tratar a medição como pré-requisito
+- [US-19-papel-modelo-esforco](../Planejamento/Novos/time/roteamento/US-19-papel-modelo-esforco/Sobre.md) — concluída 10/10/2026 como pronta para uso; sai da nota no próximo `marvin --release`
+- [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — medir custo por tarefa aprovada em 3–4 US reais; na próxima US, fixar contexto, checks e corte de turnos antes de começar
 
 - Fila refinada em 07/10/2026 (`po` + `tl`), nesta ordem: US-23 (fechada na 2.0.1) → US-21 (fechada na 2.2.0) → US-20 (fechada na 2.2.0). [US-22](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-22-grafo-dentro-do-marvin/Sobre.md) adiada

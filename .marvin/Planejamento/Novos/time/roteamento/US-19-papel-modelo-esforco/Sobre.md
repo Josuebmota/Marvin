@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-19 — a atividade escolhe papéis, skills, modelos e esforço conforme capacidades disponíveis
@@ -137,7 +137,7 @@ Escrita por `fsw`; segredos ficam na configuração local da ferramenta, fora da
 6. A regra pode ser aplicada com diferentes fornecedores, mantendo as mesmas
    verificações. Os controles usados no piloto têm fonte oficial e configuração
    conferida ou limitação explícita. Demais combinações são verificadas sob demanda.
-7. O glossário é usado em atividades reais: entradas com fonte/data e modalidade,
+7. _(movido para a [US-29](../US-29-medir-economia-do-roteamento/Sobre.md) em 10/10/2026)_ O glossário é usado em atividades reais: entradas com fonte/data e modalidade,
    distinção entre documentado/acesso/testado, resultado e limitações. A descoberta
    de acesso/modelos e os controles de esforço são conferidos na integração concreta;
    catálogo textual não comprova execução. Cobrir decomposição de atividade e cenário
@@ -147,7 +147,7 @@ Escrita por `fsw`; segredos ficam na configuração local da ferramenta, fora da
    distinguem acesso de integração executável; sem configuração ou capacidade, a
    limitação é explícita. Conferir também repetição, execução sem perguntas e dry-run.
 
-**Para validar a economia — não bloqueia o uso da política:**
+**Para validar a economia — não bloqueia o uso da política** _(critérios 4 e 5 movidos para a [US-29](../US-29-medir-economia-do-roteamento/Sobre.md) em 10/10/2026)_:
 
 4. Uma **linha de base medida** antes e depois, em 3 ou 4 US reais do Marvin ou de
    projetos que o Josué autorizar explicitamente para este piloto, usando os dados
@@ -403,11 +403,11 @@ conferir configuração, mas não é comparação em 3–4 US. Ganho **não demo
 - [x] Revisar diff final e executar os checks locais (aprovado pelo `tl`; 237 testes).
 - [x] Registrar ampliação confirmada e alinhar seleção por domínio, papéis, skills e capacidades nos gatilhos locais.
 - [x] Delimitar as sete opções escolhidas, identificar Jev e registrar o onboarding portátil proposto.
-- [ ] Operar o glossário em atividades reais e validar acesso, capacidade ausente e substituição por etapa.
-- [ ] Medir antes/depois em 3–4 US reais com atribuição completa.
+- [ ] → [US-29](../US-29-medir-economia-do-roteamento/Sobre.md): Operar o glossário em atividades reais e validar acesso, capacidade ausente e substituição por etapa.
+- [ ] → US-29: Medir antes/depois em 3–4 US reais com atribuição completa.
 - [x] Implementar o onboarding de disponibilidade autorizado, cobrindo uma/várias opções e outros executores.
-- [ ] Decidir ajustes da regra nos templates com os números do piloto; orientação inicial já antecipada por autorização.
-- [ ] Handoff entre executores por cota — movido para a [US-20](../US-20-handoff-de-executor-por-cota/Sobre.md).
+- [ ] → US-29: Decidir ajustes da regra nos templates com os números do piloto; orientação inicial já antecipada por autorização.
+- [x] Handoff entre executores por cota — movido para a [US-20](../US-20-handoff-de-executor-por-cota/Sobre.md).
 
 **Checks do piloto de 05/10:** `git diff --check`, links relativos dos 8 documentos,
 `marvin --fechar` e `marvin --status --curto` passaram. `npm run test`: **237 passaram**
@@ -557,8 +557,13 @@ Nada depende do que ela toca — folha do grafo.
   e o fluxo; os dois foram alinhados. Worker também conferido como gpt-6.1-sol/high
   nos logs. Revisão final da correção aprovada pelo `tl`; medição e templates pendentes.
 
+- **10/10/2026** — **concluída como pronta para uso** (decisão do Josué: fatiar, opção (b)). Critérios 1, 2, 3, 6 e 8 atendidos. O 1 e o 2 foram aplicados de verdade na triagem e no fechamento da [US-24](../../../ferramentas-opcionais/adaptadores/US-24-fechar-por-sub-repo/Sobre.md): combinação por etapa no *Time*, teste + `tl` lendo o diff e o `qa` reprovando um bug real. O 3 está escrito e ainda não foi exercitado: nenhuma reprovação por capacidade até agora. O 7 (glossário em atividade real) e os 4 e 5 (economia medida) foram para a [US-29](../US-29-medir-economia-do-roteamento/Sobre.md), que não bloqueia o uso. A economia segue **não demonstrada**.
+
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+
+**Pronta para uso — 10/10/2026:** política em `.marvin/Contexto/Fluxos/delegacao.md` aplicada na US-24 (commit `cbf4305`, release 2.3.0): *Time* por etapa com papel, capacidade, modelo/esforço e estado; verificação pelo risco (310 testes, `qa` + `tl` com mutações). Onboarding de disponibilidade entregue na 2.0.0 (evidência abaixo). **Não comprova economia**: isso é da US-29.
+Critério 3: a regra de subir um degrau está em `delegacao.md` (passo 5), **sem exercício**, porque não houve reprovação por capacidade. Critério 6: controles com fonte oficial datada na seção *Controles e limites* do `delegacao.md`. Um segundo fornecedor foi conferido em 05/10: o worker apareceu como gpt-6.1-sol/high nos logs. Nas demais etapas o modelo e o esforço ficam como "herdado, não confirmado", limitação já declarada no *Time* da US-24. Critério 1: o fornecedor e a ferramenta ficaram implícitos (Claude Code) na tabela da US-24.
 
 Entrega parcial — onboarding de 06/10: `npm run test` com 260 verificações; inclui
 uma/todas opções, outro executor, TTY real via driver, TTY sem perguntas, flags inválidas,
