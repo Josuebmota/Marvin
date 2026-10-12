@@ -417,6 +417,17 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   check('--use=graphify sem registro cria a linha com `sim`',
         fs.existsSync(recB) && /^\| graphify \| sim \|/m.test(fs.readFileSync(recB, 'utf8')));
   cleanup(b);
+  // US-31: two --use in one run must both land (the second read a stale record and lost the first).
+  for (const arg of ['--use=graphify --use=ponytail', '--use=graphify,ponytail']) {
+    const c = arena('registro-use-duplo');
+    run(c, '--no-git');
+    const recC = path.join(c.proj, '.marvin', 'ferramentas.md');
+    fs.writeFileSync(recC, fs.readFileSync(recC, 'utf8').replace(/^\| (graphify|ponytail) \| sim \|/mg, '| $1 | não |'));
+    run(c, '--no-git', ...arg.split(' '));
+    const t = fs.readFileSync(recC, 'utf8');
+    check('`' + arg + '` grava as duas linhas com `sim`', /^\| graphify \| sim \|/m.test(t) && /^\| ponytail \| sim \|/m.test(t), t.slice(-400));
+    cleanup(c);
+  }
 }
 
 // ── 9e2. ponytail: installed ≠ active, and absent does not fail silently (US-11b)
@@ -1245,6 +1256,17 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const up = run(a, '--no-git', '--no-questions').stdout;
   check('base atrás: a passada avança o carimbo e diz de onde', /marvin 0\.0\.1 → /.test(up) && new RegExp('^marvin: ' + version + '$', 'm').test(read()));
   check('marvin_montado nunca é reescrito', new RegExp('^marvin_montado: ' + version + '$', 'm').test(read()));
+  // US-30: a base ahead of this script is not downgraded; the run warns and the hook says to update.
+  fs.writeFileSync(rec, read().replace(/^marvin: .+$/m, 'marvin: 99.0.0'));
+  const ahead = run(a, '--no-git', '--no-questions').stdout;
+  check('base à frente: o carimbo não é rebaixado', /^marvin: 99\.0\.0$/m.test(read()));
+  check('base à frente: a passada avisa para atualizar', /atualize: npm i -g marvin-kb@latest/.test(ahead), ahead.slice(-300));
+  const hook = run(a, '--status', '--curto').stdout;
+  check('base à frente: o hook manda atualizar, não rodar `marvin`', /atualize o marvin/.test(hook) && !/rode `marvin`/.test(hook), hook);
+  // A quoted YAML value is the same version: quotes must not make it compare as older.
+  fs.writeFileSync(rec, read().replace(/^marvin: .+$/m, 'marvin: "99.0.0"'));
+  run(a, '--no-git', '--no-questions');
+  check('base à frente entre aspas: o carimbo não é rebaixado', /^marvin: "99\.0\.0"$/m.test(read()));
   cleanup(a);
 }
 

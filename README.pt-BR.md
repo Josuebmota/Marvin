@@ -416,7 +416,9 @@ primeira ilha rodar.
 
 **O carimbo de versão.** `.marvin/ferramentas.md` carrega `marvin_montado:` (escrito uma vez) e
 `marvin:` (a última passada). Base montada por versão antiga ganha uma linha ao abrir a sessão —
-*base montada com 1.5.0, este é 1.8.0* — e o passo 10 diz o que entrou desde então.
+*base montada com 1.5.0, este é 1.8.0* — e o passo 10 diz o que entrou desde então. Base carimbada por um marvin *mais novo* nunca é rebaixada: a
+passada avisa para atualizar. Essa guarda só vale da versão nova em diante — um marvin antigo já
+instalado continua rebaixando o carimbo até ser atualizado.
 
 ### O grafo trabalhando a favor
 
@@ -685,7 +687,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-310 verificações, zero dependência. Cobre os invariantes que protegem o disco
+316 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-31 — `--use` em duas ferramentas perde uma das escritas
@@ -70,6 +70,10 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **11/10/2026** — refinada. Saiu da observação "não reproduzida" do Josué na migração para a 2.3.0. Prioridade alta: bug medido, uma linha.
+- **11/10/2026** — ativa, junto com a US-30.
+- **12/10/2026** — implementada e validada (`dev-back` → `tl`): `rec` atualizado a cada escrita do laço. O `tl` conferiu que as leituras de `rec` depois do laço só testam se ele tem conteúdo e que o dry-run continua honesto (md5 do registro igual antes e depois).
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: **316 passaram**, com 2 checks novos (`--use=graphify --use=ponytail` e a forma com vírgula).
+- Mutação rodada pelo `tl`: voltar o `rec` velho → 2 vermelhos.

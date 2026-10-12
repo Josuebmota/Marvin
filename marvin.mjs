@@ -344,6 +344,8 @@ const isJunction = (p) => { try { return fs.lstatSync(p).isSymbolicLink(); } cat
 // last run, rewritten only when it changes. Step 10 finds missing blocks by marker, one by
 // one; the stamp answers the question the markers cannot: FROM which version am I migrating.
 const SELF_VERSION = (() => { try { return JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'package.json'), 'utf8')).version || '?'; } catch { return '?'; } })();
+// Numeric dotted compare (non-numeric part counts as 0); <0 when a is older than b. A newer base is never downgraded (US-30).
+const cmpVer = (a, b) => { const p = String(a).replace(/["']/g, '').trim().split('.'), q = String(b).replace(/["']/g, '').trim().split('.'); for (let i = 0; i < Math.max(p.length, q.length); i++) { const d = (parseInt(p[i], 10) || 0) - (parseInt(q[i], 10) || 0); if (d) return d; } return 0; };
 const RECORD_FILE = path.join(DOCS, 'ferramentas.md');
 const stampOf = () => {
   let t = ''; try { t = fs.readFileSync(RECORD_FILE, 'utf8'); } catch { return null; }
@@ -1308,7 +1310,7 @@ if (hasFlag('--status')) {
   if (fs.existsSync(DOCS) && !isJunction(MEM))
     log('  ! memória DESLIGADA deste repositório' + (WORKTREE ? ' (git worktree)' : '') + ' — rode `marvin` daqui antes de escrever qualquer nota; `marvin --check` explica');
   // Base stamped by an older run: the nudge that makes migration visible where it matters, at session start.
-  { const stamp = stampOf(); if (stamp && stamp.ultima && stamp.ultima !== SELF_VERSION) log('  ! base montada com marvin ' + (stamp.montado || '?') + ', última passada ' + stamp.ultima + ' — este é ' + SELF_VERSION + ': rode `marvin` para ver o que entrou'); }
+  { const stamp = stampOf(); if (stamp && stamp.ultima && stamp.ultima !== SELF_VERSION) log('  ! base montada com marvin ' + (stamp.montado || '?') + ', última passada ' + stamp.ultima + ' — este é ' + SELF_VERSION + (cmpVer(stamp.ultima, SELF_VERSION) > 0 ? ' (mais velho): atualize o marvin (npm i -g marvin-kb@latest)' : ': rode `marvin` para ver o que entrou')); }
   if (HTML) { if (!SHORT) log(''); writeStatusHtml(st, SHORT); }
   if (!SHORT) log('\n' + (st.problemas ? `\x1b[33m${st.problemas} thing(s) to fix\x1b[0m` : '\x1b[32mall consistent\x1b[0m') + '\n');
   process.exit(SHORT ? 0 : st.problemas ? 1 : 0);
@@ -1812,7 +1814,8 @@ const OPTIONAL_TOOLS = [
       uses = true;
       if (!m) newOnes.push('| ' + f.nome + ' | sim | ' + f.alcance + ' | ' + recordDate + ' |');
       else if (!/^sim$/i.test(m[1])) {
-        fsw.writeFileSync(RECORD, rec.replace(m[0], m[0].replace(m[1], 'sim')));
+        rec = rec.replace(m[0], m[0].replace(m[1], 'sim'));   // keep rec current: a second --use reads it (US-31)
+        fsw.writeFileSync(RECORD, rec);
         ok(RECORD_REL + ': ' + f.nome + ' → sim');
       }
     } else if (m) {
@@ -1875,10 +1878,11 @@ quem consegue ler o que a ferramenta produz — nem tudo é de todo agente.
     if (!/^marvin_montado:/m.test(head)) head += '\nmarvin_montado: ' + (rec ? '"< ' + SELF_VERSION + '"' : SELF_VERSION);
     const last = (head.match(/^marvin:[ \t]*(.+)$/m) || [])[1];
     if (!last) head += '\nmarvin: ' + SELF_VERSION;
-    else if (last.trim() !== SELF_VERSION) head = head.replace(/^marvin:[ \t]*.+$/m, 'marvin: ' + SELF_VERSION);
+    else if (cmpVer(last, SELF_VERSION) < 0) head = head.replace(/^marvin:[ \t]*.+$/m, 'marvin: ' + SELF_VERSION);
+    else if (cmpVer(last, SELF_VERSION) > 0) warn(RECORD_REL + ': base ' + last.trim() + ', este marvin é ' + SELF_VERSION + ' (mais velho) — atualize: npm i -g marvin-kb@latest');
     if (head !== fm[1]) {
       fsw.writeFileSync(RECORD, cur.replace(fm[0], '---\n' + head + '\n---'));
-      ok(RECORD_REL + ': marvin ' + (last ? last.trim() + ' → ' : '') + SELF_VERSION);
+      ok(RECORD_REL + ': ' + (last && cmpVer(last, SELF_VERSION) >= 0 ? 'marvin_montado registrado' : 'marvin ' + (last ? last.trim() + ' → ' : '') + SELF_VERSION));
     }
   }
   // Versioning choice (US-21): only a flag writes it, and only when it changes the line.
@@ -4122,7 +4126,7 @@ const missing = UPDATES.filter(a => {
 if (missing.length) {
   log('\n\x1b[1m10. Updates this project does not have yet\x1b[0m');
   log('   (the file already existed, so no step above touched it — that is deliberate)');
-  { const stamp = STAMP_BEFORE; if (stamp && (stamp.montado || stamp.ultima)) info('base montada com marvin ' + (stamp.montado || '?') + ' · última passada ' + (stamp.ultima || '?') + ' · este é ' + SELF_VERSION); }
+  { const stamp = STAMP_BEFORE; if (stamp && (stamp.montado || stamp.ultima)) info('base montada com marvin ' + (stamp.montado || '?') + ' · última passada ' + (stamp.ultima || '?') + ' · este é ' + SELF_VERSION + (stamp.ultima && cmpVer(stamp.ultima, SELF_VERSION) > 0 ? ' (base à frente)' : '')); }
   for (const f of missing) warn(f.arquivo + ' — missing ' + f.o_que + (f.desde ? '  (desde ' + f.desde + ')' : ''));
   info('nothing was rewritten: these files are yours and may have been edited on purpose.');
   info('to see the current text of each block, generate a clean project in a throwaway');

@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-30 — base mais nova não é rebaixada por um `marvin` mais velho
@@ -23,7 +23,7 @@ pai: ../Sobre.md
 
 **Não entra:** abortar a passada inteira (ver ❓1); mexer em `marvin_montado`; comparar pre-release ou tag; versionar os derivados.
 
-❓1 (Josué): basta **proteger o carimbo e avisar**, ou o binário velho deve **recusar a execução inteira** (sair != 0)? O `tl` e o `po` recomendam avisar e não rebaixar: as outras escritas já são idempotentes, o único dano medido é o carimbo, e recusar travaria quem tem binários diferentes em máquinas diferentes.
+**❓1 respondido (Josué, 11/10/2026): avisar e não rebaixar.** O binário velho não reescreve a linha `marvin:` e diz para atualizar; a passada segue.
 
 **Funde com:** é defeito da [US-17](../US-17-carimbo-de-versao/Sobre.md), que está fechada. O "Não entra" dela não previa binário mais velho que a base. Não reabre a US-17.
 
@@ -80,6 +80,10 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **11/10/2026** — refinada no `/refinar` (anotação do Josué durante a migração dos 6 projetos para a 2.3.0). Prioridade alta: bug medido, cabe num chat. Contorno já aplicado nas máquinas dele: `npm i -g marvin-kb@2.3.0`.
+- **11/10/2026** — ativa, junto com a US-31 no mesmo chat. ❓1: avisar e não rebaixar.
+- **12/10/2026** — implementada e validada (`dev-back` → `tl`). `cmpVer` numérico; carimbo só sobe; base à frente avisa "atualize" no passo, no hook e no passo 10. Ressalvas do `tl` aplicadas na sessão principal: R1, aspas no valor (`marvin: "99.0.0"`) faziam o `cmpVer` devolver −2 e rebaixar, agora tiradas antes de comparar, com check próprio; R2, o `ok` não anuncia mais rebaixamento falso quando só falta `marvin_montado`. Fica registrado, sem ação: versão pre-release (`2.3.0-beta`) faz o hook repetir "rode `marvin`". Não há pre-release hoje.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: **316 passaram** (4 checks novos da US-30, contando o das aspas).
+- Mutações rodadas pelo `tl` numa cópia: voltar o `!==` → 3 vermelhos; `cmpVer` sempre 0 → 3 vermelhos. R1: o `cmpVer` antigo dá −2 para `"99.0.0"` contra `2.3.0`.

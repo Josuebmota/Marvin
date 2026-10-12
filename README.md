@@ -421,7 +421,9 @@ hand-kept state files had diverged before the first ilha ran.
 
 **The version stamp.** `.marvin/ferramentas.md` carries `marvin_montado:` (written once) and
 `marvin:` (the last run). A base scaffolded by an older version gets one line at session start
-— *base montada com 1.5.0, este é 1.8.0* — and step 10 says what came in since.
+— *base montada com 1.5.0, este é 1.8.0* — and step 10 says what came in since. A base stamped by a *newer* marvin is never downgraded: the run warns
+you to update instead. That guard only holds from this version on — an older marvin already
+installed keeps downgrading the stamp until it is updated.
 
 ### The graph, working for you
 
@@ -699,7 +701,7 @@ rather than final text.
 node teste.mjs
 ```
 
-310 checks, no dependencies. It covers the invariants that protect other
+316 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.
