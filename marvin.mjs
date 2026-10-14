@@ -538,9 +538,19 @@ const readNode = (file) => {
   const cleanEvidence = evidence.replace(/<!--[\s\S]*?-->/g, '').replace(/_\([^)]*\)_/g, '').trim();
   const touched = (txt.match(/^##\s+Código tocado\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m) || [])[1] || '';
   const tocados = [...new Set([...touched.matchAll(/^[ \t]*[-*][ \t]*`([^`]+)`/gm)].map(m => canonFile(m[1].trim().replace(/\\/g, '/'))))];
+  // US-36: open questions are "- ❓ text" bullets (answered ones are "- ~~❓ …~~", which do not match);
+  // the team is the roles named in "## Time", template placeholders "_( … )_" stripped first.
+  const bare = txt.replace(/<!--[\s\S]*?-->/g, '').replace(/```[\s\S]*?```/g, '');
+  const perguntas = [...bare.matchAll(/^[ \t]*[-*][ \t]*❓[ \t]*(.+)$/gm)].map(m => m[1].trim());
+  const timeSec = (bare.match(/^##\s+Time\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m) || [])[1] || '';
+  const timeTxt = timeSec.replace(/_\([^)]*\)_/g, '');
+  const time = TEAM_ROLES.filter(r => new RegExp('(?<![\\w-])' + r + '(?![\\w-])', 'i').test(timeTxt));
   return { arq: file, tipo: field('tipo'), estado: field('estado'), pai: field('pai'), titulo: title, rumo,
-           evidencia: cleanEvidence, comEvidencia: /\S/.test(cleanEvidence), tocados };
+           evidencia: cleanEvidence, comEvidencia: /\S/.test(cleanEvidence), tocados, perguntas, time };
 };
+// Role vocabulary = base + optional of suggestTeam() (below); a constant because suggestTeam
+// reads `stacks`, which --status never builds. Keep the two in sync.
+const TEAM_ROLES = ['tl', 'po', 'dev', 'dev-front', 'dev-back', 'qa', 'scout', 'design', 'dba', 'sec', 'infra'];
 // ── Ilhas (US-16): the USs in the queue (refinada + ativa) grouped by the FILE they share in
 // "Código tocado". An ilha is what one development session attacks in sequence, without
 // changing files midway — it orders, it does not parallelize. Measured in a real project
@@ -1061,7 +1071,7 @@ const writeStatusHtml = (st, quiet = false) => {
 })();
 </script></details>`;
 
-  const usRow = (a) => `<tr class="${esc(a.estado)}"><td><span class="badge ${esc(a.estado)}">${esc(a.estado)}</span></td><td><strong>${esc(a.titulo)}</strong>${a.cadeia.length ? `<div class="dim">${esc(a.cadeia.join(' › '))}</div>` : ''}${a.proximo ? `<div>${esc(a.proximo.replace(/\*\*|`/g, ''))}</div>` : ''}${a.avisos.map(w => `<div class="warn">! ${esc(w)}</div>`).join('')}</td><td>${a.rumo ? `<span class="dim">${a.idade}d</span> ${esc(a.rumo.slice(0, 120))}` : '<span class="dim">sem Rumo datado</span>'}</td></tr>`;
+  const usRow = (a) => `<tr class="${esc(a.estado)}"><td><span class="badge ${esc(a.estado)}">${esc(a.estado)}</span></td><td><strong>${esc(a.titulo)}</strong>${a.cadeia.length ? `<div class="dim">${esc(a.cadeia.join(' › '))}</div>` : ''}${a.proximo ? `<div>${esc(a.proximo.replace(/\*\*|`/g, ''))}</div>` : ''}${a.avisos.map(w => `<div class="warn">! ${esc(w)}</div>`).join('')}</td><td>${a.rumo ? `<span class="dim">${a.idade}d</span> ${esc(a.rumo.slice(0, 120))}` : '<span class="dim">sem Rumo datado</span>'}</td><td>${a.time && a.time.length ? esc(a.time.join(' · ')) : '<span class="dim">—</span>'}</td></tr>`;
   // first fold: the previous point gives the cards' delta; the Corrigir list joins the page
   // warnings with each US's (linking to the file) — it is the reason to open the page
   const prev = pts.length > 1 ? pts[pts.length - 2] : null;
@@ -1147,7 +1157,9 @@ ${card('US concluídas', `${point.us_concluidas}<small> / ${point.us_total}</sma
 ${card('equivalente na API', '$' + g.custo.toFixed(2), delta(prev && prev.custo, g.custo, '', false, (v) => '$' + v.toFixed(2)) + ` · ${g.total.msgs} turnos`, '#tokens')}
 </div>
 <h2 id="andamento">Em andamento <span class="dim">— ${st.release ? 'última release ' + esc(st.release.nome) : 'sem release'}${st.grafo ? ' · grafo com ' + st.grafo.nos + ' nós, ' + st.grafo.idade + 'd' : ''}</span></h2>
-<table><tr><th></th><th>US</th><th>último Rumo</th></tr>${st.ativas.map(usRow).join('')}</table>
+<table><tr><th></th><th>US</th><th>último Rumo</th><th>Time</th></tr>${st.ativas.map(usRow).join('')}</table>
+<h2 id="perguntas">Perguntas abertas <span class="dim">— ${st.perguntas.length} ❓ em US ativas e refinadas</span></h2>
+${st.perguntas.length ? `<ul>${st.perguntas.map(p => `<li>${esc(p.texto)} <a href="${esc(path.relative(dir, p.arq).replace(/\\/g, '/'))}" target="_blank"><span class="dim">${esc(p.titulo.split(' — ')[0])}</span></a></li>`).join('')}</ul>` : '<p class="dim">nenhuma ❓ aberta</p>'}
 <h2 id="tendencia">Tendência <span class="dim">— ${pts.length} ponto(s), um por commit</span></h2>
 <div class="tendencia">
 <input type="radio" name="tend" id="tend0" checked><input type="radio" name="tend" id="tend1"><input type="radio" name="tend" id="tend2"><input type="radio" name="tend" id="tend3">
@@ -1160,6 +1172,8 @@ ${bars}
 <p class="dim">Tokens são medidos nas transcrições; o valor é o que os mesmos tokens <strong>custariam na API</strong>, pela tabela de ${PRICES_DATE} (input · output · cache write ≈ 1,25× · cache read ≈ 0,1×) — confira os preços vigentes. Num plano fixo (Max) o gasto real é a mensalidade — este número diz o quanto ele rende.${fixedShare != null ? ` Cada turno relê ~${kTk(g.contextoMedio)} tk de contexto; o contexto fixo (${st.contexto.total} tk) é <strong>~${fixedShare}%</strong> disso — o resto é a conversa. Sessão longa custa mais que arquivo grande.` : ''}</p>
 <h2 id="epics">Planejamento <span class="dim">— ${st.epics.length} epic(s) · clique para abrir · ◎ foca na rede</span></h2>
 ${treeHtml}
+<h2 id="decisoes">Decisões <span class="dim">— Contexto/Arquitetura</span></h2>
+${st.decisoes.length ? `<ul>${st.decisoes.map(d => `<li><a href="${esc(path.relative(dir, d.arq).replace(/\\/g, '/'))}" target="_blank">${esc(d.titulo)}</a></li>`).join('')}</ul>` : '<p class="dim">nenhuma nota em Contexto/Arquitetura</p>'}
 <h2 id="contexto">Contexto fixo <span class="dim">— o que carrega em toda sessão</span></h2>
 <table>${st.contexto.linhas.map(l => `<tr><td></td><td>${esc(l.nome)}</td><td>${l.tk} tk</td></tr>`).join('')}<tr><td></td><td><strong>total</strong></td><td><strong>${st.contexto.total} tk</strong></td></tr></table>
 ${networkHtml}
@@ -1187,7 +1201,7 @@ const computeStatus = () => {
     if (!n) { st.avisos.push({ nivel: 'err', texto: label + ' → ' + href + '  (file not found)' }); st.problemas++; continue; }
     const last = n.rumo.length ? n.rumo[n.rumo.length - 1] : null;
     const item = { titulo: n.titulo, arq: abs, cadeia: chain(n), estado: n.estado, proximo: (rest || '').trim(),
-                   rumo: last ? last.texto : null, rumoData: last ? last.data : null, idade: last ? days(last.data) : null, avisos: [] };
+                   rumo: last ? last.texto : null, rumoData: last ? last.data : null, idade: last ? days(last.data) : null, avisos: [], time: n.time };
     if (n.estado === 'concluida') { item.avisos.push('concluida but still in the note — it belongs in Releases/<versao>.md, and out of here'); st.problemas++; }
     if (n.estado === 'concluida' && !n.comEvidencia) { item.avisos.push('concluida without Evidência'); st.problemas++; }
     if (item.idade !== null && item.idade > 14 && n.estado === 'ativa') item.avisos.push(item.idade + ' days without a Rumo entry — stalled, or done and not recorded?');
@@ -1225,6 +1239,11 @@ const computeStatus = () => {
   }
   st.arvore = nodes.map(n => ({ arq: n.arq, tipo: n.tipo, estado: n.estado, titulo: n.titulo, pai: parentOf(n) ? parentOf(n).arq : null,
                                rumo: n.rumo.length ? { texto: n.rumo[n.rumo.length - 1].texto, idade: days(n.rumo[n.rumo.length - 1].data) } : null, comEvidencia: n.comEvidencia }));
+  st.perguntas = nodes.filter(n => n.tipo === 'us' && (n.estado === 'ativa' || n.estado === 'refinada'))
+    .flatMap(n => n.perguntas.map(texto => ({ titulo: n.titulo, arq: n.arq, estado: n.estado, texto })));
+  const arqDir = path.join(DOCS, 'Contexto', 'Arquitetura');
+  let decisoes = []; try { decisoes = fs.readdirSync(arqDir).filter(f => f.endsWith('.md') && f !== 'README.md').sort(); } catch {}
+  st.decisoes = decisoes.map(f => ({ arq: path.join(arqDir, f), titulo: ((fs.readFileSync(path.join(arqDir, f), 'utf8').match(/^#[ \t]+(.+)$/m) || [])[1] || f.replace(/\.md$/, '')).trim() }));
   for (const e of nodes.filter(n => n.tipo === 'epic')) {
     const desc = nodes.filter(n => n !== e && (() => { for (let p = parentOf(n); p; p = parentOf(p)) if (p === e) return true; return false; })());
     const us = desc.filter(n => n.tipo === 'us'), feats = desc.filter(n => n.tipo === 'feature');

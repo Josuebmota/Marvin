@@ -1131,6 +1131,32 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   check('HTML: problema vira item de Corrigir, antes dos cards, com link para o Sobre.md', /class="corrigir"/.test(html2) && html2.indexOf('class="corrigir"') < html2.indexOf('<div class="cards">') && /href="\.\.\/Planejamento\/Novos\/P\/F\/US-01-x\/Sobre\.md"/.test(html2) && /still in the note/.test(html2));
   check('.marvin/.status/ entrou no .gitignore', /^\.marvin\/\.status\/$/m.test(fs.readFileSync(path.join(a.proj, '.gitignore'), 'utf8')));
   check('--status --html --dry-run não escreve', (() => { const before = lines().length; fs.rmSync(path.join(dir, 'index.html')); run(a, '--status', '--html', '--dry-run'); return !fs.existsSync(path.join(dir, 'index.html')) && lines().length === before; })());
+  // US-36: Time column, open ❓ list and Decisões section — all derived, nothing new written
+  const sobreOf = (id) => path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'P', 'F', id, 'Sobre.md');
+  run(a, '--us', 'Novos/P/F/US-02-y');
+  run(a, '--us', 'Novos/P/F/US-03-z');
+  const s3 = sobreOf('US-03-z'); fs.writeFileSync(s3, fs.readFileSync(s3, 'utf8').replace('estado: ativa', 'estado: refinada') + NLQ + '- ❓ pergunta-refinada-w' + NLQ);
+  const rowOf = (h, id) => (h.match(new RegExp('<tr class="ativa">(?:(?!</tr>)[\\s\\S])*' + id + '[\\s\\S]*?</tr>')) || [''])[0];
+  run(a, '--status', '--html');
+  const h3 = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
+  check('Time: o placeholder do template não vira papel (coluna vazia)', /<span class="dim">—<\/span><\/td><\/tr>$/.test(rowOf(h3, 'US-02-y')), rowOf(h3, 'US-02-y').slice(-200));
+  const s2 = sobreOf('US-02-y');
+  fs.writeFileSync(s2, fs.readFileSync(s2, 'utf8').replace(/^## Time\s*\n[^\n]*\n/m, () => '## Time' + NLQ + '- `dev-back`: o código' + NLQ + '- qa' + NLQ) + NLQ + '- ❓ pergunta-teste-x' + NLQ + '- ~~❓ respondida-y~~' + NLQ + '<!-- - ❓ comentada-c -->' + NLQ);
+  fs.mkdirSync(path.join(a.proj, '.marvin', 'Contexto', 'Arquitetura'), { recursive: true });
+  fs.writeFileSync(path.join(a.proj, '.marvin', 'Contexto', 'Arquitetura', 'decisao-x.md'), '# Título X' + NLQ + 'corpo' + NLQ);
+  run(a, '--status', '--html');   // first run after the edits; also adds nothing outside .status/ (checked below)
+  const snap = () => { const o = []; (function w(d) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (p === dir || e.name === '.git') continue; e.isDirectory() ? w(p) : o.push(p + '\0' + fs.readFileSync(p, 'utf8')); } })(a.proj); return o.sort().join('\n'); };
+  const before = snap(), textBefore = run(a, '--status').stdout, lastKeys = Object.keys(JSON.parse(lines()[lines().length - 1])).join(',');
+  run(a, '--status', '--html');
+  const h4 = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
+  check('Perguntas: ❓ aberta aparece com link para o Sobre.md; respondida e comentada não', h4.includes('pergunta-teste-x') && /href="\.\.\/Planejamento\/Novos\/P\/F\/US-02-y\/Sobre\.md"[^>]*><span class="dim">US-02/.test(h4) && !h4.includes('respondida-y') && !h4.includes('comentada-c'));
+  check('Perguntas: US refinada também entra', h4.includes('pergunta-refinada-w'));
+  check('Perguntas: a seção fica depois do Em andamento e antes da Tendência', h4.indexOf('id="andamento"') < h4.indexOf('id="perguntas"') && h4.indexOf('id="perguntas"') < h4.indexOf('id="tendencia"'));
+  check('Time: dev-back e qa aparecem como "dev-back · qa" (dev não casa dentro de dev-back)', /dev-back · qa<\/td><\/tr>$/.test(rowOf(h4, 'US-02-y')), rowOf(h4, 'US-02-y').slice(-200));
+  check('Decisões: nota de Contexto/Arquitetura linkada, entre Planejamento e Contexto fixo', /id="decisoes"[\s\S]*<a href="\.\.\/Contexto\/Arquitetura\/decisao-x\.md"[^>]*>Título X<\/a>/.test(h4) && h4.indexOf('id="epics"') < h4.indexOf('id="decisoes"') && h4.indexOf('id="decisoes"') < h4.indexOf('id="contexto"'));
+  check('--status --html não escreve nada fora de .marvin/.status/', snap() === before);
+  check('--status (texto) igual com e sem um --status --html no meio', run(a, '--status').stdout === textBefore);
+  check('o ponto do historico.jsonl mantém exatamente as chaves de antes', lastKeys === Object.keys(JSON.parse(lines()[lines().length - 1])).join(',') && /^commit,data,total,tk,us_ativas,/.test(lastKeys), lastKeys);
   cleanup(a);
 }
 

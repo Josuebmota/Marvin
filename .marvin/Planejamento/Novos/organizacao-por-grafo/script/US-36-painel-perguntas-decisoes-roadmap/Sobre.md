@@ -34,7 +34,7 @@ Triagem 14/10/2026 (refino: `tl` + `po` em paralelo, dono decidiu o escopo com r
 Graphify: grafo extraído em 14/10 (277 nós); o `tl` localizou por Grep/Read, sem consultar o grafo — registrado como limitação.
 
 **Rodadas autônomas (US-37 critério 1 / amostras da US-29)** — declarado 14/10, antes de começar:
-- **Rodada 1** — critérios **1, 2, 4** e o 5 que cabe a eles. **Configuração anterior** (linha de base de 05/10): sessão principal Opus 5.5; `dev-back` Sonnet, `qa` Sonnet, `tl` Opus, **esforço padrão** (sem `effort` no prompt). Para ao fechar a fatia — o critério 3 fica para a rodada 2. Estado: pendente.
+- **Rodada 1** — critérios **1, 2, 4** e o 5 que cabe a eles. **Configuração anterior** (linha de base de 05/10): sessão principal Opus 5.5; `dev-back` Sonnet, `qa` Sonnet, `tl` Opus, **esforço padrão** (sem `effort` no prompt). Para ao fechar a fatia — o critério 3 fica para a rodada 2. Estado: **feita** (14/10) — destravada pelo dono no mesmo dia (READMEs 332 → 341); `node teste.mjs`: 341 ok. Histórico da rodada: `dev-back` Sonnet: feito, 9 checks novos; `qa` Sonnet: feito, sem achado bloqueante; `tl` Opus: reprovado só pela contagem dos READMEs (fora do *Código tocado*), 2 ressalvas baixas aplicadas pela sessão principal. `node teste.mjs`: 339 ok, 2 falham (`README*.md` dizem 332, são 341). Custo: `--status` deu ≈ $488.63 na captura inicial (já depois dos primeiros turnos) e ≈ $489.80 ao fim; o total é do projeto inteiro.
 - **Rodada 2** — critério **3** (roadmap por ilha) e o 5 que cabe a ele. **Pela política** (US-19): mesmos papéis e modelos, **menor esforço adequado, explícito no prompt** — `dev-back` medium, `qa` low, `tl` medium; sobe se a etapa falhar, e a subida vai para o Rumo. Esforço explícito autorizado pelo dono no refino de 14/10 (US-29 critério 4). Estado: pendente.
 - **Corte de turnos:** cada rodada é um chat novo aberto pelo dono só com `/continuar`; a amostra vai do primeiro turno à linha final do passo 4. Nada mais na sessão.
 - **Mesmos checks nas duas:** `node teste.mjs`, `qa` confere `--status` texto e `historico.jsonl` byte a byte, `tl` lê o diff. Custo pelo `marvin --status` ao fim de cada rodada.
@@ -90,6 +90,27 @@ Nada depende do que ela toca — folha do grafo.
 ## Rumo
 - **14/10/2026** — refinada a partir do item 6 dos requisitos de 14/10. Divergência `tl`×`po` sobre o roadmap (po: fora; tl: dentro, derivado) — o dono escolheu dentro. Economia por US cortada por ambos.
 - **14/10/2026** — vira `ativa` como veículo das 2 rodadas autônomas da [US-37](../../../time/roteamento/US-37-condutor-autonomo-sessoes-curtas/Sobre.md) (dono: US-36 em 2 fatias). Fatias, configuração e corte declarados no *Time* antes de rodar.
+- **14/10/2026 (sessão autônoma — rodada 1 de 2)**
+  1. **A atividade:** o painel `--status --html` passa a mostrar as ❓ abertas das US ativas/refinadas, as notas de `Contexto/Arquitetura/` e a coluna *Time* na tabela de US (critérios 1, 2, 4 e o 5 deles). O roadmap (critério 3) é da rodada 2.
+  2. **O que foi feito:** `marvin.mjs` — `readNode` ganhou `perguntas` e `time`; nova constante `TEAM_ROLES` logo abaixo; `computeStatus` monta `st.perguntas` e `st.decisoes` (só leitura); `writeStatusHtml` ganhou a coluna Time no `usRow`, a seção `id="perguntas"` (depois de Em andamento) e a seção `id="decisoes"` (depois do Planejamento). `teste.mjs` — 9 checks no bloco 9x: ❓ aberta com link, respondida e comentada fora, US refinada entra, placeholder do template não vira papel, `dev-back · qa` na linha, nota de Arquitetura linkada, snapshot de que nada é escrito fora de `.marvin/.status/`, `--status` texto igual com e sem `--html` no meio, e as chaves do ponto do jsonl inalteradas. O `qa` comparou o `--status` texto com a captura de antes da mudança: só mudou o custo das sessões, que vem das transcrições e não do código.
+  3. **Decisões tomadas sozinho:**
+     - ❓ aberta = bullet `- ❓ …`, em qualquer lugar do arquivo; respondida = `- ~~❓ …~~`, que é a convenção já usada nos `Sobre.md`. Ficou de fora a ❓ fora de bullet (ex.: "**❓1 respondido**" na US-30), porque o texto livre não distingue aberta de respondida.
+     - Time = papéis de um vocabulário fixo (`TEAM_ROLES` = base + optional de `suggestTeam`), achados como palavra inteira na seção `## Time`, sem diferenciar maiúsculas e depois de tirar os placeholders `_(…)_`. A constante é duplicada porque `suggestTeam` lê `stacks`, que o `--status` não monta. Ficaram de fora a leitura de `.claude/agents/` para papéis custom (YAGNI) e a extração de "qualquer crase" (pegaria nomes de arquivo).
+     - Decisões = `.md` do nível de cima de `Contexto/Arquitetura/`, sem README, ordenados pelo nome do arquivo. Não tratei o layout antigo (`10_Decisoes/`) como o `tl` sugeriu, porque o `--status` já sai em `marvin.mjs:1325` nesse layout.
+     - Da revisão do `tl` apliquei duas ressalvas: a flag `i` nos papéis e `^#[ \t]+` no título, para um `#` sozinho não pegar a linha de baixo.
+  4. **Onde parou e por quê:** **travada numa dependência fora do *Código tocado*.** `node teste.mjs` dá 339 ok e 2 falhas: o check que confere o número de verificações nos READMEs (`README.md:715` e `README.pt-BR.md:700` dizem 332, são 341). A sessão autônoma não edita arquivo fora do *Código tocado*. **Pergunta:** posso trocar 332 por 341 nos dois READMEs?
+     - **Sim:** é uma linha em cada um, e com isso a suíte fica verde e os critérios 1, 2, 4 e 5 fecham.
+     - **Não:** então os READMEs passam para o *Código tocado* de quem for dono deles, e o teste fica vermelho até lá.
+     Ficaram ressalvas abertas, que não bloqueiam:
+     - `design` dentro de prosa na seção Time conta como papel. Também acontece com `po` citado em "refino: `tl` + `po`", que aparece na coluna da própria US-36.
+     - O texto da ❓ sai com o Markdown cru (`**`, crases).
+     - Não há check amarrando `TEAM_ROLES` a `suggestTeam`.
+     A rodada parou na fatia, como declarado; o critério 3 é da rodada 2.
+  - **Destravada (14/10, dono):** "pode trocar 332 por 341 nos READMEs". Troquei em `README.md:715` e `README.pt-BR.md:700`; `node teste.mjs`: 341 passaram, 0 falharam. Os critérios 1, 2, 4 e 5 dessa fatia estão fechados; a US segue `ativa` para a rodada 2 (critério 3).
+     O `marvin --status` ao sair acusa as mesmas coisas de antes da sessão, e não mexi em nenhuma (arrumar seria sair da US):
+     - US-36 e US-37 tocam `marvin.mjs` e `teste.mjs`.
+     - A US-29 não tem mapa.
+     - A base foi montada com marvin < 2.2.0 → rode `marvin`.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
