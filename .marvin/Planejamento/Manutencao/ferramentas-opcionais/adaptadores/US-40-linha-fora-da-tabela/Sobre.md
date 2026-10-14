@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-40-linha-fora-da-tabela
@@ -43,6 +43,12 @@ Nenhuma nova. `adaptador-de-ferramenta` (já existe) cobre o registro; não muda
   nova de template. Sem tabela no arquivo, a linha continua indo para o fim, como antes. O
   caminho CRLF não tem check: o arquivo do teste nasce com `\n` e forçar CRLF não muda o que o
   check protege. Fica declarado como lacuna, não como coberto. Revisão do `po`: abre.
+- **14/10/2026** — concluída: commit `7bd1677`. `node teste.mjs` rodado antes do commit, 350
+  passaram. Fica para o dono: a release (`marvin --release 2.6.1`, patch) e conferir no projeto
+  real em que o bug apareceu. Descartado: check de CRLF (lacuna declarada acima).
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+Commit `7bd1677`; `node teste.mjs`: **350 passaram**, com o check novo (seção `## …` depois da
+tabela, linha entra antes dela, 2º run idêntico) — o `tl` confirmou que ele falha no `marvin.mjs`
+de `02930e3`. Diff lido pelo `tl` (fecha); US aberta pelo `po`.

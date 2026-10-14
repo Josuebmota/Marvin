@@ -24,5 +24,5 @@ metadata:
 ## Em andamento
 
 - [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — medir custo por tarefa aprovada em 3–4 US reais; na próxima US, fixar contexto, checks e corte de turnos antes de começar
-- [US-40-linha-fora-da-tabela](../Planejamento/Manutencao/ferramentas-opcionais/adaptadores/US-40-linha-fora-da-tabela/Sobre.md) — correção implementada e lida pelo `tl` (fecha); próximo passo: commit
+- [US-40-linha-fora-da-tabela](../Planejamento/Manutencao/ferramentas-opcionais/adaptadores/US-40-linha-fora-da-tabela/Sobre.md) — concluída (`7bd1677`); próximo passo: o dono decide a release 2.6.1 (`marvin --release 2.6.1`)
 
