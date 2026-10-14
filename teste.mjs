@@ -1370,6 +1370,15 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   check('US sem Código tocado é "sem mapa"', /sem mapa[^\n]*US-04/.test(out), out);
   check('refinada não dispara "ativa but not in the note"', !/marked ativa but not in the note/.test(out), out);
   check('/refinar é gerado', fs.existsSync(path.join(a.proj, '.claude', 'commands', 'refinar.md')));
+  const cont = path.join(a.proj, '.claude', 'commands', 'continuar.md');
+  const contTxt = fs.readFileSync(cont, 'utf8');
+  check('/continuar é gerado', /sem esperar confirmação/.test(contTxt));
+  check('/continuar não leva link de delegacao nem teto fixo, e aponta a nota real', !/delegacao/.test(contTxt) && !contTxt.includes('$3') && contTxt.includes('.marvin/Memoria/onde_paramos.md'));
+  run(a, '--no-git', '--no-questions');
+  check('/continuar: 2ª passada não muda o arquivo', fs.readFileSync(cont, 'utf8') === contTxt);
+  fs.writeFileSync(cont, 'meu /continuar\n');
+  run(a, '--no-git', '--no-questions');
+  check('/continuar editado pelo humano não é sobrescrito', fs.readFileSync(cont, 'utf8') === 'meu /continuar\n');
   check('/retomar tem as duas portas', /duas portas/.test(fs.readFileSync(path.join(a.proj, '.claude', 'commands', 'retomar.md'), 'utf8')));
   cleanup(a);
 }

@@ -410,6 +410,7 @@ A rule that lives in a file depends on someone remembering it. Four commands fir
 | opening a session | SessionStart hook → `marvin --status --curto --html` (also regenerates the dashboard), then `/retomar` | reads the note, follows the pointers, checks against `git log`; then offers **two doors**: develop the ilha of the moment, or refine |
 | refining | `/refinar` → `marvin --us <path> --refinada` | `tl` + `po` turn an annotation into a US with *Pronto quando* and *Código tocado*, born `refinada`: in the queue, not in the note. No code |
 | starting work | `/us <path>` → `marvin --us` | creates the `Sobre.md` chain and the pointer; the agent then maps, proposes the team and the skills |
+| autonomous round | `/continuar`, in a new chat, triggered by the owner | takes the first US in the note that is not stuck, works until the *Pronto quando* or until it gets stuck, and records in the Rumo what it decided alone. No commit; the owner validates from the diff |
 | releasing | `marvin --release <v>` | writes `Releases/<v>.md` from the concluded USs and takes them out of the note |
 | closing | `/fechar` | Rumo entry per US touched, note rewritten as pointers, agents updated in layers, `--status`, and whether it is time for a new chat |
 
@@ -712,7 +713,7 @@ rather than final text.
 node teste.mjs
 ```
 
-345 checks, no dependencies. It covers the invariants that protect other
+349 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

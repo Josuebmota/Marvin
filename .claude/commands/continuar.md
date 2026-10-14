@@ -1,5 +1,5 @@
 ---
-description: Sessão autônoma — escolhe a próxima US, executa até o "Pronto quando" ou até travar, registra e sai. Feito para rodar em loop sem humano.
+description: Sessão autônoma — escolhe a próxima US, executa até o "Pronto quando" ou até travar, registra e sai. Uma rodada por chat novo, disparada pelo dono.
 ---
 
 Continue o roadmap **sem esperar confirmação**. Este é o `/retomar` sem o "espere eu confirmar" —
@@ -8,7 +8,9 @@ tem de estar escrito de um jeito que ele entenda **sem abrir a conversa**.
 
 ## 1. Escolher
 
-Leia `.marvin/Memoria/onde_paramos.md` e `git log --oneline -5`. Das US em *Em andamento*,
+Leia `.marvin/Memoria/onde_paramos.md` e `git log --oneline -5`. Anote o custo total que o
+`marvin --status` mostra agora: é o começo da rodada. Voltando do passo 2 para pegar outra US, confira o custo
+de novo: passou do teto do passo 4 → vá direto ao passo 4. Das US em *Em andamento*,
 pegue a **primeira que não está em *Travado*** e que tem *Pronto quando* preenchido e
 verificável. Sem nenhuma que sirva → escreva na nota "nada elegível para sessão autônoma:
 <motivo>" e **pare aqui**. Não abra US nova: abrir é decisão do `po`, e o `po` é o humano.
@@ -57,8 +59,9 @@ pergunta. Concluiu → `estado: concluida`, mas **não** tira da nota nem escrev
 
 ## 4. Sair
 
-Rode `marvin --status`. Se acusar algo, registre no Rumo e não tente "arrumar" — arrumar fora
+Rode `marvin --status` e registre no Rumo o custo da rodada (o total agora menos o do passo 1).
+**Teto: $3 por rodada** (dono, 14/10). Passou do teto → não pegue outra US; saia. Se acusar algo, registre no Rumo e não tente "arrumar" — arrumar fora
 da US é trava. Termine com uma linha: `US <nome>: concluída|travada|nada elegível — <motivo>`.
-É o que o loop vê para decidir se roda de novo.
+É o que o dono lê para decidir se dispara outra rodada.
 
 $ARGUMENTS

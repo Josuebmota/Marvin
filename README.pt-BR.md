@@ -404,6 +404,7 @@ Regra que mora num arquivo depende de alguém lembrar. Quatro comandos a dispara
 | abrir a sessão | hook SessionStart → `marvin --status --curto --html` (regera o dashboard também), depois `/retomar` | lê a nota, segue os ponteiros, confere contra o `git log`; depois oferece **duas portas**: desenvolver a ilha da vez, ou refinar |
 | refinar | `/refinar` → `marvin --us <caminho> --refinada` | `tl` + `po` transformam anotação em US com *Pronto quando* e *Código tocado*, nascida `refinada`: na fila, fora da nota. Sem código |
 | começar trabalho | `/us <caminho>` → `marvin --us` | cria a cadeia de `Sobre.md` e o ponteiro; o agente mapeia, propõe o time e as skills |
+| rodada autônoma | `/continuar`, num chat novo, disparado pelo dono | pega a primeira US da nota que não está travada, executa até o *Pronto quando* ou até travar, e registra no Rumo o que decidiu sozinho. Sem commit; o dono valida pelo diff |
 | lançar | `marvin --release <v>` | escreve `Releases/<v>.md` a partir das US concluídas e as tira da nota |
 | fechar | `/fechar` | entrada no Rumo por US tocada, nota reescrita como ponteiros, agentes atualizados em camadas, `--status`, e se é hora de chat novo |
 
@@ -697,7 +698,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-345 verificações, zero dependência. Cobre os invariantes que protegem o disco
+349 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

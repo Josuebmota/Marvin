@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 name: US-37-condutor-autonomo-sessoes-curtas
 description: "Modo autônomo por horas: rodar o /continuar aqui, uma US por sessão curta, até ter rodadas registradas; só então gerá-lo nos projetos e pensar no condutor que encadeia sessões."
@@ -35,8 +35,8 @@ Triagem 14/10/2026 (refino: `tl` + `po`; dono escolheu a ordem do `po` — esta 
 Rodar o `/continuar` duas vezes é o gatilho para uma skill de rodada autônoma, se o procedimento se repetir.
 
 ## ❓
-- ❓ Quem dispara o condutor (7c)? **Para o critério 1: o dono, à mão** — chat novo + `/continuar`, duas vezes (14/10). A escolha do condutor (`/loop`, `claude -p`, marvin) fica para depois das rodadas, com o custo delas na mão.
-- ❓ Qual o teto de custo por noite / por rodada? Aberto — decide com o custo das 2 rodadas.
+- ~~❓ Quem dispara o condutor (7c)?~~ **O dono, à mão:** um chat novo com `/continuar` por rodada (decisão do dono, 14/10). Não se gera condutor nenhum (`/loop`, `claude -p` nem processo do marvin).
+- ~~❓ Qual o teto de custo por noite / por rodada?~~ **$3 por rodada** (decisão do dono, 14/10), cerca de 3× o custo das rodadas da US-36 (≈ $1,17 e ≈ $1,04). Vale para este repo; o comando gerado não fixa valor.
 - ~~❓ Commit sim, push nunca?~~ **Sem commit, sem push** (dono, 14/10): o `/continuar` fica como está; o diff na árvore é a evidência.
 
 ## Impacto
@@ -91,5 +91,29 @@ Nada depende do que ela toca — folha do grafo.
     - (a) A rodada 2 conta para o critério 1, que pede "2 rodadas do `/continuar`, uma US por sessão"? Se sim, o critério 1 fecha e o 2 pode começar. Se não, falta uma rodada autônoma de verdade.
     - (b) Os dois ❓ abertos: quem dispara o condutor e o teto de custo. Os custos das rodadas estão acima, mas a rodada 2 não é amostra limpa.
 
+- **14/10/2026 (dono)** — decisões:
+  - A rodada 2 da US-36 **conta** para o critério 1, com a ressalva de que não foi autônoma. O critério 1 fecha.
+  - Condutor: o dono, à mão (critério 3 decidido, nada a gerar).
+  - Teto: $3 por rodada.
+  - Próximo: o critério 2, o `/continuar` gerado. **Estado: feito** (ver a entrada abaixo).
+
+- **14/10/2026** — critério 2 feito; a US fecha.
+  1. **A atividade:** o `/continuar`, rodado à mão neste repo nas 2 rodadas da US-36, passa a ser gerado pelo `marvin` em todo projeto.
+  2. **O que foi feito:**
+     - `marvin.mjs`: bloco `cmdContinue` depois do `/refinar`. É guardado por `existsSync`, escreve com `fsw` e fica dentro do `!OLD_LAYOUT`. Entrou também uma linha na `UPDATES` com `desde: '2.6.0'` e marca `sem esperar confirmação`.
+     - `teste.mjs`: 4 checks. O comando é gerado; não leva `delegacao` nem `$3` e aponta a nota real; a 2ª passada não muda o arquivo; um arquivo editado à mão não é sobrescrito.
+     - `README*.md`: contagem 349 e uma linha "rodada autônoma" na tabela de comandos.
+     - `.claude/commands/continuar.md` deste repo: a descrição agora diz "disparada pelo dono"; o custo é anotado no passo 1 e no passo 4; teto de $3.
+     - O `dev-back` rodou em Sonnet com esforço medium; o `qa`, em Sonnet low; o `tl`, em Opus medium. Nenhuma etapa precisou subir o esforço.
+  3. **Decisões:**
+     - **O que muda no gerado em relação ao original:** o caminho da nota é o do projeto; o link para `delegacao.md` saiu (ele não existe nos projetos gerados); o comando de teste é "o do `AGENTS.md`"; o teto é o que o dono declarou no `AGENTS.md`, e sem teto declarado é uma US por rodada (invariante 4: o script não fixa valor). "Dormindo / de manhã" virou "não está olhando / depois".
+     - **Ressalvas do `tl` aplicadas:** "Invariante 1" virou "Nunca destruir dado", porque o invariante 1 é numeração deste repo; "o `po` é o humano" virou "abrir US é decisão do humano", porque nos projetos gerados o `po` é um agente; e a volta ao passo 1 agora só acontece "se o teto permitir".
+  4. **Onde parou:** concluída. Evidência: `node teste.mjs` dá 349 ok. O `qa` gerou o comando num projeto descartável com HOME redirecionado: o caminho está certo, não sobrou nada deste repo e o `--dry-run` não cria o arquivo. O `tl` aprovou.
+     **Lacunas baixas:** não há check de `--dry-run` nem de `UPDATES` para o `/continuar`.
+     Custo do projeto pelo `--status`: ≈ $497.69. A sessão misturou release, decisões e implementação, então não vira amostra da US-29.
+
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- Critério 1: as 2 rodadas da US-36, `6fec0cb` e `5666d49`; a 2ª conta, por decisão do dono.
+- Critério 2: `node teste.mjs` dá 349 ok; o comando gerado foi conferido em projeto descartável; o `tl` aprovou.
+- Critério 3: o dono dispara o condutor à mão, com teto de $3 por rodada neste repo.
