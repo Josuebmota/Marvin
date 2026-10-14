@@ -528,6 +528,18 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
         /^\| playwright \| não \|/m.test(fs.readFileSync(recOf(e), 'utf8')));
   cleanup(e);
 
+  // A new row goes inside the table, not at EOF after the project's own sections (14/10/2026).
+  const s = arena('pw-secao');
+  run(s, '--no-git');
+  fs.appendFileSync(recOf(s), '\n## Painel do projeto\n\ntexto do projeto\n');
+  run(s, '--no-git', '--use=playwright');
+  const sAfter = fs.readFileSync(recOf(s), 'utf8');
+  run(s, '--no-git', '--use=playwright');
+  check('linha nova entra na tabela, antes da seção do projeto; 2º run não muda nada',
+        /^\| ponytail \|[^\n]*\n\| playwright \| sim \|[^\n]*\n\n## Painel do projeto\n\ntexto do projeto\n$/m.test(sAfter)
+        && fs.readFileSync(recOf(s), 'utf8') === sAfter, sAfter.slice(-600));
+  cleanup(s);
+
   // US-32 (A): graphify and ponytail both detected, no TTY → ONE warning with the joint command.
   // Hermetic: a fake `graphify` binary at the head of PATH (the key is `Path` on Windows —
   // a second `PATH` would duplicate the variable) and the ponytail planted in the arena's home.

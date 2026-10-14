@@ -1923,8 +1923,16 @@ const OPTIONAL_TOOLS = [
     + (NO_QUESTIONS ? '--no-questions' : 'no interactive terminal') + ' — recording `não`. Flip '
     + (deferred.length > 1 ? 'them' : 'it') + ' with  marvin --use=' + deferred.map(([n]) => n).join(','));
   if (newOnes.length) {
-    if (rec) fsw.appendFileSync(RECORD, newOnes.join('\n') + '\n');
-    else {
+    if (rec) {
+      // Right after the last row of the registry table, not at EOF: a project may have added its
+      // own sections after the table, and an appended row would land outside it. No table → EOF.
+      const hdr = rec.search(/^\|[ \t]*ferramenta[ \t]*\|/mi);
+      const at = hdr < 0 ? rec.length : hdr + rec.slice(hdr).match(/^(?:\|[^\n]*(?:\n|$))+/)[0].length;
+      const head = rec.slice(0, at);
+      const nl = /\r\n/.test(rec) ? '\r\n' : '\n';   // keep the file's line endings
+      rec = head + (head && !head.endsWith('\n') ? nl : '') + newOnes.join(nl) + nl + rec.slice(at);
+      fsw.writeFileSync(RECORD, rec);
+    } else {
       fsw.mkdirSync(DOCS, { recursive: true });
       fsw.writeFileSync(RECORD, `---
 name: ferramentas
