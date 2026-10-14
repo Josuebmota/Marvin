@@ -1144,6 +1144,11 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   fs.writeFileSync(s2, fs.readFileSync(s2, 'utf8').replace(/^## Time\s*\n[^\n]*\n/m, () => '## Time' + NLQ + '- `dev-back`: o código' + NLQ + '- qa' + NLQ) + NLQ + '- ❓ pergunta-teste-x' + NLQ + '- ~~❓ respondida-y~~' + NLQ + '<!-- - ❓ comentada-c -->' + NLQ);
   fs.mkdirSync(path.join(a.proj, '.marvin', 'Contexto', 'Arquitetura'), { recursive: true });
   fs.writeFileSync(path.join(a.proj, '.marvin', 'Contexto', 'Arquitetura', 'decisao-x.md'), '# Título X' + NLQ + 'corpo' + NLQ);
+  // US-36 roadmap fixture: ilha "zz" (2 refinadas: 05, 06) outranks ilha "aa" (1: 04) — opposite of alphabetical
+  for (const [id, f] of [['US-04-a', 'aa'], ['US-05-b', 'zz'], ['US-06-c', 'zz']]) {
+    run(a, '--us', 'Novos/P/F/' + id);
+    const s = sobreOf(id); fs.writeFileSync(s, fs.readFileSync(s, 'utf8').replace('estado: ativa', 'estado: refinada').replace(/^## Código tocado\n/m, () => '## Código tocado' + NLQ + '- `src/' + f + '.js`' + NLQ));
+  }
   run(a, '--status', '--html');   // first run after the edits; also adds nothing outside .status/ (checked below)
   const snap = () => { const o = []; (function w(d) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (p === dir || e.name === '.git') continue; e.isDirectory() ? w(p) : o.push(p + '\0' + fs.readFileSync(p, 'utf8')); } })(a.proj); return o.sort().join('\n'); };
   const before = snap(), textBefore = run(a, '--status').stdout, lastKeys = Object.keys(JSON.parse(lines()[lines().length - 1])).join(',');
@@ -1154,6 +1159,11 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   check('Perguntas: a seção fica depois do Em andamento e antes da Tendência', h4.indexOf('id="andamento"') < h4.indexOf('id="perguntas"') && h4.indexOf('id="perguntas"') < h4.indexOf('id="tendencia"'));
   check('Time: dev-back e qa aparecem como "dev-back · qa" (dev não casa dentro de dev-back)', /dev-back · qa<\/td><\/tr>$/.test(rowOf(h4, 'US-02-y')), rowOf(h4, 'US-02-y').slice(-200));
   check('Decisões: nota de Contexto/Arquitetura linkada, entre Planejamento e Contexto fixo', /id="decisoes"[\s\S]*<a href="\.\.\/Contexto\/Arquitetura\/decisao-x\.md"[^>]*>Título X<\/a>/.test(h4) && h4.indexOf('id="epics"') < h4.indexOf('id="decisoes"') && h4.indexOf('id="decisoes"') < h4.indexOf('id="contexto"'));
+  const rmap = h4.slice(h4.indexOf('id="roadmap"'), h4.indexOf('id="epics"')), at = (id) => rmap.indexOf('>' + id);
+  check('Roadmap: seção existe, entre Perguntas e Planejamento', h4.includes('id="roadmap"') && h4.indexOf('id="perguntas"') < h4.indexOf('id="roadmap"') && h4.indexOf('id="roadmap"') < h4.indexOf('id="epics"'));
+  check('Roadmap: ativa antes de refinada', at('US-02') > 0 && at('US-02') < at('US-03'));
+  check('Roadmap: refinadas na ordem das ilhas (maior primeiro), não alfabética; sem mapa por último', at('US-05') > 0 && at('US-05') < at('US-06') && at('US-06') < at('US-04') && at('US-04') < at('US-03'));
+  check('Roadmap: concluída dentro do <details>, com link para o Sobre.md', /<details><summary>Concluídas \(1\)<\/summary>[\s\S]*<a href="\.\.\/Planejamento\/Novos\/P\/F\/US-01-x\/Sobre\.md"[^>]*>US-01/.test(rmap) && rmap.indexOf('<details>') > at('US-03'));
   check('--status --html não escreve nada fora de .marvin/.status/', snap() === before);
   check('--status (texto) igual com e sem um --status --html no meio', run(a, '--status').stdout === textBefore);
   check('o ponto do historico.jsonl mantém exatamente as chaves de antes', lastKeys === Object.keys(JSON.parse(lines()[lines().length - 1])).join(',') && /^commit,data,total,tk,us_ativas,/.test(lastKeys), lastKeys);

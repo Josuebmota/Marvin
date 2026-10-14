@@ -1170,6 +1170,9 @@ ${st.perguntas.length ? `<ul>${st.perguntas.map(p => `<li>${esc(p.texto)} <a hre
 ${bars}
 <table><tr><th></th><th>modelo</th><th>input</th><th>cache write</th><th>cache read</th><th>output</th><th>turnos</th><th>custo</th><th>por turno</th></tr>${modelsTable}</table>
 <p class="dim">Tokens são medidos nas transcrições; o valor é o que os mesmos tokens <strong>custariam na API</strong>, pela tabela de ${PRICES_DATE} (input · output · cache write ≈ 1,25× · cache read ≈ 0,1×) — confira os preços vigentes. Num plano fixo (Max) o gasto real é a mensalidade — este número diz o quanto ele rende.${fixedShare != null ? ` Cada turno relê ~${kTk(g.contextoMedio)} tk de contexto; o contexto fixo (${st.contexto.total} tk) é <strong>~${fixedShare}%</strong> disso — o resto é a conversa. Sessão longa custa mais que arquivo grande.` : ''}</p>
+<h2 id="roadmap">Roadmap <span class="dim">— derivado de estado e ilhas; nada escrito à mão</span></h2>
+${(() => { const li = (r) => r.length ? `<ul>${r.map(i => `<li><a href="${esc(path.relative(dir, i.arq).replace(/\\/g, '/'))}" target="_blank">${esc(i.titulo)}</a> <span class="dim">${esc(i.cadeia.join(' › '))}</span></li>`).join('')}</ul>` : '<p class="dim">nenhuma</p>';
+  return `<h3>Em andamento</h3>${li(st.roadmap.ativa)}<h3>Na fila</h3>${li(st.roadmap.refinada)}<details><summary>Concluídas (${st.roadmap.concluida.length})</summary>${li(st.roadmap.concluida)}</details>`; })()}
 <h2 id="epics">Planejamento <span class="dim">— ${st.epics.length} epic(s) · clique para abrir · ◎ foca na rede</span></h2>
 ${treeHtml}
 <h2 id="decisoes">Decisões <span class="dim">— Contexto/Arquitetura</span></h2>
@@ -1241,6 +1244,14 @@ const computeStatus = () => {
                                rumo: n.rumo.length ? { texto: n.rumo[n.rumo.length - 1].texto, idade: days(n.rumo[n.rumo.length - 1].data) } : null, comEvidencia: n.comEvidencia }));
   st.perguntas = nodes.filter(n => n.tipo === 'us' && (n.estado === 'ativa' || n.estado === 'refinada'))
     .flatMap(n => n.perguntas.map(texto => ({ titulo: n.titulo, arq: n.arq, estado: n.estado, texto })));
+  // Roadmap: read-only view of estado + ilha order. Open USs outside any ilha come after, by short id.
+  const idOf = (n) => n.titulo.split(' — ')[0];
+  const ilhaPos = new Map(st.ilhas.ilhas.flatMap(i => i.us).map((u, k) => [path.resolve(u.arq), k]));
+  const rm = (estado) => nodes.filter(n => n.tipo === 'us' && n.estado === estado).map(n => ({ titulo: n.titulo, arq: n.arq, estado: n.estado, cadeia: chain(n) }));
+  const byOpen = (a, b) => { const pa = ilhaPos.get(path.resolve(a.arq)), pb = ilhaPos.get(path.resolve(b.arq));
+    return (pa === undefined ? Infinity : pa) === (pb === undefined ? Infinity : pb) ? idOf(a).localeCompare(idOf(b)) : (pa === undefined ? 1 : pb === undefined ? -1 : pa - pb); };
+  st.roadmap = { ativa: rm('ativa').sort(byOpen), refinada: rm('refinada').sort(byOpen),
+                 concluida: rm('concluida').sort((a, b) => a.cadeia.join(' › ').localeCompare(b.cadeia.join(' › ')) || idOf(a).localeCompare(idOf(b))) };
   const arqDir = path.join(DOCS, 'Contexto', 'Arquitetura');
   let decisoes = []; try { decisoes = fs.readdirSync(arqDir).filter(f => f.endsWith('.md') && f !== 'README.md').sort(); } catch {}
   st.decisoes = decisoes.map(f => ({ arq: path.join(arqDir, f), titulo: ((fs.readFileSync(path.join(arqDir, f), 'utf8').match(/^#[ \t]+(.+)$/m) || [])[1] || f.replace(/\.md$/, '')).trim() }));

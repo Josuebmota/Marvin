@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 name: US-36-painel-perguntas-decisoes-roadmap
 description: "O painel (--status --html) passa a mostrar as ❓ abertas, as decisões de Contexto/Arquitetura, um roadmap derivado de epics/estados e o Time de cada US. Economia por US fica fora até a US-29."
@@ -35,7 +35,7 @@ Graphify: grafo extraído em 14/10 (277 nós); o `tl` localizou por Grep/Read, s
 
 **Rodadas autônomas (US-37 critério 1 / amostras da US-29)** — declarado 14/10, antes de começar:
 - **Rodada 1** — critérios **1, 2, 4** e o 5 que cabe a eles. **Configuração anterior** (linha de base de 05/10): sessão principal Opus 5.5; `dev-back` Sonnet, `qa` Sonnet, `tl` Opus, **esforço padrão** (sem `effort` no prompt). Para ao fechar a fatia — o critério 3 fica para a rodada 2. Estado: **feita** (14/10) — destravada pelo dono no mesmo dia (READMEs 332 → 341); `node teste.mjs`: 341 ok. Histórico da rodada: `dev-back` Sonnet: feito, 9 checks novos; `qa` Sonnet: feito, sem achado bloqueante; `tl` Opus: reprovado só pela contagem dos READMEs (fora do *Código tocado*), 2 ressalvas baixas aplicadas pela sessão principal. `node teste.mjs`: 339 ok, 2 falham (`README*.md` dizem 332, são 341). Custo: `--status` deu ≈ $488.63 na captura inicial (já depois dos primeiros turnos) e ≈ $489.80 ao fim; o total é do projeto inteiro.
-- **Rodada 2** — critério **3** (roadmap por ilha) e o 5 que cabe a ele. **Pela política** (US-19): mesmos papéis e modelos, **menor esforço adequado, explícito no prompt** — `dev-back` medium, `qa` low, `tl` medium; sobe se a etapa falhar, e a subida vai para o Rumo. Esforço explícito autorizado pelo dono no refino de 14/10 (US-29 critério 4). Estado: pendente.
+- **Rodada 2** — critério **3** (roadmap por ilha) e o 5 que cabe a ele. **Pela política** (US-19): mesmos papéis e modelos, **menor esforço adequado, explícito no prompt** — `dev-back` medium, `qa` low, `tl` medium; sobe se a etapa falhar, e a subida vai para o Rumo. Esforço explícito autorizado pelo dono no refino de 14/10 (US-29 critério 4). Estado: **feita** (14/10). Histórico: `dev-back` Sonnet/medium fez 4 checks novos, com 343 ok e 2 falhas na contagem dos READMEs; `qa` Sonnet/low achou 345 ok e o `--status` texto igual; `tl` Opus/medium aprovou com 5 ressalvas baixas. Nenhuma etapa precisou subir o esforço. Custo pelo `--status`: ≈ $492.23 → ≈ $493.27 (Δ ≈ $1,04, projeto inteiro). **Desvio do corte, registrado antes de começar:** o dono pediu ("faz o push e continua até acabar o desenvolvimento") para rodar no mesmo chat do commit e push da rodada 1, e não num chat novo. A amostra começa no turno seguinte ao push (`6fec0cb`), com o custo do projeto em ≈ $492.23 pelo `--status`. O contexto herdado da conversa anterior fica na conta como ruído conhecido.
 - **Corte de turnos:** cada rodada é um chat novo aberto pelo dono só com `/continuar`; a amostra vai do primeiro turno à linha final do passo 4. Nada mais na sessão.
 - **Mesmos checks nas duas:** `node teste.mjs`, `qa` confere `--status` texto e `historico.jsonl` byte a byte, `tl` lê o diff. Custo pelo `marvin --status` ao fim de cada rodada.
 - Sem commit, sem push (dono, 14/10). O dono valida e commita.
@@ -112,5 +112,25 @@ Nada depende do que ela toca — folha do grafo.
      - A US-29 não tem mapa.
      - A base foi montada com marvin < 2.2.0 → rode `marvin`.
 
+- **14/10/2026 (rodada 2 de 2 — no chat do dono, a pedido dele, não autônoma)**
+  1. **A atividade:** o critério 3 pede um roadmap no `--status --html`, derivado de `estado` e da ordem das ilhas, sem nada escrito à mão. Fecha a US.
+  2. **O que foi feito:**
+     - `marvin.mjs`: `computeStatus` monta `st.roadmap` em três grupos, `ativa`, `refinada` e `concluida`. Cada item leva `cadeia` = `chain(n)`, que dá epic › feature. `writeStatusHtml` ganhou a seção `id="roadmap"` antes de Planejamento, com as concluídas num `<details>` fechado.
+     - `teste.mjs`: 4 checks novos no bloco 9x. O fixture usa duas ilhas cuja ordem diverge da alfabética. Os checks de snapshot e de byte a byte da rodada 1 rodam depois deles.
+     - `README*.md`: a contagem passou de 341 para 345.
+  3. **Decisões:**
+     - **Forma do roadmap:** uma lista por estado, com a cadeia ao lado de cada US. Ativa e refinada seguem a ordem de `st.ilhas.ilhas`; as US fora de ilha (só núcleo, sem mapa) vêm depois, pelo id. As concluídas saem por cadeia e id. Descartei aninhar epic › feature › US de novo, porque a árvore do Planejamento já faz isso; o que faltava era a ordem. Se o dono quiser o aninhamento, vira outra US.
+     - **Contagem dos READMEs:** troquei sem perguntar, porque é a mesma troca mecânica que o dono autorizou na rodada 1 e ele pediu para ir até o fim. É fora do *Código tocado*, e fica registrado aqui.
+     - **Corte de turnos:** a rodada rodou no mesmo chat do commit e do push da rodada 1, e não num chat novo como o *Time* declarava. O desvio foi registrado antes de começar. A comparação de custo com a rodada 1 é indicativa, não amostra limpa para a US-29.
+  4. **Onde parou:** concluída. Evidência do *Pronto quando* 3 e 5: `node teste.mjs` dá 345 ok. O `--status` texto saiu igual ao de `6fec0cb`, fora as linhas de custo. O `qa` viu uma diferença na linha de versão, mas era artefato de rodar o script velho fora do repo; com o `package.json` ao lado, a saída fica igual. O `tl` aprovou.
+     **Ressalvas baixas, abertas:**
+     - `idOf` sem `.trim()`.
+     - `at('US-02')` casaria um `US-020` futuro.
+     - Faltam checks para grupo vazio, `esc` no título, ordem entre várias concluídas e empate de ilhas.
+     - Fora da US: o `AGENTS.md` cita `days()` em `marvin.mjs:552`, e hoje ela está em `:601`.
+     **Falta o dono:** validar, commitar e levar a US para uma Release. Ela continua na nota até lá.
+
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- Rodada 1: commit `6fec0cb`, `node teste.mjs` 341 ok.
+- Rodada 2: commit do dono (14/10), `node teste.mjs` 345 ok; `--status` texto igual ao de `6fec0cb`, fora o custo; `tl` aprovou.

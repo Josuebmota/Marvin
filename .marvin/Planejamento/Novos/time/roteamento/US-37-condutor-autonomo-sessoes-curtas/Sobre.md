@@ -84,5 +84,12 @@ Nada depende do que ela toca — folha do grafo.
 - **14/10/2026** — refinada do item 7. `tl` e `po` concordam: rodar aqui antes de gerar. Dividida em 7a/7b/7c dentro da mesma US; 7b e 7c só depois de 7a.
 - **14/10/2026** — preparada a 7a: amostra = US-36 em 2 fatias, disparo manual, sem commit. A US-36 entra na nota **acima** da US-29, para o `/continuar` pegá-la primeiro. Próximo: o dono abre um chat novo com `/continuar` (rodada 1).
 
+- **14/10/2026** — as 2 rodadas da US-36 rodaram e estão no Rumo dela.
+  - **Rodada 1:** `/continuar` autônomo, configuração anterior. Travou na contagem dos READMEs, que fica fora do *Código tocado*, e o dono destravou. Custo ≈ $1,17.
+  - **Rodada 2:** pela política. **Não foi um `/continuar` autônomo:** rodou no chat do dono, depois do commit e do push da rodada 1, a pedido dele. Custo ≈ $1,04.
+  - **Travada em duas perguntas do dono:**
+    - (a) A rodada 2 conta para o critério 1, que pede "2 rodadas do `/continuar`, uma US por sessão"? Se sim, o critério 1 fecha e o 2 pode começar. Se não, falta uma rodada autônoma de verdade.
+    - (b) Os dois ❓ abertos: quem dispara o condutor e o teto de custo. Os custos das rodadas estão acima, mas a rodada 2 não é amostra limpa.
+
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
