@@ -23,5 +23,4 @@ metadata:
 
 ## Em andamento
 
-- [US-37-condutor-autonomo-sessoes-curtas](../Planejamento/Novos/time/roteamento/US-37-condutor-autonomo-sessoes-curtas/Sobre.md) — concluída (`/continuar` gerado, 349 ok, `tl` aprovou), sem commit → o dono valida, commita e leva para a Release 2.6.0
 - [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — medir custo por tarefa aprovada em 3–4 US reais; na próxima US, fixar contexto, checks e corte de turnos antes de começar
