@@ -23,6 +23,5 @@ metadata:
 
 ## Em andamento
 
-- [US-36-painel-perguntas-decisoes-roadmap](../Planejamento/Novos/organizacao-por-grafo/script/US-36-painel-perguntas-decisoes-roadmap/Sobre.md) — concluída e commitada (345 ok, `tl` aprovou) → falta levar para uma Release e tirar daqui
 - [US-37-condutor-autonomo-sessoes-curtas](../Planejamento/Novos/time/roteamento/US-37-condutor-autonomo-sessoes-curtas/Sobre.md) — as 2 rodadas da US-36 rodaram; travada: a rodada 2 (no chat do dono, não autônoma) conta para o critério 1? e os ❓ do condutor e do teto de custo
 - [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — medir custo por tarefa aprovada em 3–4 US reais; na próxima US, fixar contexto, checks e corte de turnos antes de começar
