@@ -32,4 +32,5 @@ metadata:
   4. agente ou skill que falta no glossário é **criado para aquele contexto**;
   5. matriz **persona/modelo/esforço** por etapa ([`mapa-capacidades.md`](../Contexto/mapa-capacidades.md)), começando pelo menor esforço adequado, com esforço passado explícito na delegação; cada projeto nasce com a sua matriz;
   6. **painel** (`--status --html`) com cards, roadmap, decisões, perguntas ❓, economia por US (depende da US-29) e o **cérebro do graphify** (o grafo visual). Ler antes o painel do parci em `.marvin/painel/`.
+  7. **modo autônomo para rodar por horas:** promover o `/continuar` (hoje só neste repo, "experimento, não gerado pelo script") a comando gerado nos projetos; um **condutor** que encadeia sessões curtas (uma US por sessão, estado no *Time*/*Rumo*) em vez de uma sessão gigante; o painel mostra o que rodou sozinho e onde travou; custo medido junto da US-29. Conversa com os itens 3 e 5 (quem chamar, com que esforço).
   Contexto: reel de 13/10 assistido com `/watch` (teaser de "2 Opus com 90% de economia"; mostra papéis fixos, "condutor" e "correio", sem explicar o método).
