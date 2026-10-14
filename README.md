@@ -38,7 +38,7 @@ script that creates a structure and gets out of the way.
 | 🧠 **Memory in git** | an inverted junction makes the agent's memory land inside `.marvin/` |
 | 🔁 **Idempotent** | run it twice, nothing duplicates or gets overwritten |
 | 🔍 **Diagnostics** | fixed-context cost per session, empty "services", junk in the root, canonical commands read from the manifest |
-| 🔌 **Optional tools** | `graphify` code graph and `ponytail`, recorded in `.marvin/ferramentas.md` — never required |
+| 🔌 **Optional tools** | `graphify` code graph, `ponytail` and `playwright`, recorded in `.marvin/ferramentas.md` — never required |
 
 > **The package is `marvin-kb`, the command is `marvin`.** `marvin` was already taken on
 > npm, so `npx marvin` would fetch someone else's package — use `npx marvin-kb`. After
@@ -234,14 +234,18 @@ Running again with a different list **adds** what's missing; nothing is removed.
 ### Optional tools — the `.marvin/ferramentas.md` record
 
 Some tools are not adapters but things a project *chooses* to use. marvin detects them
-on PATH, asks **once** (only with a terminal — without one it records `não` and warns),
-and writes the answer to `.marvin/ferramentas.md`. Later runs read the record instead of
-asking. Flip it with `--use=<tool>`; `--no-questions` records `não` even with a terminal.
+on PATH (`playwright` is offered by a web front in a `package.json`, not by PATH), asks
+**once** (only with a terminal — without one it records `não` and warns), and writes the
+answer to `.marvin/ferramentas.md`. Later runs read the record instead of asking. Flip it
+with `--use=<tool>`; `--no-questions` records `não` even with a terminal. A comma list
+turns several on at once (`marvin --use=graphify,ponytail`), and without a terminal, with
+both detected, the warning suggests exactly that line.
 
 | Tool | What it produces | Reach |
 |---|---|---|
 | `graphify` | `graphify-out/graph.json` — the code graph, see [below](#--graphify--queries-no-hook) | **any agent** reads the JSON/markdown; only the hook is Claude-specific, and it is not installed |
 | `ponytail` | a simplicity ladder for whoever *implements* — a `## Ferramentas` section in `AGENTS.md` (confidence **low**: installed and read, not measured) and a role table in `.claude/agents/README.md` (dev yes; `tl`/`po`/`scout` no) | plugin with hooks in **Claude Code, Codex and Copilot CLI** (each has its own install; marvin detects only the Claude one, telling *installed* — `~/.claude/plugins/installed_plugins.json` — from *active* — `~/.claude/.ponytail-active`); Cursor takes its hooks (`~/.cursor/hooks.json`) or its rule file, neither generated; everyone else copies the rule file from the ponytail repo |
+| `playwright` | a `## Ferramentas` section in `AGENTS.md` with the rule "a US that touches a screen closes only with Playwright evidence" (flow script + screenshot or `playwright-cli snapshot`); confidence **low**: not measured | offered only when a `package.json` (root or sub-repo, depth ≤ 3) has a web front; installation is not detected; covers web/PWA only — not React Native/Expo without `react-dom`, nor Flutter |
 
 *Reach* is the column that matters: it says who can consume what the tool produces.
 A tool whose output only one agent reads is a decision, not a default.
@@ -675,6 +679,13 @@ in `docs/superpowers/`, so use it for the *execution* and keep the decisions in 
 `Sobre.md` of each US. Marvin neither detects nor configures it, so it is not in the
 *Optional tools* table.
 
+[Agent Skills](https://github.com/addyosmani/agent-skills) is a portable set of lifecycle
+skills (spec, plan, build, test, review, security) for Claude Code, Codex, Cursor and others.
+Its spec and plan overlap the `Sobre.md`, `po` and `tl`, and it writes them in its own files, so the
+same rule applies: keep the decisions in the US. Where it is clearly stronger is security
+(`security-and-hardening`: threat model, secrets, SSRF, dependency checks). It is worth reading when a
+US calls for `sec`. Marvin neither detects nor configures it.
+
 ## Requirements
 
 Node 18+. No dependencies.
@@ -701,7 +712,7 @@ rather than final text.
 node teste.mjs
 ```
 
-316 checks, no dependencies. It covers the invariants that protect other
+332 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

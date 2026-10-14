@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-34 — Playwright CLI obrigatório como evidência do `qa` em projeto com front ou mobile
@@ -29,3 +29,14 @@ pai: ../Sobre.md
 
 ## Skills
 `adaptador-de-ferramenta`.
+
+## Rumo
+- **13/10/2026** — aberta e refinada (decisão do Josué, reel de 13/10).
+- **14/10/2026** — ativa (Josué pediu para desenvolver todas as pendentes). Mobile nativo: a regra vale para web/PWA; Maestro/Detox fica como lacuna. Triagem técnica com o `tl`.
+- **14/10/2026** — implementada e validada (`tl` especificou → `dev-back` → `tl` aprovou). Playwright é o 3º item de `OPTIONAL_TOOLS`, com `aplica()`: só oferecido com front web num `package.json` (raiz ou sub-repo, profundidade ≤ 3); RN/Expo sem `react-dom` e Flutter ficam fora. A regra "US que toca tela só fecha com evidência do Playwright" entra em `## Ferramentas` do `AGENTS.md` gerado, com confiança baixa. Entrada em `UPDATES` `desde: '2.4.0'`. A detecção de stack foi movida para antes do bloco 0b (TDZ). Mobile nativo continua sem ferramenta (lacuna declarada). ❓ do `tl` respondido por padrão: `.claude/agents/README.md` não muda. Lacuna de teste: o ramo TTY `y → sim`.
+
+## Evidência
+<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: **332 passaram**.
+- Mutações (`dev-back`): `aplica: () => true` → checks 8 e 9; sem o ramo nativo → 9; `stacks` só na raiz → 10; sem o bloco do template → 7; `soCom: false` → 4.
+- O `tl` comparou byte a byte o script novo com o anterior: o `AGENTS.md` com só ponytail, sem ferramentas e com react sem `--use` sai **idêntico**.

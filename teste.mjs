@@ -469,6 +469,106 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(c);
 }
 
+// ── 9e3. Playwright adapter (US-34), one warning for two tools (US-32), Makefile target (US-35)
+// KNOWN GAP: the TTY branch `y → sim` of Playwright is not tested — it is the same generic loop
+// graphify and ponytail already go through; 9e covers it for them with no TTY here either.
+// The trigger is the project (a web front in a package.json), not the machine: outside a web
+// front the record gets no line and the output no word about it.
+{
+  const withDeps = (name, pkg, extra) => {
+    const x = arena(name);
+    fs.writeFileSync(path.join(x.proj, 'package.json'), JSON.stringify(pkg));
+    if (extra) extra(x);
+    return x;
+  };
+  const recOf = (x) => path.join(x.proj, '.marvin', 'ferramentas.md');
+  const agentsOf = (x) => fs.readFileSync(path.join(x.proj, 'AGENTS.md'), 'utf8');
+
+  const a = withDeps('pw-react', { dependencies: { react: '18' } });
+  const r1 = run(a, '--no-git');
+  check('US-34: front web sem TTY registra `não` e avisa com o comando',
+        /^\| playwright \| não \|/m.test(fs.readFileSync(recOf(a), 'utf8'))
+        && /playwright is suggested \(web front in package\.json\)[^\n]*no interactive terminal[^\n]*--use=[a-z,]*playwright/.test(r1.stdout), r1.stdout.slice(-500));
+  check('US-34: registrado `não`, o AGENTS.md não ganha a regra', !/Playwright/.test(agentsOf(a)));
+  const before = fs.readFileSync(recOf(a), 'utf8');
+  run(a, '--no-git');
+  check('US-34: segundo run deixa o registro igual', fs.readFileSync(recOf(a), 'utf8') === before);
+  const r4 = run(a, '--no-git', '--use=playwright');
+  check('US-34: base antiga + --use=playwright: o passo 10 acusa a seção faltando (desde 2.4.0)',
+        /AGENTS\.md — missing the "Ferramentas" section on Playwright[^\n]*\(desde 2\.4\.0\)/.test(r4.stdout), r4.stdout.slice(-500));
+  cleanup(a);
+
+  const b = withDeps('pw-use', { dependencies: { react: '18' } });
+  run(b, '--no-git', '--use=playwright', '--dry-run');
+  check('US-34: --use=playwright --dry-run não cria o registro', !fs.existsSync(recOf(b)));
+  run(b, '--no-git', '--use=playwright');
+  check('US-34: --use=playwright grava `sim` com o alcance web/PWA',
+        /^\| playwright \| sim \| .*web\/PWA/m.test(fs.readFileSync(recOf(b), 'utf8')));
+  check('US-34: o AGENTS.md ganha a regra (selo baixa, só fecha com evidência, mobile nativo fora)',
+        /## Ferramentas[\s\S]*\*\*Playwright CLI\*\*[\s\S]*confiança \*\*baixa\*\*[\s\S]*só\s+fecha\s+com\s+evidência[\s\S]*mobile\s+nativo/.test(agentsOf(b)));
+  cleanup(b);
+
+  const c = arena('pw-sem-front');
+  const rc = run(c, '--no-git');
+  check('US-34: sem front web, nada de playwright no registro, no AGENTS.md nem na saída',
+        !/playwright/i.test(fs.readFileSync(recOf(c), 'utf8')) && !/playwright/i.test(agentsOf(c)) && !/playwright/i.test(rc.stdout), rc.stdout.slice(-400));
+  cleanup(c);
+
+  const d = withDeps('pw-nativo', { dependencies: { react: '18', 'react-native': '0.74' } });
+  run(d, '--no-git');
+  check('US-34: React Native sem react-dom é app nativo — nenhuma linha playwright',
+        !/playwright/i.test(fs.readFileSync(recOf(d), 'utf8')));
+  cleanup(d);
+
+  const e = arena('pw-subrepo');
+  fs.mkdirSync(path.join(e.proj, 'repos', 'web'), { recursive: true });
+  fs.writeFileSync(path.join(e.proj, 'repos', 'web', 'package.json'), '{"dependencies":{"react":"18"}}');
+  run(e, '--no-git');
+  check('US-34: front só no sub-repo (repos/web) também oferece o playwright',
+        /^\| playwright \| não \|/m.test(fs.readFileSync(recOf(e), 'utf8')));
+  cleanup(e);
+
+  // US-32 (A): graphify and ponytail both detected, no TTY → ONE warning with the joint command.
+  // Hermetic: a fake `graphify` binary at the head of PATH (the key is `Path` on Windows —
+  // a second `PATH` would duplicate the variable) and the ponytail planted in the arena's home.
+  const f = arena('juntos');
+  fs.mkdirSync(path.join(f.lar, '.claude', 'plugins'), { recursive: true });
+  fs.writeFileSync(path.join(f.lar, '.claude', 'plugins', 'installed_plugins.json'), '{"plugins":{"ponytail@ponytail":[]}}');
+  fs.writeFileSync(path.join(f.lar, '.claude', '.ponytail-active'), 'full\n');
+  const bin = path.join(f.base, 'bin'); fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, 'graphify'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(bin, 'graphify.cmd'), '@exit /b 0\r\n');
+  const pk = Object.keys(process.env).find(k => k.toUpperCase() === 'PATH') || 'PATH';
+  const rf = spawnSync(process.execPath, [SCRIPT, '--no-git'], {
+    cwd: f.proj, encoding: 'utf8',
+    env: { ...process.env, HOME: f.lar, USERPROFILE: f.lar, [pk]: bin + path.delimiter + process.env[pk] },
+  });
+  const recF = fs.readFileSync(recOf(f), 'utf8');
+  check('US-32: sem TTY, graphify e ponytail detectados continuam `não`',
+        /^\| graphify \| não \|/m.test(recF) && /^\| ponytail \| não \|/m.test(recF), rf.stdout.slice(-500));
+  check('US-32: um aviso só, com os dois nomes e o comando único',
+        /graphify is [^\n]*, ponytail is [^\n]*Flip them with  marvin --use=graphify,ponytail/.test(rf.stdout)
+        && (rf.stdout.match(/Flip (it|them) with/g) || []).length === 1, rf.stdout.slice(-500));
+  check('US-32: a dica final mostra uma flag que liga as duas',
+        /One flag turns both on:  marvin --use=graphify,ponytail/.test(rf.stdout), rf.stdout.slice(-500));
+  cleanup(f);
+
+  // US-35: `tests:` is not the `test` target; `test :` is.
+  const mk = (name, text) => {
+    const x = arena(name); fs.writeFileSync(path.join(x.proj, 'Makefile'), text); run(x, '--no-git'); return x;
+  };
+  const m1 = mk('mk-tests', 'tests:\n\techo x\n');
+  check('US-35: Makefile só com `tests:` não vira `make test`', !/make test/.test(agentsOf(m1)));
+  cleanup(m1);
+  const m2 = mk('mk-espaco', 'test :\n\techo x\n');
+  check('US-35: Makefile com `test :` vira `make test`', /make test/.test(agentsOf(m2)));
+  cleanup(m2);
+  // `build := ./out` is a variable (:=), not a target.
+  const m3 = mk('mk-var', 'build := ./out\n');
+  check('US-35: variável `build := …` não vira `make build`', !/make build/.test(agentsOf(m3)));
+  cleanup(m3);
+}
+
 // ── 9e. monorepo: the sub-repo ignored by the root reaches the generated CLAUDE.md
 // In a monorepo the graph was born useless IN SILENCE: the root ignores the sub-repos,
 // graphify respects .gitignore, and what was left was a graph without the product code.

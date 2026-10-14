@@ -18,7 +18,9 @@ adaptador de `--tools=`. Tudo mora no **bloco 0b** do `marvin.mjs` (`FERR_OPCION
    como string — vai na pergunta e no aviso), `instalar` (o comando exato), `alcance`
    (quem lê o que ela produz; se depende de `--tools=`, um getter). Detecção de plugin do
    Claude lê `~/.claude/...` via `os.homedir()` — é o que o teste redireciona.
-3. **Um `let` no topo** (`GRAPHIFY`, `PONYTAIL`) ligado no laço do 0b. Só ele decide o
+   `aplica()` é opcional e serve para ferramenta que só vale num tipo de projeto; fora dele,
+   não grava linha nem avisa (exemplo: playwright, só com front web).
+3. **Um `let` no topo** (`GRAPHIFY`, `PONYTAIL`, `PLAYWRIGHT`) ligado no laço do 0b. Só ele decide o
    que o script gera depois.
 4. **O que ela muda no gerado** entra em template já guardado por `existsSync`, como
    bloco `${FLAG ? ... : ''}`. Selo de confiança na seção. Escrita **sempre** por `fsw`.

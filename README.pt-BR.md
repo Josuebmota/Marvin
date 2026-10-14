@@ -38,7 +38,7 @@ de ~1810 linhas que cria uma estrutura e sai da frente.
 | 🧠 **Memória no git** | uma junction invertida faz a memória do agente nascer dentro de `.marvin/` |
 | 🔁 **Idempotente** | rodar duas vezes não duplica nem sobrescreve nada |
 | 🔍 **Diagnóstico** | custo do contexto fixo por sessão, "serviços" vazios, lixo na raiz, comandos canônicos lidos do manifesto |
-| 🔌 **Ferramentas opcionais** | grafo de código com `graphify` e `ponytail`, registrados em `.marvin/ferramentas.md` — nunca obrigatórios |
+| 🔌 **Ferramentas opcionais** | grafo de código com `graphify`, `ponytail` e `playwright`, registrados em `.marvin/ferramentas.md` — nunca obrigatórios |
 
 > **O pacote é `marvin-kb`, o comando é `marvin`.** O nome `marvin` já estava ocupado no
 > npm, então `npx marvin` baixaria o pacote de outra pessoa — use `npx marvin-kb`. Depois
@@ -230,15 +230,18 @@ Rodar de novo com outra lista **acrescenta** o que falta; nada é removido.
 ### Ferramentas opcionais — o registro `.marvin/ferramentas.md`
 
 Algumas ferramentas não são adaptador: são coisas que o projeto *escolhe* usar. O marvin
-detecta no PATH, pergunta **uma vez** (só com terminal — sem ele registra `não` e avisa) e
-escreve a resposta em `.marvin/ferramentas.md`. As próximas execuções leem o registro em
-vez de perguntar. `--use=<ferramenta>` flipa para `sim`; `--no-questions` registra `não`
-mesmo com terminal.
+detecta no PATH (o `playwright` é oferecido pelo front web num `package.json`, não pelo
+PATH), pergunta **uma vez** (só com terminal — sem ele registra `não` e avisa) e escreve a
+resposta em `.marvin/ferramentas.md`. As próximas execuções leem o registro em vez de
+perguntar. `--use=<ferramenta>` flipa para `sim`; `--no-questions` registra `não` mesmo
+com terminal. Uma lista com vírgula liga várias de uma vez (`marvin --use=graphify,ponytail`),
+e sem terminal, com as duas detectadas, o aviso sugere exatamente essa linha.
 
 | Ferramenta | O que produz | Alcance |
 |---|---|---|
 | `graphify` | `graphify-out/graph.json` — o grafo de código, ver [abaixo](#--graphify--consulta-sem-hook) | **qualquer agente** lê o JSON/markdown; só o hook é do Claude, e ele não é instalado |
 | `ponytail` | escada de simplicidade para quem *implementa* — seção `## Ferramentas` no `AGENTS.md` (confiança **baixa**: instalado e lido, não medido) e tabela de papéis no `.claude/agents/README.md` (dev sim; `tl`/`po`/`scout` não) | plugin com hooks no **Claude Code, Codex e Copilot CLI** (cada um com o seu install; o marvin detecta só o do Claude, distinguindo *instalado* — `~/.claude/plugins/installed_plugins.json` — de *ativo* — `~/.claude/.ponytail-active`); no Cursor, os hooks (`~/.cursor/hooks.json`) ou o arquivo de regra, nenhum gerado; o resto copia o arquivo de regra do repositório do ponytail |
+| `playwright` | seção `## Ferramentas` no `AGENTS.md` com a regra "US que toca tela só fecha com evidência do Playwright" (roteiro do fluxo + screenshot ou `playwright-cli snapshot`); confiança **baixa**: não medido | oferecido só quando um `package.json` (raiz ou sub-repo, profundidade ≤ 3) tem front web; a instalação não é detectada; cobre só web/PWA — não React Native/Expo sem `react-dom`, nem Flutter |
 
 *Alcance* é a coluna que importa: diz quem consegue consumir o que a ferramenta produz.
 Ferramenta cuja saída só um agente lê é decisão, não padrão.
@@ -667,6 +670,13 @@ uma. Ele complementa o Marvin, não concorre, mas guarda specs e planos próprio
 US. O Marvin não o detecta nem o configura, por isso ele não está na tabela *Ferramentas
 opcionais*.
 
+O [Agent Skills](https://github.com/addyosmani/agent-skills) é um conjunto portátil de skills
+por etapa (spec, plano, build, teste, review, segurança) para Claude Code, Codex, Cursor e outros.
+A spec e o plano dele se sobrepõem ao `Sobre.md`, ao `po` e ao `tl` e moram em arquivos próprios, então
+vale a mesma regra: as decisões ficam na US. Onde ele é claramente mais forte é segurança
+(`security-and-hardening`: modelo de ameaças, segredos, SSRF, dependências). Vale a leitura quando
+uma US pede `sec`. O Marvin não o detecta nem o configura.
+
 ## Requisitos
 
 Node 18+. Nenhuma dependência.
@@ -687,7 +697,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-316 verificações, zero dependência. Cobre os invariantes que protegem o disco
+332 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

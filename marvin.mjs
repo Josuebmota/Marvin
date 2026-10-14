@@ -86,6 +86,9 @@ let GRAPHIFY = hasFlag('--graphify');
 // Ponytail (Claude Code plugin): has no flag of its own — only the record decides (block
 // 0b, `--use=ponytail`). Turns on the section in AGENTS.md and the roles table in agents/README.
 let PONYTAIL = false;
+// Playwright CLI (US-34): no flag of its own either — the record (block 0b, `--use=playwright`)
+// decides. Turns on the browser-evidence rule in the generated AGENTS.md.
+let PLAYWRIGHT = false;
 // Names the communities using the `claude` on PATH (graphify's claude-cli backend, which
 // asks for no key). Off by default on purpose: that backend is forced to ONE call at a
 // time, so on a graph of ~130 communities the run takes minutes and burns the subscription
@@ -1756,6 +1759,45 @@ const ignoreAvailability = () => {
   }
 }
 
+// ── Stack walk, hoisted above 0b: the Playwright adapter's `aplica()` reads HAS_WEB_FRONT there.
+// Printing the result stays in step 1 below.
+const MARK = {
+  'package.json': 'Node/JS', 'tsconfig.json': 'TypeScript', 'requirements.txt': 'Python',
+  'pyproject.toml': 'Python', 'go.mod': 'Go', 'Cargo.toml': 'Rust',
+  'pom.xml': 'Java/Maven', 'build.gradle': 'Gradle', 'Gemfile': 'Ruby', 'composer.json': 'PHP',
+};
+const IGNORE = new Set(['node_modules', 'dist', 'build', 'bin', 'obj', '__pycache__', '.git', 'venv', '.venv']);
+const stacks = new Map();
+(function walk(dir, depth = 0) {
+  if (depth > 3) return;
+  let entries; try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+  for (const e of entries) {
+    if (IGNORE.has(e.name) || (e.name.startsWith('.') && e.isDirectory())) continue;
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) { walk(p, depth + 1); continue; }
+    const t = MARK[e.name] || (/\.(csproj|sln)$/.test(e.name) ? '.NET/C#' : null);
+    if (t) {
+      const rel = path.relative(ROOT, dir) || '.';
+      if (!stacks.has(rel)) stacks.set(rel, new Set());
+      stacks.get(rel).add(t);
+    }
+  }
+})(ROOT);
+// Is there a front end? Read from the dependencies of the package.json files found — fact, not guess.
+// HAS_FRONT only decides whether the Contexto/Design/ folder is born in step 5.
+// Dependencies of every package.json the walk found — root and sub-repos alike (depth ≤ 3).
+const pkgDeps = [...stacks.keys()].flatMap(d => {
+  try { const pj = JSON.parse(fs.readFileSync(path.join(ROOT, d, 'package.json'), 'utf8'));
+        return [Object.keys({ ...pj.dependencies, ...pj.devDependencies })]; } catch { return []; }
+});
+const FRONT_RE = /^(react|react-dom|vue|@angular\/core|svelte|next|nuxt|solid-js|@remix-run\/react|astro)$/;
+const HAS_FRONT = pkgDeps.some(deps => deps.some(x => FRONT_RE.test(x)));
+// A WEB front is what a browser can drive (US-34). React Native and Expo list `react` too:
+// without `react-dom` (their web target) they are native apps, which Playwright does not cover.
+const HAS_WEB_FRONT = pkgDeps.some(deps => deps.some(x => /^(react-native|expo)$/.test(x))
+  ? deps.includes('react-dom')
+  : deps.some(x => FRONT_RE.test(x) || x === 'vite'));
+
 // ── 0b. Optional tools: the `.marvin/ferramentas.md` record.
 //
 // Nobody discovers a flag that only exists in --help. So, without `--graphify`, the
@@ -1799,6 +1841,10 @@ const OPTIONAL_TOOLS = [
     alcance: 'saída JSON/markdown em graphify-out/ — qualquer agente lê; só o hook é do Claude, e não é usado' },
   { nome: 'ponytail', detecta: detectPonytail, instalar: 'claude plugin marketplace add DietrichGebert/ponytail  ·  claude plugin install ponytail',
     get alcance() { return ponytailReach(); } },
+  // Playwright CLI (US-34): installation is not detectable (it may run through npx), so the trigger
+  // is the project, not the machine. Outside a web front: no line, no warning — a backend needs no browser.
+  { nome: 'playwright', aplica: () => HAS_WEB_FRONT, detecta: () => 'suggested (web front in package.json)',
+    alcance: 'navegador real dirigido pelo playwright-cli (screenshot e snapshot em arquivo) — qualquer agente com shell roda e lê; cobre web/PWA, não app mobile nativo (React Native/Expo/Flutter). Confiança baixa: não medido' },
 ];
 {
   let rec = ''; try { rec = fs.readFileSync(RECORD, 'utf8'); } catch {}
@@ -1807,8 +1853,10 @@ const OPTIONAL_TOOLS = [
   let recordDate = '_(data)_';
   try { recordDate = execSync('git log -1 --format=%cs', { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || recordDate; } catch {}
   const newOnes = [];
+  const deferred = [];
   for (const f of OPTIONAL_TOOLS) {
     const m = recordLine(f.nome);
+    if (!m && !USE.has(f.nome) && f.aplica && !f.aplica()) continue;
     let uses;
     if (USE.has(f.nome)) {
       uses = true;
@@ -1827,7 +1875,7 @@ const OPTIONAL_TOOLS = [
         info(f.nome + ' not found — recording `não`. To adopt it later:  ' + f.instalar + '  then  marvin --use=' + f.nome);
       } else if (NO_QUESTIONS || !process.stdin.isTTY) {
         uses = false;
-        warn(f.nome + ' is ' + state + ' but ' + (NO_QUESTIONS ? '--no-questions' : 'no interactive terminal') + ' — recording `não`. Flip it with  marvin --use=' + f.nome);
+        deferred.push([f.nome, state]);
       } else {
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
         const r = (await rl.question('  ' + f.nome + ' is ' + state + '. Use it in this project? [y/N] ')).trim();
@@ -1838,7 +1886,12 @@ const OPTIONAL_TOOLS = [
     }
     if (f.nome === 'graphify' && uses) GRAPHIFY = true;
     if (f.nome === 'ponytail' && uses) PONYTAIL = true;
+    if (f.nome === 'playwright' && uses) PLAYWRIGHT = true;
   }
+  // One tool: the same text as before. Two or more: one line — --use already takes a comma list (US-32).
+  if (deferred.length) warn(deferred.map(([n, s]) => n + ' is ' + s).join(', ') + ' but '
+    + (NO_QUESTIONS ? '--no-questions' : 'no interactive terminal') + ' — recording `não`. Flip '
+    + (deferred.length > 1 ? 'them' : 'it') + ' with  marvin --use=' + deferred.map(([n]) => n).join(','));
   if (newOnes.length) {
     if (rec) fsw.appendFileSync(RECORD, newOnes.join('\n') + '\n');
     else {
@@ -1903,12 +1956,6 @@ quem consegue ler o que a ferramenta produz — nem tudo é de todo agente.
 
 // ═══════════════════════════════════════════ 1. STACK
 log('\x1b[1m1. Stack detected\x1b[0m');
-const MARK = {
-  'package.json': 'Node/JS', 'tsconfig.json': 'TypeScript', 'requirements.txt': 'Python',
-  'pyproject.toml': 'Python', 'go.mod': 'Go', 'Cargo.toml': 'Rust',
-  'pom.xml': 'Java/Maven', 'build.gradle': 'Gradle', 'Gemfile': 'Ruby', 'composer.json': 'PHP',
-};
-const IGNORE = new Set(['node_modules', 'dist', 'build', 'bin', 'obj', '__pycache__', '.git', 'venv', '.venv']);
 
 // ── Ignored sub-repos: the case where the graph was born useless IN SILENCE.
 // In a monorepo each sub-repository is usually in the root .gitignore, because it is
@@ -1946,22 +1993,6 @@ if (GRAPHIFY) {
   } catch {}
 }
 
-const stacks = new Map();
-(function walk(dir, depth = 0) {
-  if (depth > 3) return;
-  let entries; try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
-  for (const e of entries) {
-    if (IGNORE.has(e.name) || (e.name.startsWith('.') && e.isDirectory())) continue;
-    const p = path.join(dir, e.name);
-    if (e.isDirectory()) { walk(p, depth + 1); continue; }
-    const t = MARK[e.name] || (/\.(csproj|sln)$/.test(e.name) ? '.NET/C#' : null);
-    if (t) {
-      const rel = path.relative(ROOT, dir) || '.';
-      if (!stacks.has(rel)) stacks.set(rel, new Set());
-      stacks.get(rel).add(t);
-    }
-  }
-})(ROOT);
 if (stacks.size) for (const [d, t] of stacks) info(d.padEnd(40) + [...t].join(' + '));
 else warn('no stack marker found');
 
@@ -1980,16 +2011,6 @@ function suggestTeam() {
     : ['tl', 'po', 'dev', 'qa', 'scout'];
   return { list, frontiers, base, optional: ['design', 'dba', 'sec', 'infra'] };
 }
-
-// Is there a front end? Read from the dependencies of the package.json files found — fact, not guess.
-// Only decides whether the Contexto/Design/ folder is born in step 5.
-const HAS_FRONT = [...stacks.keys()].some(d => {
-  try {
-    const pj = JSON.parse(fs.readFileSync(path.join(ROOT, d, 'package.json'), 'utf8'));
-    const deps = Object.keys({ ...pj.dependencies, ...pj.devDependencies });
-    return deps.some(x => /^(react|react-dom|vue|@angular\/core|svelte|next|nuxt|solid-js|@remix-run\/react|astro)$/.test(x));
-  } catch { return false; }
-});
 
 // ── Canonical commands. Step 1 knew WHICH manifest exists and never opened it: the
 // `AGENTS.md` came out with "_(como rodar teste e build)_" for the human to fill in,
@@ -2057,7 +2078,7 @@ const put = (label, command, origin) => {
   if (inRoot('Makefile')) {
     let mk = ''; try { mk = fs.readFileSync(path.join(ROOT, 'Makefile'), 'utf8'); } catch {}
     for (const [label, target] of [['Testar', 'test'], ['Build', 'build'], ['Lint', 'lint'], ['Instalar', 'install']])
-      if (new RegExp('^' + target + '\s*:', 'm').test(mk)) put(label, 'make ' + target, 'Makefile');
+      if (new RegExp('^' + target + '[ \\t]*:(?!=)', 'm').test(mk)) put(label, 'make ' + target, 'Makefile');
   }
 })();
 
@@ -3410,14 +3431,23 @@ atividade toca, propor o time dela em camadas (\`tl\`, \`po\` · \`dev-front\`, 
 mora lá porque é lá que ela dispara — aqui só o lembrete. A triagem do \`tl\` com o \`po\`
 (quem toca, agentes e skills, esforço e modelo) é registrada em *Time*/*Skills* da US.
 
-${PONYTAIL ? `## Ferramentas
+${PONYTAIL || PLAYWRIGHT ? `## Ferramentas
 
-**Ponytail** (confiança **baixa** — plugin instalado e README lido, não medido): escada de
+` : ''}${PONYTAIL ? `**Ponytail** (confiança **baixa** — plugin instalado e README lido, não medido): escada de
 simplicidade que faz o agente parar no primeiro degrau que resolve (não existir → reutilizar →
 stdlib → …). Vale para quem **implementa**. Ele **não substitui**: os invariantes deste arquivo,
 o \`tl\` lendo diff, o \`po\` questionando requisito, nem a suíte de testes — o "um check" dele
 é o piso, não o teto. Quais papéis o carregam: \`.claude/agents/README.md\`. Ativo nesta máquina
 = \`~/.claude/.ponytail-active\`; instalado sem ativo não faz nada.
+
+` : ''}${PLAYWRIGHT ? `**Playwright CLI** (confiança **baixa** — registrado em \`${RECORD_REL}\`, não medido aqui):
+é a evidência do \`qa\` para tela. **US que toca tela só fecha com evidência do Playwright** —
+o roteiro do fluxo percorrido (passos e dados usados) e o screenshot ou o snapshot
+(\`playwright-cli snapshot\`), anexados ou referenciados na evidência da US. "O teste passou"
+sem navegador não prova que o botão funciona: narração não é prova. Cobre **web/PWA**; app
+mobile nativo (React Native, Expo, Flutter) **não** é coberto e fica sem ferramenta de
+evidência até o projeto escolher uma. Instalar o Playwright CLI é de cada máquina; o
+\`marvin\` não instala nem confere.
 
 ` : ''}## Higiene de sessão
 
@@ -4107,6 +4137,9 @@ const UPDATES = [
     o_que: 'the "Ferramentas" section on ponytail — what it does not replace (appears with --use=ponytail)' },
   { arquivo: '.claude/agents/README.md', marca: /Ponytail: em que papel entra/, soCom: PONYTAIL,
     o_que: 'the ponytail role table — which roles carry the ladder (dev yes, tl/po/scout no)' },
+  // Playwright only enters when the record says `sim` (US-34) — same rule as ponytail.
+  { arquivo: 'AGENTS.md', marca: /## Ferramentas[\s\S]*?\*\*Playwright\s+CLI\*\*[\s\S]*?só\s+fecha\s+com\s+evidência/, soCom: PLAYWRIGHT, desde: '2.4.0',
+    o_que: 'the "Ferramentas" section on Playwright — a US that touches a screen closes only with browser evidence (appears with --use=playwright)' },
   // Refined USs and ilhas (US-16). /refinar itself is created by 7b when missing; what an
   // older base lacks is the door in /retomar and the fourth state in the planning README.
   { arquivo: '.claude/commands/retomar.md', marca: /duas portas/i, soCom: !OLD_LAYOUT, desde: '1.8.0',
@@ -4157,6 +4190,7 @@ if (!GRAPHIFY) {
   log('  It needs graphify on PATH:  uv tool install graphifyy  ·  pipx install graphifyy');
   log('  then  marvin --use=graphify  (recorded in ' + RECORD_REL + ').');
   log('  Read the trade-offs in the README first — a stale graph answers with confidence.');
+  if (!PONYTAIL) log('  Using ponytail too? One flag turns both on:  marvin --use=graphify,ponytail');
 }
 
 // Team suggestion, read-only: printed only while the agents folder holds nothing but the

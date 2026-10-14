@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-32 — graphify e ponytail juntos
@@ -65,6 +65,7 @@ Nada depende do que ela toca — folha do grafo.
 - [US-23 — repos aninhados (`repos/<x>`) no grafo](../US-23-repos-aninhados-no-grafo/Sobre.md) — 2 nó(s) em comum
 - [US-24 — `--fechar` por sub-repo](../US-24-fechar-por-sub-repo/Sobre.md) — 2 nó(s) em comum
 - [US-31 — `--use` em duas ferramentas perde uma das escritas](../US-31-use-duplo-perde-escrita/Sobre.md) — 2 nó(s) em comum
+- [US-34 — Playwright CLI obrigatório como evidência do `qa` em projeto com front ou mobile](../US-34-playwright-front-mobile/Sobre.md) — 2 nó(s) em comum
 - [US-01 — Layout por grafo no script](../../../organizacao-por-grafo/script/US-01-layout-por-grafo/Sobre.md) — 2 nó(s) em comum
 - [US-02 — `marvin --status`, o dashboard derivado](../../../organizacao-por-grafo/script/US-02-status/Sobre.md) — 1 nó(s) em comum
 - [US-05 — `marvin --release <versao>`](../../../organizacao-por-grafo/script/US-05-release/Sobre.md) — 2 nó(s) em comum
@@ -80,6 +81,10 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **11/10/2026** — refinada. Espera a resposta do Josué ao ❓2. Depois da US-30 e da US-31.
+- **14/10/2026** — ativa (Josué pediu para desenvolver todas as pendentes). ❓2 por padrão: **(A)**, a recomendação de `tl` + `po`; o dono pode trocar antes de publicar.
+- **14/10/2026** — implementada a opção (A): sem TTY, as ferramentas detectadas e não escolhidas saem num aviso único com `marvin --use=graphify,ponytail` (lista de vírgula); a dica final sugere a mesma linha a quem não usa nenhuma das duas. Comportamento inalterado: continuam `não`. READMEs documentam a lista com vírgula. `tl` aprovou.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: **332 passaram**, com graphify falso no PATH e ponytail ativo plantado (hermético).
+- Mutações (`dev-back`): voltar o `warn` inline → check 12 vermelho.
