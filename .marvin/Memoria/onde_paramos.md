@@ -23,4 +23,6 @@ metadata:
 
 ## Em andamento
 
+- [US-36-painel-perguntas-decisoes-roadmap](../Planejamento/Novos/organizacao-por-grafo/script/US-36-painel-perguntas-decisoes-roadmap/Sobre.md) — rodada autônoma 1 de 2 da US-37: só critérios 1, 2, 4 (+5), configuração anterior — ver *Time*. Chat novo, só `/continuar`
+- [US-37-condutor-autonomo-sessoes-curtas](../Planejamento/Novos/time/roteamento/US-37-condutor-autonomo-sessoes-curtas/Sobre.md) — o dono dispara as 2 rodadas da US-36 à mão; não é executável pelo `/continuar` (critério 2 só depois das rodadas)
 - [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — medir custo por tarefa aprovada em 3–4 US reais; na próxima US, fixar contexto, checks e corte de turnos antes de começar

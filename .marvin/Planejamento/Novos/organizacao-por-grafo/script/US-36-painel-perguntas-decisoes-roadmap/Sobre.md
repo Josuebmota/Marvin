@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: ativa
 pai: ../Sobre.md
 name: US-36-painel-perguntas-decisoes-roadmap
 description: "O painel (--status --html) passa a mostrar as ❓ abertas, as decisões de Contexto/Arquitetura, um roadmap derivado de epics/estados e o Time de cada US. Economia por US fica fora até a US-29."
@@ -33,11 +33,18 @@ Triagem 14/10/2026 (refino: `tl` + `po` em paralelo, dono decidiu o escopo com r
 - `tl`: lê o diff (invariante 1 da US-15, `days()` como única exceção de data).
 Graphify: grafo extraído em 14/10 (277 nós); o `tl` localizou por Grep/Read, sem consultar o grafo — registrado como limitação.
 
+**Rodadas autônomas (US-37 critério 1 / amostras da US-29)** — declarado 14/10, antes de começar:
+- **Rodada 1** — critérios **1, 2, 4** e o 5 que cabe a eles. **Configuração anterior** (linha de base de 05/10): sessão principal Opus 5.5; `dev-back` Sonnet, `qa` Sonnet, `tl` Opus, **esforço padrão** (sem `effort` no prompt). Para ao fechar a fatia — o critério 3 fica para a rodada 2. Estado: pendente.
+- **Rodada 2** — critério **3** (roadmap por ilha) e o 5 que cabe a ele. **Pela política** (US-19): mesmos papéis e modelos, **menor esforço adequado, explícito no prompt** — `dev-back` medium, `qa` low, `tl` medium; sobe se a etapa falhar, e a subida vai para o Rumo. Esforço explícito autorizado pelo dono no refino de 14/10 (US-29 critério 4). Estado: pendente.
+- **Corte de turnos:** cada rodada é um chat novo aberto pelo dono só com `/continuar`; a amostra vai do primeiro turno à linha final do passo 4. Nada mais na sessão.
+- **Mesmos checks nas duas:** `node teste.mjs`, `qa` confere `--status` texto e `historico.jsonl` byte a byte, `tl` lê o diff. Custo pelo `marvin --status` ao fim de cada rodada.
+- Sem commit, sem push (dono, 14/10). O dono valida e commita.
+
 ## Skills
 Nenhuma.
 
 ## ❓
-- ❓ O roadmap ordena por ilha (o que o `--status` já calcula) ou por ordem que o dono declara em algum lugar?
+- ~~❓ O roadmap ordena por ilha ou por ordem declarada?~~ **Por ilha** (dono, 14/10) — é o que o critério 3 já diz.
 
 ## Impacto
 
@@ -82,6 +89,7 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **14/10/2026** — refinada a partir do item 6 dos requisitos de 14/10. Divergência `tl`×`po` sobre o roadmap (po: fora; tl: dentro, derivado) — o dono escolheu dentro. Economia por US cortada por ambos.
+- **14/10/2026** — vira `ativa` como veículo das 2 rodadas autônomas da [US-37](../../../time/roteamento/US-37-condutor-autonomo-sessoes-curtas/Sobre.md) (dono: US-36 em 2 fatias). Fatias, configuração e corte declarados no *Time* antes de rodar.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->

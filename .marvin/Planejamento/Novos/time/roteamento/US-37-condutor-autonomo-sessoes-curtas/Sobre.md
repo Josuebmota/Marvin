@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: ativa
 pai: ../Sobre.md
 name: US-37-condutor-autonomo-sessoes-curtas
 description: "Modo autônomo por horas: rodar o /continuar aqui, uma US por sessão curta, até ter rodadas registradas; só então gerá-lo nos projetos e pensar no condutor que encadeia sessões."
@@ -29,14 +29,15 @@ Triagem 14/10/2026 (refino: `tl` + `po`; dono escolheu a ordem do `po` — esta 
 - `po`: escolhe as 2 US reais que rodam sozinhas e barra amostra fabricada.
 - `tl`: lê o diff de cada rodada antes de qualquer push.
 - `dev-back` + `qa`: só no critério 2.
+- **Amostras escolhidas (dono, 14/10):** a [US-36](../../../organizacao-por-grafo/script/US-36-painel-perguntas-decisoes-roadmap/Sobre.md) em 2 fatias — rodada 1 na configuração anterior, rodada 2 pela política. Configuração e corte no *Time* da US-36.
 
 ## Skills
 Rodar o `/continuar` duas vezes é o gatilho para uma skill de rodada autônoma, se o procedimento se repetir.
 
 ## ❓
-- ❓ Quem dispara o condutor: `/loop` do próprio Claude Code, um script do usuário (`claude -p /continuar`), ou o marvin? Se for o marvin, ele deixa de ser suporte.
-- ❓ Qual o teto de custo por noite / por rodada?
-- ❓ Commit sim, push nunca sem humano — confirma?
+- ❓ Quem dispara o condutor (7c)? **Para o critério 1: o dono, à mão** — chat novo + `/continuar`, duas vezes (14/10). A escolha do condutor (`/loop`, `claude -p`, marvin) fica para depois das rodadas, com o custo delas na mão.
+- ❓ Qual o teto de custo por noite / por rodada? Aberto — decide com o custo das 2 rodadas.
+- ~~❓ Commit sim, push nunca?~~ **Sem commit, sem push** (dono, 14/10): o `/continuar` fica como está; o diff na árvore é a evidência.
 
 ## Impacto
 
@@ -81,6 +82,7 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **14/10/2026** — refinada do item 7. `tl` e `po` concordam: rodar aqui antes de gerar. Dividida em 7a/7b/7c dentro da mesma US; 7b e 7c só depois de 7a.
+- **14/10/2026** — preparada a 7a: amostra = US-36 em 2 fatias, disparo manual, sem commit. A US-36 entra na nota **acima** da US-29, para o `/continuar` pegá-la primeiro. Próximo: o dono abre um chat novo com `/continuar` (rodada 1).
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
