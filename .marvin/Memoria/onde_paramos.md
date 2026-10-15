@@ -25,5 +25,5 @@ metadata:
 
 - [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — medir custo por tarefa aprovada em 3–4 US reais; na próxima US, fixar contexto, checks e corte de turnos antes de começar
 
-- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — 2.10.0 em 15/10: US-49, 44, 51, 52 e 50 concluídas num chat só; na fila só a US-48 (instalar ECC e Superpowers num projeto descartável é do dono); próximo: /context num chat novo e a Fase 2 (US-29). **npm só quando o plano todo fechar** (dono, 15/10) — a 2.10.0 fica só no GitHub
+- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — 15/10: fila vazia (2.10.0 no GitHub + US-48: ECC e Superpowers `não`, medidos). Falta só a prova (US-29): 1 tarefa por chat, comparando anterior × política × coordenador no Sonnet; régua sem UI na US-29. Conectores da conta (~9,7k/sessão) é o dono. **npm só quando o plano todo fechar**
 

@@ -22,6 +22,8 @@ quem consegue ler o que a ferramenta produz — nem tudo é de todo agente.
 |---|---|---|---|
 | graphify | sim | saída JSON/markdown em graphify-out/ — qualquer agente lê; só o hook é do Claude, e não é usado. **Neste repo, obrigatório na triagem desde 2026-10-08.** Instalação à parte (`uv tool install graphifyy`), não é npm. Ausente na sessão em nuvem: aí a triagem registra "grafo ausente" | 2026-09-15 |
 | ponytail | sim | escada de simplicidade para quem IMPLEMENTA — plugin com hooks no Claude Code/Codex/Copilot CLI (install próprio em cada um; aqui só o do Claude é detectado). Confiança baixa: não medido | 2026-09-15 |
+| ecc | não | skills/comandos/agentes de execução (avaliado na US-48, só escopo de projeto). Custo fixo medido sem UI: ECC inteiro +2,0k tk/sessão; mínimo (`tdd-workflow`, `build-fix`, `security-scan`) +23 tk. Ganho medido: nenhum — mesma tarefa (slugify + testes) no Sonnet custou $0,214 sem e $0,213 com, 4 turnos nos dois, testes verdes nos dois. Tem `/model-route`, mas avulso e sem esforço. Reabre com um par que mostre ganho | 2026-10-15 |
+| superpowers | não | plugin de skills de processo (avaliado na US-48, reabrindo a US-25; versão 6.4.1 do marketplace oficial, só escopo de projeto, desinstalado depois). Custo fixo medido sem UI: +2,05k tk/sessão. Mesma tarefa no Sonnet: **$0,280 e 8 turnos** com ele × $0,214 e 4 turnos sem (+31%), testes verdes nos dois (8 × 7 casos). Mesmo resultado, gastando mais. Reabre com um par que mostre ganho | 2026-10-15 |
 
 ## Movido do `AGENTS.md` (US-51, 15/10/2026)
 

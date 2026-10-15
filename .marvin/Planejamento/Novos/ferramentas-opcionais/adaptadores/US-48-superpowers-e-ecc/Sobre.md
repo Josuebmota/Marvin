@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-48-superpowers-e-ecc
 description: "Avalia Superpowers (reabre a US-25) e ECC, uma ferramenta por vez e no escopo do projeto, como ferramentas de execução chamadas pela equipe — portão de entrada de ferramenta da US-50."
@@ -56,6 +56,13 @@ Nada depende do que ela toca — folha do grafo.
 - **15/10/2026** — o dono acrescentou o ECC; a US passa a avaliar os dois com a mesma régua (custo fixo pelo passo 4b, par medido pela US-29).
 - **15/10/2026** — `/refinar` (logo tudo): refinada como portão da US-50, uma ferramenta por vez; item 4 (inventário global) reescrito a partir do backup — o global já foi limpo na Fase 0.
 - **15/10/2026** — critério 1 (inventário) feito na sessão principal, a partir do backup, sem baixar nada. **ECC:** 63 itens (22 skills, 16 agentes, 26 comandos), **~2,6k tk por sessão** estimados pelas descrições/4 (skills 1.130, agentes 850, comandos 633); 9 agentes disputam papel com a equipe (`architect`, `planner`, `code-reviewer`, `tdd-guide`, `security-reviewer`, `refactor-cleaner`, `code-simplifier`, `doc-updater`, `build-error-resolver`, ~490 tk), todos com modelo fixo (`opus`/`sonnet`) e descrição "MUST BE USED"/"PROACTIVELY". **Achado:** o ECC tem um roteador de modelo — `/model-route` (haiku mecânico, sonnet implementação, opus arquitetura, com fallback) —, mas avulso, sem esforço, sem registro por etapa e sem medição. O que o Marvin acrescenta é isso: aplicado na triagem, com esforço, gravado no *Time* e medido (US-29). **Superpowers:** está no marketplace oficial (`claude-plugins-official`), não instalado; instalar é baixar de fonte externa — ação do dono. **Falta (dono):** instalar ECC (só `tdd-workflow`/`build-fix`/`security-scan`) e Superpowers no projeto descartável, `/context` antes e depois, e uma tarefa real com e sem cada um (par da US-29). Sem isso, a decisão `sim`/`não` não tem número — a US segue na fila.
+- **15/10/2026** — concluída na sessão principal, com autorização do dono para baixar o Superpowers. Régua: contexto fixo sem UI (`claude -p … --output-format json`, soma de `input`+`cache_*`) e a mesma tarefa real (slugify + testes `node:test`) no Sonnet, num projeto descartável. **Decisão: ECC `não`, Superpowers `não`** — nenhum dos dois entregou o mesmo resultado gastando menos. Limite: uma amostra por braço, tarefa pequena; reabre com par que mostre ganho. Perfil do dono restaurado (installed_plugins.json e cache iguais aos de antes). A US-50 não instala nenhum dos dois.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+| Braço | Contexto fixo | Tarefa: custo · turnos · testes |
+|---|---|---|
+| Sem ferramenta | 48.211 | $0,214 · 4 · 7 verdes |
+| ECC mínimo (`tdd-workflow`, `build-fix`, `security-scan`) | 48.234 (+23) | $0,213 · 4 · 6 verdes |
+| ECC inteiro (22 skills, 26 comandos, 16 agentes) | 50.201 (+1.990) | — |
+| Superpowers 6.4.1 | 50.262 (+2.051) | $0,280 · 8 · 8 verdes |
+- Registro: `.marvin/ferramentas.md`, linhas `ecc` e `superpowers`.
