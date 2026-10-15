@@ -15,6 +15,13 @@ Entrada: **$ARGUMENTS** (uma anotação, um print, uma linha ⚪ de
      manutenção ou nova · escopo mínimo e o que NÃO entra · tamanho (1 chat / dividir).
    - `po`: o que eu quero, nas minhas palavras · critério de aceite verificável · em que Epic e
      Feature entra (existente ou nova, e por quê) · o que funde com o quê · ordem.
+   Os dois partem do grafo. **Passo de estrutura — grafo obrigatório (dono, 15/10/2026).** Antes de decidir, para cada
+   símbolo do *Código tocado*: se `graphify-out/graph.json` for mais velho que o último commit,
+   rode `graphify update .` (o hook `post-commit` deveria ter feito isso; se não fez, diga). Depois
+   `graphify affected "<símbolo>"` (quem depende) e `graphify explain "<símbolo>"` (vizinhos e US
+   ligadas). Registre no *Time* da US uma linha por símbolo com o que o grafo respondeu, ou "sem
+   nó" / "grafo velho" e o fallback usado. Grep/Glob só para **localizar** arquivo ou símbolo
+   (medido: ~18 tk contra ~1.650 pelo grafo).
    Onde os dois discordarem, me traga a divergência — não escolha em silêncio.
 
 3. Com os dois pareceres: `marvin --us <caminho> --refinada` (a US nasce na fila, fora da nota)

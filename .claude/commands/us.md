@@ -29,5 +29,12 @@ se eu passei só o nome, pergunte em qual Epic e Feature ela entra (liste os que
    - **Por quê** e **Pronto quando** — se eu não disse, pergunte; não invente.
    - Com o *Código tocado* preenchido, rode `marvin --us <caminho>` **de novo**: o grafo escreve a
      seção *Impacto* — quem depende do que a US toca, e que outras US passam por ali.
+   - **Passo de estrutura — grafo obrigatório (dono, 15/10/2026).** Antes de decidir, para cada
+     símbolo do *Código tocado*: se `graphify-out/graph.json` for mais velho que o último commit,
+     rode `graphify update .` (o hook `post-commit` deveria ter feito isso; se não fez, diga). Depois
+     `graphify affected "<símbolo>"` (quem depende) e `graphify explain "<símbolo>"` (vizinhos e US
+     ligadas). Registre no *Time* da US uma linha por símbolo com o que o grafo respondeu, ou "sem
+     nó" / "grafo velho" e o fallback usado. Grep/Glob só para **localizar** arquivo ou símbolo
+     (medido: ~18 tk contra ~1.650 pelo grafo).
 
 3. Me mostre o `Sobre.md` preenchido e a linha da nota. **Não comece a implementar.**

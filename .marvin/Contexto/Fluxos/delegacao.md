@@ -73,6 +73,11 @@ passo 2 do `/us`, agora com dono explícito; não é uma etapa nova.
   declarado. Para **localizar** arquivo ou símbolo, Grep/Glob continua mais barato (medido:
   ~1.650 tk pelo grafo contra ~18 com glob). Que o grafo economize tokens na triagem é
   **hipótese**, medida na US-19, nunca promessa.
+  **Desde 15/10/2026 (dono):** o grafo é passo obrigatório de **estrutura** no `tl`, no `po`
+  e em `/us`, `/refinar` e `/retomar`. Antes de decidir, `graphify affected` e `graphify
+  explain` rodam sobre cada símbolo do *Código tocado*, e o *Time* registra o que eles
+  responderam. O grafo é mantido fresco pelo hook `post-commit` (`marvin --graphify
+  --graphify-git-hook`). Grep/Glob seguem só para localizar.
 
 ## Glossário de capacidades — escopo confirmado em 06/10/2026
 

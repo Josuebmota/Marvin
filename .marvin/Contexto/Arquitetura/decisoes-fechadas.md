@@ -30,3 +30,9 @@
   instalação termina com um aviso forte e o `marvin` continua. O texto "rota de toda busca" e a
   troca de "Grep é mais barato para localizar" esperam a medição Grep × grafo (US-43). A
   decisão "consulta, nunca hook" acima continua valendo até lá.
+- **Grafo obrigatório no passo de estrutura** (dono, 15/10/2026). Antes de decidir, o `tl`, o
+  `po` e os comandos `/us`, `/refinar` e `/retomar` rodam `graphify affected` e `graphify
+  explain` sobre o *Código tocado*. O que o grafo respondeu fica no *Time* da US. Grep/Glob
+  continuam só para localizar (medido: ~18 tk contra ~1.650 pelo grafo). O frescor vem do
+  hook `post-commit` (`--graphify-git-hook`), que é um hook de git e não o hook do Claude:
+  "consulta, nunca hook do Claude" continua valendo.

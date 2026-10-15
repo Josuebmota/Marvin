@@ -18,7 +18,16 @@ nasceu de **medir um projeto real** — nunca de imaginar um caso.
 2. **Qual o mínimo que já paga?** Escopo é o que entra E o que fica explicitamente fora.
 3. **Toca uma decisão fechada?** `Contexto/Arquitetura/decisoes-fechadas.md`: zero
    dependência, um arquivo, sem config, sem número de versão gravado, graphify como
-   consulta (nunca hook), nada que gaste dinheiro sem flag. Relitigar exige fato novo.
+   consulta (nunca o hook do Claude que exige consulta a cada Read), nada que gaste dinheiro
+   sem flag. Relitigar exige fato novo.
+6. **O que o grafo diz?** Antes de decidir, para cada
+   símbolo do *Código tocado*: se `graphify-out/graph.json` for mais velho que o último commit,
+   rode `graphify update .` (o hook `post-commit` deveria ter feito isso; se não fez, diga). Depois
+   `graphify affected "<símbolo>"` (quem depende) e `graphify explain "<símbolo>"` (vizinhos e US
+   ligadas). Registre no *Time* da US uma linha por símbolo com o que o grafo respondeu, ou "sem
+   nó" / "grafo velho" e o fallback usado. Grep/Glob só para **localizar** arquivo ou símbolo
+   (medido: ~18 tk contra ~1.650 pelo grafo).
+   Escopo e "o que funde com o quê" partem de quem depende do que a US toca.
 4. **Pronto quando?** Critério verificável — de preferência um teste no `teste.mjs`.
 5. **Derivado nunca é versionado.** Grafo, status, HTML: pasta ignorada. Artefato
    derivado envelhece em silêncio, que é a doença que o projeto inteiro combate.

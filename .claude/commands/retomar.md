@@ -13,6 +13,14 @@ Retome o trabalho neste projeto.
 2. Confira o estado real antes de confiar no registro: `git log --oneline -3` e
    `git status --short` nos repositórios que importam. Se o registro disser que algo foi
    corrigido, confirme no código.
+   Para a US da vez, faça o passo de estrutura: para cada
+   símbolo do *Código tocado*: se `graphify-out/graph.json` for mais velho que o último commit,
+   rode `graphify update .` (o hook `post-commit` deveria ter feito isso; se não fez, diga). Depois
+   `graphify affected "<símbolo>"` (quem depende) e `graphify explain "<símbolo>"` (vizinhos e US
+   ligadas). Registre no *Time* da US uma linha por símbolo com o que o grafo respondeu, ou "sem
+   nó" / "grafo velho" e o fallback usado. Grep/Glob só para **localizar** arquivo ou símbolo
+   (medido: ~18 tk contra ~1.650 pelo grafo).
+   Diga em uma linha se o grafo estava fresco.
 
 3. Apresente as **duas portas** para continuar: desenvolver a ilha da vez ou refinar uma
    anotação com `/refinar`. Indique qual encaixa no estado registrado.
