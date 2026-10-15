@@ -12,6 +12,7 @@ pai: ../../README.md
 - [npm](npm/Sobre.md)
 - [identidade](identidade/Sobre.md)
 - [contexto-fixo](contexto-fixo/Sobre.md)
+- [empacotamento](empacotamento/Sobre.md)
 
 ## Rumo
 - **10/09/2026** — aberta.

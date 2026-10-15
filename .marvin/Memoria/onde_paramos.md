@@ -24,4 +24,4 @@ metadata:
 ## Em andamento
 
 - [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — medir custo por tarefa aprovada em 3–4 US reais; na próxima US, fixar contexto, checks e corte de turnos antes de começar
-- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — Fase 1 refinada em 15/10: US-49 → US-44 / US-51 na fila (ilha única); ❓ do dono nas três (régua, ordem, par da Fase 2)
+- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — tudo refinado em 15/10: 6 US na fila (US-49, US-44, US-51, US-52, US-48, US-50); US-43/45/47/53 canceladas pelo dono; ❓ decidem ordem e portões

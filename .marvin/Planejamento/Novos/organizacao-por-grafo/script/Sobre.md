@@ -21,6 +21,7 @@ pai: ../Sobre.md
 - [US-16-refinar-e-ilhas](US-16-refinar-e-ilhas/Sobre.md)
 - [US-18-simbolo-nao-derruba-o-arquivo](US-18-simbolo-nao-derruba-o-arquivo/Sobre.md)
 - [US-36-painel-perguntas-decisoes-roadmap](US-36-painel-perguntas-decisoes-roadmap/Sobre.md)
+- [US-52-anotada-no-status](US-52-anotada-no-status/Sobre.md)
 
 ## Rumo
 - **10/09/2026** — aberta.
