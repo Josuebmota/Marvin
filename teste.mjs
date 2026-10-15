@@ -1797,6 +1797,8 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const roles = ['tl', 'po', 'dev-front', 'dev-back', 'qa', 'scout', 'design', 'dba', 'sec', 'infra'];
   check('US-44: Contexto/Equipe.md nasce com uma linha por papel e as colunas "Quando entra" e "O que não faz"',
         roles.every(r => txt.includes('| `' + r + '` |')) && /Quando entra/.test(txt) && /O que não faz/.test(txt));
+  check('US-44: o glossário traz modelo e esforço de partida por papel (dev-back no Sonnet, esforço médio)',
+        /\| `dev-back` \|[^\n]*\| Sonnet · médio \|/.test(txt) && /sobe só se falhar/.test(txt));
   const plan = fs.readFileSync(path.join(a.proj, '.marvin', 'Planejamento', 'README.md'), 'utf8');
   check('US-44: o Planejamento/README gerado não tem a tabela de papéis e linka o glossário da equipe',
         !plan.includes('| `scout` |') && /\[glossário\s+da\s+equipe\]\(\.\.\/Contexto\/Equipe\.md\)/.test(plan));
