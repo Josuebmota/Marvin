@@ -24,11 +24,6 @@ metadata:
 ## Em andamento
 
 - [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — medir custo por tarefa aprovada em 3–4 US reais; na próxima US, fixar contexto, checks e corte de turnos antes de começar
-- [US-49-identidade-equipe-barata](../Planejamento/Manutencao/publicacao/identidade/US-49-identidade-equipe-barata/Sobre.md) — aberta 15/10/2026; próximo passo: _(uma frase)_
-- [US-44-glossario-da-equipe](../Planejamento/Novos/time/glossario/US-44-glossario-da-equipe/Sobre.md) — aberta 15/10/2026; próximo passo: _(uma frase)_
-- [US-51-agents-md-enxuto](../Planejamento/Manutencao/publicacao/contexto-fixo/US-51-agents-md-enxuto/Sobre.md) — aberta 15/10/2026; próximo passo: _(uma frase)_
-- [US-52-anotada-no-status](../Planejamento/Novos/organizacao-por-grafo/script/US-52-anotada-no-status/Sobre.md) — aberta 15/10/2026; próximo passo: _(uma frase)_
-- [US-50-marvin-plugin-e-curador](../Planejamento/Novos/ferramentas-opcionais/curadoria/US-50-marvin-plugin-e-curador/Sobre.md) — aberta 15/10/2026; próximo passo: _(uma frase)_
 
-- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — tudo refinado em 15/10: 6 US na fila (US-49, US-44, US-51, US-52, US-48, US-50); US-43/45/47/53 canceladas pelo dono; ❓ decidem ordem e portões
+- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — 2.10.0 em 15/10: US-49, 44, 51, 52 e 50 concluídas num chat só; na fila só a US-48 (instalar ECC e Superpowers num projeto descartável é do dono); próximo: /context num chat novo e a Fase 2 (US-29)
 
