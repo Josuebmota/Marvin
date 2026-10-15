@@ -95,3 +95,9 @@ Regras:
 Projeto montado no layout antigo continua detectado (invariante 2). O script avisa que o
 layout é antigo e **não move** — mover é decisão do humano, com o invariante 1 valendo.
 Este repositório migra primeiro, com a própria ferramenta.
+
+## Movido do `AGENTS.md` (US-51, 15/10/2026)
+
+> O `AGENTS.md` carrega em toda sessão; este trecho só é lido quando o assunto aparece.
+
+A separação entre nota e nó não é estética: a nota carrega em toda sessão, e em 09/09 ela chegou a 19 KB (~4.900 tk) porque seis sessões de histórico foram empilhadas dentro — com o próprio passo 4b acusando. O estado, as decisões e o Rumo de cada US moram no `Sobre.md` dela em `.marvin/Planejamento/` e só carregam quando são seguidos. Decisão estrutural mora em `.marvin/Contexto/Arquitetura/`, que acrescenta e nunca sobrescreve.

@@ -26,3 +26,13 @@
   lista as notas. Vale limpar a junction órfã do caminho antigo também — ela sobrevive
   apontando para o vazio. Se a última linha não listar `onde_paramos.md`, pare e confira
   `.marvin/Memoria` (ou `08_Memoria`, no layout antigo) antes de mexer em mais nada.
+
+## Movido do `AGENTS.md` (US-51, 15/10/2026)
+
+> O `AGENTS.md` carrega em toda sessão; este trecho só é lido quando o assunto aparece.
+
+- **`rm -rf` num junction pode seguir o link e apagar o destino.** `fs.symlinkSync(alvo, caminho, 'junction')` não precisa de admin; para remover só o link, use `[System.IO.Directory]::Delete(p, $false)` no PowerShell.
+- **Renomear a pasta do vault quebra a junction em silêncio.** Ela continua apontando para o caminho antigo; nada avisa, e no caminho novo o Claude Code cria um diretório vazio de verdade. `marvin --check` diagnostica (sai != 0) e o `marvin` normal conserta: diretório vazio no lugar do link é removido e a junction recriada. Com notas dentro, elas são copiadas e conferidas antes — o invariante 1 vale igual.
+- **Junction que aponta para pasta que não existe mais é REPONTADA** desde o 1.1.1 — é o caso de quem renomeia o vault. Quando o outro alvo EXISTE, ela continua intocada: aí é montagem de outra pessoa, e desfazer não é decisão do script.
+- **O caminho da memória é derivado do `cwd`** (`:`, `\` e `/` viram `-`). Rodar de um subdiretório monta a junction no lugar errado.
+- **Git worktree é outro `cwd`**: tem memória própria, que anda com o branch. Sem rodar `marvin` lá, o Claude Code cria um diretório real e vazio — o hook `--status --curto` acusa "memória DESLIGADA" (US-13, 15/09).

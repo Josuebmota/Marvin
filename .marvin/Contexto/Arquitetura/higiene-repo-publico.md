@@ -25,3 +25,13 @@ e por isso a decisão está anotada aqui, onde ela sobrevive ao `git log` que de
 
 **Antes de qualquer commit aqui, o exemplo tem que ser sintético.** "Visto num repo real" é
 uma boa história; o campo real do cliente não pode vir junto.
+
+## Movido do `AGENTS.md` (US-51, 15/10/2026)
+
+> O `AGENTS.md` carrega em toda sessão; este trecho só é lido quando o assunto aparece.
+
+A memória deste repo é versionada e pública: `.marvin/Memoria/onde_paramos.md` está no git.
+- **Escreva a memória como se fosse lida**, porque é. O que for de outro projeto vai na memória daquele projeto, não aqui.
+- Ela é o **exemplo** de um `onde_paramos.md` preenchido — provavelmente a coisa mais útil do repositório para quem está tentando entender o formato.
+- E o `/retomar` funciona num clone. Enquanto a memória esteve no `.gitignore`, o primeiro comando de quem clonasse apontava para um arquivo inexistente.
+- Num projeto privado — o caso de uso normal — a memória guarda decisão de produto e id de cliente, e é por isso que o script avisa **"repo PRIVADO, sempre"**. Aqui o conteúdo é sobre uma ferramenta pública, então não há o que proteger.

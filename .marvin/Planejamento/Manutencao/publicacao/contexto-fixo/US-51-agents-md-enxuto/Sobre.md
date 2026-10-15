@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-51-agents-md-enxuto
 description: "O AGENTS.md deste repo desce para o alvo da Fase 1: o que é regra de comando volta ao comando; nada sai sem destino."
@@ -60,6 +60,12 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **15/10/2026** — aberta no `/refinar` da Fase 1, a partir do critério 6 da US-44. `tl` e `po` concordaram em separar.
+- **15/10/2026** — ativa (ordem do dono, as 6 neste chat). ❓1 respondido: régua em bytes/4b (`wc -c` ≤ 7.200). ❓2 resolvido pela execução: depois da US-44 (o invariante 4 já fechou). ❓3 (par da Fase 2) fica para o dono. **Configuração declarada (amostra US-29):** anterior — curadoria e edição na sessão principal (Opus 5.5); `tl` Opus lê o diff.
+- **15/10/2026** — concluída. `tl` (Opus) aprovou com 3 ajustes, aplicados: frase "o corpo de agentes, de skills e do `AGENTS.md` nunca sai do `marvin.mjs`" e "atribuições" de volta no invariante 4; "a coluna da direita impede a tabela de envelhecer" de volta sob a tabela; "caminho derivado do `cwd`" acrescentado ao `junction-quebrada.md`. Bônus: o aviso antigo do passo 10 (marca 2.9.0 no `AGENTS.md`) sumiu.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `wc -c AGENTS.md`: 13.551 → **6.357 bytes** (meta ≤ 7.200). Passo 4b: 3.400 → ~1.590 tk.
+- `node marvin.mjs --dry-run` neste repo: 0 linha "AGENTS.md — missing" (antes: 1).
+- Trecho → destino (seção "Movido do `AGENTS.md` (US-51)" em cada um): `package.json`/npm → `publicacao-no-npm.md`; teste hermético, CI, portabilidade → `ci-em-tres-sistemas.md`; junction → `junction-quebrada.md`; triagem, Disponibilidade, delegação, graphify obrigatório → `Fluxos/delegacao.md`; ponytail e graphify → `ferramentas.md`; nota de 19 KB → `organizacao-por-grafo.md`; memória pública → `higiene-repo-publico.md`.
+- O `teste.mjs` não lê os documentos deste repo (só os gerados num temp) — conferido por grep; o teste roda no fechamento junto com a US-52.
+- `/context` depois: a medir pelo dono num chat novo.

@@ -22,3 +22,11 @@ quem consegue ler o que a ferramenta produz — nem tudo é de todo agente.
 |---|---|---|---|
 | graphify | sim | saída JSON/markdown em graphify-out/ — qualquer agente lê; só o hook é do Claude, e não é usado. **Neste repo, obrigatório na triagem desde 2026-10-08.** Instalação à parte (`uv tool install graphifyy`), não é npm. Ausente na sessão em nuvem: aí a triagem registra "grafo ausente" | 2026-09-15 |
 | ponytail | sim | escada de simplicidade para quem IMPLEMENTA — plugin com hooks no Claude Code/Codex/Copilot CLI (install próprio em cada um; aqui só o do Claude é detectado). Confiança baixa: não medido | 2026-09-15 |
+
+## Movido do `AGENTS.md` (US-51, 15/10/2026)
+
+> O `AGENTS.md` carrega em toda sessão; este trecho só é lido quando o assunto aparece.
+
+**Ponytail** (confiança **baixa** — plugin instalado e README lido, não medido): escada de simplicidade que faz o agente parar no primeiro degrau que resolve (não existir → reutilizar → stdlib → …). Vale para quem **implementa**. Ele **não substitui**: os invariantes do `AGENTS.md`, o `tl` lendo diff, o `po` questionando requisito, nem o `teste.mjs` — o "um check" dele é o piso, não o teto. Quais papéis o carregam: `.claude/agents/README.md`. Ativo nesta máquina = `~/.claude/.ponytail-active`; instalado sem ativo não faz nada.
+
+**Graphify** instala-se à parte (`uv tool install graphifyy`); **não** é dependência npm, o `package.json` continua sem `dependencies`. Neste repo é obrigatório na triagem — regra completa em `Contexto/Fluxos/delegacao.md`.
