@@ -46,7 +46,7 @@ flowchart TB
 | **C2 Equipe** | quem faz o quê: papéis com especialidade e atribuição; armadilhas do projeto | glossário `Contexto/Equipe.md` (lido na triagem) + `.claude/agents/*.md` (só papel que o projeto usa) | só quando o papel é chamado |
 | **C3 Cerimônias** | o rito Scrum: abrir, refinar, desenvolver, fechar | `.claude/commands/` + painel `index.html` (`--status --html`): a fila anotada/refinada é a tela de refino; as ativas com *Time* são a tela de desenvolvimento | o mínimo de cada rito |
 | **C4 Roteamento de custo** | escolhe papel, modelo e esforço por atividade, começando do mais barato | [delegacao.md](../Fluxos/delegacao.md) + tabela de partida | é o que **economiza** |
-| **C5 Ferramentas de contexto** | reduzem o que a LLM precisa ler | graphify (estrutura), superpowers e ECC (execução: TDD, build-fix, revisão em contexto limpo, segurança), ponytail (simplicidade) | custam para poupar mais; sem par medido em 2 US, sai do registro (`ferramentas.md`: não) |
+| **C5 Ferramentas de contexto** | reduzem o que a LLM precisa ler; **instaladas pelo Marvin no escopo do projeto, nunca globais** (US-50) | graphify (estrutura), superpowers e ECC (execução: TDD, build-fix, revisão em contexto limpo, segurança), ponytail (simplicidade) | custam para poupar mais; sem par medido em 2 US, sai do registro (`ferramentas.md`: não) |
 | **Medição** | fecha o ciclo: quanto custou por papel e modelo | `marvin --status` (US-41) | não |
 
 **A fronteira que não muda:** o **script** é memória e diagnóstico, determinístico e sem LLM.
@@ -139,6 +139,7 @@ Epic → Feature → US | Defect → Task
 | Defect e Task | 🔴 só Epic, Feature e US | tipos novos no script, `--status` e painel | [US-47](../../Planejamento/Novos/organizacao-por-grafo/hierarquia/US-47-defect-e-task/Sobre.md) |
 | Superpowers e ECC em uso | 🔴 Superpowers só citado (US-25); ECC instalado à mão no perfil global, com agentes que disputam papel com a equipe do Marvin | avaliar os dois como ferramentas de execução da C5, chamadas pela equipe, nunca como segunda equipe | [US-48](../../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-48-superpowers-e-ecc/Sobre.md) |
 | Identidade pública | 🔴 README: "monta a base e sai da frente" | "equipe barata" nos dois READMEs | [US-49](../../Planejamento/Manutencao/publicacao/identidade/US-49-identidade-equipe-barata/Sobre.md) |
+| Marvin como plugin único e curador por projeto | 🔴 ferramentas eram globais (limpas em 15/10, backup reversível) | o Marvin instala ECC, graphify, ponytail e Superpowers no escopo do projeto | [US-50](../../Planejamento/Novos/ferramentas-opcionais/curadoria/US-50-marvin-plugin-e-curador/Sobre.md) |
 | Prova de economia | 🔴 custo medido (US-41), nenhuma amostra | pares medidos | [US-29](../../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) |
 | Grafo como rota de busca | 🟡 regra atual: Grep localiza | medir Grep × grafo | [US-43](../../Planejamento/Manutencao/ferramentas-opcionais/adaptadores/US-43-grafo-rota-de-busca/Sobre.md) |
 
@@ -152,7 +153,8 @@ A ordem é a do valor pelo menor custo, e a prova vem cedo (proposta do `po` na 
 3. **US-29 com 2 amostras** (a 49 e a 44 contam). É a porta: sem número, nada abaixo prova que
    economiza. A tabela de partida (ex-US-46) é a saída dela.
 4. **US-45 porta única.**
-5. **US-48 Superpowers e ECC**, como amostra da US-29, com o custo fixo medido.
+5. **US-50 plugin e curador**, com a **US-48** dentro: avaliar Superpowers e ECC é decidir o que o
+   curador instala. A limpeza de 15/10 é a primeira amostra de contexto fixo (antes × depois).
 6. **US-47 Defect e Task.**
 
 Uma US de núcleo (`marvin.mjs`, `ATUALIZACOES`) ativa por vez: 44, 45 e 47 nunca em paralelo.
@@ -169,7 +171,7 @@ Uma US de núcleo (`marvin.mjs`, `ATUALIZACOES`) ativa por vez: 44, 45 e 47 nunc
 
 ## ❓
 
-- "Carapaça/plugin": é metáfora ou empacotamento como plugin do Claude Code? Empacotar é decisão
-  do dono e esbarra em "zero dependência / só npm".
+- ~~"Carapaça/plugin": metáfora ou empacotamento?~~ Respondido em 15/10: empacotamento. O Marvin é
+  o único plugin do Claude e instala as ferramentas por projeto (US-50).
 
 Decisões relacionadas: as entradas de 15/10/2026 em [decisoes-fechadas.md](decisoes-fechadas.md).

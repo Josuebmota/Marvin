@@ -64,3 +64,16 @@
   [equipe-barata.md](equipe-barata.md). Revoga o "Não entra" da US-42 ("padrão por papel só
   depois do número"): o padrão entra agora, e a US-29 confirma ou corrige. Referência: o reel de
   @donimas, que é simulação do autor e não benchmark.
+- **O Marvin é o único plugin do Claude e o curador das ferramentas, por projeto** (dono,
+  15/10/2026). Nada de ferramenta global: ao ser chamado num projeto, o Marvin instala no
+  **escopo daquele projeto** só o que a equipe usa (ECC, graphify, ponytail, Superpowers) e guarda
+  o que só ele tem: memória versionada, grafo das US, equipe e roteamento de custo. Motivo: o
+  que é global é pago em toda sessão de todo projeto, inclusive onde não serve. Responde ao ❓
+  "carapaça/plugin" da arquitetura: é empacotamento de verdade, não metáfora.
+  - **Limpeza feita na máquina do dono no mesmo dia, reversível:** o ECC global (16 agentes, 22
+    skills, 26 comandos, inclusive as de .NET) foi movido para `~/.claude/_backup-2026-10-15/`.
+    Também saíram os plugins firebase (duas cópias), codex, copilot-studio e ponytail (desligados),
+    os 12 hooks do Orca, o MCP Higgsfield deste projeto e as seções Ruflo e graphify do
+    `CLAUDE.md` global. Cópia dos três arquivos de configuração está no mesmo backup.
+  - **Esbarra em:** "zero dependência / só npm" (empacotar como plugin do Claude é outro canal de
+    distribuição) e invariante 3 (convenção de plugin muda rápido). A US-50 trata os dois.

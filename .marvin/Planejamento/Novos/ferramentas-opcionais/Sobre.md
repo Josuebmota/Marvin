@@ -10,6 +10,7 @@ pai: ../../README.md
 
 ## Filhos
 - [adaptadores](adaptadores/Sobre.md)
+- [curadoria](curadoria/Sobre.md)
 
 ## Rumo
 - **15/09/2026** — aberta.
