@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 name: US-41-custo-dos-subagentes
 description: "O --status não conta o custo dos subagentes: o computeSpend lê só os .jsonl do topo do projeto, e o Claude Code grava cada delegação em <sessão>/subagents/. Contar e mostrar o custo por papel."
@@ -93,3 +93,4 @@ Toca 3 nó(s) de código em 3 comunidade(s).
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+Commit `abfeec8`; `node teste.mjs`: **354 passaram**. Os checks do bloco US-41 conferem quatro coisas: o `subagents/` entra no total, a mesma mensagem nos dois lugares conta uma vez, a linha `dev-back` traz modelo e esforço, e o subagente sem meta vai para "sem papel". A "(main session)" sai separada no texto e no HTML. O `qa` aprovou, e o `tl` leu o diff e aprovou depois da correção da linha da principal.
