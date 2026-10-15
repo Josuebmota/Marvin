@@ -234,12 +234,14 @@ Running again with a different list **adds** what's missing; nothing is removed.
 ### Optional tools — the `.marvin/ferramentas.md` record
 
 Some tools are not adapters but things a project *chooses* to use. marvin detects them
-on PATH (`playwright` is offered by a web front in a `package.json`, not by PATH), asks
-**once** (only with a terminal — without one it records `não` and warns), and writes the
-answer to `.marvin/ferramentas.md`. Later runs read the record instead of asking. Flip it
-with `--use=<tool>`; `--no-questions` records `não` even with a terminal. A comma list
-turns several on at once (`marvin --use=graphify,ponytail`), and without a terminal, with
-both detected, the warning suggests exactly that line.
+on PATH (`playwright` is offered by a web front in a `package.json`, not by PATH).
+**`graphify` found on PATH is recorded as `sim` without asking**, terminal or not; without
+it, marvin keeps working but ends with a strong warning on how to install it
+(`uv tool install graphifyy`). The others ask **once** (only with a terminal — without one
+they record `não` and warn). The answer goes to `.marvin/ferramentas.md`, and later runs
+read the record instead of asking — a `não` you wrote there is never overwritten. Flip it
+with `--use=<tool>`; `--no-questions` records `não` for the tools that ask, even with a
+terminal. A comma list turns several on at once (`marvin --use=graphify,ponytail`).
 
 | Tool | What it produces | Reach |
 |---|---|---|
@@ -713,7 +715,7 @@ rather than final text.
 node teste.mjs
 ```
 
-361 checks, no dependencies. It covers the invariants that protect other
+366 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

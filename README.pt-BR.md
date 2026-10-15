@@ -231,11 +231,14 @@ Rodar de novo com outra lista **acrescenta** o que falta; nada é removido.
 
 Algumas ferramentas não são adaptador: são coisas que o projeto *escolhe* usar. O marvin
 detecta no PATH (o `playwright` é oferecido pelo front web num `package.json`, não pelo
-PATH), pergunta **uma vez** (só com terminal — sem ele registra `não` e avisa) e escreve a
-resposta em `.marvin/ferramentas.md`. As próximas execuções leem o registro em vez de
-perguntar. `--use=<ferramenta>` flipa para `sim`; `--no-questions` registra `não` mesmo
-com terminal. Uma lista com vírgula liga várias de uma vez (`marvin --use=graphify,ponytail`),
-e sem terminal, com as duas detectadas, o aviso sugere exatamente essa linha.
+PATH). **O `graphify` achado no PATH é registrado como `sim` sem perguntar**, com terminal
+ou sem; sem ele, o marvin segue funcionando mas termina com um aviso forte de como
+instalar (`uv tool install graphifyy`). As outras perguntam **uma vez** (só com terminal —
+sem ele registram `não` e avisam). A resposta vai para `.marvin/ferramentas.md` e as
+próximas execuções leem o registro em vez de perguntar — um `não` escrito ali nunca é
+sobrescrito. `--use=<ferramenta>` flipa para `sim`; `--no-questions` registra `não` nas
+que perguntam, mesmo com terminal. Uma lista com vírgula liga várias de uma vez
+(`marvin --use=graphify,ponytail`).
 
 | Ferramenta | O que produz | Alcance |
 |---|---|---|
@@ -698,7 +701,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-361 verificações, zero dependência. Cobre os invariantes que protegem o disco
+366 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

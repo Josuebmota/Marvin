@@ -152,8 +152,8 @@ Flags:
   --no-git          skip git init and .gitignore
   --clean-legacy    remove leftovers from old orchestration tools
   --graphify        build a code graph for structural queries (needs graphify on PATH).
-                    Without the flag marvin asks once (only with a terminal) and records
-                    the answer in .marvin/ferramentas.md; later runs read the record.
+                    Without the flag, graphify found on PATH is recorded as \`sim\` in
+                    .marvin/ferramentas.md without asking; later runs read the record.
                     indexes gitignored sub-repos separately and merges them, so a
                     monorepo does not end up with a graph missing all of its code
   --graphify-label  name the graph communities using the \`claude\` CLI on PATH.
@@ -1873,8 +1873,8 @@ const HAS_WEB_FRONT = pkgDeps.some(deps => deps.some(x => /^(react-native|expo)$
 // ── 0b. Optional tools: the `.marvin/ferramentas.md` record.
 //
 // Nobody discovers a flag that only exists in --help. So, without `--graphify`, the
-// script detects the binary on PATH and ASKS — once, only with a terminal; without a TTY
-// it assumes `não` and warns. The answer goes to the record, and from then on the record
+// script detects the binary on PATH. graphify found → `sim` without asking (US-38); the
+// other tools ASK once, only with a terminal (without a TTY: `não` and a warning). The answer goes to the record, and from then on the record
 // rules: running again does not ask (invariant 2). `--use=graphify` flips the record
 // later. The record is the missing "this project uses X" place — any agent reads it.
 // Lives before step 1 because SUBREPOS (right below) and the generated CLAUDE.md depend
@@ -1909,7 +1909,7 @@ const ponytailReach = () => {
   return 'escada de simplicidade para quem IMPLEMENTA — ' + p.join('; ') + '. Confiança baixa: não medido';
 };
 const OPTIONAL_TOOLS = [
-  { nome: 'graphify', detecta: () => onPath('graphify --version'), instalar: 'uv tool install graphifyy  ·  pipx install graphifyy',
+  { nome: 'graphify', padrao: true, detecta: () => onPath('graphify --version'), instalar: 'uv tool install graphifyy  ·  pipx install graphifyy',
     alcance: 'saída JSON/markdown em graphify-out/ — qualquer agente lê; só o hook é do Claude, e não é usado' },
   { nome: 'ponytail', detecta: detectPonytail, instalar: 'claude plugin marketplace add DietrichGebert/ponytail  ·  claude plugin install ponytail',
     get alcance() { return ponytailReach(); } },
@@ -1945,6 +1945,9 @@ const OPTIONAL_TOOLS = [
       if (!state) {
         uses = false;
         info(f.nome + ' not found — recording `não`. To adopt it later:  ' + f.instalar + '  then  marvin --use=' + f.nome);
+      } else if (f.padrao) {
+        uses = true;   // US-38: found on PATH → `sim` without asking (TTY or not); an existing record never gets here
+        ok(f.nome + ' ' + state + ' — recording `sim` (flip with `marvin --use=` or by editing ' + RECORD_REL + ')');
       } else if (NO_QUESTIONS || !process.stdin.isTTY) {
         uses = false;
         deferred.push([f.nome, state]);
@@ -1983,8 +1986,8 @@ tags: [referencia]
 ---
 # Ferramentas opcionais
 
-Registro de "este projeto usa X". O \`marvin\` pergunta uma vez e escreve aqui; para
-mudar, edite a coluna **usa** ou rode \`marvin --use=<ferramenta>\`. **Alcance** diz
+Registro de "este projeto usa X". O \`marvin\` detecta e escreve aqui (graphify no PATH
+entra como \`sim\`, sem perguntar; as demais perguntam uma vez); para mudar, edite a coluna **usa** ou rode \`marvin --use=<ferramenta>\`. **Alcance** diz
 quem consegue ler o que a ferramenta produz — nem tudo é de todo agente.
 
 **Versionar o derivado:** por padrão o grafo (\`graphify-out/\`) e a página de status
@@ -2597,6 +2600,10 @@ faz o time crescer em camadas em vez de nascer genérico.
    definem quem toca, quais agentes e skills (só os que a atividade usa), esforço e modelo,
    e registram em *Time*/*Skills* da US. Agente ou skill novos nascem aqui: o agente só vira
    arquivo com uma armadilha concreta; a skill, na segunda execução.
+   **Na primeira rodada depois de instalar**, a LLM só **propõe** o time e as skills, a partir
+   do glossário e do código: só papel ligado a fronteira detectada no código (stack, schema,
+   CI), nunca o catálogo inteiro. A proposta fica em *Time*/*Skills* e o arquivo nasce pela
+   regra acima.
    **O grafo é opcional:** se existir, a triagem parte do *Impacto*; se não, use Grep e
    registre "grafo ausente" na US.
 3. **Atualizar os agentes em camadas:** \`.claude/agents/<papel>.md\` recebe as armadilhas
@@ -3541,6 +3548,11 @@ A coluna **"precisa de"** descreve a responsabilidade. O modelo e o esforço dep
 da capacidade exigida em cada etapa, do risco e dos acessos disponíveis; consulte
 o guia de IA abaixo. Não fixar um degrau por papel nem escolher marca pelo plugin.
 
+Na primeira rodada com a LLM depois de instalar, ela só **propõe** o time e as skills, a
+partir do glossário e do código: só papel ligado a fronteira detectada no código (stack,
+schema, CI), nunca o catálogo inteiro. A proposta fica registrada; o arquivo nasce quando
+houver armadilha concreta (agente) ou na segunda execução (skill).
+
 Regra: mudança que toque um invariante passa pelo papel de revisão **antes** de fechar.
 Relatório verde de agente não substitui ler o diff.
 
@@ -4226,6 +4238,9 @@ const UPDATES = [
   // not explain --track/--untrack, so nobody learns the derived output can be versioned.
   { arquivo: path.relative(ROOT, RECORD).replace(/\\/g, '/'), marca: /Versionar\s+o\s+derivado/, desde: '2.2.0',
     o_que: 'the "Versionar o derivado" note — --track/--untrack and the `versiona:` line' },
+  // US-38: graphify on PATH is recorded as `sim` by default; the record's intro says so.
+  { arquivo: path.relative(ROOT, RECORD).replace(/\\/g, '/'), marca: /graphify\s+no\s+PATH\s+entra\s+como/, desde: '2.9.0',
+    o_que: 'the record intro: graphify on PATH is recorded as `sim` by default (no question)' },
   { arquivo: '.claude/skills/README.md', marca: /Skill, agente ou command/i,
     o_que: 'the skill vs. agent vs. command discriminator (and the 2x rule)' },
   // A rule lives where it fires (11/09): closing a session → /retomar; portability → Sobre.md;
@@ -4322,6 +4337,12 @@ const UPDATES = [
     o_que: 'the cost criterion in the Claude Code model section' },
   { arquivo: '.claude/agents/README.md', marca: /herda\s+o\s+modelo\s+da\s+sessão/, desde: '2.8.0',
     o_que: 'the "without model: the agent inherits the session model" note (declare it or record why)' },
+  // US-39: the first round only PROPOSES the team (invariant 4 kept).
+  { arquivo: 'AGENTS.md', marca: /primeira\s+rodada\s+com\s+a\s+LLM\s+depois\s+de\s+instalar/, desde: '2.9.0',
+    o_que: 'the first round only proposes the team and skills (roles tied to a detected boundary; the file is born by the usual rule)' },
+  { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
+    marca: /primeira\s+rodada\s+depois\s+de\s+instalar/, desde: '2.9.0',
+    o_que: 'the same proposal rule in the Planejamento triage step' },
 ];
 
 const missing = UPDATES.filter(a => {
@@ -4358,7 +4379,13 @@ if (DRY) {
 // in --help is a feature nobody discovers. The mention comes AFTER what matters, is one
 // line, and says to read the caveats before adopting: the graph is a derived artifact
 // and ages in silence, so pushing it would contradict the rest of the script.
-if (!GRAPHIFY) {
+// US-38: no graphify on PATH is a strong warning, never an abort or a different exit code.
+if (!onPath('graphify --version')) {
+  log('');
+  warn('graphify NOT found on PATH — the code graph (structural queries) will not exist.');
+  warn('Install it:  uv tool install graphifyy  ·  pipx install graphifyy');
+  warn((GRAPHIFY ? 'the record says `sim`: the graph step is skipped until graphify is on PATH.' : 'then  marvin --use=graphify  (the record says `não`).') + ' Everything else works without it.');
+} else if (!GRAPHIFY) {
   log('\n\x1b[1mOptional, and never required:\x1b[0m');
   log('  graphify builds a code graph for STRUCTURAL questions — what calls what,');
   log('  type hierarchy, cross-package deps. For finding a file, grep is cheaper.');

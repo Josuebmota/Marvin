@@ -78,12 +78,26 @@ function arena(name) {
   return { base, proj: proj, lar: home };
 }
 
+// US-38: with graphify on PATH marvin records `sim` and builds the graph. CI has none, so by
+// default every case runs with a fake `graphify` that fails at the head of PATH (the key is
+// `Path` on Windows — a second `PATH` would duplicate the variable). `arena.real = true` opts out.
+const PATH_KEY = Object.keys(process.env).find(k => k.toUpperCase() === 'PATH') || 'PATH';
+function fakeGraphify(dir, code) {
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'graphify'), '#!/bin/sh\nexit ' + code + '\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(dir, 'graphify.cmd'), '@exit /b ' + code + '\r\n');
+  return dir;
+}
+const NO_GRAPHIFY = fakeGraphify(fs.mkdtempSync(path.join(os.tmpdir(), 'marvin-teste-sem-graphify-')), 1);
+process.on('exit', () => { try { fs.rmSync(NO_GRAPHIFY, { recursive: true, force: true }); } catch {} });
+const pathWith = (dir) => ({ [PATH_KEY]: dir + path.delimiter + process.env[PATH_KEY] });
+
 /** Runs marvin with HOME/USERPROFILE redirected. */
-function run({ proj: proj, lar: home }, ...flags) {
+function run({ proj: proj, lar: home, real }, ...flags) {
   return spawnSync(process.execPath, [SCRIPT, ...flags], {
     cwd: proj,
     encoding: 'utf8',
-    env: { ...process.env, HOME: home, USERPROFILE: home },
+    env: { ...process.env, HOME: home, USERPROFILE: home, ...(real ? {} : pathWith(NO_GRAPHIFY)) },
   });
 }
 
@@ -94,7 +108,7 @@ function runInteractive({ proj, lar }, answers, ...flags) {
     const driver = 'process.argv.splice(1, 0, ' + JSON.stringify(SCRIPT) + '); process.stdin.isTTY = true; await import('
       + JSON.stringify(pathToFileURL(SCRIPT).href) + ');';
     const child = spawn(process.execPath, ['--input-type=module', '--eval', driver, '--', ...flags], {
-      cwd: proj, env: { ...process.env, HOME: lar, USERPROFILE: lar },
+      cwd: proj, env: { ...process.env, HOME: lar, USERPROFILE: lar, ...pathWith(NO_GRAPHIFY) },
     });
     let stdout = '', stderr = '', pending = '', index = 0;
     const timer = setTimeout(() => child.kill(), 30000);
@@ -397,6 +411,10 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   check('sem TTY o registro nasce com `não` e avisa',
         fs.existsSync(rec) && /^\| graphify \| não \|/m.test(fs.readFileSync(rec, 'utf8'))
         && /(no interactive terminal|not on PATH)/.test(r.stdout), r.stdout.slice(-400));
+  // US-38: no graphify on PATH (the CI case, here a failing fake) → exit 0, strong warning, no `sim`.
+  check('US-38: sem graphify no PATH a instalação termina com exit 0 e aviso forte de como instalar',
+        r.status === 0 && /graphify NOT found on PATH/.test(r.stdout) && /uv tool install graphifyy/.test(r.stdout), r.stdout.slice(-500));
+  check('US-38: sem graphify o registro não tem `sim` para ele', !/^\| graphify \| sim \|/m.test(fs.readFileSync(rec, 'utf8')));
   const before = fs.readFileSync(rec, 'utf8');
   run(a, '--no-git');
   check('rodar de novo não pergunta nem duplica a linha', fs.readFileSync(rec, 'utf8') === before);
@@ -540,30 +558,35 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
         && fs.readFileSync(recOf(s), 'utf8') === sAfter, sAfter.slice(-600));
   cleanup(s);
 
-  // US-32 (A): graphify and ponytail both detected, no TTY → ONE warning with the joint command.
-  // Hermetic: a fake `graphify` binary at the head of PATH (the key is `Path` on Windows —
-  // a second `PATH` would duplicate the variable) and the ponytail planted in the arena's home.
+  // US-38: graphify on PATH is recorded as `sim` WITHOUT asking (no TTY here), ponytail still
+  // defers to `não` with its warning. Hermetic: a fake `graphify` that succeeds at the head of PATH
+  // and the ponytail planted in the arena's home. (Two tools deferring at once, the old US-32
+  // "Flip them" line, cannot happen now that graphify never defers: that branch has no test.)
   const f = arena('juntos');
   fs.mkdirSync(path.join(f.lar, '.claude', 'plugins'), { recursive: true });
   fs.writeFileSync(path.join(f.lar, '.claude', 'plugins', 'installed_plugins.json'), '{"plugins":{"ponytail@ponytail":[]}}');
   fs.writeFileSync(path.join(f.lar, '.claude', '.ponytail-active'), 'full\n');
-  const bin = path.join(f.base, 'bin'); fs.mkdirSync(bin);
-  fs.writeFileSync(path.join(bin, 'graphify'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
-  fs.writeFileSync(path.join(bin, 'graphify.cmd'), '@exit /b 0\r\n');
-  const pk = Object.keys(process.env).find(k => k.toUpperCase() === 'PATH') || 'PATH';
+  const bin = fakeGraphify(path.join(f.base, 'bin'), 0);
   const rf = spawnSync(process.execPath, [SCRIPT, '--no-git'], {
     cwd: f.proj, encoding: 'utf8',
-    env: { ...process.env, HOME: f.lar, USERPROFILE: f.lar, [pk]: bin + path.delimiter + process.env[pk] },
+    env: { ...process.env, HOME: f.lar, USERPROFILE: f.lar, ...pathWith(bin) },
   });
   const recF = fs.readFileSync(recOf(f), 'utf8');
-  check('US-32: sem TTY, graphify e ponytail detectados continuam `não`',
-        /^\| graphify \| não \|/m.test(recF) && /^\| ponytail \| não \|/m.test(recF), rf.stdout.slice(-500));
-  check('US-32: um aviso só, com os dois nomes e o comando único',
-        /graphify is [^\n]*, ponytail is [^\n]*Flip them with  marvin --use=graphify,ponytail/.test(rf.stdout)
-        && (rf.stdout.match(/Flip (it|them) with/g) || []).length === 1, rf.stdout.slice(-500));
-  check('US-32: a dica final mostra uma flag que liga as duas',
-        /One flag turns both on:  marvin --use=graphify,ponytail/.test(rf.stdout), rf.stdout.slice(-500));
+  check('US-38: graphify no PATH e sem TTY grava `sim` sem perguntar; ponytail continua `não`',
+        /^\| graphify \| sim \|/m.test(recF) && /^\| ponytail \| não \|/m.test(recF) && rf.status === 0, rf.stdout.slice(-500));
+  check('US-38: com graphify no PATH não há aviso de falta', !/graphify NOT found/.test(rf.stdout), rf.stdout.slice(-500));
+  check('US-32: o aviso de ponytail sem TTY continua com o comando de flip',
+        /ponytail is [^\n]*no interactive terminal[^\n]*marvin --use=ponytail/.test(rf.stdout), rf.stdout.slice(-500));
+  // an explicit `não` from the human survives graphify being on PATH (invariant 2)
+  fs.writeFileSync(recOf(f), recF.replace(/^\| graphify \| sim \|/m, '| graphify | não |'));
+  const noBefore = fs.readFileSync(recOf(f), 'utf8');
+  spawnSync(process.execPath, [SCRIPT, '--no-git'], {
+    cwd: f.proj, encoding: 'utf8',
+    env: { ...process.env, HOME: f.lar, USERPROFILE: f.lar, ...pathWith(bin) },
+  });
+  check('US-38: `não` gravado pelo humano não é sobrescrito com graphify no PATH', fs.readFileSync(recOf(f), 'utf8') === noBefore);
   cleanup(f);
+
 
   // US-35: `tests:` is not the `test` target; `test :` is.
   const mk = (name, text) => {
@@ -606,7 +629,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
     cleanup(a);
 
     // 23a: the repos live under a parent folder (`repos/<x>`), two levels down.
-    const n = arena('monorepo-aninhado');
+    const n = arena('monorepo-aninhado'); n.real = true;
     spawnSync('git', ['init', '-q', '.'], { cwd: n.proj });
     for (const r of ['svc-a', 'svc-b']) {
       const dir = path.join(n.proj, 'repos', r, 'src');
@@ -649,7 +672,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   if (!hasGraphify || !hasGit) {
     console.log('  - 9f pulado: precisa de git e graphify no PATH (4 checks)'); skipped += 4;
   } else {
-    const a = arena('githook');
+    const a = arena('githook'); a.real = true;
     spawnSync('git', ['init', '-q', '.'], { cwd: a.proj });
     run(a, '--no-git', '--graphify', '--graphify-git-hook');
     const hook = path.join(a.proj, '.git', 'hooks', 'post-commit');
@@ -1748,6 +1771,20 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   fs.writeFileSync(path.join(ag, 'README.md'), '# Time\n\nModelo por atividade\n');
   const old = run(a, '--no-git', '--no-questions');
   check('US-42: base antiga sem o texto novo: o passo 10 acusa com desde 2.8.0', /agents\/README\.md — missing[^\n]*desde 2\.8\.0/.test(old.stdout), old.stdout.slice(-500));
+  cleanup(a);
+}
+
+// ── US-39. The first round only proposes the team: the text is generated, and an old base is flagged.
+{
+  const a = arena('us39');
+  run(a, '--no-git', '--no-questions');
+  const rd = (...p) => fs.readFileSync(path.join(a.proj, ...p), 'utf8');
+  check('US-39: AGENTS.md e Planejamento/README gerados trazem a regra de proposta na primeira rodada',
+        /primeira\s+rodada\s+com\s+a\s+LLM\s+depois\s+de\s+instalar/.test(rd('AGENTS.md')) &&
+        /primeira\s+rodada\s+depois\s+de\s+instalar/.test(rd('.marvin', 'Planejamento', 'README.md')));
+  fs.writeFileSync(path.join(a.proj, 'AGENTS.md'), '# Projeto\n');
+  const old = run(a, '--no-git', '--no-questions');
+  check('US-39: base antiga sem o texto novo: o passo 10 acusa com desde 2.9.0', /AGENTS\.md — missing[^\n]*desde 2\.9\.0/.test(old.stdout), old.stdout.slice(-500));
   cleanup(a);
 }
 
