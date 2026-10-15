@@ -3,11 +3,12 @@ name: ferramentas
 description: Ferramentas opcionais que ESTE projeto usa — e o que cada uma alcança
 tags: [referencia]
 marvin_montado: "< 2.2.0"
-marvin: 2.6.0
+marvin: 2.9.0
 ---
 # Ferramentas opcionais
 
-Registro de "este projeto usa X". O `marvin` pergunta uma vez e escreve aqui; para
+Registro de "este projeto usa X". O `marvin` detecta e escreve aqui (graphify no PATH
+entra como `sim`, sem perguntar; as demais perguntam uma vez); para
 mudar, edite a coluna **usa** ou rode `marvin --use=<ferramenta>`. **Alcance** diz
 quem consegue ler o que a ferramenta produz — nem tudo é de todo agente.
 

@@ -11,6 +11,9 @@ model: sonnet
 ---
 ```
 
+Sem `model:`, o agente herda o modelo da sessão. Declare o modelo ou registre na US
+por que ele herda; o `marvin --status` avisa o agente que herda.
+
 ## Modelo por atividade — Claude Code
 
 Modelos de partida, não escolhas permanentes por papel. No piloto local da US-19,

@@ -24,6 +24,9 @@ plugin instalados não provam acesso, modelo concreto ou delegação nativa.
 Registre escolha e configuração solicitada/aplicada na US; verifique pelo risco.
 Sem capacidade ou integração, informe a lacuna e execute só as etapas possíveis.
 Não há migração automática de sessão por quota nem economia medida.
+A escolha visa o mesmo resultado com o menor gasto: parta da opção elegível mais barata.
+O degrau sobe só com motivo registrado no Time da US. Se o `tl` já decidiu,
+quem executa não precisa do modelo do `tl`.
 
 ## Entradas do glossário
 

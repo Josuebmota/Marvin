@@ -23,6 +23,8 @@ de `.claude/agents/*.md` é a configuração de partida; Opus no `tl` é a refer
 inicial Claude, não escolha obrigatória por papel. A seleção começa na atividade,
 domínio e skills e usa as capacidades efetivamente disponíveis; plugin instalado
 não fixa fornecedor para delegação ou revisão.
+A escolha visa o mesmo resultado com o menor gasto; o degrau sobe só com motivo
+registrado no Time da US. Se o `tl` já decidiu, quem executa não precisa do modelo do `tl`.
 
 | Precisa de | Modelo |
 |---|---|

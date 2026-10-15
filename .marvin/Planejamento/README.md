@@ -25,6 +25,10 @@ Na triagem do `tl` com o `po`, decidam quem trabalha, quais agentes e skills usa
 modelo, ferramenta e esforço por etapa. O grafo é opcional nos projetos montados pelo
 Marvin; neste repositório, Graphify é obrigatório na triagem. Se estiver ausente, velho ou
 indisponível, registrem a limitação e usem Grep/Glob como fallback para localizar arquivos.
+**Na primeira rodada depois de instalar**, a LLM só **propõe** o time e as skills, a partir
+do glossário e do código: só papel ligado a fronteira detectada no código (stack, schema,
+CI), nunca o catálogo inteiro. A proposta fica em *Time*/*Skills* e o arquivo nasce quando
+houver armadilha concreta (agente) ou na segunda execução (skill).
 
 ## O formato — um só para Epic, Feature e US
 
