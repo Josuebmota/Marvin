@@ -44,6 +44,8 @@ Nenhuma ainda. Medir a mesma coisa pela segunda vez é o gatilho para uma skill 
 - **15/10/2026** — recebeu duas medições de outras US, por decisão do dono:
   - Grep × grafo em "onde está X" ([US-43](../../../../Manutencao/ferramentas-opcionais/adaptadores/US-43-grafo-rota-de-busca/Sobre.md)).
   - Proposta da 1ª rodada × agentes de fato usados nas 3 primeiras US de um projeto real autorizado ([US-39](../US-39-time-na-primeira-rodada/Sobre.md), item 3).
+- **15/10/2026** — recebe a ex-US-46 (tabela de partida), por proposta do `po` na revisão da arquitetura [equipe-barata](../../../../../Contexto/Arquitetura/equipe-barata.md). **Saída nova:** a tabela atividade → papel, modelo e esforço de partida, cada linha com o par medido que a sustenta. Ela mora no `Equipe.md` (coluna) ou no `IA.md`, nunca num quarto lugar. Os reels do dono entram aqui como referência. Passa a ser a **porta** da sequência: 2 amostras (US-49 e US-44 contam) antes da US-45.
+- **15/10/2026** — o dono fixou o ponto de partida no Claude (Opus: `tl`/`po`; Sonnet: `dev-*`/`qa`/`design`/`dba`; Haiku: os mesmos em tarefa simples, e o `scout`), com a regra do sênior. Esta US deixa de **criar** a tabela: passa a **medir** se ela entrega o mesmo resultado mais barato, e a corrigi-la com o par medido. Referência do dono: o reel de @donimas (escada de $5,10 a $0,32; simulação, não benchmark).
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->

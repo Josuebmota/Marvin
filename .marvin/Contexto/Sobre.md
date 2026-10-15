@@ -26,6 +26,7 @@ _(um fluxo entra aqui quando é analisado numa atividade — não antes)_
 
 As restrições de desenho e o porquê de cada uma. Regime: acrescenta, nunca sobrescreve.
 
+- [equipe-barata](Arquitetura/equipe-barata.md) — o Marvin é a carapaça da LLM: camadas, fluxo de uma atividade, hierarquia, regras de custo e a sequência de US
 - [decisoes-fechadas](Arquitetura/decisoes-fechadas.md) — zero dependência, um arquivo, sem config, sem versão gravada, graphify como consulta
 - [organizacao-por-grafo](Arquitetura/organizacao-por-grafo.md) — por que esta pasta é assim, e o que foi medido antes
 - [ci-em-tres-sistemas](Arquitetura/ci-em-tres-sistemas.md) — o CI é o dono do "funciona no macOS?"

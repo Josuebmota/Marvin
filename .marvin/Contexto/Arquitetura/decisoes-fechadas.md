@@ -57,3 +57,10 @@
     US; bug vira US em `Manutencao/`.
   - **A aplicação vem por US**, refinadas a partir das anotações ⚪ de 15/10/2026 na nota.
     Sem a medição da US-29, "menor custo" continua sendo promessa.
+- **Ponto de partida por papel no Claude** (dono, 15/10/2026). Opus para `tl` e `po`. Sonnet
+  para `dev-*`, `qa`, `design` e `dba`. Haiku para os mesmos papéis em tarefa simples e para
+  o `scout`. Vale a regra do sênior: começa no mais barato que serve, verifica e só sobe se a
+  verificação falhar. O roteamento é regra escrita, aplicada sem chamada cara. A tabela está em
+  [equipe-barata.md](equipe-barata.md). Revoga o "Não entra" da US-42 ("padrão por papel só
+  depois do número"): o padrão entra agora, e a US-29 confirma ou corrige. Referência: o reel de
+  @donimas, que é simulação do autor e não benchmark.

@@ -111,6 +111,7 @@ Nada depende do que ela toca — folha do grafo.
   - **Lacunas:**
     - Não há teste para o aviso no HTML, para `model:` vazio, nem para as marcas do IA.md e do CLAUDE.md (só para a do README de agentes).
     - Este repo não regenera os templates existentes; o passo 10 vai acusar as 3 marcas aqui.
+- **15/10/2026 (tarde)** — o dono revogou o "Não entra" desta US sobre o padrão por papel: o ponto de partida no Claude entra agora (ver [decisoes-fechadas.md](../../../../../Contexto/Arquitetura/decisoes-fechadas.md)) e vai para o `Equipe.md` gerado pela US-44.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->

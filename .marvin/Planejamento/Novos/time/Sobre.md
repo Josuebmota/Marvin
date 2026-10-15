@@ -10,6 +10,8 @@ pai: ../../README.md
 
 ## Filhos
 - [roteamento](roteamento/Sobre.md)
+- [glossario](glossario/Sobre.md)
+- [orquestracao](orquestracao/Sobre.md)
 
 ## Rumo
 - **05/10/2026** — aberta.

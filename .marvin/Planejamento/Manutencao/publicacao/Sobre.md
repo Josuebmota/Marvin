@@ -10,6 +10,7 @@ pai: ../../README.md
 
 ## Filhos
 - [npm](npm/Sobre.md)
+- [identidade](identidade/Sobre.md)
 
 ## Rumo
 - **10/09/2026** — aberta.
