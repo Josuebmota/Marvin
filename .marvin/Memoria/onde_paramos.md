@@ -24,5 +24,4 @@ metadata:
 ## Em andamento
 
 - [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — medir custo por tarefa aprovada em 3–4 US reais; na próxima US, fixar contexto, checks e corte de turnos antes de começar
-- [US-41-custo-dos-subagentes](../Planejamento/Manutencao/diagnostico/custo/US-41-custo-dos-subagentes/Sobre.md) — concluída (`abfeec8`); próximo passo: release
 
