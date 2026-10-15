@@ -154,7 +154,7 @@ Epic → Feature → US | Defect → Task
 |---|---|---|---|
 | Contexto fixo por sessão | `/context` num chat novo e passo 4b | 74,8k, dos quais `AGENTS.md` 5,7k | ≤ 50k; `AGENTS.md` ≤ 3k |
 | Contexto fixo medido sem UI (15/10, depois da 2.10.0) | `claude -p "Responda apenas: ok" --output-format json` → soma de `input`+`cache_*` | **55,6k** neste repo · 49,1k numa pasta vazia · 39,4k sem nenhum MCP. Repo = 6,5k (o `AGENTS.md` antigo pesava +1,4k); conectores/MCP da conta = 9,7k; Claude Code = 39,4k, fora do nosso alcance | o que sobra para cortar: conectores (dono) e os 6,5k do repo |
-| Custo por tarefa aprovada | `--status` por papel e corte de turnos (US-29) | sem amostra | cai a cada fase, com a mesma aprovação |
+| Custo por tarefa aprovada | `--status` por papel e corte de turnos (US-29); micro-benchmark sem UI com aceite escondido | 15/10, tarefa controlada: Opus $0,430 × **Sonnet $0,215 (mesmo resultado)** × Haiku $0,121 (falhou 1 de 8). Em US real: sem amostra | cai a cada fase, com a mesma aprovação |
 | Execução fora do Opus | linhas do *Time* | não medido | a maior parte em Sonnet e Haiku; Opus só em julgamento |
 
 **Portão:** nenhuma fase começa sem os três números da anterior registrados. Uma US de núcleo
