@@ -584,7 +584,7 @@ const ilhasOf = (nodes) => {
     for (const n of us) for (const f of n.tocados) if (!isCore.has(f)) local.set(f, (local.get(f) || 0) + 1);
     const top = [...local].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
     us.sort((a, b) => (a.estado === 'ativa' ? 0 : 1) - (b.estado === 'ativa' ? 0 : 1) || short(a).localeCompare(short(b)));
-    return { nome: path.basename(top).replace(/\.[^.]+$/, ''), arquivo: top, us: us.map(n => ({ id: short(n), titulo: n.titulo, estado: n.estado, arq: n.arq })), ativa: us.some(n => n.estado === 'ativa') };
+    return { nome: path.basename(top).replace(/(?!^)\.[^.]+$/, ''), arquivo: top, us: us.map(n => ({ id: short(n), titulo: n.titulo, estado: n.estado, arq: n.arq })), ativa: us.some(n => n.estado === 'ativa') };
   }).sort((a, b) => (b.ativa ? 1 : 0) - (a.ativa ? 1 : 0) || b.us.length - a.us.length || a.nome.localeCompare(b.nome));
   const semMapa = cand.filter(n => !n.tocados.length).map(short).sort();
   const soNucleo = cand.filter(n => n.tocados.length && !n.tocados.some(f => !isCore.has(f))).map(short).sort();

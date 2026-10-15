@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-54-ilha-sem-nome
 description: "Ilha cujo arquivo principal começa com ponto (.env, .github, .claude-plugin/) aparece sem nome no --status e no painel."
@@ -29,6 +29,12 @@ _(nenhuma)_
 
 ## Rumo
 - **15/10/2026** — aberta e refinada na sessão principal: defeito pequeno, causa com linha, sem ❓.
+- **15/10/2026** — concluída. Rodada como amostra da US-29: a mesma US em três clones, cada um num chat sem UI próprio, julgada por aceite escondido (4 casos: `.claude-plugin/`, `.env`, `.github/workflows/ci.yml`, `src/app.test.js`, mais "nenhuma ilha sem nome"). Os três acertaram com a mesma correção (regex que não trata o ponto inicial como extensão). Aplicada a do **Sonnet sozinho** (a mais barata e menor); o `tl` revisou correção equivalente no braço 3.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+| Braço | Custo | Turnos | `teste.mjs` | Aceite escondido |
+|---|---|---|---|---|
+| Opus sozinho (configuração anterior) | $0,974 | 30 | 389 ✅ | ✅ |
+| **Sonnet sozinho** | **$0,357** | 12 | 389 ✅ | ✅ |
+| Sonnet + `tl` Opus no diff | $0,784 (Sonnet $0,521 + Opus $0,263) | 4 | 389 ✅ | ✅ |
+- No repo principal, depois de aplicar: 389 passaram; aceite ok.
