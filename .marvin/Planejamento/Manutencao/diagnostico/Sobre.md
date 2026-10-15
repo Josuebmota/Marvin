@@ -12,6 +12,7 @@ pai: ../../README.md
 - [passo-3](passo-3/Sobre.md)
 - [atualizacoes](atualizacoes/Sobre.md)
 - [comandos](comandos/Sobre.md)
+- [custo](custo/Sobre.md)
 
 ## Rumo
 - **10/09/2026** — aberta.
