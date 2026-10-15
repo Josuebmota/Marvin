@@ -35,6 +35,16 @@ _(a triar no refino: `po` + `tl`, com o passo de estrutura do grafo)_
 
 ## Rumo
 - **15/10/2026** — anotada com a decisão do dono. A limpeza do perfil global já foi feita e é reversível: tudo foi movido para `~/.claude/_backup-2026-10-15/`, sem apagar. As contagens conferiram: 16 agentes, 26 comandos e 22 skills. O link `skills/watch` foi movido como link.
+- **15/10/2026** — **primeira medição, depois da limpeza** (`/context` num chat novo, Claude Code desktop, janela de 1M). Total fixo: **74,8k**, assim dividido:
+  - System tools 20,4k e MCP tools carregadas 19,9k: o app e o Claude Code, que são o piso.
+  - Skills 10k: plugins sincronizados da conta (brand-voice, figma, design, engineering, productivity, anthropic-skills).
+  - System prompt 8,3k.
+  - Memory files 7,6k, dos quais **5,7k são o `AGENTS.md` deste repo**.
+  - Instruções de servidor MCP 6,1k: conectores da conta.
+  - Agentes 2,3k: brand-voice 1,9k e a equipe do Marvin 0,4k.
+  - Os 638,8k de ferramentas MCP adiadas não são pagos.
+  - Não há "antes": a limpeza foi feita antes de medir, e isso fica declarado.
+  - **Alvo:** ~50k, desligando na conta os plugins sincronizados e conectores sem uso (~16k) e enxugando o `AGENTS.md` (US-44).
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
