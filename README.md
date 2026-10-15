@@ -5,8 +5,8 @@
 
 # Marvin
 
-**One `AGENTS.md`, N thin adapters, memory versioned inside the repo.**<br>
-Scaffolds a project's knowledge base for working with AI agents — and survives switching tools.
+**Your LLM's exoskeleton: a cheap dev team — same result, fewest tokens.**<br>
+Memory, a team with roles, work rituals and cost routing around the model — one `AGENTS.md`, memory versioned inside the repo, and it survives switching tools.
 
 [![npm](https://img.shields.io/npm/v/marvin-kb?color=cb3837&logo=npm)](https://www.npmjs.com/package/marvin-kb)
 [![tests](https://github.com/Josuebmota/Marvin/actions/workflows/teste.yml/badge.svg)](https://github.com/Josuebmota/Marvin/actions/workflows/teste.yml)
@@ -24,13 +24,15 @@ npx marvin-kb --tools=claude,codex
 
 </div>
 
-Not a framework. Nothing runs in the background. No dependencies. It's a ~1810-line Node
-script that creates a structure and gets out of the way.
+Not a framework. Nothing runs in the background. No dependencies. A Node script writes the
+structure; the agents and commands it sets up run the team on top of it.
 
-> **Why this exists.** Not to invent anything — tools that do this already exist, and in
-> more mature forms. Marvin is a learning project: on paper it makes no sense to build what
-> the market already ships; in practice, building is how you understand why things are the
-> way they are. Use it if it fits; steal the ideas if it doesn't.
+> **Why this exists.** On its own, an LLM executes but doesn't remember, doesn't plan and
+> doesn't watch its own spend: it rereads the repository, uses the priciest model for
+> everything and forgets between sessions. Marvin is the shell around it — memory through a
+> code graph and a versioned vault, roles like a small Scrum team, and each task sent to the
+> cheapest model that delivers the same result. The rule behind every decision: *same result,
+> fewer tokens?* It is also a learning project — use it if it fits; steal the ideas if it doesn't.
 
 | | |
 |---|---|
@@ -662,7 +664,7 @@ subagents, slash commands. It is read-only: it advises, it writes nothing.
 
 The two answer different questions. That one answers *"what should I adopt?"*. Marvin answers
 *"where is the skeleton?"* — it writes `AGENTS.md`, the tool adapters and the vault, mounts
-agent memory **inside** the repository, and gets out of the way. It is also not Claude-only:
+agent memory **inside** the repository, and sets up the team that works on top of it. It is also not Claude-only:
 `AGENTS.md` is the source and each tool gets a thin adapter.
 
 Use both. Ask that plugin what to adopt; run Marvin for the structure that holds it.

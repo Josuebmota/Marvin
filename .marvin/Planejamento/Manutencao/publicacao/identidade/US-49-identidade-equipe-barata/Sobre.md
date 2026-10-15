@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-49-identidade-equipe-barata
 description: "README e README.pt-BR dizem o que o Marvin é desde 15/10: a carapaça da LLM, uma equipe barata de desenvolvimento."
@@ -34,7 +34,7 @@ description: "README e README.pt-BR dizem o que o Marvin é desde 15/10: a carap
 _(nenhuma)_
 
 ## ❓
-1. Qual é a frase de identidade? "Equipe barata" é o termo final no README público (em inglês, como fica)?
+1. ~~Frase de identidade~~ — respondido pelo dono em 15/10: "equipe barata". PT: "a carapaça da sua LLM: uma equipe de desenvolvimento barata — mesmo resultado, mínimo de token"; EN: "your LLM's exoskeleton: a cheap dev team — same result, fewest tokens".
 2. O `po` aponta que US-49 (doc) + US-44 (código + template + migração) **não formam par** da mesma classe na US-29; propõe US-49 + [US-51](../../contexto-fixo/US-51-agents-md-enxuto/Sobre.md). Aceita? Qual delas roda na configuração anterior (tudo na sessão Opus)?
 3. "Aprovada" é o seu aceite sem retrabalho ou o check verde?
 
@@ -42,7 +42,7 @@ _(nenhuma)_
 
 <!-- gerado por `marvin --us` a partir do grafo; regerado a cada run — não edite à mão -->
 
-Toca 2 nó(s) de código em 2 comunidade(s).
+Toca 2 nó(s) de código em 1 comunidade(s).
 
 Nada depende do que ela toca — folha do grafo.
 
@@ -68,6 +68,11 @@ Nada depende do que ela toca — folha do grafo.
 - **15/10/2026** — anotada a partir da definição "equipe barata" do dono. Está fora da fila até o `/refinar`.
 - **15/10/2026** — revisão da arquitetura (`tl` + `po`, Opus medium): o invariante 4 saiu desta US e foi para a US-44, para ter um escritor só e não prometer o glossário antes de ele existir.
 - **15/10/2026** — `/refinar` (Fase 1): refinada. Critérios fechados por `tl` + `po`; o `AGENTS.md` saiu do escopo (era citado na descrição).
+- **15/10/2026** — ativa. O dono mandou implementar as 6 US da fila neste chat ("papoca tudo aqui"), passando o portão da Fase 2 por decisão própria. **Configuração declarada (amostra US-29):** anterior — tudo na sessão principal (Opus 5.5), sem subagente; tarefa trivial de texto, delegar custaria mais que fazer (passo 1 do `delegacao.md`). Check: critérios 1 e 5.
+- **15/10/2026** — concluída. Topo, linha de abertura, "Por que existe" e a comparação com o `claude-code-setup` reescritos juntos nos dois idiomas; número de linhas tirado do texto (critério 4).
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `grep -nE "1810|sai da frente|gets out of the way" README*.md` → vazio (exit 1).
+- Nenhuma linha nova cita `Equipe.md` nem glossário da equipe (grep no diff → vazio).
+- `node teste.mjs` → 366 passaram.
+- Diff: `README.md` e `README.pt-BR.md`, 4 trechos cada (22+/18−).
