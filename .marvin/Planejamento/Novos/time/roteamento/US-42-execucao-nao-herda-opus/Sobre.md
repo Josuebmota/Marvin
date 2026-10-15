@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 name: US-42-execucao-nao-herda-opus
 description: "O texto gerado faz a execução herdar o modelo da sessão (Opus): o README de agentes manda omitir model:, e o PROMPT.md contradiz o IA.md. Critério de economia nos templates e aviso no --status para agente sem model:."
@@ -114,3 +114,4 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+Commit `f61aa05`; `node teste.mjs`: **361 passaram**. Os 7 checks da US-42 conferem cinco coisas: o critério nos templates gerados, o fim do "Omita model", o aviso para agente sem `model:` e com `inherit` (o com `model:` não avisa), o código de saída igual e o `--curto` sem mudança. Conferem também a marca `desde 2.8.0` no passo 10. O `qa` repetiu num projeto temporário: `--curto` idêntico byte a byte e hashes iguais no `--dry-run` e no 2º run. O `tl` leu o diff e aprovou.

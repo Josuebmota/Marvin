@@ -24,5 +24,5 @@ metadata:
 ## Em andamento
 
 - [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — medir custo por tarefa aprovada em 3–4 US reais; na próxima US, fixar contexto, checks e corte de turnos antes de começar
-- [US-42-execucao-nao-herda-opus](../Planejamento/Novos/time/roteamento/US-42-execucao-nao-herda-opus/Sobre.md) — implementada e aprovada por `qa` e `tl` (361 ok); próximo passo: commit e release 2.8.0
+- [US-42-execucao-nao-herda-opus](../Planejamento/Novos/time/roteamento/US-42-execucao-nao-herda-opus/Sobre.md) — concluída (`f61aa05`); próximo passo: release 2.8.0
 
