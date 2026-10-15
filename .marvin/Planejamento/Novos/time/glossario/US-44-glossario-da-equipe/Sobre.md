@@ -15,6 +15,7 @@ description: "A instalação escreve Contexto/Equipe.md com cada papel: especial
 3. Fica fora de `.claude/agents/`, referenciado por link e nunca por `@` (senão carrega em toda sessão); caminho via `DOCS`, vale para o layout antigo. Cabe numa tabela, uma linha por papel.
 4. A 1ª rodada (US-39) lê o glossário e vira agente só quem o projeto usa, com as armadilhas daquele código.
 5. Invariante 4 reescrito no `AGENTS.md` deste repo e no template com o texto do `tl` (Rumo de 15/10). Marca na `ATUALIZACOES` com `desde:`; base já montada mantém a tabela antiga e só é avisada (invariante 2). `teste.mjs`: o `Equipe.md` existe e o `AGENTS.md` gerado não contém `| \`scout\` |`.
+6. O `AGENTS.md` **deste repo** desce de 5,7k para ≤ 3k tokens (`/context`, Memory files): o que é regra de comando volta ao comando que dispara. O que sai vai para o lugar onde é lido sob demanda, nunca é apagado sem destino.
 
 **Não entra:** Armadilha de projeto específico escrita pelo script; criar arquivo de agente na instalação.
 

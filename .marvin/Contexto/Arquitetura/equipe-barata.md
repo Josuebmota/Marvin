@@ -1,6 +1,6 @@
 # O Marvin é a carapaça da LLM: uma equipe barata de desenvolvimento
 
-**Quando:** 15/10/2026   ·   **Estado:** aceita pelo dono — aplicação por US (ver *Sequência*)
+**Quando:** 15/10/2026   ·   **Estado:** aceita pelo dono — aplicação por fases (ver *Plano estratégico*)
 **Decisão de origem:** [decisoes-fechadas.md](decisoes-fechadas.md), entrada "O que o Marvin é".
 
 ## O que é
@@ -143,21 +143,73 @@ Epic → Feature → US | Defect → Task
 | Prova de economia | 🔴 custo medido (US-41), nenhuma amostra | pares medidos | [US-29](../../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) |
 | Grafo como rota de busca | 🟡 regra atual: Grep localiza | medir Grep × grafo | [US-43](../../Planejamento/Manutencao/ferramentas-opcionais/adaptadores/US-43-grafo-rota-de-busca/Sobre.md) |
 
-## Sequência
+## Plano estratégico
 
-A ordem é a do valor pelo menor custo, e a prova vem cedo (proposta do `po` na revisão):
+**Objetivo:** o Marvin entrega o mesmo resultado de uma equipe pelo menor custo de token, como
+único plugin do Claude, curando as ferramentas por projeto.
 
-1. **US-49 identidade.** É barata e tira a mentira pública do README.
-2. **US-44 glossário.** Move a tabela de papéis do `AGENTS.md` gerado para `Equipe.md`. É a única
-   desta lista que **reduz** o contexto fixo, e o passo 4b mede isso. O invariante 4 muda aqui.
-3. **US-29 com 2 amostras** (a 49 e a 44 contam). É a porta: sem número, nada abaixo prova que
-   economiza. A tabela de partida (ex-US-46) é a saída dela.
-4. **US-45 porta única.**
-5. **US-50 plugin e curador**, com a **US-48** dentro: avaliar Superpowers e ECC é decidir o que o
-   curador instala. A limpeza de 15/10 é a primeira amostra de contexto fixo (antes × depois).
-6. **US-47 Defect e Task.**
+**Como se mede**, nos mesmos três números em toda fase:
 
-Uma US de núcleo (`marvin.mjs`, `ATUALIZACOES`) ativa por vez: 44, 45 e 47 nunca em paralelo.
+| Métrica | Fonte | Hoje (15/10) | Alvo |
+|---|---|---|---|
+| Contexto fixo por sessão | `/context` num chat novo e passo 4b | 74,8k, dos quais `AGENTS.md` 5,7k | ≤ 50k; `AGENTS.md` ≤ 3k |
+| Custo por tarefa aprovada | `--status` por papel e corte de turnos (US-29) | sem amostra | cai a cada fase, com a mesma aprovação |
+| Execução fora do Opus | linhas do *Time* | não medido | a maior parte em Sonnet e Haiku; Opus só em julgamento |
+
+**Portão:** nenhuma fase começa sem os três números da anterior registrados. Uma US de núcleo
+(`marvin.mjs`, `ATUALIZACOES`) ativa por vez.
+
+### Fase 0 — Limpeza ✅ (15/10/2026)
+
+- Perfil global sem ECC, plugins, hooks nem MCP, com backup reversível. Base medida: **74,8k**.
+- Ponto de partida no Claude decidido. Os agentes do repo já seguem: Opus para `tl`/`po`,
+  Sonnet para `dev-back`/`qa` e Haiku para o `scout`.
+- Grafo obrigatório no passo de estrutura, mantido fresco pelo hook `post-commit`.
+
+### Fase 1 — Contexto fixo mínimo (o que toda sessão paga)
+
+- **US-49 identidade.** README em "equipe barata". Barata, e tira a mentira pública.
+- **US-44 glossário.** A tabela de papéis sai do `AGENTS.md` gerado para `Equipe.md`, lido só na
+  triagem. O invariante 4 muda aqui. O `AGENTS.md` **deste repo** também desce de 5,7k para ≤ 3k:
+  o que é regra de comando volta ao comando ("regra mora onde dispara").
+- **Sai com:** `/context` de novo; Memory files menor.
+
+### Fase 2 — Prova (portão de tudo que vem depois)
+
+- **US-29 com 2 amostras.** As US-49 e US-44 contam, com papel, modelo e esforço declarados antes
+  de rodar e o corte de turnos registrado.
+- Aplica a regra do sênior (o mais barato que serve, verifica, sobe se falhar) e mede quanto saiu
+  do Opus.
+- **Sai com:** custo por tarefa aprovada, e a tabela de partida confirmada ou corrigida pelo par
+  medido. Se não economizou, o plano para aqui e o Rumo diz por quê.
+
+### Fase 3 — Curador (o Marvin vira o único plugin)
+
+- **US-50 plugin e curador.** `marvin` num projeto instala no **escopo do projeto** só o que o
+  registro diz: graphify, ponytail e, conforme a **US-48** (dentro desta fase), ECC e Superpowers.
+  Avalia o empacotamento como plugin do Claude sem `dependencies`.
+- **Sai com:** contexto fixo de um projeto com o curador, comparado ao da Fase 1. Nada volta para
+  o global.
+
+### Fase 4 — Orquestração (a equipe trabalha sozinha)
+
+- **US-45 porta única** e **US-47 Defect e Task**. Cada uma depende de uma decisão do dono, que
+  está no ❓ de cada US.
+- O roteamento é **regra escrita** aplicada pelo comando, sem chamada de Opus por atividade.
+- **Sai com:** custo por atividade entregue pela porta única × conduzida à mão (US-29).
+
+### Fase 5 — Grafo como rota de busca (só se o número mandar)
+
+- **US-43.** Grep × grafo em "onde está X". Só muda a regra "Grep localiza" se a medição sustentar.
+
+### Guardas (como se obedece a letra e se gasta mais)
+
+- **Triagem cara para tarefa barata.** Atividade trivial vai direto, sem refino (regra de custo 8).
+- **N atividades num chat só.** Refina as N juntas e executa cada uma em rodada própria (regra 6).
+- **O script cresce e ninguém vê.** As ~4.400 linhas não custam token, porque o script não é
+  lido. O que custa é **o que ele gera** e carrega em toda sessão. Toda US mostra o 4b antes e
+  depois.
+- **Ferramenta que "custa para poupar".** Sem par medido em 2 US, sai do registro.
 
 ## O que continua valendo
 
