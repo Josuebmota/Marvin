@@ -1827,6 +1827,29 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(b);
 }
 
+// ── US-52. `estado: anotada` is visible: counted in --status, only a number in the hook.
+{
+  const a = arena('us52');
+  run(a, '--no-git', '--no-questions');
+  run(a, '--us', 'Novos/P/F/US-01-nota-x');
+  const sb = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'P', 'F', 'US-01-nota-x', 'Sobre.md');
+  fs.writeFileSync(path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md'), '# Onde paramos\n');   // an anotada is never in the note
+  const orig = fs.readFileSync(sb, 'utf8');
+  const nLines = (o) => o.stdout.split('\n').filter(l => l.trim()).length;
+  fs.writeFileSync(sb, orig.replace('estado: ativa', 'estado: cancelada'));
+  const semCurto = nLines(run(a, '--status', '--curto'));
+  check('US-52: sem anotada, o --curto não tem a linha nova', !/anotada/.test(run(a, '--status', '--curto').stdout));
+  fs.writeFileSync(sb, orig.replace('estado: ativa', 'estado: anotada'));
+  const full = run(a, '--status').stdout, curto = run(a, '--status', '--curto');
+  check('US-52: a US anotada aparece no --status completo (contagem por epic)', /1 anotada\(s\)/.test(full), full.slice(-500));
+  check('US-52: no --curto só o número, numa linha; o nome da US não aparece', /1 anotada\(s\) fora da fila/.test(curto.stdout) && !/nota-x/.test(curto.stdout), curto.stdout);
+  check('US-52: com anotada o --curto cresce exatamente uma linha', nLines(curto) === semCurto + 1, nLines(curto) + ' vs ' + semCurto);
+  run(a, '--status', '--html');
+  const html = fs.readFileSync(path.join(a.proj, '.marvin', '.status', 'index.html'), 'utf8');
+  check('US-52: o painel tem o grupo Anotadas com link para a US', /<h3>Anotadas<\/h3><ul><li><a href="[^"]*US-01-nota-x\/Sobre\.md"/.test(html));
+  cleanup(a);
+}
+
 // ── LAST. The number of checks claimed in the READMEs matches the real one.
 //
 // It has drifted THREE times in this repository: 26 when there were 28, 48 when there

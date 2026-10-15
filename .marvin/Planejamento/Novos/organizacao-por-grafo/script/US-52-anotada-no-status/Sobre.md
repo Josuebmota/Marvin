@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-52-anotada-no-status
 description: "US com estado: anotada aparece no --status, no roadmap e no painel; no --status --curto, só o número."
@@ -87,6 +87,11 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **15/10/2026** — aberta no `/refinar` (logo tudo), a partir do item 5 da US-47.
+- **15/10/2026** — ativa (ordem do dono). ❓1 resolvido pela execução: entra agora. **Configuração declarada (amostra US-29):** política — `dev-back` Sonnet médio, `qa` Sonnet baixo, `tl` Opus médio.
+- **15/10/2026** — concluída. `dev-back` (Sonnet médio) implementou; `qa` dispensado com motivo: diff de 18 linhas no script, comportamento coberto por 5 checks novos que o `tl` conferiu não serem triviais; `tl` (Opus) aprovou com um ajuste fora do diff — o `Planejamento/README.md` deste repo ganhou o comentário de estados novo (e o link do glossário da US-44), e o `marvin` rodado aqui criou o `Contexto/Equipe.md` deste repo. Nota do `tl`, não bloqueia: epic com `estado: anotada` apareceria como ✗ (`marvin.mjs:1350`); nenhum epic usa.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs` → 378 passaram (5 checks novos da US-52).
+- `--status --curto` neste repo: 18 linhas antes e depois (nenhuma anotada aqui).
+- `node marvin.mjs --dry-run` neste repo: 0 "missing" no passo 10.
+- `tl`: ilhas, fila e `--release` intocados (só pegam `refinada|ativa` e `concluida`); `UPDATES` 2.10.0 correta; marca `/refinada/` antiga segue casando.

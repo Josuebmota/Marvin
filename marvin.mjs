@@ -1203,7 +1203,7 @@ ${st.herdam.length ? `<p class="dim">Agente sem <code>model:</code> (herda o mod
 <p class="dim">Tokens são medidos nas transcrições; o valor é o que os mesmos tokens <strong>custariam na API</strong>, pela tabela de ${PRICES_DATE} (input · output · cache write ≈ 1,25× · cache read ≈ 0,1×) — confira os preços vigentes. Num plano fixo (Max) o gasto real é a mensalidade — este número diz o quanto ele rende.${fixedShare != null ? ` Cada turno relê ~${kTk(g.contextoMedio)} tk de contexto; o contexto fixo (${st.contexto.total} tk) é <strong>~${fixedShare}%</strong> disso — o resto é a conversa. Sessão longa custa mais que arquivo grande.` : ''}</p>
 <h2 id="roadmap">Roadmap <span class="dim">— derivado de estado e ilhas; nada escrito à mão</span></h2>
 ${(() => { const li = (r) => r.length ? `<ul>${r.map(i => `<li><a href="${esc(path.relative(dir, i.arq).replace(/\\/g, '/'))}" target="_blank">${esc(i.titulo)}</a> <span class="dim">${esc(i.cadeia.join(' › '))}</span></li>`).join('')}</ul>` : '<p class="dim">nenhuma</p>';
-  return `<h3>Em andamento</h3>${li(st.roadmap.ativa)}<h3>Na fila</h3>${li(st.roadmap.refinada)}<details><summary>Concluídas (${st.roadmap.concluida.length})</summary>${li(st.roadmap.concluida)}</details>`; })()}
+  return `<h3>Em andamento</h3>${li(st.roadmap.ativa)}<h3>Na fila</h3>${li(st.roadmap.refinada)}<h3>Anotadas</h3>${li(st.roadmap.anotada)}<details><summary>Concluídas (${st.roadmap.concluida.length})</summary>${li(st.roadmap.concluida)}</details>`; })()}
 <h2 id="epics">Planejamento <span class="dim">— ${st.epics.length} epic(s) · clique para abrir · ◎ foca na rede</span></h2>
 ${treeHtml}
 <h2 id="decisoes">Decisões <span class="dim">— Contexto/Arquitetura</span></h2>
@@ -1281,7 +1281,7 @@ const computeStatus = () => {
   const rm = (estado) => nodes.filter(n => n.tipo === 'us' && n.estado === estado).map(n => ({ titulo: n.titulo, arq: n.arq, estado: n.estado, cadeia: chain(n) }));
   const byOpen = (a, b) => { const pa = ilhaPos.get(path.resolve(a.arq)), pb = ilhaPos.get(path.resolve(b.arq));
     return (pa === undefined ? Infinity : pa) === (pb === undefined ? Infinity : pb) ? idOf(a).localeCompare(idOf(b)) : (pa === undefined ? 1 : pb === undefined ? -1 : pa - pb); };
-  st.roadmap = { ativa: rm('ativa').sort(byOpen), refinada: rm('refinada').sort(byOpen),
+  st.roadmap = { ativa: rm('ativa').sort(byOpen), refinada: rm('refinada').sort(byOpen), anotada: rm('anotada').sort(byOpen),
                  concluida: rm('concluida').sort((a, b) => a.cadeia.join(' › ').localeCompare(b.cadeia.join(' › ')) || idOf(a).localeCompare(idOf(b))) };
   const arqDir = path.join(DOCS, 'Contexto', 'Arquitetura');
   let decisoes = []; try { decisoes = fs.readdirSync(arqDir).filter(f => f.endsWith('.md') && f !== 'README.md').sort(); } catch {}
@@ -1291,7 +1291,7 @@ const computeStatus = () => {
     const us = desc.filter(n => n.tipo === 'us'), feats = desc.filter(n => n.tipo === 'feature');
     const count = us.length ? us : feats;
     const c = (s) => count.filter(n => n.estado === s).length;
-    st.epics.push({ titulo: e.titulo, estado: e.estado, rotulo: us.length ? 'US' : 'features', total: count.length, concluidas: c('concluida'), canceladas: c('cancelada'), ativas: c('ativa'), refinadas: c('refinada') });
+    st.epics.push({ titulo: e.titulo, estado: e.estado, rotulo: us.length ? 'US' : 'features', total: count.length, concluidas: c('concluida'), canceladas: c('cancelada'), ativas: c('ativa'), refinadas: c('refinada'), anotadas: c('anotada') });
   }
   const rel = path.join(DOCS, 'Releases');
   let releases = []; try { releases = fs.readdirSync(rel).filter(f => f.endsWith('.md') && f !== 'README.md').sort(); } catch {}
@@ -1315,7 +1315,7 @@ const computeStatus = () => {
   return st;
 };
 
-const stateMark = (e) => e === 'ativa' ? '\x1b[32m●\x1b[0m' : e === 'concluida' ? '\x1b[34m✓\x1b[0m' : e === 'refinada' ? '\x1b[2m○\x1b[0m' : '\x1b[31m✗\x1b[0m';
+const stateMark = (e) => e === 'ativa' ? '\x1b[32m●\x1b[0m' : e === 'concluida' ? '\x1b[34m✓\x1b[0m' : e === 'refinada' ? '\x1b[2m○\x1b[0m' : e === 'anotada' ? '\x1b[2m·\x1b[0m' : '\x1b[31m✗\x1b[0m';
 // One line per ilha: what /retomar reads to offer "the ilha of the moment". In --curto it is
 // capped so the hook stays under its budget; the full list is in --status.
 const printIlhas = (il, short) => {
@@ -1341,13 +1341,15 @@ const printStatus = (st, short) => {
   }
   for (const w of st.avisos) (w.nivel === 'err' ? err : w.nivel === 'warn' ? warn : info)(w.texto);
   printIlhas(st.ilhas, short);
+  // US-52: anotada is outside the queue; the hook gets only the number, never the list.
+  if (short && st.roadmap.anotada.length) info(st.roadmap.anotada.length + ' anotada(s) fora da fila — /refinar');
   if (short) return;
   if (st.epics.length) {
     log('\n\x1b[1mEpics\x1b[0m');
     for (const e of st.epics) {
       const m = e.estado === 'ativa' ? '●' : e.estado === 'concluida' ? '✓' : '✗';
       if (!e.total) { log(`  ${m} ${e.titulo}  \x1b[2mno children yet\x1b[0m`); continue; }
-      log(`  ${m} ${e.titulo}  \x1b[2m${e.concluidas}/${e.total} ${e.rotulo} concluídas` + (e.canceladas ? ` · ${e.canceladas} cancelada(s)` : '') + (e.ativas ? ` · ${e.ativas} ativa(s)` : '') + (e.refinadas ? ` · ${e.refinadas} refinada(s)` : '') + '\x1b[0m');
+      log(`  ${m} ${e.titulo}  \x1b[2m${e.concluidas}/${e.total} ${e.rotulo} concluídas` + (e.canceladas ? ` · ${e.canceladas} cancelada(s)` : '') + (e.ativas ? ` · ${e.ativas} ativa(s)` : '') + (e.refinadas ? ` · ${e.refinadas} refinada(s)` : '') + (e.anotadas ? ` · ${e.anotadas} anotada(s)` : '') + '\x1b[0m');
     }
   }
   log('\n\x1b[1mReleases\x1b[0m');
@@ -2652,7 +2654,7 @@ Regras:
 \`\`\`markdown
 ---
 tipo: us            # epic | feature | us
-estado: ativa       # refinada | ativa | concluida | cancelada
+estado: ativa       # anotada | refinada | ativa | concluida | cancelada
 pai: ../Sobre.md
 ---
 # US-12 — <título em uma frase>
@@ -4367,6 +4369,10 @@ const UPDATES = [
   { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
     marca: /\[glossário\s+da\s+equipe\]/, soCom: !OLD_LAYOUT, desde: '2.10.0',
     o_que: 'the link to the team glossary (Contexto/Equipe.md) in place of the role table' },
+  // US-52: the state comment lists `anotada`; --status, the roadmap and the hook count them.
+  { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
+    marca: /anotada\s+\|\s+refinada/, soCom: !OLD_LAYOUT, desde: '2.10.0',
+    o_que: 'the `estado: anotada` in the state comment — an annotated US outside the queue; --status counts it, --curto shows only the number' },
 ];
 
 const missing = UPDATES.filter(a => {
