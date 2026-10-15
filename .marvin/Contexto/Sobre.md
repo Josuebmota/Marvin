@@ -8,6 +8,16 @@ com agentes de IA: uma fonte de verdade (`AGENTS.md`), adaptadores finos por fer
 memória versionada dentro do repositório por junction, e esta pasta — organizada como grafo.
 **Não é** gerador de agentes: o conteúdo que exige conhecer o projeto é do humano.
 
+**O Marvin é uma equipe barata de desenvolvimento** (dono, 15/10/2026): entrega o mesmo esforço e o mesmo
+resultado de uma equipe, com o menor custo de token. Você entrega as atividades; ele lembra
+de tudo pelo grafo (graphify), lista o que está pendente sem gastar token, e o `po` e o `tl`
+montam a equipe de cada atividade (papel, modelo, esforço), como um Scrum Master: planeja em
+Epic → Feature → US/Defect → Task, refina numa cerimônia e desenvolve noutra. Subagentes
+executam no menor recurso que entrega o mesmo resultado.
+O script é a memória (grafo, diagnóstico, listagem: determinístico, não gasta token); os
+agentes e os comandos são a orquestração. Detalhe e o que ainda falta:
+[decisoes-fechadas](Arquitetura/decisoes-fechadas.md), entrada de 15/10/2026.
+
 ## Fluxos
 
 _(um fluxo entra aqui quando é analisado numa atividade — não antes)_

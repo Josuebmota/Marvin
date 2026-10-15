@@ -36,3 +36,24 @@
   continuam só para localizar (medido: ~18 tk contra ~1.650 pelo grafo). O frescor vem do
   hook `post-commit` (`--graphify-git-hook`), que é um hook de git e não o hook do Claude:
   "consulta, nunca hook do Claude" continua valendo.
+- **O que o Marvin é: uma equipe barata de desenvolvimento** (dono, 15/10/2026). Ele entrega o
+  mesmo esforço e o mesmo resultado de uma equipe, com o menor custo de token, como uma equipe
+  terceirizada que se contrata. Você entrega as atividades, e o Marvin lembra de tudo pelo
+  grafo (graphify) e lista as pendências sem gastar token. O `po` e o `tl` montam a equipe
+  de cada atividade (papel, modelo, esforço) como um Scrum Master, em duas cerimônias: refino
+  e desenvolvimento. Os subagentes executam no menor recurso que entrega o mesmo resultado.
+  Substitui a régua "suporte, não motor / monta a base e sai da frente".
+  - **O que a decisão separa:** o script continua sendo a memória (determinístico, zero
+    dependência, não gasta token). A orquestração é dos agentes e dos comandos.
+  - **Muda o invariante 4:** a instalação passa a trazer o **glossário da equipe**: cada
+    papel com especialidade, atribuições e quando entra (`tl`, `po`, `dev-back`,
+    `dev-front`, `design`, `dba`, `qa`, `scout`…). Ele fica como documento lido na
+    triagem, não em `.claude/agents/`, para não carregar em toda sessão. O script segue sem
+    escrever as armadilhas de um projeto específico; elas nascem na 1ª rodada, quando a LLM
+    mapeia o projeto. Revisa a decisão da US-39 desta mesma data ("a 1ª rodada só propõe").
+  - **Reabre a US-25:** o Superpowers deixa de ser "só citar no README" e passa a ser
+    avaliado para uso, ao lado do graphify, como ferramenta de contexto.
+  - **Hierarquia:** Epic → Feature → US/**Defect** → **Task**. Hoje só existem Epic, Feature e
+    US; bug vira US em `Manutencao/`.
+  - **A aplicação vem por US**, refinadas a partir das anotações ⚪ de 15/10/2026 na nota.
+    Sem a medição da US-29, "menor custo" continua sendo promessa.
