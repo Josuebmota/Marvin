@@ -65,17 +65,7 @@ bloco de escrita é guardado por `if (!fs.existsSync(...))`.
 aviso mandando conferir. **Adaptador que não carrega falha em silêncio** — pior que
 adaptador ausente.
 
-**4. O script não escreve conteúdo que exige conhecer o projeto.** O corpo de agentes, de
-skills e do `AGENTS.md` nunca sai do `marvin.mjs`: genérico é pior que ausente. Agentes e
-skills nascem **por atividade**, escritos pelo `tl` e pelo `po` com o dono, a partir da US que
-os pede e com as armadilhas concretas do código que ela toca; ficam registrados no
-*Time*/*Skills* dela e só viram arquivo com uma armadilha concreta (agente) ou na segunda
-execução (skill). Na primeira rodada com a LLM depois de instalar, ela só **propõe** papéis
-e skills a partir do glossário e do código — só papel ligado a fronteira detectada no código
-(stack, schema, CI), nunca o catálogo inteiro; a proposta fica registrada em *Time*/*Skills*
-e o arquivo continua nascendo pela regra acima. O script pode **mostrar** o que o
-diagnóstico sugere; quem decide e escreve é quem conhece o projeto. (Mudado em 08/10/2026 por decisão do dono: antes dizia "são do
-humano"; o sujeito passou a ser a atividade.)
+**4. O script não escreve conteúdo que exige conhecer o projeto.** Sobre a equipe, ele escreve só o glossário genérico (`.marvin/Contexto/Equipe.md`): papel, especialidade, atribuições, quando entra e o que não faz, igual em todo projeto, sem stack, caminho nem armadilha. O glossário é referência lida na triagem; nunca vai para `.claude/agents/`, nunca é importado com `@`, e não é lista do que criar: um papel só vira arquivo de agente com uma armadilha concreta do código, escrito pelo `tl` e pelo `po` na 1ª rodada (que só **propõe**, só para fronteira detectada) ou na US que o pede; skill, na segunda execução. O corpo de agentes, de skills e do `AGENTS.md` nunca sai do `marvin.mjs`. O script pode **mostrar** o que o diagnóstico sugere; quem decide e escreve é quem conhece o projeto. (Histórico: 08/10/2026 o sujeito passou de "o humano" para a atividade; 15/10/2026 a instalação passou a trazer o glossário, por decisão do dono.)
 
 ## Armadilhas
 

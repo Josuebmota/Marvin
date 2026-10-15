@@ -1788,6 +1788,45 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── US-44. The generic team glossary is born once, at the layout's path, read at triage only.
+{
+  const a = arena('us44');
+  run(a, '--no-git', '--no-questions');
+  const eq = path.join(a.proj, '.marvin', 'Contexto', 'Equipe.md');
+  const txt = fs.existsSync(eq) ? fs.readFileSync(eq, 'utf8') : '';
+  const roles = ['tl', 'po', 'dev-front', 'dev-back', 'qa', 'scout', 'design', 'dba', 'sec', 'infra'];
+  check('US-44: Contexto/Equipe.md nasce com uma linha por papel e as colunas "Quando entra" e "O que não faz"',
+        roles.every(r => txt.includes('| `' + r + '` |')) && /Quando entra/.test(txt) && /O que não faz/.test(txt));
+  const plan = fs.readFileSync(path.join(a.proj, '.marvin', 'Planejamento', 'README.md'), 'utf8');
+  check('US-44: o Planejamento/README gerado não tem a tabela de papéis e linka o glossário da equipe',
+        !plan.includes('| `scout` |') && /\[glossário\s+da\s+equipe\]\(\.\.\/Contexto\/Equipe\.md\)/.test(plan));
+  const all = files(a.proj).filter(f => !f.startsWith('.git' + path.sep));
+  const imported = all.filter(f => /@\S*Equipe\.md/.test(fs.readFileSync(path.join(a.proj, f), 'utf8')));
+  check('US-44: nenhum arquivo gerado importa o glossário com @, e ele não cria nada em .claude/agents/',
+        imported.length === 0 && !all.some(f => f.includes('Equipe') && f.startsWith('.claude')), imported.join(', '));
+  check('US-44: o AGENTS.md gerado aponta o glossário por caminho, não por @',
+        /glossário da equipe \(`\.marvin\/Contexto\/Equipe\.md`\)/.test(fs.readFileSync(path.join(a.proj, 'AGENTS.md'), 'utf8')));
+  const again = run(a, '--no-git', '--no-questions');
+  check('US-44: a segunda rodada numa base nova não imprime o passo 10 (nenhuma marca órfã)', !/10\. Updates/.test(again.stdout), again.stdout.slice(-400));
+  // Old base: the glossary is a new file (created); the planning README is the owner's (only flagged, byte-identical).
+  fs.rmSync(eq);
+  const pr = path.join(a.proj, '.marvin', 'Planejamento', 'README.md');
+  const oldPlan = '# Planejamento\n\ndeclaração não prova acesso\ngrafo é opcional\nCódigo tocado\nrefinada\nprimeira rodada depois de instalar\n';
+  fs.writeFileSync(pr, oldPlan);
+  const old = run(a, '--no-git', '--no-questions');
+  check('US-44: base antiga recebe o glossário, só o aviso (desde 2.10.0) no Planejamento/README, que fica byte-idêntico',
+        fs.existsSync(eq) && /Planejamento\/README\.md — missing[^\n]*desde 2\.10\.0/.test(old.stdout)
+        && fs.readFileSync(pr, 'utf8') === oldPlan, old.stdout.slice(-500));
+  cleanup(a);
+
+  const b = arena('us44-antigo');
+  fs.mkdirSync(path.join(b.proj, '.marvin', '08_Memoria'), { recursive: true });
+  run(b, '--no-git', '--no-questions');
+  check('US-44: no layout antigo o glossário nasce na raiz de .marvin/ e Contexto/ não nasce',
+        fs.existsSync(path.join(b.proj, '.marvin', 'Equipe.md')) && !fs.existsSync(path.join(b.proj, '.marvin', 'Contexto')));
+  cleanup(b);
+}
+
 // ── LAST. The number of checks claimed in the READMEs matches the real one.
 //
 // It has drifted THREE times in this repository: 26 when there were 28, 48 when there

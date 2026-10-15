@@ -675,7 +675,9 @@ implies — one per boundary in a polyglot repo or a monorepo; with a single bou
 `dev-front` and `dev-back` can be one `dev` and the rest of the base holds just the same.
 The same suggestion is printed in the terminal (read-only) while the folder has no agent
 yet. It counts sub-repos ignored by the root only when run with `--graphify`. It never writes the agents themselves. An agent without the scars of *this* codebase is fixed
-context in every session that gives nothing back.
+context in every session that gives nothing back. What it does write is the generic team
+glossary, `.marvin/Contexto/Equipe.md` (role, when it enters, what it does not do, and the starting
+model per role), read only at triage.
 
 Likewise for long, unattended execution: [Superpowers](https://github.com/obra/superpowers)
 is a separate plugin that runs a plan through one fresh subagent per task, with a review after
@@ -717,7 +719,7 @@ rather than final text.
 node teste.mjs
 ```
 
-366 checks, no dependencies. It covers the invariants that protect other
+373 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

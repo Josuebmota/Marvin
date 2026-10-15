@@ -667,7 +667,9 @@ gerado nomeia as stacks encontradas e diz quantos papéis aquilo implica — um 
 num repo poliglota ou num monorepo; com uma fronteira só, `dev-front` e `dev-back` podem
 ser um `dev` e o resto da base vale igual. A mesma sugestão sai no terminal (só leitura)
 enquanto a pasta não tem nenhum agente. Ela só considera sub-repositórios ignorados pela raiz quando roda com `--graphify`. Ele nunca escreve os agentes.
-Agente sem as cicatrizes **deste** código é contexto fixo em toda sessão que não devolve nada.
+Agente sem as cicatrizes **deste** código é contexto fixo em toda sessão que não devolve nada. O que ele escreve é o glossário genérico da
+equipe, `.marvin/Contexto/Equipe.md` (papel, quando entra, o que não faz e o modelo de partida por
+papel), lido só na triagem.
 
 O mesmo vale para execução longa e sem supervisão: o [Superpowers](https://github.com/obra/superpowers)
 é um plugin à parte que roda um plano com um subagente novo por tarefa e uma revisão a cada
@@ -703,7 +705,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-366 verificações, zero dependência. Cobre os invariantes que protegem o disco
+373 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

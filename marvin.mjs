@@ -1765,6 +1765,7 @@ if (hasFlag('--migrar')) {
 const AVAILABILITY = path.join(DOCS, '.local', 'disponibilidade.json');
 const AVAILABILITY_REL = path.relative(ROOT, AVAILABILITY).replace(/\\/g, '/');
 const AI_GUIDE = OLD_LAYOUT ? 'IA.md' : 'Contexto/IA.md';
+const TEAM_GUIDE = OLD_LAYOUT ? 'Equipe.md' : 'Contexto/Equipe.md';
 const ignoreAvailability = () => {
   fsw.mkdirSync(path.dirname(AVAILABILITY), { recursive: true });
   const ignore = path.join(path.dirname(AVAILABILITY), '.gitignore');
@@ -2418,6 +2419,35 @@ não confirmados. Confira atualidade e modelo concreto antes de usar:
   a validar, não dependência obrigatória. Schema correto não garante decisão correta.
 `);
 
+// US-44: the generic team glossary — same in every project (no stack, path or trap), so the
+// script may write it. Read at triage only: never in .claude/agents/, never imported with `@`.
+writeIfMissing(TEAM_GUIDE, `# Glossário da equipe
+
+Lido na **triagem** (\`tl\` + \`po\`), não em toda sessão. Nunca vai para \`.claude/agents/\`
+nem é importado com \`@\`. Não é lista do que criar: um papel só vira arquivo de agente
+com uma armadilha concreta do código; skill, na segunda execução.
+
+| Papel | Dono de | Quando entra | O que não faz | Ponto de partida (Claude) |
+|---|---|---|---|---|
+| \`tl\` | invariantes, diff, decisão de rumo | toda mudança que toca um invariante ou o rumo | implementar a feature; achar arquivo | Opus |
+| \`po\` | o porquê, o critério de pronto, a prioridade | ao abrir ou refinar uma US | decidir como o código é feito | Opus |
+| \`dev-front\` | tela e componente | a atividade muda a interface | serviço, schema, deploy | Sonnet |
+| \`dev-back\` | serviço, regra, integração | a atividade muda regra ou integração | tela; fechar a própria revisão | Sonnet |
+| \`qa\` | evidência: teste, cenário, o que ainda não foi provado | antes de fechar qualquer US | corrigir o código que reprova | Sonnet |
+| \`scout\` | achar arquivo, símbolo, uso — e só isso | leitura delimitada, sem julgamento | decidir, editar, concluir | Haiku |
+| \`design\` | a tela nova: fluxo, estado, acessibilidade | há tela nova | implementar o componente | Sonnet |
+| \`dba\` | schema e migração | há schema ou migração | regra de negócio da aplicação | Sonnet |
+| \`sec\` | auth e dado sensível | há auth, segredo ou dado pessoal | aprovar a própria correção | Sonnet |
+| \`infra\` | deploy e CI | há deploy, pipeline ou ambiente | regra de negócio | Sonnet |
+
+\`dev\` serve de fusão de \`dev-front\` + \`dev-back\` quando o projeto tem uma fronteira só.
+
+**Regra do sênior:** começa no degrau mais barato que serve (Haiku para tarefa mecânica
+bem especificada); a verificação confere; sobe só se falhar, com o motivo no *Time* da US.
+A última coluna é ponto de partida no Claude, não regra fixa: com outro fornecedor,
+consulte o guia de IA em [\`IA.md\`](IA.md).
+`);
+
 if (OLD_LAYOUT) {
   // ── Layout by file type (08_Memoria/, 10_Decisoes/…). Keeps working where it is:
   // the junction points to the notes, /retomar reads the same note. What changed is
@@ -2582,26 +2612,15 @@ faz o time crescer em camadas em vez de nascer genérico.
    Consulte \`../${AI_GUIDE}\` e o inventário local antes de escolher modelo/esforço:
    atividade, domínio, papéis, skills e capacidades vêm antes da marca. Registre por
    etapa modelo/integração, motivo e solicitado/aplicado; declaração não prova acesso.
-   A base é sempre esta; o que a atividade não usa **não é criado**:
-
-   | Papel | Dono de | Precisa de |
-   |---|---|---|
-   | \`tl\` | invariantes, diff, decisão de rumo | julgamento |
-   | \`po\` | o porquê, o critério de pronto, a prioridade | julgamento |
-   | \`dev-front\` | tela e componente | implementação |
-   | \`dev-back\` | serviço, regra, integração | implementação |
-   | \`qa\` | evidência: teste, cenário, o que ainda não foi provado | implementação |
-   | \`scout\` | achar arquivo, símbolo, uso — e só isso | recuperação |
-
-   Mais a **camada da atividade**, quando ela pede: \`design\` se há tela nova, \`dba\` se há
-   schema ou migração, \`sec\` se há auth ou dado sensível, \`infra\` se há deploy ou CI.
+   O que a atividade não usa **não é criado**. Os papéis, o que cada um faz e quando entra
+   estão no [glossário da equipe](../${TEAM_GUIDE}) — lido aqui, na triagem.
 
    **Quem faz a triagem:** o \`tl\` junto com o \`po\`, com o contexto inteiro da US. Eles
    definem quem toca, quais agentes e skills (só os que a atividade usa), esforço e modelo,
    e registram em *Time*/*Skills* da US. Agente ou skill novos nascem aqui: o agente só vira
    arquivo com uma armadilha concreta; a skill, na segunda execução.
    **Na primeira rodada depois de instalar**, a LLM só **propõe** o time e as skills, a partir
-   do glossário e do código: só papel ligado a fronteira detectada no código (stack, schema,
+   do [glossário da equipe](../${TEAM_GUIDE}) e do código: só papel ligado a fronteira detectada no código (stack, schema,
    CI), nunca o catálogo inteiro. A proposta fica em *Time*/*Skills* e o arquivo nasce pela
    regra acima.
    **O grafo é opcional:** se existir, a triagem parte do *Impacto*; se não, use Grep e
@@ -3549,8 +3568,8 @@ da capacidade exigida em cada etapa, do risco e dos acessos disponíveis; consul
 o guia de IA abaixo. Não fixar um degrau por papel nem escolher marca pelo plugin.
 
 Na primeira rodada com a LLM depois de instalar, ela só **propõe** o time e as skills, a
-partir do glossário e do código: só papel ligado a fronteira detectada no código (stack,
-schema, CI), nunca o catálogo inteiro. A proposta fica registrada; o arquivo nasce quando
+partir do glossário da equipe (\`${relDocs}/${TEAM_GUIDE}\`) e do código: só papel ligado a
+fronteira detectada no código (stack, schema, CI), nunca o catálogo inteiro. A proposta fica registrada; o arquivo nasce quando
 houver armadilha concreta (agente) ou na segunda execução (skill).
 
 Regra: mudança que toque um invariante passa pelo papel de revisão **antes** de fechar.
@@ -4343,6 +4362,11 @@ const UPDATES = [
   { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
     marca: /primeira\s+rodada\s+depois\s+de\s+instalar/, desde: '2.9.0',
     o_que: 'the same proposal rule in the Planejamento triage step' },
+  // US-44: the role table left this README for the team glossary (Equipe.md is a new file, so
+  // writeIfMissing creates it on an old base; only this pointer needs the warning).
+  { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
+    marca: /\[glossário\s+da\s+equipe\]/, soCom: !OLD_LAYOUT, desde: '2.10.0',
+    o_que: 'the link to the team glossary (Contexto/Equipe.md) in place of the role table' },
 ];
 
 const missing = UPDATES.filter(a => {

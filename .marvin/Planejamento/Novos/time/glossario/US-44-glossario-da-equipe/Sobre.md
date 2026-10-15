@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-44-glossario-da-equipe
 description: "A instalação escreve o glossário da equipe (Contexto/Equipe.md): cada papel com especialidade, quando entra e o que não faz. Lido na triagem, não em toda sessão."
@@ -47,9 +47,9 @@ description: "A instalação escreve o glossário da equipe (Contexto/Equipe.md)
 _(nenhuma)_
 
 ## ❓
-1. **Ainda paga?** (`po`) Sem ganho de contexto fixo, que número mostra a equipe "não sabendo quem faz o quê" num projeto real? Sem ele, pela régua do plano a US desce na fila. O `tl` a trata como 1 chat, sem objeção de valor.
-2. O nome fica `Equipe.md` e "glossário" passa a ser só da equipe (tirando o termo do `IA.md`), ou os dois convivem com nomes distintos?
-3. O `Equipe.md` traz a coluna Opus/Sonnet/Haiku (critério 2 do rascunho), ou isso fica só no `CLAUDE.md` para não prender o arquivo gerado a um fornecedor? (`tl`; o rascunho trazia a coluna)
+1. ~~Ainda paga?~~ Respondido em 15/10: o dono mandou implementar. **Ainda paga?** (`po`) Sem ganho de contexto fixo, que número mostra a equipe "não sabendo quem faz o quê" num projeto real? Sem ele, pela régua do plano a US desce na fila. O `tl` a trata como 1 chat, sem objeção de valor.
+2. ~~Nome~~ Respondido em 15/10: `Equipe.md`. O nome fica `Equipe.md` e "glossário" passa a ser só da equipe (tirando o termo do `IA.md`), ou os dois convivem com nomes distintos?
+3. ~~Coluna de modelos~~ Respondido em 15/10: **traz** — "o glossário de tudo tá no ECC, mas o arranjo para baratear por modelo é o Marvin que faz". O `Equipe.md` traz a coluna Opus/Sonnet/Haiku (critério 2 do rascunho), ou isso fica só no `CLAUDE.md` para não prender o arquivo gerado a um fornecedor? (`tl`; o rascunho trazia a coluna)
 
 ## Impacto
 
@@ -83,7 +83,7 @@ Nada depende do que ela toca — folha do grafo.
 - [US-31 — `--use` em duas ferramentas perde uma das escritas](../../../ferramentas-opcionais/adaptadores/US-31-use-duplo-perde-escrita/Sobre.md) — 2 nó(s) em comum
 - [US-32 — graphify e ponytail juntos](../../../ferramentas-opcionais/adaptadores/US-32-graphify-e-ponytail-juntos/Sobre.md) — 3 nó(s) em comum
 - [US-34 — Playwright CLI obrigatório como evidência do `qa` em projeto com front ou mobile](../../../ferramentas-opcionais/adaptadores/US-34-playwright-front-mobile/Sobre.md) — 2 nó(s) em comum
-- [US-50 — o Marvin é o único plugin e instala as ferramentas por projeto](../../../ferramentas-opcionais/curadoria/US-50-marvin-plugin-e-curador/Sobre.md) — 1 nó(s) em comum
+- [US-50 — o Marvin instala as ferramentas por projeto](../../../ferramentas-opcionais/curadoria/US-50-marvin-plugin-e-curador/Sobre.md) — 1 nó(s) em comum
 - [US-47 — Defect e Task na hierarquia](../../../organizacao-por-grafo/hierarquia/US-47-defect-e-task/Sobre.md) — 1 nó(s) em comum
 - [US-01 — Layout por grafo no script](../../../organizacao-por-grafo/script/US-01-layout-por-grafo/Sobre.md) — 2 nó(s) em comum
 - [US-02 — `marvin --status`, o dashboard derivado](../../../organizacao-por-grafo/script/US-02-status/Sobre.md) — 1 nó(s) em comum
@@ -96,6 +96,7 @@ Nada depende do que ela toca — folha do grafo.
 - [US-16 — `/refinar`, US `refinada` e ilhas derivadas do `Código tocado`](../../../organizacao-por-grafo/script/US-16-refinar-e-ilhas/Sobre.md) — 2 nó(s) em comum
 - [US-18 — símbolo que não resolve não pode derrubar o arquivo](../../../organizacao-por-grafo/script/US-18-simbolo-nao-derruba-o-arquivo/Sobre.md) — 2 nó(s) em comum
 - [US-36 — painel com perguntas, decisões, roadmap e Time](../../../organizacao-por-grafo/script/US-36-painel-perguntas-decisoes-roadmap/Sobre.md) — 2 nó(s) em comum
+- [US-52 — `anotada` aparece no `--status`](../../../organizacao-por-grafo/script/US-52-anotada-no-status/Sobre.md) — 1 nó(s) em comum
 - [US-45 — porta única: entrego as atividades e o Marvin orquestra](../../orquestracao/US-45-porta-unica/Sobre.md) — 2 nó(s) em comum
 - [US-19 — a atividade escolhe papéis, skills, modelos e esforço conforme capacidades disponíveis](../../roteamento/US-19-papel-modelo-esforco/Sobre.md) — 4 nó(s) em comum
 - [US-26 — o Marvin mostra, na instalação, quais personas o projeto pede](../../roteamento/US-26-marvin-mostra-e-oferece-as-personas/Sobre.md) — 3 nó(s) em comum
@@ -110,6 +111,11 @@ Nada depende do que ela toca — folha do grafo.
   O invariante 4 fica nesta US, não na US-49, para que o texto público não prometa o glossário antes de ele existir (`tl`). O `po` preferia na US-49.
 
 - **15/10/2026** — `/refinar` (Fase 1): refinada. Premissa corrigida (tabela no `Planejamento/README`, não no `AGENTS.md`); critério 6 virou a US-51; `tl` achou marca órfã, layout antigo e "glossário" ambíguo.
+- **15/10/2026** — ativa (ordem do dono: as 6 da fila neste chat, portão da Fase 2 passado por decisão dele). **Configuração declarada (amostra US-29):** política — `dev-back` Sonnet médio implementa, `qa` Sonnet baixo verifica, `tl` Opus médio lê o diff. Achado: o `AGENTS.md` gerado não tem seção de invariantes; o critério 4 vale só para o `AGENTS.md` deste repo. O "glossário" de modelos do `IA.md` fica com o nome (renomear deixaria marca órfã em `UPDATES` :4219); a desambiguação é chamar o novo de "glossário da equipe" com link.
+- **15/10/2026** — concluída. `dev-back` (Sonnet) implementou; `qa` (Sonnet) rodou o script de verdade num temp; `tl` (Opus) aprovou o diff com um ajuste opcional (teste byte-idêntico), aplicado na sessão principal.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs` → 373 passaram (eram 366; 7 checks novos da US-44).
+- `qa`: `--dry-run` não escreve e anuncia `create file .marvin/Contexto/Equipe.md`; 2ª rodada sem passo 10 e md5 idênticos; `Equipe.md` com 10 papéis, sem stack/caminho; links para `IA.md` e do `Planejamento/README` resolvem.
+- `tl`: invariante 2 ok (`writeIfMissing` :2350-2354), nenhuma marca existente órfã, `UPDATES` 2.10.0 com `soCom: !OLD_LAYOUT`, invariante 4 fiel ao Rumo, sem `@`, determinístico.
+- Arquivos: `marvin.mjs`, `teste.mjs`, `AGENTS.md`, `README.md`, `README.pt-BR.md`.
