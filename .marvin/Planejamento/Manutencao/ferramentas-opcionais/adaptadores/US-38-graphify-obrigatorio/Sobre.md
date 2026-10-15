@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 name: US-38-graphify-obrigatorio
 description: "Graphify deixa de ser opcional nos projetos gerados. O que 'obrigatório' significa e se ele vira rota de toda busca dependem de decisão do dono e de medição Grep vs grafo."
@@ -55,3 +55,4 @@ _(respondidas pelo dono em 15/10: (b), e fatiar; ver Rumo)_
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+Commit `0750d64`; `node teste.mjs`: **366 passaram** (com a US-39). Os checks cobrem o `sim` gravado sem TTY com graphify no PATH, o `não` gravado que sobrevive, e a instalação sem graphify com exit 0, aviso e registro sem `sim`. O `qa` repetiu num projeto temporário com o graphify real: `sim` sem perguntar, hash igual no 2º run, `não` mantido e `--dry-run` sem escrita. O `tl` leu o diff e aprovou. Itens 1 e 3 foram para a US-43.

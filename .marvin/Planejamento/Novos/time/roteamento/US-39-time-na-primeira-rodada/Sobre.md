@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 name: US-39-time-na-primeira-rodada
 description: "Agentes e skills definidos na 1ª rodada com a LLM depois de instalar, pelo glossário e pelo código, e criados quando faltam. Contradiz o espírito do invariante 4 — espera decisão do dono."
@@ -48,3 +48,4 @@ _(respondidas pelo dono em 15/10; ver Rumo)_
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+Commit `aaf0a19`; `node teste.mjs`: **366 passaram**. Os checks cobrem a frase da 1ª rodada no `AGENTS.md` e no README de Planejamento gerados, e o passo 10 acusando `desde 2.9.0` numa base antiga. O `qa` confirmou que o 2º run não duplica. O `tl` leu o diff e confirmou o invariante 4. A decisão está em `decisoes-fechadas.md`, e o item 3 foi para a US-29.
