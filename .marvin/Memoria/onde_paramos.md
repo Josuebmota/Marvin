@@ -24,4 +24,4 @@ metadata:
 ## Em andamento
 
 - [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — medir custo por tarefa aprovada em 3–4 US reais; na próxima US, fixar contexto, checks e corte de turnos antes de começar
-- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — plano estratégico em 5 fases (Fase 0 feita em 15/10: limpeza, 74,8k); próxima: Fase 1, refinar US-49 e US-44
+- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — Fase 1 refinada em 15/10: US-49 → US-44 / US-51 na fila (ilha única); ❓ do dono nas três (régua, ordem, par da Fase 2)
