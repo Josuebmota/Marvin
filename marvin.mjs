@@ -621,23 +621,45 @@ const computeSpend = () => {
   const dir = path.dirname(MEM);   // ~/.claude/projects/<slug>/
   let files = []; try { files = fs.readdirSync(dir).filter(f => f.endsWith('.jsonl')); } catch {}
   const byId = new Map();
-  for (const f of files) {
-    let txt; try { txt = fs.readFileSync(path.join(dir, f), 'utf8'); } catch { continue; }
+  // Sub-agents live in <session>/subagents/agent-<id>.jsonl, with agent-<id>.meta.json beside it
+  // ({agentType, model, effort}). Main transcripts go first, so a turn recorded in both places
+  // counts once, labelled with the role.
+  const sources = files.map(f => ({ file: path.join(dir, f), name: f, meta: null }));
+  try {
+    for (const s of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!s.isDirectory()) continue;
+      const sd = path.join(dir, s.name, 'subagents');
+      let subs = []; try { subs = fs.readdirSync(sd).filter(f => /^agent-.*\.jsonl$/.test(f)); } catch {}
+      for (const f of subs) {
+        let meta = {}; try { meta = JSON.parse(fs.readFileSync(path.join(sd, f.replace(/\.jsonl$/, '.meta.json')), 'utf8')) || {}; } catch {}
+        sources.push({ file: path.join(sd, f), name: f, meta });
+      }
+    }
+  } catch {}
+  for (const { file, name: f, meta } of sources) {
+    let txt; try { txt = fs.readFileSync(file, 'utf8'); } catch { continue; }
     for (const line of txt.split('\n')) {
       if (!line.includes('"usage"')) continue;
       let o; try { o = JSON.parse(line); } catch { continue; }
       const m = o.message; if (!m || !m.usage || o.type !== 'assistant') continue;
       const u = m.usage;
-      byId.set(m.id || o.uuid, { modelo: m.model || '?', dia: (o.timestamp || '').slice(0, 10), sessao: o.sessionId || f, sub: !!o.isSidechain,
+      byId.set(m.id || o.uuid, { modelo: m.model || '?', dia: (o.timestamp || '').slice(0, 10), sessao: o.sessionId || f, sub: !!(o.isSidechain || meta),
+        papel: meta ? (meta.agentType || 'sem papel') : null, esforco: meta && meta.effort || null,
         in: u.input_tokens || 0, out: u.output_tokens || 0, cw: u.cache_creation_input_tokens || 0, cr: u.cache_read_input_tokens || 0 });
     }
   }
   const zero = () => ({ in: 0, out: 0, cw: 0, cr: 0, msgs: 0 });
   const add = (a, b) => { a.in += b.in; a.out += b.out; a.cw += b.cw; a.cr += b.cr; a.msgs++; };
-  const total = zero(), sub = zero(), byModel = {}, byDay = {}, sessions = new Set();
+  const total = zero(), sub = zero(), byModel = {}, byDay = {}, byRole = {}, sessions = new Set();
   let contextSum = 0;
   for (const r of byId.values()) {
     add(total, r); if (r.sub) add(sub, r);
+    // main session apart from the sub-agents; a sidechain turn with no meta falls in "sem papel"
+    const role = r.papel || (r.sub ? 'sem papel' : null);
+    if (role) {
+      const p = (byRole[role] = byRole[role] || { ...zero(), custo: 0, modelos: new Set(), esforcos: new Set() });
+      add(p, r); p.custo += costOf(r, r.modelo); p.modelos.add(r.modelo); if (r.esforco) p.esforcos.add(r.esforco);
+    }
     (byModel[r.modelo] = byModel[r.modelo] || zero()); add(byModel[r.modelo], r);
     (byDay[r.dia] = byDay[r.dia] || zero()); add(byDay[r.dia], r);
     sessions.add(r.sessao);
@@ -645,7 +667,7 @@ const computeSpend = () => {
   }
   let cost = 0; for (const [m, t] of Object.entries(byModel)) cost += costOf(t, m);
   const avgContext = total.msgs ? Math.round(contextSum / total.msgs) : 0;
-  return { total, sub, porModelo: byModel, porDia: byDay, sessoes: sessions.size, custo: cost, contextoMedio: avgContext, transcricoes: files.length };
+  return { total, sub, porModelo: byModel, porDia: byDay, porPapel: byRole, sessoes: sessions.size, custo: cost, contextoMedio: avgContext, transcricoes: files.length };
 };
 const kTk = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n);
 const printSpend = (g, fixedTk) => {
@@ -654,6 +676,13 @@ const printSpend = (g, fixedTk) => {
   info(`${g.sessoes} session(s), ${g.total.msgs} model turns` + (g.sub.msgs ? ` (${g.sub.msgs} by subagents)` : ''));
   for (const [m, t] of Object.entries(g.porModelo).sort((a, b) => b[1].cr + b[1].in - (a[1].cr + a[1].in)))
     info(`${m.padEnd(18)} ${kTk(t.in).padStart(6)} in  ${kTk(t.cw).padStart(6)} cache-write  ${kTk(t.cr).padStart(7)} cache-read  ${kTk(t.out).padStart(6)} out  ≈ $${costOf(t, m).toFixed(2)}`);
+  const roles = Object.entries(g.porPapel);
+  if (roles.length) {
+    info('by subagent role:');
+    info(`  ${'(main session)'.padEnd(16)} ${g.total.msgs - g.sub.msgs} turns  ≈ $${(g.custo - roles.reduce((t, [, p]) => t + p.custo, 0)).toFixed(2)}`);
+    for (const [r, p] of roles.sort((a, b) => b[1].custo - a[1].custo))
+      info(`  ${r.padEnd(16)} ${[...p.modelos].join('/')}  effort ${[...p.esforcos].join('/') || '?'}  ${p.msgs} turns  ≈ $${p.custo.toFixed(2)}`);
+  }
   info(`≈ $${g.custo.toFixed(2)} total at ${PRICES_DATE} list prices — an estimate; check the current price table`);
   if (fixedTk && g.contextoMedio) {
     const share = Math.min(100, Math.round(100 * fixedTk / g.contextoMedio));
@@ -1168,6 +1197,7 @@ ${st.perguntas.length ? `<ul>${st.perguntas.map(p => `<li>${esc(p.texto)} <a hre
 </div>
 <h2 id="tokens">Tokens gastos <span class="dim">— medido nas transcrições do Claude Code, ${g.sessoes} sessão(ões) · ${g.total.msgs ? '$' + (g.custo / g.total.msgs).toFixed(3) + ' por turno' : ''}${days.length ? ' · $' + (g.custo / days.length).toFixed(2) + ' por dia (' + days.length + ' dia(s))' : ''}</span></h2>
 ${bars}
+${Object.keys(g.porPapel).length ? `<table><tr><th>papel (subagente)</th><th>modelo</th><th>esforço</th><th>turnos</th><th>custo</th></tr><tr><td>(sessão principal)</td><td></td><td></td><td>${g.total.msgs - g.sub.msgs}</td><td>≈ $${(g.custo - Object.values(g.porPapel).reduce((t, p) => t + p.custo, 0)).toFixed(2)}</td></tr>${Object.entries(g.porPapel).sort((a, b) => b[1].custo - a[1].custo).map(([r, p]) => `<tr><td>${esc(r)}</td><td>${esc([...p.modelos].join(' / '))}</td><td>${esc([...p.esforcos].join(' / ') || '—')}</td><td>${p.msgs}</td><td>≈ $${p.custo.toFixed(2)}</td></tr>`).join('')}</table>` : ''}
 <table><tr><th></th><th>modelo</th><th>input</th><th>cache write</th><th>cache read</th><th>output</th><th>turnos</th><th>custo</th><th>por turno</th></tr>${modelsTable}</table>
 <p class="dim">Tokens são medidos nas transcrições; o valor é o que os mesmos tokens <strong>custariam na API</strong>, pela tabela de ${PRICES_DATE} (input · output · cache write ≈ 1,25× · cache read ≈ 0,1×) — confira os preços vigentes. Num plano fixo (Max) o gasto real é a mensalidade — este número diz o quanto ele rende.${fixedShare != null ? ` Cada turno relê ~${kTk(g.contextoMedio)} tk de contexto; o contexto fixo (${st.contexto.total} tk) é <strong>~${fixedShare}%</strong> disso — o resto é a conversa. Sessão longa custa mais que arquivo grande.` : ''}</p>
 <h2 id="roadmap">Roadmap <span class="dim">— derivado de estado e ilhas; nada escrito à mão</span></h2>

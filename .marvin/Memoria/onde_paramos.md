@@ -5,7 +5,7 @@ description: "ÚNICA porta de entrada do Marvin. Só ponteiros para as US em and
 tags: [moc, entrada]
 metadata:
   type: project
-  atualizado: 2026-10-14
+  atualizado: 2026-10-15
 ---
 
 # ▶ ONDE PARAMOS
@@ -19,9 +19,10 @@ metadata:
 > - Criar `onde_paramos_<data>.md` **ou uma seção de relato aqui dentro** é o mesmo erro:
 >   o histórico já está no `git log`, e o porquê já está no Rumo da US.
 
-**Atualizado:** 14/10/2026
+**Atualizado:** 15/10/2026
 
 ## Em andamento
 
 - [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — medir custo por tarefa aprovada em 3–4 US reais; na próxima US, fixar contexto, checks e corte de turnos antes de começar
+- [US-41-custo-dos-subagentes](../Planejamento/Manutencao/diagnostico/custo/US-41-custo-dos-subagentes/Sobre.md) — o `--status` soma os subagentes (`<sessão>/subagents/`) e mostra o custo por papel; `dev-back` implementa, `qa` confere, `tl` lê o diff
 

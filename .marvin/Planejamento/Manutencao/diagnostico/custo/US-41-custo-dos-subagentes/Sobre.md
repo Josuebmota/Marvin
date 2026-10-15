@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: ativa
 pai: ../Sobre.md
 name: US-41-custo-dos-subagentes
 description: "O --status não conta o custo dos subagentes: o computeSpend lê só os .jsonl do topo do projeto, e o Claude Code grava cada delegação em <sessão>/subagents/. Contar e mostrar o custo por papel."
@@ -86,6 +86,10 @@ Toca 3 nó(s) de código em 3 comunidade(s).
 
 ## Rumo
 - **15/10/2026** — refinada a partir da issue #4. O `tl` achou o bug (subagentes fora da conta) e o confirmei no disco: 51 `agent-*.jsonl` em `subagents/`, e o meta traz `agentType`, `model` e `effort`. O `po` tinha deixado de fora o custo por papel (item 5 da issue) porque não sabia do bug. O dono decidiu que esta US vem antes da US-42.
+- **15/10/2026** — implementada, sem commit. O `dev-back` (Sonnet, medium) fez a mudança. O `qa` (Sonnet, low) aprovou, e o `tl` (Opus, medium) aprovou com uma correção: a linha "(main session)" no texto e no HTML, porque o item 2 pede a principal separada. A correção foi aplicada na sessão principal. `node teste.mjs` dá 354, com os checks da principal somados aos que já existiam. Neste repo, o `--status` passou de 2854 turnos (≈ $512,87) para 3339, sendo 476 de subagentes. Os papéis somam ≈ $21,6: tl $10,18, general-purpose $4,07, dev-back $3,63, po $2,70, qa $0,65, codex $0,39. **Lacunas declaradas:**
+  - Não há amostra de subagente aninhado (`spawnDepth` 2), então não se sabe onde ele grava.
+  - O teste não exercita `meta.json` corrompido nem meta sem `agentType`, embora os dois ramos estejam no código.
+  - O `contextoMedio` agora inclui os turnos de subagente.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->

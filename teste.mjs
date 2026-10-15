@@ -1203,10 +1203,23 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   // opus: 10*5 + 200*25 + 1000*6.25 = 50+5000+6250 = 11300 / 1e6 = $0.0113 ; sonnet: 5*2+100*10+1000*0.2 = 1210/1e6
   check('o custo é calculado pela tabela e declarado como estimativa', /≈ \$0\.01 total/.test(r.stdout) && /an estimate/.test(r.stdout));
   check('a fatia do contexto fixo é dita', /fixed context is ~\d+% of it/.test(r.stdout));
+  // US-41: sub-agents live in <session>/subagents/agent-*.jsonl with a .meta.json beside them
+  const sd = path.join(dir, 's1', 'subagents'); fs.mkdirSync(sd, { recursive: true });
+  fs.writeFileSync(path.join(sd, 'agent-x.jsonl'), [
+    line('msg_3', 'claude-sonnet-5', { input_tokens: 7, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 70 }, { isSidechain: true }),
+    line('msg_2', 'claude-sonnet-5', { input_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 1000, output_tokens: 100 }, { isSidechain: true }),   // also in s1.jsonl: counts once
+    ''].join(NLQ));
+  fs.writeFileSync(path.join(sd, 'agent-x.meta.json'), JSON.stringify({ agentType: 'dev-back', model: 'sonnet', effort: 'medium' }));
+  fs.writeFileSync(path.join(sd, 'agent-y.jsonl'), line('msg_4', 'claude-haiku-5', { input_tokens: 3, output_tokens: 30 }, { isSidechain: true }) + NLQ);   // no meta
+  const r2 = run(a, '--status');
+  check('subagents/ entra no total e a mesma mensagem nos dois lugares conta uma vez', /4 model turns/.test(r2.stdout) && /3 by subagents/.test(r2.stdout) && /\(main session\)\s+1 turns/.test(r2.stdout), r2.stdout.slice(-700));
+  check('a linha do papel traz modelo, esforço, turnos e custo', /dev-back\s+claude-sonnet-5\s+effort medium\s+2 turns\s+≈ \$0\.00/.test(r2.stdout), r2.stdout.slice(-700));
+  check('subagente sem meta vai para "sem papel" sem derrubar', r2.status === 0 && /sem papel\s+claude-haiku-5\s+effort \?\s+1 turns/.test(r2.stdout));
   run(a, '--us', 'Novos/E/F/US-1');
   run(a, '--status', '--html');
   const html = fs.readFileSync(path.join(a.proj, '.marvin', '.status', 'index.html'), 'utf8');
   check('o HTML traz a tabela por modelo e o aviso de estimativa', /claude-sonnet-5/.test(html) && /custariam na API/.test(html));
+  check('o HTML traz a tabela por papel', /papel \(subagente\)/.test(html) && /<td>dev-back<\/td>/.test(html) && /<td>sem papel<\/td>/.test(html) && /sessão principal/.test(html));
   check('o HTML desenha a rede da base — nós de doc com estado, sem lib', /id="rede-dados"/.test(html) && /"cat":"us"/.test(html) && /"estado":"ativa"/.test(html) && !/<script src=/.test(html));
   const short = run(a, '--status', '--curto', '--html');
   check('--curto --html regera o dashboard em silêncio (é o hook)', short.status === 0 && !/index\.html/.test(short.stdout) && fs.statSync(path.join(a.proj, '.marvin', '.status', 'index.html')).size > 1000);
