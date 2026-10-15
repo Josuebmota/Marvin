@@ -79,7 +79,8 @@ projeto. (08/10/2026: o sujeito passou a ser a atividade; 15/10/2026: a instala�
 - **Antes de qualquer US**, a triagem do `tl` com o `po` (partindo do grafo — obrigatório
   neste repo): time, skills, modelo e esforço por etapa no *Time* da US; a Disponibilidade de IA
   declarada não prova acesso. A sessão principal coordena e
-  delega; mudança de código ou invariante passa pelo `tl` antes de fechar. Regras completas:
+  delega; passa pelo `tl` antes de fechar a mudança que toca invariante, escreve no disco de
+  alguém ou mexe em `UPDATES`/`--release` (dono, 15/10: por risco, não sempre). Regras completas:
   [delegacao.md](.marvin/Contexto/Fluxos/delegacao.md). Glossário: `.marvin/Contexto/Equipe.md`.
 - **Higiene de sessão:** contexto acumulado custa em toda requisição. Quando sugerir chat
   novo está no rodapé de `/retomar`. Registrar antes de sugerir.
