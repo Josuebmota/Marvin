@@ -35,8 +35,8 @@ description: "Avalia Superpowers (reabre a US-25) e ECC, uma ferramenta por vez 
 `adaptador-de-ferramenta` (se alguma virar `sim`).
 
 ## ❓
-1. Qual vai primeiro: ECC (só `tdd-workflow`/`build-fix`/`security-scan`) ou Superpowers? O Superpowers já foi recusado na US-25: que fato novo você tem? (`po`)
-2. Qual US real serve de cobaia, e instala no repo do Marvin ou num projeto descartável? (`tl`)
+1. ~~Qual primeiro~~ Respondido em 15/10: **os dois** — "se estamos refinando e refatorando, pode reabrir" a US-25. Qual vai primeiro: ECC (só `tdd-workflow`/`build-fix`/`security-scan`) ou Superpowers? O Superpowers já foi recusado na US-25: que fato novo você tem? (`po`)
+2. ~~Onde~~ Respondido em 15/10: **projeto descartável**. Qual US real serve de cobaia, e instala no repo do Marvin ou num projeto descartável? (`tl`)
 
 ## Impacto
 
@@ -55,6 +55,7 @@ Nada depende do que ela toca — folha do grafo.
 - **15/10/2026** — revisão da arquitetura (`tl` + `po`, Opus medium): conta como amostra da US-29 e não depende da US-45.
 - **15/10/2026** — o dono acrescentou o ECC; a US passa a avaliar os dois com a mesma régua (custo fixo pelo passo 4b, par medido pela US-29).
 - **15/10/2026** — `/refinar` (logo tudo): refinada como portão da US-50, uma ferramenta por vez; item 4 (inventário global) reescrito a partir do backup — o global já foi limpo na Fase 0.
+- **15/10/2026** — critério 1 (inventário) feito na sessão principal, a partir do backup, sem baixar nada. **ECC:** 63 itens (22 skills, 16 agentes, 26 comandos), **~2,6k tk por sessão** estimados pelas descrições/4 (skills 1.130, agentes 850, comandos 633); 9 agentes disputam papel com a equipe (`architect`, `planner`, `code-reviewer`, `tdd-guide`, `security-reviewer`, `refactor-cleaner`, `code-simplifier`, `doc-updater`, `build-error-resolver`, ~490 tk), todos com modelo fixo (`opus`/`sonnet`) e descrição "MUST BE USED"/"PROACTIVELY". **Achado:** o ECC tem um roteador de modelo — `/model-route` (haiku mecânico, sonnet implementação, opus arquitetura, com fallback) —, mas avulso, sem esforço, sem registro por etapa e sem medição. O que o Marvin acrescenta é isso: aplicado na triagem, com esforço, gravado no *Time* e medido (US-29). **Superpowers:** está no marketplace oficial (`claude-plugins-official`), não instalado; instalar é baixar de fonte externa — ação do dono. **Falta (dono):** instalar ECC (só `tdd-workflow`/`build-fix`/`security-scan`) e Superpowers no projeto descartável, `/context` antes e depois, e uma tarefa real com e sem cada um (par da US-29). Sem isso, a decisão `sim`/`não` não tem número — a US segue na fila.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->

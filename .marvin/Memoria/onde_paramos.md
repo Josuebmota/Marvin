@@ -28,6 +28,7 @@ metadata:
 - [US-44-glossario-da-equipe](../Planejamento/Novos/time/glossario/US-44-glossario-da-equipe/Sobre.md) — aberta 15/10/2026; próximo passo: _(uma frase)_
 - [US-51-agents-md-enxuto](../Planejamento/Manutencao/publicacao/contexto-fixo/US-51-agents-md-enxuto/Sobre.md) — aberta 15/10/2026; próximo passo: _(uma frase)_
 - [US-52-anotada-no-status](../Planejamento/Novos/organizacao-por-grafo/script/US-52-anotada-no-status/Sobre.md) — aberta 15/10/2026; próximo passo: _(uma frase)_
+- [US-50-marvin-plugin-e-curador](../Planejamento/Novos/ferramentas-opcionais/curadoria/US-50-marvin-plugin-e-curador/Sobre.md) — aberta 15/10/2026; próximo passo: _(uma frase)_
 
 - ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — tudo refinado em 15/10: 6 US na fila (US-49, US-44, US-51, US-52, US-48, US-50); US-43/45/47/53 canceladas pelo dono; ❓ decidem ordem e portões
 

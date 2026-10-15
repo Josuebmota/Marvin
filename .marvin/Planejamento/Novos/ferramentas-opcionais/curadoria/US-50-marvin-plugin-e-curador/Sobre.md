@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: ativa
 pai: ../Sobre.md
 name: US-50-marvin-plugin-e-curador
 description: "Com flag explícita, o marvin instala no escopo do projeto só as ferramentas que o ferramentas.md diz sim; sem flag, só mostra o comando. Nada global."
@@ -37,8 +37,8 @@ description: "Com flag explícita, o marvin instala no escopo do projeto só as 
 `adaptador-de-ferramenta` (já existe).
 
 ## ❓
-1. O graphify instala no perfil do usuário por natureza (`uv tool install graphifyy`). Ele fica fora da instalação (só detecta e avisa, como hoje), ou o "nada global" cede para ele? (`tl`)
-2. A instalação é opt-in por flag (`--install` ou junto do `--use=`)? `tl` e `po` recomendam que sim.
+1. ~~graphify~~ Respondido em 15/10: **entra no `--install`** (exceção ao "nada global", decisão do dono). O graphify instala no perfil do usuário por natureza (`uv tool install graphifyy`). Ele fica fora da instalação (só detecta e avisa, como hoje), ou o "nada global" cede para ele? (`tl`)
+2. ~~opt-in~~ Respondido em 15/10: **sim, só com flag**. A instalação é opt-in por flag (`--install` ou junto do `--use=`)? `tl` e `po` recomendam que sim.
 3. Os conectores do claude.ai (Vercel, Notion, Gmail, Supabase, Cloudflare, Calendly, vidIQ, Gamma…) seguem ligados na conta e pesam em toda sessão (~16k dos 74,8k, segundo o `po`). Desligar os que você não usa é a economia mais barata do plano inteiro e vale antes de qualquer código — só você pode fazer.
 
 ## Impacto
@@ -102,6 +102,7 @@ Nada depende do que ela toca — folha do grafo.
   - Não há "antes": a limpeza foi feita antes de medir, e isso fica declarado.
   - **Alvo:** ~50k, desligando na conta os plugins sincronizados e conectores sem uso (~16k) e enxugando o `AGENTS.md` (US-44).
 - **15/10/2026** — `/refinar` (logo tudo): refinada como instalação opt-in. Antigo item 1 (medir a limpeza) já feito: 74,8k na Fase 0, sem "antes" medido. Plugin virou a US-53; skills .NET saíram (invariante 4).
+- **15/10/2026** — ativa (ordem do dono). Escopo de projeto do ponytail **verificado** na CLI instalada: `claude plugin marketplace add <src> --scope project` e `claude plugin install <p> --scope project` (opções `user|project|local`). ECC e Superpowers ficam fora até a US-48 decidir. **Configuração declarada (amostra US-29):** política — `dev-back` Sonnet médio, `qa` Sonnet médio, `tl` Opus alto (`exec` de rede no projeto alheio).
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
