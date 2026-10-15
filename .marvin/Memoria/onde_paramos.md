@@ -24,4 +24,6 @@ metadata:
 ## Em andamento
 
 - [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — medir custo por tarefa aprovada em 3–4 US reais; na próxima US, fixar contexto, checks e corte de turnos antes de começar
+- [US-38-graphify-obrigatorio](../Planejamento/Manutencao/ferramentas-opcionais/adaptadores/US-38-graphify-obrigatorio/Sobre.md) — implementada e aprovada por `qa` e `tl` (366 ok); próximo passo: commit e release 2.9.0
+- [US-39-time-na-primeira-rodada](../Planejamento/Novos/time/roteamento/US-39-time-na-primeira-rodada/Sobre.md) — implementada e aprovada por `qa` e `tl` (366 ok); próximo passo: commit e release 2.9.0
 

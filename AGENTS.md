@@ -70,7 +70,10 @@ skills e do `AGENTS.md` nunca sai do `marvin.mjs`: genérico é pior que ausente
 skills nascem **por atividade**, escritos pelo `tl` e pelo `po` com o dono, a partir da US que
 os pede e com as armadilhas concretas do código que ela toca; ficam registrados no
 *Time*/*Skills* dela e só viram arquivo com uma armadilha concreta (agente) ou na segunda
-execução (skill). O script pode **mostrar** o que o diagnóstico sugere; quem decide e escreve
+execução (skill). Na 1ª rodada com a LLM depois de instalar, ela propõe papéis e skills a
+partir do glossário e do código — só papel ligado a fronteira detectada no código (stack,
+schema, CI), nunca o catálogo inteiro; a proposta fica registrada onde o template manda
+(*Time*/*Skills*) e o arquivo continua nascendo pela regra acima. O script pode **mostrar** o que o diagnóstico sugere; quem decide e escreve
 é quem conhece o projeto. (Mudado em 08/10/2026 por decisão do dono: antes dizia "são do
 humano"; o sujeito passou a ser a atividade.)
 
