@@ -396,6 +396,8 @@ turno relê o contexto inteiro.
 --graphify-git-hook  escreve .git/hooks/post-commit para o grafo se atualizar sozinho.
                   Nunca sobrescreve um post-commit que já existe
 --use=<ferramenta>  registra `sim` para uma ferramenta opcional sem perguntar (alias: --usar=)
+--install         instala as ferramentas opcionais `sim` que a máquina não tem (ponytail no escopo
+                  do projeto; graphify via uv, que é do perfil do usuário). Sem ela, só mostra o comando
 --no-questions    registra `não` para toda ferramenta opcional, mesmo com terminal
 --help, -h        uso; sai sem escrever nada
 ```
@@ -705,7 +707,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-379 verificações, zero dependência. Cobre os invariantes que protegem o disco
+387 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

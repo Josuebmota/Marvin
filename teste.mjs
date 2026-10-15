@@ -1852,6 +1852,69 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── US-50. --install: opt-in, dry-run honest, guarded by detection, failure = warning + exit 0.
+{
+  const a = arena('us50');
+  run(a, '--no-git', '--no-questions', '--use=ponytail');   // record says `sim`; the hermetic home has no ponytail
+  const snap = () => JSON.stringify([files(a.proj), files(a.lar)]);
+  const PT = 'claude plugin install ponytail --scope project';
+  const before = snap();
+  const dry = run(a, '--no-git', '--no-questions', '--install', '--dry-run');
+  check('US-50: --install --dry-run lista o run do ponytail em escopo de projeto',
+        dry.status === 0 && /run +claude plugin marketplace add DietrichGebert\/ponytail --scope project/.test(dry.stdout) && new RegExp('run +' + PT).test(dry.stdout), dry.stdout.slice(-600));
+  check('US-50: --install --dry-run não escreve nada', snap() === before);
+  // A fake `claude` that logs each call (a regression must never reach the REAL claude).
+  const fake = fs.mkdtempSync(path.join(os.tmpdir(), 'marvin-teste-claude-'));
+  const logf = path.join(fake, 'chamadas.log');
+  fs.writeFileSync(path.join(fake, 'claude'), '#!/bin/sh\necho "$@" >> "' + logf + '"\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(fake, 'claude.cmd'), '@echo %* >> "' + logf + '"\r\n');
+  const calls = () => fs.existsSync(logf) ? fs.readFileSync(logf, 'utf8').split(/\r?\n/).filter(Boolean) : [];
+  const comFake = (...flags) => spawnSync(process.execPath, [SCRIPT, '--no-git', '--no-questions', ...flags], {
+    cwd: a.proj, encoding: 'utf8', env: { ...process.env, HOME: a.lar, USERPROFILE: a.lar, ...pathWith(fake + path.delimiter + NO_GRAPHIFY) },
+  });
+  const sem = comFake();
+  check('US-50: sem --install o claude não é chamado, mas o comando aparece como instrução',
+        sem.status === 0 && calls().length === 0 && sem.stdout.includes(PT) && /--install/.test(sem.stdout), sem.stdout.slice(-600) + JSON.stringify(calls()));
+  check('US-50: sem --install nada é escrito', snap() === before);
+
+  // Missing command: PATH with an empty directory, so `claude` does not exist (shell itself is found by absolute path).
+  const vazio = fs.mkdtempSync(path.join(os.tmpdir(), 'marvin-teste-vazio-'));
+  const semClaude = spawnSync(process.execPath, [SCRIPT, '--no-git', '--no-questions', '--install'], {
+    cwd: a.proj, encoding: 'utf8', env: { ...process.env, HOME: a.lar, USERPROFILE: a.lar, [PATH_KEY]: vazio },
+  });
+  check('US-50: --install com `claude` ausente do PATH sai 0 com aviso, não aborta',
+        semClaude.status === 0 && /failed/.test(semClaude.stdout) && /marketplace add/.test(semClaude.stdout), semClaude.status + ' ' + semClaude.stdout.slice(-600) + semClaude.stderr);
+  fs.rmSync(vazio, { recursive: true, force: true });
+
+  // Positive path with the fake `claude`; detection is simulated inside the hermetic home.
+  const r1 = comFake('--install');
+  check('US-50: --install chama o claude duas vezes, na ordem (marketplace, depois plugin)',
+        r1.status === 0 && calls().length === 2 && /marketplace add/.test(calls()[0]) && /plugin install ponytail/.test(calls()[1]), r1.stdout.slice(-500) + JSON.stringify(calls()));
+  // The real detection reads installed_plugins.json + .ponytail-active under HOME: plant both.
+  const plug = path.join(a.lar, '.claude');
+  fs.mkdirSync(path.join(plug, 'plugins'), { recursive: true });
+  fs.writeFileSync(path.join(plug, 'plugins', 'installed_plugins.json'), '{"plugins":{"ponytail@x":[{}]}}\n');
+  fs.writeFileSync(path.join(plug, '.ponytail-active'), 'full\n');
+  const r2 = comFake('--install');
+  check('US-50: com o ponytail detectado, a segunda execução não roda nenhum exec', r2.status === 0 && calls().length === 2, JSON.stringify(calls()));
+  fs.rmSync(fake, { recursive: true, force: true });
+  cleanup(a);
+
+  // The plugin CLI creates .claude/settings.json: the install must run AFTER marvin's SessionStart hook is written.
+  const b = arena('us50-hook');
+  const fk = fs.mkdtempSync(path.join(os.tmpdir(), 'marvin-teste-claude-'));
+  fs.writeFileSync(path.join(fk, 'claude'), '#!/bin/sh\n[ -f .claude/settings.json ] || { mkdir -p .claude; echo \'{"x":1}\' > .claude/settings.json; }\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(fk, 'claude.cmd'), '@if not exist .claude\\settings.json (mkdir .claude 2>nul & echo {"x":1}> .claude\\settings.json)\r\n');
+  const rh = spawnSync(process.execPath, [SCRIPT, '--no-git', '--no-questions', '--use=ponytail', '--install'], {
+    cwd: b.proj, encoding: 'utf8', env: { ...process.env, HOME: b.lar, USERPROFILE: b.lar, ...pathWith(fk + path.delimiter + NO_GRAPHIFY) },
+  });
+  let cfg = ''; try { cfg = fs.readFileSync(path.join(b.proj, '.claude', 'settings.json'), 'utf8'); } catch {}
+  check('US-50: projeto novo com --use=ponytail --install: o settings.json final tem o hook SessionStart do marvin',
+        rh.status === 0 && /SessionStart/.test(cfg) && /--status --curto/.test(cfg), cfg + rh.stdout.slice(-500));
+  fs.rmSync(fk, { recursive: true, force: true });
+  cleanup(b);
+}
+
 // ── LAST. The number of checks claimed in the READMEs matches the real one.
 //
 // It has drifted THREE times in this repository: 26 when there were 28, 48 when there

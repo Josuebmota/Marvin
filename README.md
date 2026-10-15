@@ -401,6 +401,8 @@ usually ~⅔ of it: every turn re-reads the whole context.
 --graphify-git-hook  writes .git/hooks/post-commit so the graph refreshes itself.
                   Never overwrites a post-commit you already have
 --use=<tool>      records `sim` for an optional tool without asking (alias: --usar=)
+--install         installs the optional tools marked `sim` that the machine lacks (ponytail at
+                  project scope; graphify via uv, which is user-profile). Without it, only prints the command
 --no-questions    records `não` for every optional tool, even with a terminal
 --help, -h        usage; exits without writing
 ```
@@ -719,7 +721,7 @@ rather than final text.
 node teste.mjs
 ```
 
-379 checks, no dependencies. It covers the invariants that protect other
+387 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

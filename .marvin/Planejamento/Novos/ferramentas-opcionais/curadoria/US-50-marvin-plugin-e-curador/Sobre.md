@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 name: US-50-marvin-plugin-e-curador
 description: "Com flag explícita, o marvin instala no escopo do projeto só as ferramentas que o ferramentas.md diz sim; sem flag, só mostra o comando. Nada global."
@@ -27,6 +27,7 @@ description: "Com flag explícita, o marvin instala no escopo do projeto só as 
 
 ## Time
 - **Grafo (15/10, fresco: graph.json 4 s depois do `b0fe0a3`):** `OPTIONAL_TOOLS` :1911 — sem affected, grau 1; `UPDATES` :4217 — sem affected, grau 2.
+- **Grafo na implementação (`tl`, 15/10):** `affected "OPTIONAL_TOOLS"` e `affected "exec"` — nenhum nó; `explain "OPTIONAL_TOOLS"` grau 2 (contém + toca a US-48).
 - **Risco (`tl`):** escreve no disco alheio; o graphify instala no perfil por natureza (`uv tool install`, :1912) e conflita com "nada global" (❓1).
 - `tl` Opus **alto** — motivo: `exec` de rede no projeto de outra pessoa
 - `dev-back` Sonnet médio — implementa
@@ -103,6 +104,9 @@ Nada depende do que ela toca — folha do grafo.
   - **Alvo:** ~50k, desligando na conta os plugins sincronizados e conectores sem uso (~16k) e enxugando o `AGENTS.md` (US-44).
 - **15/10/2026** — `/refinar` (logo tudo): refinada como instalação opt-in. Antigo item 1 (medir a limpeza) já feito: 74,8k na Fase 0, sem "antes" medido. Plugin virou a US-53; skills .NET saíram (invariante 4).
 - **15/10/2026** — ativa (ordem do dono). Escopo de projeto do ponytail **verificado** na CLI instalada: `claude plugin marketplace add <src> --scope project` e `claude plugin install <p> --scope project` (opções `user|project|local`). ECC e Superpowers ficam fora até a US-48 decidir. **Configuração declarada (amostra US-29):** política — `dev-back` Sonnet médio, `qa` Sonnet médio, `tl` Opus alto (`exec` de rede no projeto alheio).
+- **15/10/2026** — concluída. `dev-back` (Sonnet) implementou `--install`; `tl` (Opus, esforço alto) achou um **bloqueio real**: o `claude plugin … --scope project` cria `.claude/settings.json` e, rodando antes do passo do hook, fazia o Marvin tratar o arquivo como do humano e nunca escrever o SessionStart. Corrigido: o laço só acumula em `PENDING_INSTALL`; os `exec` rodam depois do bloco do `settings.json`. Também: `marketplace add` virou best-effort; o caso "sem --install" roda com `claude` falso no PATH (regressão nunca chama o real). `tl` reaprovou; `qa` (Sonnet) rodou dry-run e o caminho sem flag num temp. **Limitações registradas:** `detectPonytail` casa qualquer escopo do `installed_plugins.json` — quem tem o ponytail no escopo de usuário não recebe a instalação de projeto (erro para o lado seguro); o caminho `uv tool install graphifyy` com `--install` não foi testado (graphify já presente aqui); nenhum `claude plugin` real foi rodado. ECC e Superpowers ficam fora até a US-48 decidir.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs` → 387 passaram (8 checks novos da US-50, incluindo a ordem hook × instalação).
+- `qa`: `--install --dry-run` lista `run claude plugin marketplace add DietrichGebert/ponytail --scope project` e `run claude plugin install ponytail --scope project`, md5 de todos os arquivos idêntico; sem `--install`, só a instrução.
+- Item 7 (`/context` de um projeto real com o curador × 74,8k): **não provado** — é do dono.

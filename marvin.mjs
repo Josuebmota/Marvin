@@ -112,6 +112,8 @@ const CHECK = hasFlag('--check');
 const USE = new Set(process.argv.filter(a => a.startsWith('--use=') || a.startsWith('--usar='))
   .flatMap(a => a.split('=').slice(1).join('=').split(',')).map(s => s.trim().toLowerCase()).filter(Boolean));
 const NO_QUESTIONS = hasFlag('--no-questions', '--sem-perguntas');
+// --install (US-50): runs the install commands of tools the record says `sim` but the machine lacks.
+const INSTALL = hasFlag('--install');
 
 // --tools=claude,codex,cursor  (default: claude)   [alias: --ferramentas=]
 // Running again with a different list ADDS the missing adapter; nothing is removed.
@@ -162,6 +164,9 @@ Flags:
   --graphify-git-hook  write .git/hooks/post-commit so the graph refreshes itself.
                     Never overwrites a post-commit you already have
   --use=<tool>      record \`sim\` for an optional tool without asking (alias: --usar=)
+  --install         install the optional tools the record says \`sim\` and this machine lacks:
+                    ponytail at project scope, graphify via uv (user profile, by nature).
+                    Without it the commands are only shown. A failure warns and exits 0
   --no-questions    assume \`não\` for every optional tool, even with a terminal
                     skip AI availability questions; undeclared access stays unknown
   --executor=<id>   declare the session tool (${VALID_TOOLS.join(', ')}, other)
@@ -1911,10 +1916,14 @@ const ponytailReach = () => {
   if (TOOLS.some(f => !['claude', 'codex', 'copilot', 'cursor'].includes(f))) p.push('no resto, só o arquivo de regra copiado do repositório dele');
   return 'escada de simplicidade para quem IMPLEMENTA — ' + p.join('; ') + '. Confiança baixa: não medido';
 };
+const PENDING_INSTALL = [];   // US-50: tools whose --install commands run late, once the settings.json hook is written
 const OPTIONAL_TOOLS = [
   { nome: 'graphify', padrao: true, detecta: () => onPath('graphify --version'), instalar: 'uv tool install graphifyy  ·  pipx install graphifyy',
+    instalarProjeto: ['uv tool install graphifyy'], global: true,   // US-50: lands in the user profile by nature (owner-accepted exception)
     alcance: 'saída JSON/markdown em graphify-out/ — qualquer agente lê; só o hook é do Claude, e não é usado' },
   { nome: 'ponytail', detecta: detectPonytail, instalar: 'claude plugin marketplace add DietrichGebert/ponytail  ·  claude plugin install ponytail',
+    // US-50: --scope project verified on the installed CLI (user|project|local); no -y/--accept-command
+    instalarProjeto: ['claude plugin marketplace add DietrichGebert/ponytail --scope project', 'claude plugin install ponytail --scope project'],
     get alcance() { return ponytailReach(); } },
   // Playwright CLI (US-34): installation is not detectable (it may run through npx), so the trigger
   // is the project, not the machine. Outside a web front: no line, no warning — a backend needs no browser.
@@ -1961,6 +1970,15 @@ const OPTIONAL_TOOLS = [
         uses = /^[ys]/i.test(r);
       }
       newOnes.push('| ' + f.nome + ' | ' + (uses ? 'sim' : 'não') + ' | ' + f.alcance + ' | ' + recordDate + ' |');
+    }
+    // US-50: the record says `sim` but the machine lacks the tool. Detected → no exec (invariant 2).
+    if (uses && f.instalarProjeto && !f.detecta()) {
+      if (!INSTALL) {
+        info(f.nome + ' is `sim` but not installed' + (f.global ? ' (global — user profile, not project)' : ' (project scope)')
+          + '. To install:  ' + f.instalarProjeto.join('  &&  ') + '  — or rerun with  marvin --install');
+      } else {
+        PENDING_INSTALL.push(f);   // runs AFTER the settings.json block: the plugin CLI creates that file (see below)
+      }
     }
     if (f.nome === 'graphify' && uses) GRAPHIFY = true;
     if (f.nome === 'ponytail' && uses) PONYTAIL = true;
@@ -3422,6 +3440,18 @@ $ARGUMENTS
       JSON.stringify(hookBlock, null, 2).split('\n').forEach(l => info('  ' + l));
     }
   }
+}
+
+// US-50: --install runs here, after the hook above. `claude plugin … --scope project` creates
+// .claude/settings.json; running it earlier made the hook block see "the human's file" and skip.
+// Every command but the last is best-effort (a repeated `marketplace add` must not block the install).
+for (const f of PENDING_INSTALL) {
+  if (f.global) info(f.nome + ': this install is GLOBAL (user profile), not project scope.');
+  f.instalarProjeto.forEach((cmd, i) => {
+    const last = i === f.instalarProjeto.length - 1;
+    try { exec(cmd, { cwd: ROOT, stdio: 'pipe' }); if (!DRY) ok(f.nome + ': ' + cmd); }
+    catch (e) { warn(f.nome + ': `' + cmd + '` failed (' + String(e.message).split('\n').filter(Boolean).pop().trim() + ')' + (last ? ' — install it by hand; continuing.' : ' — trying the next step.')); }
+  });
 }
 
 const whereWeStopped = path.join(DEST, 'onde_paramos.md');
