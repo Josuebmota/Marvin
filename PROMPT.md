@@ -49,13 +49,17 @@ PASSO 2 — Escreve:
   • CLAUDE.md: estrutura real, invariantes, convenções, a tabela do time,
     e uma seção "notas de campo" com as armadilhas do passo 1c.
 
-  • .claude/agents/*.md: um por papel. Modelo no frontmatter:
+  • .claude/agents/*.md: um por papel. Modelo no frontmatter, como ponto de
+    partida (a triagem ajusta e registra o motivo no Time da US; o mesmo
+    resultado com o menor gasto, e o degrau sobe só com motivo registrado):
       haiku  → só recuperação delimitada (scout)
       sonnet → implementação, QA, documentação
       opus   → julgamento, arquitetura, revisão de diff
-    SEMPRE um papel `tl` em opus que lê diff e é dono dos invariantes.
+    SEMPRE um papel `tl` com capacidade para ler diff e ser dono dos
+    invariantes (opus de partida). Quem executa o que o `tl` já decidiu não
+    precisa do modelo do `tl`.
     Dentro de cada agente, escreve as armadilhas concretas que o afetam.
-    A base do time é fixa: tl, po (opus) · dev-front, dev-back, qa (sonnet) ·
+    Ponto de partida do time: tl, po (opus) · dev-front, dev-back, qa (sonnet) ·
     scout (haiku). Mais a camada da atividade quando ela pede: design, dba,
     sec, infra. Papel que a atividade não usa NÃO é criado.
 

@@ -1721,6 +1721,36 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(d);
 }
 
+// ── US-42. The cost criterion is in the generated text, "omit model to inherit" is gone, and
+//     --status notices an agent that inherits the session model — a notice, never a problem.
+{
+  const a = arena('us42');
+  run(a, '--no-git', '--no-questions');
+  const rd = (...p) => fs.readFileSync(path.join(a.proj, ...p), 'utf8');
+  const crit = /mesmo\s+resultado\s+com\s+o\s+menor\s+gasto/;
+  check('US-42: IA.md, CLAUDE.md e README de agentes trazem o critério de custo e o fim do "omita"',
+        crit.test(rd('.marvin', 'Contexto', 'IA.md')) && crit.test(rd('CLAUDE.md')) &&
+        /herda\s+o\s+modelo\s+da\s+sessão/.test(rd('.claude', 'agents', 'README.md')) && !/Omita model/.test(rd('.claude', 'agents', 'README.md')));
+  const ag = path.join(a.proj, '.claude', 'agents');
+  const clean = run(a, '--status');
+  check('US-42: sem agente, o --status não avisa', !/without model:/.test(clean.stdout));
+  fs.writeFileSync(path.join(ag, 'dev.md'), '---\nname: dev\ndescription: x\ntools: Read\n---\ncorpo\n');
+  fs.writeFileSync(path.join(ag, 'qa.md'), '---\nname: qa\ndescription: x\nmodel: sonnet\n---\ncorpo\n');
+  fs.writeFileSync(path.join(ag, 'tl.md'), '---\nname: tl\ndescription: x\nmodel: inherit\n---\ncorpo\n');
+  const w = run(a, '--status');
+  check('US-42: --status avisa agente sem model: e com inherit, e não o que declara', /without model:[^\n]*\bdev\b[^\n]*\btl\b/.test(w.stdout) && !/without model:[^\n]*\bqa\b/.test(w.stdout), w.stdout.slice(-500));
+  check('US-42: o aviso não muda o código de saída', w.status === clean.status);
+  check('US-42: --status --curto não muda', !/without model:/.test(run(a, '--status', '--curto').stdout));
+  fs.writeFileSync(path.join(ag, 'dev.md'), '---\nname: dev\nmodel: haiku\n---\n');
+  fs.writeFileSync(path.join(ag, 'tl.md'), '---\nname: tl\nmodel: opus\n---\n');
+  check('US-42: com model: em todos, não avisa', !/without model:/.test(run(a, '--status').stdout));
+  // Base from before 2.8.0: step 10 flags the missing text, once, with desde 2.8.0.
+  fs.writeFileSync(path.join(ag, 'README.md'), '# Time\n\nModelo por atividade\n');
+  const old = run(a, '--no-git', '--no-questions');
+  check('US-42: base antiga sem o texto novo: o passo 10 acusa com desde 2.8.0', /agents\/README\.md — missing[^\n]*desde 2\.8\.0/.test(old.stdout), old.stdout.slice(-500));
+  cleanup(a);
+}
+
 // ── LAST. The number of checks claimed in the READMEs matches the real one.
 //
 // It has drifted THREE times in this repository: 26 when there were 28, 48 when there

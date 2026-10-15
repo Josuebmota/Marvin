@@ -1198,6 +1198,7 @@ ${st.perguntas.length ? `<ul>${st.perguntas.map(p => `<li>${esc(p.texto)} <a hre
 <h2 id="tokens">Tokens gastos <span class="dim">— medido nas transcrições do Claude Code, ${g.sessoes} sessão(ões) · ${g.total.msgs ? '$' + (g.custo / g.total.msgs).toFixed(3) + ' por turno' : ''}${days.length ? ' · $' + (g.custo / days.length).toFixed(2) + ' por dia (' + days.length + ' dia(s))' : ''}</span></h2>
 ${bars}
 ${Object.keys(g.porPapel).length ? `<table><tr><th>papel (subagente)</th><th>modelo</th><th>esforço</th><th>turnos</th><th>custo</th></tr><tr><td>(sessão principal)</td><td></td><td></td><td>${g.total.msgs - g.sub.msgs}</td><td>≈ $${(g.custo - Object.values(g.porPapel).reduce((t, p) => t + p.custo, 0)).toFixed(2)}</td></tr>${Object.entries(g.porPapel).sort((a, b) => b[1].custo - a[1].custo).map(([r, p]) => `<tr><td>${esc(r)}</td><td>${esc([...p.modelos].join(' / '))}</td><td>${esc([...p.esforcos].join(' / ') || '—')}</td><td>${p.msgs}</td><td>≈ $${p.custo.toFixed(2)}</td></tr>`).join('')}</table>` : ''}
+${st.herdam.length ? `<p class="dim">Agente sem <code>model:</code> (herda o modelo da sessão): ${esc(st.herdam.join(', '))} — declare o modelo ou registre na US por que herda.</p>` : ''}
 <table><tr><th></th><th>modelo</th><th>input</th><th>cache write</th><th>cache read</th><th>output</th><th>turnos</th><th>custo</th><th>por turno</th></tr>${modelsTable}</table>
 <p class="dim">Tokens são medidos nas transcrições; o valor é o que os mesmos tokens <strong>custariam na API</strong>, pela tabela de ${PRICES_DATE} (input · output · cache write ≈ 1,25× · cache read ≈ 0,1×) — confira os preços vigentes. Num plano fixo (Max) o gasto real é a mensalidade — este número diz o quanto ele rende.${fixedShare != null ? ` Cada turno relê ~${kTk(g.contextoMedio)} tk de contexto; o contexto fixo (${st.contexto.total} tk) é <strong>~${fixedShare}%</strong> disso — o resto é a conversa. Sessão longa custa mais que arquivo grande.` : ''}</p>
 <h2 id="roadmap">Roadmap <span class="dim">— derivado de estado e ilhas; nada escrito à mão</span></h2>
@@ -1295,6 +1296,16 @@ const computeStatus = () => {
   const rel = path.join(DOCS, 'Releases');
   let releases = []; try { releases = fs.readdirSync(rel).filter(f => f.endsWith('.md') && f !== 'README.md').sort(); } catch {}
   if (releases.length) { const u = releases[releases.length - 1]; st.release = { nome: u.replace(/\.md$/, ''), us: (fs.readFileSync(path.join(rel, u), 'utf8').match(/^- \[/gm) || []).length }; }
+  // US-42: an agent without `model:` (or `model: inherit`) runs on the session model. Allowed, so
+  // it is a notice near the cost, never a problem (no exit code change). Read only.
+  st.herdam = [];
+  try {
+    for (const f of fs.readdirSync(path.join(ROOT, '.claude', 'agents')).filter(f => f.endsWith('.md') && f !== 'README.md').sort()) {
+      const fm = (fs.readFileSync(path.join(ROOT, '.claude', 'agents', f), 'utf8').replace(/^﻿/, '').match(/^---\r?\n([\s\S]*?)\r?\n---/) || [])[1] || '';
+      const m = fm.match(/^model:[ \t]*["']?([^\s"']*)/m);
+      if (!m || !m[1] || m[1] === 'inherit') st.herdam.push(f.replace(/\.md$/, ''));
+    }
+  } catch {}
   const GRAPH_ST = path.join(ROOT, 'graphify-out', 'graph.json');
   if (fs.existsSync(GRAPH_ST)) {
     let n = 0, d = 0; try { const g = JSON.parse(fs.readFileSync(GRAPH_ST, 'utf8')); n = (g.nodes || []).length; d = (g.nodes || []).filter(x => x._origin === 'marvin').length; } catch {}
@@ -1344,6 +1355,7 @@ const printStatus = (st, short) => {
   log('\n\x1b[1mFixed context\x1b[0m');
   printFixedContext();
   printSpend(st.gastos, st.contexto.total);
+  if (st.herdam.length) warn('agent(s) without model: (inherit the session model): ' + st.herdam.join(', ') + ' — declare model: or record in the US why it inherits');
   log('\n\x1b[1mGraph\x1b[0m');
   info(st.grafo ? `${st.grafo.nos} nodes (${st.grafo.docs} from the knowledge base) — extracted ${st.grafo.idade}d ago` + (st.grafo.idade > 7 ? '  → marvin --graphify --graphify-rebuild' : '') : 'none — marvin --graphify builds it');
 };
@@ -2374,6 +2386,9 @@ Indisponibilidade refaz a seleção preservando objetivo, restrições, resultad
 não repetir efeito externo sem conferir estado. Sem opção elegível, manter pendente.
 Não há router de inferência nem migração automática da sessão quando sua quota acaba.
 Não declarar economia sem comparação completa em atividades reais.
+A escolha visa o mesmo resultado com o menor gasto: parta da opção elegível mais barata.
+O degrau sobe só com motivo registrado no Time da US. Se o \`tl\` já decidiu,
+quem executa não precisa do modelo do \`tl\`.
 
 ## Entradas do glossário
 
@@ -2945,9 +2960,12 @@ Um \`.md\` por papel:
 name: qa
 description: quando usar este papel — é isto que decide se ele é chamado
 tools: Read, Grep, Glob, Bash
-# Omita model para herdar; se definir, use um modelo válido nesta ferramenta.
+# model: <modelo válido nesta ferramenta> — declare; sem esta linha o agente herda a sessão
 ---
 \`\`\`
+
+Sem \`model:\`, o agente herda o modelo da sessão. Declare o modelo ou registre na US
+por que ele herda; o \`marvin --status\` avisa o agente que herda.
 
 ## Modelo por atividade
 
@@ -3635,6 +3653,8 @@ Papéis e skills não fixam fornecedor/modelo. Consulte \`${relDocs}/${AI_GUIDE}
 confira acesso e integração nesta sessão e registre esforço solicitado/aplicado na US.
 O frontmatter de \`.claude/agents/*.md\` usa controles próprios do Claude Code;
 suporte em outra API/CLI não prova execução aqui. Plugin instalado não fixa o revisor.
+A escolha visa o mesmo resultado com o menor gasto; o degrau sobe só com motivo
+registrado no Time da US. Se o \`tl\` já decidiu, quem executa não precisa do modelo do \`tl\`.
 
 ## Memória
 
@@ -4294,6 +4314,14 @@ const UPDATES = [
   // A /continuar that already exists is the owner's (e.g. hand-written): only a file without the generated text is flagged.
   { arquivo: '.claude/commands/continuar.md', marca: /sem\s+esperar\s+confirmação/, soCom: !OLD_LAYOUT, desde: '2.6.0',
     o_que: 'the generated /continuar text — one autonomous round: one US, until done or stuck' },
+  // US-42: the cost criterion, and the end of "omit model to inherit".
+  { arquivo: path.relative(ROOT, path.join(DOCS, AI_GUIDE)).replace(/\\/g, '/'),
+    marca: /mesmo\s+resultado\s+com\s+o\s+menor\s+gasto/, desde: '2.8.0',
+    o_que: 'the cost criterion — same result at the lowest spend; the step up needs a reason recorded in the Time' },
+  { arquivo: 'CLAUDE.md', marca: /mesmo\s+resultado\s+com\s+o\s+menor\s+gasto/, desde: '2.8.0',
+    o_que: 'the cost criterion in the Claude Code model section' },
+  { arquivo: '.claude/agents/README.md', marca: /herda\s+o\s+modelo\s+da\s+sessão/, desde: '2.8.0',
+    o_que: 'the "without model: the agent inherits the session model" note (declare it or record why)' },
 ];
 
 const missing = UPDATES.filter(a => {

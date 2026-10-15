@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: ativa
 pai: ../Sobre.md
 name: US-42-execucao-nao-herda-opus
 description: "O texto gerado faz a execução herdar o modelo da sessão (Opus): o README de agentes manda omitir model:, e o PROMPT.md contradiz o IA.md. Critério de economia nos templates e aviso no --status para agente sem model:."
@@ -103,6 +103,14 @@ Nada depende do que ela toca — folha do grafo.
   - **Onde fica o aviso:** `po` queria no `--check`; `tl` queria no `--status`, perto do custo. O dono escolheu o `--status`.
   - Caiu da issue o critério "agentes gerados saem com `model:`", porque o script não gera agente (invariante 4).
   - Ordem: depois da [US-41](../../../../Manutencao/diagnostico/custo/US-41-custo-dos-subagentes/Sobre.md).
+- **15/10/2026** — implementada, sem commit. `dev-back` (Sonnet, medium) implementou; `qa` (Sonnet, low) e `tl` (Opus, medium) aprovaram. `node teste.mjs`: 361 passaram, 7 checks novos. O `qa` rodou num projeto temporário: `--curto` saiu idêntico byte a byte, o código de saída ficou igual, e o `--dry-run` e o 2º run não mudaram nenhum hash.
+  - **Correção opcional do `tl`, aplicada na principal:** o `model:` tolera BOM e aspas, para não dar falso positivo nem falso negativo.
+  - **Exemplo do README de agentes:** ficou como comentário `# model: …`, porque um teste antigo exige que o README não tenha linha `model:`.
+  - **PROMPT.md:** mantém haiku/sonnet/opus como *ponto de partida*. O `tl` leu como dentro do item 3: o veto do Não entra é sobre template gerado.
+  - **Marcas `UPDATES`:** `desde: '2.8.0'`, então a release desta US tem que ser 2.8.0.
+  - **Lacunas:**
+    - Não há teste para o aviso no HTML, para `model:` vazio, nem para as marcas do IA.md e do CLAUDE.md (só para a do README de agentes).
+    - Este repo não regenera os templates existentes; o passo 10 vai acusar as 3 marcas aqui.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
