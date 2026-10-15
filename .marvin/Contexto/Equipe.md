@@ -28,3 +28,10 @@ bem especificada); a verificação (`qa`, teste) confere; **sobe só se falhar**
 antes de modelo —, com o motivo no *Time* da US. Tarefa trivial vai direto, sem triagem.
 A última coluna é ponto de partida no Claude, não regra fixa: com outro fornecedor,
 consulte o guia de IA em [`IA.md`](IA.md).
+
+**Catálogo de referência, não instalação.** Quando um papel vira arquivo de agente (ou um
+procedimento vira skill), pode-se partir de um catálogo de especialistas de terceiros — por
+exemplo os agentes por stack do ECC ou as skills de processo do Superpowers, ambos MIT —
+lido só nesse momento, nunca instalado inteiro (custa contexto em toda sessão e traz
+agentes que se chamam sozinhos). Adapte modelo e esforço a esta tabela, acrescente as
+armadilhas do código e cite a origem. Confira a licença e a versão antes de copiar.
