@@ -1488,7 +1488,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   check('mesma versão: 2ª passada não reescreve o registro', read() === before && !/ferramentas\.md: marvin/.test(again.stdout));
   check('mesma versão: o hook cala', !/base montada com marvin/.test(run(a, '--status', '--curto').stdout));
   fs.writeFileSync(rec, read().replace(/^marvin: .+$/m, 'marvin: 0.0.1'));
-  check('base atrás: o hook avisa em uma linha', /base montada com marvin[^\n]*última passada 0\.0\.1/.test(run(a, '--status', '--curto').stdout));
+  check('base atrás: o hook avisa em uma linha', /base desatualizada \(Marvin [0-9.]+ > base 0\.0\.1/.test(run(a, '--status', '--curto').stdout));
   const up = run(a, '--no-git', '--no-questions').stdout;
   check('base atrás: a passada avança o carimbo e diz de onde', /marvin 0\.0\.1 → /.test(up) && new RegExp('^marvin: ' + version + '$', 'm').test(read()));
   check('marvin_montado nunca é reescrito', new RegExp('^marvin_montado: ' + version + '$', 'm').test(read()));
@@ -2409,6 +2409,67 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const er = run(e, ...BASE, '--regenerar');
   check('US-58: 99_Backup vazio pré-existente sobrevive a um --regenerar com tudo idêntico', er.status === 0 && fs.existsSync(path.join(e.proj, '.marvin', '99_Backup')) && fs.readdirSync(path.join(e.proj, '.marvin', '99_Backup')).length === 0, er.stdout.slice(-600));
   cleanup(e);
+}
+
+// ── US-62. The owner never runs `marvin` by hand: the hook (--status --curto) must say, in ONE line and
+// reading only, that the base is stale; /retomar is what syncs it. Silent when nothing is behind.
+{
+  const agent = (id) => `---\nname: ${id}\ndescription: ${id}. Use PROACTIVELY.\nmodel: opus\n---\nbody\n`;
+  const a = equipped(arena('us62'), { 'agents/code-reviewer.md': agent('code-reviewer'), 'agents/tdd-guide.md': agent('tdd-guide') });
+  run(a, '--no-git', '--no-questions');
+  const curto = () => run(a, '--status', '--curto').stdout;
+  const linhas = (s) => s.split('\n').filter(l => /base desatualizada/.test(l));
+  check('US-62: base atual e completa: o hook não diz "base desatualizada"', linhas(curto()).length === 0, curto());
+  const rec = path.join(a.proj, '.marvin', 'ferramentas.md');
+  const orig = fs.readFileSync(rec, 'utf8');
+  fs.writeFileSync(rec, orig.replace(/^marvin: .+$/m, 'marvin: 0.0.1'));
+  const velho = linhas(curto());
+  check('US-62: carimbo velho: UMA linha "Marvin X > base 0.0.1 … o /retomar sincroniza"', velho.length === 1 && /Marvin [0-9.]+ > base 0\.0\.1/.test(velho[0]) && /o \/retomar sincroniza/.test(velho[0]) && !/base montada com marvin/.test(curto()), velho.join('|'));
+  fs.writeFileSync(rec, orig.replace(/^marvin: .+$/m, 'marvin: 99.0.0'));
+  check('US-62: base mais NOVA que o marvin não conta como desatualizada (US-30 segue valendo)', linhas(curto()).length === 0 && /base montada com marvin[^\n]*mais velho/.test(curto()), curto());
+  fs.writeFileSync(rec, orig);
+  // an agent of the plan that the catalog has and the project lacks
+  fs.writeFileSync(path.join(a.lar, '.claude', 'plugins', 'marketplaces', 'ecc', 'agents', 'typescript-reviewer.md'), agent('typescript-reviewer'));
+  const ecc = linhas(curto());
+  check('US-62: agente do plano que o catálogo tem e o projeto não: a linha cita agentes do ECC', ecc.length === 1 && /1 agente do ECC faltando/.test(ecc[0]), ecc.join('|'));
+  // the hook writes nothing: same tree before and after
+  const tree = (d) => fs.readdirSync(d, { withFileTypes: true }).filter(e => e.name !== '.git').flatMap(e => e.isDirectory() ? tree(path.join(d, e.name)) : [e.name + ':' + fs.readFileSync(path.join(d, e.name), 'utf8').length + ':' + fs.statSync(path.join(d, e.name)).mtimeMs]).sort().join('\n');
+  const before = tree(a.proj);
+  run(a, '--status', '--curto');
+  check('US-62: --curto não escreve nada (a árvore do projeto fica idêntica)', tree(a.proj) === before);
+  // the generated /retomar carries the rule; a 3.4.0 base gets the notice
+  const ret = path.join(a.proj, '.claude', 'commands', 'retomar.md');
+  const txt = fs.readFileSync(ret, 'utf8');
+  check('US-62: /retomar gerado manda rodar o marvin quando o resumo diz "base desatualizada", antes das portas', /disser\s+`base\s+desatualizada`/.test(txt) && txt.indexOf('base desatualizada') < txt.indexOf('As **duas portas**') && /Nunca push/.test(txt));
+  const antigo = txt.replace(/Se o resumo de abertura disser[\s\S]*?Nunca push\.\n/, () => '');
+  fs.writeFileSync(ret, antigo);
+  const r = run(a, '--no-git', '--no-questions');
+  check('US-62: base 3.4.0 só recebe o aviso desde 3.4.1 no /retomar, sem reescrever', /retomar\.md — missing[^\n]*base desatualizada[^\n]*desde 3\.4\.1/.test(r.stdout) && fs.readFileSync(ret, 'utf8') === antigo, r.stdout.slice(-600));
+  // skill per stage: `agent · skill` in the role column, the table format (3rd cell = model) untouched
+  const plan = fs.readFileSync(path.join(a.proj, '.marvin', 'Planejamento', 'README.md'), 'utf8');
+  check('US-62: o exemplo do Time traz "agente · skill" na coluna papel', /\| implementar \| dev-back · dotnet-patterns \| Sonnet · médio \|/.test(plan) && /skill\s+da\s+etapa\s+depois\s+do/.test(plan));
+  const cmdTxt = (n) => fs.readFileSync(path.join(a.proj, '.claude', 'commands', n + '.md'), 'utf8');
+  check('US-62: /refinar, /us, /continuar e /retomar gerados falam da skill por etapa', /o\s+refino\s+escolhe\s+o\s+agente,\s+a\s+skill/.test(cmdTxt('refinar')) && /o\s+refino\s+escolhe\s+o\s+agente,\s+a\s+skill/.test(cmdTxt('us')) && /com\s+a\s+skill\s+da\s+linha/.test(cmdTxt('continuar')) && /Cada\s+etapa\s+roda\s+no\s+modelo/.test(cmdTxt('continuar')));
+  run(a, '--us', 'Novos/epx/featx/US-01-x');
+  const sobre = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'epx', 'featx', 'US-01-x', 'Sobre.md');
+  const s = fs.readFileSync(sobre, 'utf8'), SEP = '|---|---|---|---|---|\n';
+  fs.writeFileSync(sobre, s.replace(SEP, () => SEP + '| implementar | dev-back · dotnet-patterns | Sonnet · médio | partida | pendente |\n'));
+  check('US-62: linha com "agente · skill" no papel: o comModelo segue lendo a 3ª célula', !/sem modelo por etapa/.test(run(a, '--status', '--curto').stdout));
+  fs.writeFileSync(sobre, s.replace(SEP, () => SEP + '| implementar | dev-back · dotnet-patterns |  | partida | pendente |\n'));
+  check('US-62: com a 3ª célula vazia segue contando como sem modelo', /1 US sem modelo por etapa/.test(run(a, '--status', '--curto').stdout));
+  // the hook sits BEFORE every block that writes (0a availability, --us …): it never creates, prompts or fails for them
+  const loc = path.join(a.proj, '.marvin', '.local'), disp = path.join(loc, 'disponibilidade.json');
+  fs.mkdirSync(loc, { recursive: true });
+  fs.writeFileSync(disp, JSON.stringify({ schema: 1, executor: 'claude', source: 'flags', providers: [] }));
+  const t0 = tree(a.proj), v = run(a, '--status', '--curto');
+  check('US-62: --curto com disponibilidade.json válido e sem .local/.gitignore não cria arquivo', v.status === 0 && tree(a.proj) === t0 && !fs.existsSync(path.join(loc, '.gitignore')), v.stdout.slice(-300));
+  fs.writeFileSync(disp, '{ não é json');
+  const iv = run(a, '--status', '--curto');
+  check('US-62: disponibilidade.json inválido: o --curto sai 0 (não derruba o hook)', iv.status === 0, iv.stdout.slice(-300));
+  fs.rmSync(disp);
+  const us = run(a, '--status', '--us', 'Novos/epz/featz/US-09-z');
+  check('US-62: --status --us X sai antes do --us (não cria o Sobre.md)', us.status === 0 && !fs.existsSync(path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'epz')), us.stdout.slice(-300));
+  cleanup(a);
 }
 
 // ── LAST. The number of checks claimed in the READMEs matches the real one.

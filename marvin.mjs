@@ -1412,6 +1412,165 @@ const printStatus = (st, short) => {
   info(st.grafo ? `${st.grafo.nos} nodes (${st.grafo.docs} from the knowledge base) — extracted ${st.grafo.idade}d ago` + (st.grafo.idade > 7 ? '  → marvin --graphify --graphify-rebuild' : '') : 'none — marvin --graphify builds it');
 };
 
+// Read-only definitions the --status hook (US-62) needs; they sit ABOVE it so --status exits before any block that writes
+// (0a availability, --us, --fechar, --release, --migrar).
+const AI_GUIDE = OLD_LAYOUT ? 'IA.md' : 'Contexto/IA.md';
+const TEAM_GUIDE = OLD_LAYOUT ? 'Equipe.md' : 'Contexto/Equipe.md';
+// ── Stack walk, hoisted above 0b: the Playwright adapter's `aplica()` reads HAS_WEB_FRONT there.
+// Printing the result stays in step 1 below.
+const MARK = {
+  'package.json': 'Node/JS', 'tsconfig.json': 'TypeScript', 'requirements.txt': 'Python',
+  'pyproject.toml': 'Python', 'go.mod': 'Go', 'Cargo.toml': 'Rust',
+  'pom.xml': 'Java/Maven', 'build.gradle': 'Gradle', 'Gemfile': 'Ruby', 'composer.json': 'PHP',
+  'pubspec.yaml': 'Flutter/Dart',
+};
+const IGNORE = new Set(['node_modules', 'dist', 'build', 'bin', 'obj', '__pycache__', '.git', 'venv', '.venv']);
+const stacks = new Map();
+(function walk(dir, depth = 0) {
+  if (depth > 3) return;
+  let entries; try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+  for (const e of entries) {
+    if (IGNORE.has(e.name) || (e.name.startsWith('.') && e.isDirectory())) continue;
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) { walk(p, depth + 1); continue; }
+    const t = MARK[e.name] || (/\.(csproj|sln)$/.test(e.name) ? '.NET/C#' : null);
+    if (t) {
+      const rel = path.relative(ROOT, dir) || '.';
+      if (!stacks.has(rel)) stacks.set(rel, new Set());
+      stacks.get(rel).add(t);
+    }
+  }
+})(ROOT);
+// Is there a front end? Read from the dependencies of the package.json files found — fact, not guess.
+// HAS_FRONT only decides whether the Contexto/Design/ folder is born in step 5.
+// Dependencies of every package.json the walk found — root and sub-repos alike (depth ≤ 3).
+const pkgDeps = [...stacks.keys()].flatMap(d => {
+  try { const pj = JSON.parse(fs.readFileSync(path.join(ROOT, d, 'package.json'), 'utf8'));
+        return [Object.keys({ ...pj.dependencies, ...pj.devDependencies })]; } catch { return []; }
+});
+const FRONT_RE = /^(react|react-dom|vue|@angular\/core|svelte|next|nuxt|solid-js|@remix-run\/react|astro)$/;
+const HAS_FRONT = pkgDeps.some(deps => deps.some(x => FRONT_RE.test(x)));
+// A WEB front is what a browser can drive (US-34). React Native and Expo list `react` too:
+// without `react-dom` (their web target) they are native apps, which Playwright does not cover.
+const HAS_WEB_FRONT = pkgDeps.some(deps => deps.some(x => /^(react-native|expo)$/.test(x))
+  ? deps.includes('react-dom')
+  : deps.some(x => FRONT_RE.test(x) || x === 'vite'));
+
+// ── US-60. Which ECC agents/skills this project USES. Pure read of the stack markers, the manifests
+// and a few folders — fact, not guess. The ECC installer (`install-apply.js --with lang:x`) brings the
+// whole MODULE (every agent, ~100 commands, ~120 always-loaded rules): measured, so Marvin copies only
+// the agent/skill files listed here, straight from the catalog clone, and nothing else.
+const ECC_ROOT = path.join(os.homedir(), '.claude', 'plugins', 'marketplaces', 'ecc');
+const ECC_PLAN = (() => {
+  const MANIFESTS = new Set(['package.json', 'requirements.txt', 'pyproject.toml', 'go.mod', 'Cargo.toml', 'Gemfile', 'composer.json', 'pom.xml', 'build.gradle', 'pubspec.yaml']);
+  const dirs = [...stacks.keys()];
+  const text = dirs.flatMap(d => {
+    let names = []; try { names = fs.readdirSync(path.join(ROOT, d)); } catch {}
+    return names.filter(n => MANIFESTS.has(n) || /\.csproj$/.test(n)).map(n => { try { return fs.readFileSync(path.join(ROOT, d, n), 'utf8'); } catch { return ''; } });
+  }).join('\n');
+  const has = (...t) => [...stacks.values()].some(s => t.some(x => s.has(x)));
+  const dirHas = (...names) => dirs.some(d => names.some(n => fs.existsSync(path.join(ROOT, d, n))));
+  const dep = (name) => new RegExp('"' + name + '"\\s*:').test(text);
+  const pick = [
+    ['agent:code-reviewer', true, ['code-reviewer'], []],
+    ['agent:tdd-guide', true, ['tdd-guide'], []],
+    ['lang:typescript', has('TypeScript', 'Node/JS'), ['typescript-reviewer', 'build-error-resolver'], []],
+    ['lang:python', has('Python'), ['python-reviewer'], ['python-patterns', 'python-testing']],
+    ['lang:csharp', has('.NET/C#'), ['csharp-reviewer'], ['dotnet-patterns', 'csharp-testing']],
+    ['lang:go', has('Go'), ['go-reviewer', 'go-build-resolver'], ['golang-patterns', 'golang-testing']],
+    ['lang:rust', has('Rust'), ['rust-reviewer', 'rust-build-resolver'], ['rust-patterns', 'rust-testing']],
+    // Anything under android/ whose parent has package.json or pubspec.yaml is the Android shell of a
+    // JS (RN/Capacitor) or Flutter app, not Java.
+    ['lang:java', dirs.some(d => { const st = stacks.get(d); if (!st || !(st.has('Java/Maven') || st.has('Gradle'))) return false;
+      const seg = d.split(/[\\/]/), i = seg.map(x => x.toLowerCase()).lastIndexOf('android');
+      if (i < 0) return true;
+      const app = path.join(ROOT, ...seg.slice(0, i));
+      return !(fs.existsSync(path.join(app, 'package.json')) || fs.existsSync(path.join(app, 'pubspec.yaml'))); }), ['java-reviewer', 'java-build-resolver'], ['java-coding-standards']],
+    ['framework:flutter', has('Flutter/Dart'), ['flutter-reviewer', 'dart-build-resolver'], ['dart-flutter-patterns']],
+    ['lang:php', has('PHP'), ['php-reviewer'], []],
+    ['framework:react', dep('react'), ['react-reviewer', 'react-build-resolver'], ['react-patterns', 'react-testing']],
+    ['framework:vue', dep('vue'), ['vue-reviewer'], ['vue-patterns']],
+    ['framework:django', /\bdjango\b/i.test(text), ['django-reviewer', 'django-build-resolver'], ['django-patterns', 'django-tdd']],
+    ['framework:fastapi', /\bfastapi\b/i.test(text), ['fastapi-reviewer'], ['fastapi-patterns']],
+    ['capability:database', dirHas('migrations', 'Migrations', 'alembic', 'prisma', 'drizzle', path.join('db', 'migrate'))
+      || /prisma|typeorm|sequelize|knex|drizzle|sqlalchemy|psycopg|alembic|EntityFramework|mongoose/i.test(text), ['database-reviewer'], ['database-migrations']],
+    ['capability:security', /passport|jsonwebtoken|next-auth|"@auth\/|bcrypt|argon2|clerk|firebase-admin|pyjwt|python-jose|authlib|allauth|JwtBearer|AspNetCore\.Identity|devise/i.test(text), ['security-reviewer'], ['security-review']],
+  ];
+  return pick.filter(p => p[1]).map(([component, , agents, skills]) => ({ component, agents, skills }));
+})();
+const RECORD = path.join(DOCS, 'ferramentas.md');
+const RECORD_REL = path.relative(ROOT, RECORD).replace(/\\/g, '/');
+
+// ── Canonical commands. Step 1 knew WHICH manifest exists and never opened it: the
+// `AGENTS.md` came out with "_(como rodar teste e build)_" for the human to fill in,
+// while `scripts` is one `JSON.parse` away. Reading a manifest is FACT, not judgment —
+// it belongs to the script (invariant 4 protects what requires knowing the project,
+// not what is written on disk).
+//
+// Why this matters more than it seems: an agent that guesses the command runs `npm i`
+// in a pnpm project and dirties the lockfile. The manager comes from the LOCKFILE, never from a guess.
+//
+// Every line carries its ORIGIN. That is what keeps the block from aging silently when
+// the manifest changes: the source can be checked without leaving the file.
+const readJSON = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } };
+const inRoot = (n) => fs.existsSync(path.join(ROOT, n));
+const COMMANDS = [];
+const put = (label, command, origin) => {
+  if (command && !COMMANDS.some(c => c.rotulo === label)) COMMANDS.push({ rotulo: label, comando: command, origem: origin });
+};
+
+(function detectCommands() {
+  // Node: the manager comes from the LOCKFILE. `<pm> install` and `<pm> run <script>` are
+  // valid in all four, so one form serves them all — fewer special cases.
+  const pkg = readJSON(path.join(ROOT, 'package.json'));
+  if (pkg) {
+    const pm = inRoot('pnpm-lock.yaml') ? 'pnpm'
+      : inRoot('yarn.lock') ? 'yarn'
+      : (inRoot('bun.lockb') || inRoot('bun.lock')) ? 'bun'
+      : 'npm';
+    const lock = pm === 'pnpm' ? 'pnpm-lock.yaml' : pm === 'yarn' ? 'yarn.lock'
+      : pm === 'bun' ? 'bun.lock*'
+      : inRoot('package-lock.json') ? 'package-lock.json' : 'no lockfile — npm is the default';
+    put('Instalar', pm + ' install', lock);
+    const s = (pkg.scripts && typeof pkg.scripts === 'object') ? pkg.scripts : {};
+    for (const [label, names] of [
+      ['Lint', ['lint']], ['Typecheck', ['typecheck', 'type-check', 'tsc']],
+      ['Testar', ['test']], ['Build', ['build']], ['Rodar', ['dev', 'start']],
+    ]) {
+      const found = names.find(n => typeof s[n] === 'string');
+      if (found) put(label, pm + ' run ' + found, 'package.json > scripts.' + found);
+    }
+  }
+
+  // Python: pytest.ini / tox.ini / [tool.pytest] in pyproject are an explicit declaration
+  // that the suite is pytest. Without one of those, do not invent the runner.
+  const pyproj = inRoot('pyproject.toml');
+  let pyprojTxt = '';
+  if (pyproj) { try { pyprojTxt = fs.readFileSync(path.join(ROOT, 'pyproject.toml'), 'utf8'); } catch {} }
+  if (inRoot('pytest.ini')) put('Testar', 'pytest', 'pytest.ini');
+  else if (inRoot('tox.ini')) put('Testar', 'pytest', 'tox.ini');
+  else if (/\[tool\.pytest/.test(pyprojTxt)) put('Testar', 'pytest', 'pyproject.toml > [tool.pytest]');
+  if (inRoot('requirements.txt')) put('Instalar', 'pip install -r requirements.txt', 'requirements.txt');
+  else if (pyproj) put('Instalar', 'pip install -e .', 'pyproject.toml');
+
+  if (inRoot('go.mod')) { put('Testar', 'go test ./...', 'go.mod'); put('Build', 'go build ./...', 'go.mod'); }
+  if (inRoot('Cargo.toml')) { put('Testar', 'cargo test', 'Cargo.toml'); put('Build', 'cargo build', 'Cargo.toml'); }
+  if (inRoot('pubspec.yaml')) { put('Instalar', 'flutter pub get', 'pubspec.yaml'); put('Testar', 'flutter test', 'pubspec.yaml'); }
+
+  // .NET: the marker is usually in a subdirectory — step 1 already scanned for it.
+  if ([...stacks.values()].some(t => t.has('.NET/C#'))) {
+    put('Testar', 'dotnet test', '*.csproj / *.sln'); put('Build', 'dotnet build', '*.csproj / *.sln');
+  }
+
+  // Makefile last: it only fills what nobody filled before. `^target:` at column zero
+  // is what tells a target from a variable and from a recipe line.
+  if (inRoot('Makefile')) {
+    let mk = ''; try { mk = fs.readFileSync(path.join(ROOT, 'Makefile'), 'utf8'); } catch {}
+    for (const [label, target] of [['Testar', 'test'], ['Build', 'build'], ['Lint', 'lint'], ['Instalar', 'install']])
+      if (new RegExp('^' + target + '[ \\t]*:(?!=)', 'm').test(mk)) put(label, 'make ' + target, 'Makefile');
+  }
+})();
+
 // ── --status. The dashboard the graph organization made possible: every node has a state
 // in the frontmatter and a dated Rumo, so the project state is a READ. It is the command
 // you run when opening a session, and where the ruler catches things before they become a
@@ -1436,8 +1595,29 @@ if (hasFlag('--status')) {
   // repository. Warned here because it is the only place that runs in EVERY session; --check is on demand.
   if (fs.existsSync(DOCS) && !isJunction(MEM))
     log('  ! memória DESLIGADA deste repositório' + (WORKTREE ? ' (git worktree)' : '') + ' — rode `marvin` daqui antes de escrever qualquer nota; `marvin --check` explica');
-  // Base stamped by an older run: the nudge that makes migration visible where it matters, at session start.
-  { const stamp = stampOf(); if (stamp && stamp.ultima && stamp.ultima !== SELF_VERSION) log('  ! base montada com marvin ' + (stamp.montado || '?') + ', última passada ' + stamp.ultima + ' — este é ' + SELF_VERSION + (cmpVer(stamp.ultima, SELF_VERSION) > 0 ? ' (mais velho): atualize o marvin (npm i -g marvin-kb@latest)' : ': rode `marvin` para ver o que entrou')); }
+  // US-62: the owner never runs `marvin` by hand — the session hook is the only place a stale base is
+  // noticed. ONE line, only when something is behind (the hook has a budget); pure read, writes nothing.
+  // A base NEWER than this marvin is never "stale" (US-30): it keeps its own line, asking to update the marvin.
+  {
+    const stamp = stampOf();
+    if (stamp && stamp.ultima && cmpVer(stamp.ultima, SELF_VERSION) > 0)
+      log('  ! base montada com marvin ' + (stamp.montado || '?') + ', última passada ' + stamp.ultima + ' — este é ' + SELF_VERSION + ' (mais velho): atualize o marvin (npm i -g marvin-kb@latest)');
+    const pl = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+    const why = [];
+    if (SELF_VERSION !== '?' && stamp && stamp.ultima && cmpVer(stamp.ultima, SELF_VERSION) < 0) why.push('Marvin ' + SELF_VERSION + ' > base ' + stamp.ultima);
+    let rec = ''; try { rec = fs.readFileSync(RECORD, 'utf8'); } catch {}
+    const usa = (f) => new RegExp('^\\|\\s*' + f + '\\s*\\|\\s*sim\\s*\\|', 'mi').test(rec);
+    // Same gate as the installer (US-60): record says `sim`, catalog on the machine; a name the catalog lacks is not "missing".
+    if (TOOLS.includes('claude') && usa('ecc') && fs.existsSync(path.join(ECC_ROOT, 'agents'))) {
+      const lacks = (kind, ids, ext) => ids.filter(id => fs.existsSync(path.join(ECC_ROOT, kind, id + ext)) && !fs.existsSync(path.join(ROOT, '.claude', kind, id + ext))).length;
+      const na = lacks('agents', [...new Set(ECC_PLAN.flatMap(c => c.agents))], '.md'), ns = lacks('skills', [...new Set(ECC_PLAN.flatMap(c => c.skills))], '');
+      if (na) why.push(pl(na, 'agente do ECC faltando', 'agentes do ECC faltando'));
+      if (ns) why.push(pl(ns, 'skill do ECC faltando', 'skills do ECC faltando'));
+    }
+    const nu = pendingUpdates(GRAPHIFY || usa('graphify'), usa('ponytail'), usa('playwright'), COMMANDS).length;
+    if (nu) why.push(pl(nu, 'seção nova', 'seções novas'));
+    if (why.length) warn('base desatualizada (' + why.join('; ') + ') — o /retomar sincroniza');
+  }
   if (HTML) { if (!SHORT) log(''); writeStatusHtml(st, SHORT); }
   if (!SHORT) log('\n' + (st.problemas ? `\x1b[33m${st.problemas} thing(s) to fix\x1b[0m` : '\x1b[32mall consistent\x1b[0m') + '\n');
   process.exit(SHORT ? 0 : st.problemas ? 1 : 0);
@@ -1473,7 +1653,7 @@ _(link para ${path.relative(dir, path.join(DOCS, 'Contexto', 'Fluxos')).replace(
 _(crase com o caminho a partir da raiz, e a função depois de um traço — é o que liga a US ao grafo)_
 
 ## Time
-_(uma linha por etapa. Papéis: base tl · po · dev-front · dev-back · qa · scout; mais design/dba/sec/infra se a atividade pede, e o que ela não usa não entra. Modelo: a partida está no Equipe.md, o degrau mais barato que serve; subir exige motivo. Quem decide, tl/po, não é quem executa. Etapa sem modelo trava a execução.)_
+_(uma linha por etapa. Papéis: base tl · po · dev-front · dev-back · qa · scout; mais design/dba/sec/infra se a atividade pede, e o que ela não usa não entra. Modelo: a partida está no Equipe.md, o degrau mais barato que serve; subir exige motivo. Quem decide, tl/po, não é quem executa. Papel = agente do \`.claude/agents\`, com a skill da etapa depois do \`·\` quando houver. Etapa sem modelo trava a execução.)_
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
@@ -1820,8 +2000,6 @@ if (hasFlag('--migrar')) {
 // ── 0a. AI availability: local declarations only, no credential discovery or calls.
 const AVAILABILITY = path.join(DOCS, '.local', 'disponibilidade.json');
 const AVAILABILITY_REL = path.relative(ROOT, AVAILABILITY).replace(/\\/g, '/');
-const AI_GUIDE = OLD_LAYOUT ? 'IA.md' : 'Contexto/IA.md';
-const TEAM_GUIDE = OLD_LAYOUT ? 'Equipe.md' : 'Contexto/Equipe.md';
 const ignoreAvailability = () => {
   fsw.mkdirSync(path.dirname(AVAILABILITY), { recursive: true });
   const ignore = path.join(path.dirname(AVAILABILITY), '.gitignore');
@@ -1888,88 +2066,6 @@ const ignoreAvailability = () => {
   }
 }
 
-// ── Stack walk, hoisted above 0b: the Playwright adapter's `aplica()` reads HAS_WEB_FRONT there.
-// Printing the result stays in step 1 below.
-const MARK = {
-  'package.json': 'Node/JS', 'tsconfig.json': 'TypeScript', 'requirements.txt': 'Python',
-  'pyproject.toml': 'Python', 'go.mod': 'Go', 'Cargo.toml': 'Rust',
-  'pom.xml': 'Java/Maven', 'build.gradle': 'Gradle', 'Gemfile': 'Ruby', 'composer.json': 'PHP',
-  'pubspec.yaml': 'Flutter/Dart',
-};
-const IGNORE = new Set(['node_modules', 'dist', 'build', 'bin', 'obj', '__pycache__', '.git', 'venv', '.venv']);
-const stacks = new Map();
-(function walk(dir, depth = 0) {
-  if (depth > 3) return;
-  let entries; try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
-  for (const e of entries) {
-    if (IGNORE.has(e.name) || (e.name.startsWith('.') && e.isDirectory())) continue;
-    const p = path.join(dir, e.name);
-    if (e.isDirectory()) { walk(p, depth + 1); continue; }
-    const t = MARK[e.name] || (/\.(csproj|sln)$/.test(e.name) ? '.NET/C#' : null);
-    if (t) {
-      const rel = path.relative(ROOT, dir) || '.';
-      if (!stacks.has(rel)) stacks.set(rel, new Set());
-      stacks.get(rel).add(t);
-    }
-  }
-})(ROOT);
-// Is there a front end? Read from the dependencies of the package.json files found — fact, not guess.
-// HAS_FRONT only decides whether the Contexto/Design/ folder is born in step 5.
-// Dependencies of every package.json the walk found — root and sub-repos alike (depth ≤ 3).
-const pkgDeps = [...stacks.keys()].flatMap(d => {
-  try { const pj = JSON.parse(fs.readFileSync(path.join(ROOT, d, 'package.json'), 'utf8'));
-        return [Object.keys({ ...pj.dependencies, ...pj.devDependencies })]; } catch { return []; }
-});
-const FRONT_RE = /^(react|react-dom|vue|@angular\/core|svelte|next|nuxt|solid-js|@remix-run\/react|astro)$/;
-const HAS_FRONT = pkgDeps.some(deps => deps.some(x => FRONT_RE.test(x)));
-// A WEB front is what a browser can drive (US-34). React Native and Expo list `react` too:
-// without `react-dom` (their web target) they are native apps, which Playwright does not cover.
-const HAS_WEB_FRONT = pkgDeps.some(deps => deps.some(x => /^(react-native|expo)$/.test(x))
-  ? deps.includes('react-dom')
-  : deps.some(x => FRONT_RE.test(x) || x === 'vite'));
-
-// ── US-60. Which ECC agents/skills this project USES. Pure read of the stack markers, the manifests
-// and a few folders — fact, not guess. The ECC installer (`install-apply.js --with lang:x`) brings the
-// whole MODULE (every agent, ~100 commands, ~120 always-loaded rules): measured, so Marvin copies only
-// the agent/skill files listed here, straight from the catalog clone, and nothing else.
-const ECC_ROOT = path.join(os.homedir(), '.claude', 'plugins', 'marketplaces', 'ecc');
-const ECC_PLAN = (() => {
-  const MANIFESTS = new Set(['package.json', 'requirements.txt', 'pyproject.toml', 'go.mod', 'Cargo.toml', 'Gemfile', 'composer.json', 'pom.xml', 'build.gradle', 'pubspec.yaml']);
-  const dirs = [...stacks.keys()];
-  const text = dirs.flatMap(d => {
-    let names = []; try { names = fs.readdirSync(path.join(ROOT, d)); } catch {}
-    return names.filter(n => MANIFESTS.has(n) || /\.csproj$/.test(n)).map(n => { try { return fs.readFileSync(path.join(ROOT, d, n), 'utf8'); } catch { return ''; } });
-  }).join('\n');
-  const has = (...t) => [...stacks.values()].some(s => t.some(x => s.has(x)));
-  const dirHas = (...names) => dirs.some(d => names.some(n => fs.existsSync(path.join(ROOT, d, n))));
-  const dep = (name) => new RegExp('"' + name + '"\\s*:').test(text);
-  const pick = [
-    ['agent:code-reviewer', true, ['code-reviewer'], []],
-    ['agent:tdd-guide', true, ['tdd-guide'], []],
-    ['lang:typescript', has('TypeScript', 'Node/JS'), ['typescript-reviewer', 'build-error-resolver'], []],
-    ['lang:python', has('Python'), ['python-reviewer'], ['python-patterns', 'python-testing']],
-    ['lang:csharp', has('.NET/C#'), ['csharp-reviewer'], ['dotnet-patterns', 'csharp-testing']],
-    ['lang:go', has('Go'), ['go-reviewer', 'go-build-resolver'], ['golang-patterns', 'golang-testing']],
-    ['lang:rust', has('Rust'), ['rust-reviewer', 'rust-build-resolver'], ['rust-patterns', 'rust-testing']],
-    // Anything under android/ whose parent has package.json or pubspec.yaml is the Android shell of a
-    // JS (RN/Capacitor) or Flutter app, not Java.
-    ['lang:java', dirs.some(d => { const st = stacks.get(d); if (!st || !(st.has('Java/Maven') || st.has('Gradle'))) return false;
-      const seg = d.split(/[\\/]/), i = seg.map(x => x.toLowerCase()).lastIndexOf('android');
-      if (i < 0) return true;
-      const app = path.join(ROOT, ...seg.slice(0, i));
-      return !(fs.existsSync(path.join(app, 'package.json')) || fs.existsSync(path.join(app, 'pubspec.yaml'))); }), ['java-reviewer', 'java-build-resolver'], ['java-coding-standards']],
-    ['framework:flutter', has('Flutter/Dart'), ['flutter-reviewer', 'dart-build-resolver'], ['dart-flutter-patterns']],
-    ['lang:php', has('PHP'), ['php-reviewer'], []],
-    ['framework:react', dep('react'), ['react-reviewer', 'react-build-resolver'], ['react-patterns', 'react-testing']],
-    ['framework:vue', dep('vue'), ['vue-reviewer'], ['vue-patterns']],
-    ['framework:django', /\bdjango\b/i.test(text), ['django-reviewer', 'django-build-resolver'], ['django-patterns', 'django-tdd']],
-    ['framework:fastapi', /\bfastapi\b/i.test(text), ['fastapi-reviewer'], ['fastapi-patterns']],
-    ['capability:database', dirHas('migrations', 'Migrations', 'alembic', 'prisma', 'drizzle', path.join('db', 'migrate'))
-      || /prisma|typeorm|sequelize|knex|drizzle|sqlalchemy|psycopg|alembic|EntityFramework|mongoose/i.test(text), ['database-reviewer'], ['database-migrations']],
-    ['capability:security', /passport|jsonwebtoken|next-auth|"@auth\/|bcrypt|argon2|clerk|firebase-admin|pyjwt|python-jose|authlib|allauth|JwtBearer|AspNetCore\.Identity|devise/i.test(text), ['security-reviewer'], ['security-review']],
-  ];
-  return pick.filter(p => p[1]).map(([component, , agents, skills]) => ({ component, agents, skills }));
-})();
 // Cost matrix (team glossary): planner/architect on Opus · medium; locate/explore on Haiku · low;
 // everything else Sonnet · medium. Applied to every agent THIS run installs, never to one that already existed.
 const eccCost = (id) => /^(planner|architect|code-architect)$/.test(id) ? ['opus', 'medium']
@@ -2006,8 +2102,7 @@ const eccAgent = (txt, id) => {
 // later. The record is the missing "this project uses X" place — any agent reads it.
 // Lives before step 1 because SUBREPOS (right below) and the generated CLAUDE.md depend
 // on GRAPHIFY being decided already.
-const RECORD = path.join(DOCS, 'ferramentas.md');
-const RECORD_REL = path.relative(ROOT, RECORD).replace(/\\/g, '/');
+
 // `detecta()` returns false or the state found (string) — it goes into the message.
 // Ponytail is not a binary on PATH: it is a Claude Code plugin. INSTALLED lives in
 // ~/.claude/plugins/installed_plugins.json; ACTIVE on this machine is the file
@@ -2272,76 +2367,6 @@ function suggestTeam() {
     : ['tl', 'po', 'dev', 'qa', 'scout'];
   return { list, frontiers, base, optional: ['design', 'dba', 'sec', 'infra'] };
 }
-
-// ── Canonical commands. Step 1 knew WHICH manifest exists and never opened it: the
-// `AGENTS.md` came out with "_(como rodar teste e build)_" for the human to fill in,
-// while `scripts` is one `JSON.parse` away. Reading a manifest is FACT, not judgment —
-// it belongs to the script (invariant 4 protects what requires knowing the project,
-// not what is written on disk).
-//
-// Why this matters more than it seems: an agent that guesses the command runs `npm i`
-// in a pnpm project and dirties the lockfile. The manager comes from the LOCKFILE, never from a guess.
-//
-// Every line carries its ORIGIN. That is what keeps the block from aging silently when
-// the manifest changes: the source can be checked without leaving the file.
-const readJSON = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } };
-const inRoot = (n) => fs.existsSync(path.join(ROOT, n));
-const COMMANDS = [];
-const put = (label, command, origin) => {
-  if (command && !COMMANDS.some(c => c.rotulo === label)) COMMANDS.push({ rotulo: label, comando: command, origem: origin });
-};
-
-(function detectCommands() {
-  // Node: the manager comes from the LOCKFILE. `<pm> install` and `<pm> run <script>` are
-  // valid in all four, so one form serves them all — fewer special cases.
-  const pkg = readJSON(path.join(ROOT, 'package.json'));
-  if (pkg) {
-    const pm = inRoot('pnpm-lock.yaml') ? 'pnpm'
-      : inRoot('yarn.lock') ? 'yarn'
-      : (inRoot('bun.lockb') || inRoot('bun.lock')) ? 'bun'
-      : 'npm';
-    const lock = pm === 'pnpm' ? 'pnpm-lock.yaml' : pm === 'yarn' ? 'yarn.lock'
-      : pm === 'bun' ? 'bun.lock*'
-      : inRoot('package-lock.json') ? 'package-lock.json' : 'no lockfile — npm is the default';
-    put('Instalar', pm + ' install', lock);
-    const s = (pkg.scripts && typeof pkg.scripts === 'object') ? pkg.scripts : {};
-    for (const [label, names] of [
-      ['Lint', ['lint']], ['Typecheck', ['typecheck', 'type-check', 'tsc']],
-      ['Testar', ['test']], ['Build', ['build']], ['Rodar', ['dev', 'start']],
-    ]) {
-      const found = names.find(n => typeof s[n] === 'string');
-      if (found) put(label, pm + ' run ' + found, 'package.json > scripts.' + found);
-    }
-  }
-
-  // Python: pytest.ini / tox.ini / [tool.pytest] in pyproject are an explicit declaration
-  // that the suite is pytest. Without one of those, do not invent the runner.
-  const pyproj = inRoot('pyproject.toml');
-  let pyprojTxt = '';
-  if (pyproj) { try { pyprojTxt = fs.readFileSync(path.join(ROOT, 'pyproject.toml'), 'utf8'); } catch {} }
-  if (inRoot('pytest.ini')) put('Testar', 'pytest', 'pytest.ini');
-  else if (inRoot('tox.ini')) put('Testar', 'pytest', 'tox.ini');
-  else if (/\[tool\.pytest/.test(pyprojTxt)) put('Testar', 'pytest', 'pyproject.toml > [tool.pytest]');
-  if (inRoot('requirements.txt')) put('Instalar', 'pip install -r requirements.txt', 'requirements.txt');
-  else if (pyproj) put('Instalar', 'pip install -e .', 'pyproject.toml');
-
-  if (inRoot('go.mod')) { put('Testar', 'go test ./...', 'go.mod'); put('Build', 'go build ./...', 'go.mod'); }
-  if (inRoot('Cargo.toml')) { put('Testar', 'cargo test', 'Cargo.toml'); put('Build', 'cargo build', 'Cargo.toml'); }
-  if (inRoot('pubspec.yaml')) { put('Instalar', 'flutter pub get', 'pubspec.yaml'); put('Testar', 'flutter test', 'pubspec.yaml'); }
-
-  // .NET: the marker is usually in a subdirectory — step 1 already scanned for it.
-  if ([...stacks.values()].some(t => t.has('.NET/C#'))) {
-    put('Testar', 'dotnet test', '*.csproj / *.sln'); put('Build', 'dotnet build', '*.csproj / *.sln');
-  }
-
-  // Makefile last: it only fills what nobody filled before. `^target:` at column zero
-  // is what tells a target from a variable and from a recipe line.
-  if (inRoot('Makefile')) {
-    let mk = ''; try { mk = fs.readFileSync(path.join(ROOT, 'Makefile'), 'utf8'); } catch {}
-    for (const [label, target] of [['Testar', 'test'], ['Build', 'build'], ['Lint', 'lint'], ['Instalar', 'install']])
-      if (new RegExp('^' + target + '[ \\t]*:(?!=)', 'm').test(mk)) put(label, 'make ' + target, 'Makefile');
-  }
-})();
 
 if (COMMANDS.length) {
   log('\n\x1b[1m1b. Canonical commands (read from the manifest, not guessed)\x1b[0m');
@@ -2925,11 +2950,12 @@ pai: ../Sobre.md
 ## Time
 <!-- proposto ANTES de começar, pela regra do AGENTS.md. Uma linha por ETAPA, com o modelo.
      Partida no Equipe.md: o degrau mais barato que serve; subir exige motivo. Quem decide
-     (tl/po) não é quem executa. Etapa sem modelo trava a execução e volta ao /refinar. -->
+     (tl/po) não é quem executa. Papel = agente do \`.claude/agents\`, com a skill da etapa depois do \`·\`
+     quando houver. Etapa sem modelo trava a execução e volta ao /refinar. -->
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
 | mapear o código | scout | Haiku · baixo | recuperação | pendente |
-| implementar | dev-back | Sonnet · médio | partida | pendente |
+| implementar | dev-back · dotnet-patterns | Sonnet · médio | partida | pendente |
 | migrar o schema de pagamentos | dba | Sonnet · médio | partida | pendente |
 | verificar | qa | Sonnet · baixo | partida | pendente |
 | ler o diff | tl | Opus · médio | toca invariante | pendente |
@@ -3409,7 +3435,12 @@ description: Retoma o trabalho a partir do estado corrente registrado — a port
 ---
 
 Retome o trabalho neste projeto.
-
+${OLD_LAYOUT ? '' : `
+Se o resumo de abertura disser \`base desatualizada\`, rode o \`marvin\` neste projeto
+(\`npx marvin-kb --no-questions\`; de dentro do clone do Marvin, \`node marvin.mjs --no-questions\`)
+ANTES de oferecer as portas, e diga em até 3 linhas o que entrou (agentes/skills do ECC, seções,
+carimbo). Não commite por isso à parte: entra no commit da sessão. Nunca push.
+`}
 1. Leia \`${path.relative(ROOT, DEST).replace(/\\/g, '/')}/onde_paramos.md\` — é a **única**
    porta de entrada, sempre atualizada. Se não existir, leia o \`MEMORY.md\` e diga que a
    nota canônica está faltando.${OLD_LAYOUT ? '' : `
@@ -3431,9 +3462,9 @@ ${OLD_LAYOUT ? '' : `
    - **Desenvolver** — a ilha da vez (a que tem US ativa; senão a primeira) e as US dela, em
      ordem. Uma ilha por vez, uma sessão de desenvolvimento por vez: sem branch nem worktree
      por ilha. Ao pegar uma US \`refinada\`: \`estado: ativa\` no Sobre.md e \`marvin --us <caminho>\`
-     para o ponteiro na nota. Cada etapa roda no modelo da sua linha do *Time*: delegue ao subagente
-     do papel passando \`model\` e \`effort\` da linha na chamada — isso vale mais que o arquivo do papel
-     e que o modelo da sessão. Etapa sem linha com modelo é trava: não executa; registre "refinar: falta
+     para o ponteiro na nota. Cada etapa roda no modelo da sua linha do *Time*: delegue ao agente
+     da linha com a skill da linha, passando \`model\` e \`effort\` na chamada — isso vale mais que o arquivo
+     do papel e que o modelo da sessão. Etapa sem linha com modelo é trava: não executa; registre "refinar: falta
      o modelo por etapa" e proponha o \`/refinar\` dela.
    - **Refinar** — anotações sem US (as linhas ⚪ da nota): \`/refinar\`. Pode correr ao lado de
      um chat de desenvolvimento — escreve em arquivos diferentes.
@@ -3492,7 +3523,8 @@ se eu passei só o nome, pergunte em qual Epic e Feature ela entra (liste os que
      (crase com o caminho, e a função depois de um traço — é o que liga a US ao grafo).
    - **Propor o time** desta US, a partir da base do \`AGENTS.md\`: só os papéis que ela usa,
      mais a camada da atividade (design, dba, sec, infra) se ela pede. Escreva em *Time* como
-     a tabela \`| etapa | papel | modelo · esforço | motivo | estado |\`, uma linha por etapa: modelo e esforço
+     a tabela \`| etapa | papel | modelo · esforço | motivo | estado |\`, uma linha por etapa: para cada etapa, o refino escolhe o agente, a skill (se houver), o modelo e o esforço
+     — o menor custo que entrega o mesmo resultado (\`agente · skill\` na coluna papel); modelo e esforço
      partem do glossário (\`${relDocs}/${TEAM_GUIDE}\`), no degrau mais barato que serve; subir exige
      motivo; quem decide (\`tl\`/\`po\`) não é quem executa. Etapa sem modelo trava a execução.
    - **Propor skills**: procedimento que a US vai repetir vai em *Skills* como proposta.
@@ -3562,7 +3594,8 @@ Entrada: **$ARGUMENTS** (uma anotação, um print, uma linha ⚪ de
 **Entrada = US que já existe (um id, um caminho, ou "sem modelo") → só a triagem de custo.**
 Não refaça *Por quê*, *Pronto quando* nem *Código tocado*: preencha só a tabela do *Time*
 (\`| etapa | papel | modelo · esforço | motivo | estado |\`) pelo glossário da equipe, partindo do
-degrau mais barato que serve; subir exige motivo. "sem modelo" = as US que o \`marvin --status\`
+degrau mais barato que serve; subir exige motivo. Para cada etapa, o refino escolhe o agente, a skill (se houver),
+o modelo e o esforço — o menor custo que entrega o mesmo resultado (\`agente · skill\` na coluna papel). "sem modelo" = as US que o \`marvin --status\`
 lista sem modelo por etapa — **em lote, só as da próxima ilha** (refinar a fila inteira de uma
 vez gasta mais do que economiza). É trabalho de tabela: faça na sessão, sem \`tl\`+\`po\`, e
 confira com \`marvin --status\` que elas saíram da contagem.
@@ -3584,7 +3617,9 @@ confira com \`marvin --status\` que elas saíram da contagem.
    \`marvin --us <caminho>\` de novo: o *Impacto* sai do grafo, se houver.
    O *Time* é a tabela \`| etapa | papel | modelo · esforço | motivo | estado |\`, uma linha por etapa,
    preenchida pelo \`tl\` e pelo \`po\` a partir do glossário (\`${relDocs}/${TEAM_GUIDE}\`): partida no
-   degrau mais barato que serve; subir exige motivo; quem decide não é quem executa. É a economia
+   degrau mais barato que serve; subir exige motivo; quem decide não é quem executa. Para cada etapa, o refino
+   escolhe o agente, a skill (se houver), o modelo e o esforço — o menor custo que entrega o mesmo resultado
+   (\`agente · skill\` na coluna papel). É a economia
    decidida aqui — a execução obedece (\`/continuar\`, \`/retomar\`); etapa sem modelo trava.
    **Precisa de agente ou skill que o projeto não tem? Procure primeiro no ECC** (\`<ecc>/agents\`,
    \`<ecc>/skills\`; \`<ecc>\` = \`~/.claude/plugins/marketplaces/ecc\`) e instale só aquele, copiando o
@@ -3631,8 +3666,8 @@ dependência (trava abaixo), não licença. **Nunca apague, mova ou renomeie** n
 \`git reset\`, \`git checkout --\`, \`git stash\`, \`rm -rf\`; nunca \`push\`, merge, publish nem tag.
 Nunca destruir dado vale dobrado sem ninguém olhando.
 
-**Cada etapa roda no modelo da sua linha do *Time*:** delegue ao subagente do papel passando \`model\` e
-\`effort\` da linha na chamada — isso vale mais que o arquivo do papel e que o modelo da sessão.
+**Cada etapa roda no modelo da sua linha do *Time*:** delegue ao agente da linha com a skill da linha,
+passando \`model\` e \`effort\` na chamada — isso vale mais que o arquivo do papel e que o modelo da sessão.
 Etapa sem linha com modelo é trava: não executa; registre "refinar: falta o modelo por etapa" e
 siga para outra US.
 
@@ -4579,6 +4614,8 @@ if (legacy.length) {
 // There is no version file. The check reads the actual content, because a recorded
 // version number is one more derived artifact — and derived artifacts age in silence,
 // which is the disease this whole project fights.
+// Pure read, callable from the --status hook (US-62): the flags that gate entries come as parameters.
+function pendingUpdates(GRAPHIFY, PONYTAIL, PLAYWRIGHT, COMMANDS) {
 const UPDATES = [
   { arquivo: path.relative(ROOT, path.join(DOCS, AI_GUIDE)).replace(/\\/g, '/'),
     marca: /##\s+Inventário\s+local[\s\S]*?##\s+Pesquisa\s+e\s+escolha\s+por\s+atividade[\s\S]*?##\s+Entradas\s+do\s+glossário/,
@@ -4736,6 +4773,21 @@ const UPDATES = [
     o_que: 'the rule that each stage runs on the model of its Time row (passed as `model`/`effort` when delegating); a stage with no model is a lock' },
   { arquivo: '.claude/commands/retomar.md', marca: /Cada\s+etapa\s+roda\s+no\s+modelo/, soCom: !OLD_LAYOUT, desde: '3.2.0',
     o_que: 'the rule that each stage runs on the model of its Time row (passed as `model`/`effort` when delegating); a stage with no model sends the US back to /refinar' },
+  // US-62: the skill is assigned per stage with the role (`agent · skill`); the table format is unchanged.
+  { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
+    marca: /skill\s+da\s+etapa\s+depois\s+do/, soCom: !OLD_LAYOUT, desde: '3.4.1',
+    o_que: 'the "role = agent, with the stage skill after the `·`" note in the US example' },
+  { arquivo: '.claude/commands/us.md', marca: /o\s+refino\s+escolhe\s+o\s+agente,\s+a\s+skill/, soCom: !OLD_LAYOUT, desde: '3.4.1',
+    o_que: 'the /us step that picks agent, skill, model and effort per stage' },
+  { arquivo: '.claude/commands/refinar.md', marca: /o\s+refino\s+escolhe\s+o\s+agente,\s+a\s+skill/, soCom: !OLD_LAYOUT, desde: '3.4.1',
+    o_que: 'the /refinar step that picks agent, skill, model and effort per stage' },
+  { arquivo: '.claude/commands/continuar.md', marca: /com\s+a\s+skill\s+da\s+linha/, soCom: !OLD_LAYOUT, desde: '3.4.1',
+    o_que: 'the rule to delegate to the agent of the Time row with the skill of the row, passing model and effort' },
+  { arquivo: '.claude/commands/retomar.md', marca: /com\s+a\s+skill\s+da\s+linha/, soCom: !OLD_LAYOUT, desde: '3.4.1',
+    o_que: 'the rule to delegate to the agent of the Time row with the skill of the row, passing model and effort' },
+  // US-62: the hook flags a stale base; /retomar is what syncs it (the owner never runs marvin by hand).
+  { arquivo: '.claude/commands/retomar.md', marca: /disser\s+`base\s+desatualizada`/, soCom: !OLD_LAYOUT, desde: '3.4.1',
+    o_que: 'the /retomar step that runs marvin when the opening summary says `base desatualizada` (before the doors)' },
   // US-60/61: ECC is the source of the team's agents/skills; the main session opens on Sonnet.
   { arquivo: path.relative(ROOT, path.join(DOCS, TEAM_GUIDE)).replace(/\\/g, '/'),
     marca: /Procure\s+primeiro\s+no\s+ECC/, desde: '3.3.0',
@@ -4751,12 +4803,14 @@ const UPDATES = [
     o_que: 'the note that graphify, ponytail and ecc are mandatory (installed by marvin; an explicit `não` is respected with a warning)' },
 ];
 
-const missing = UPDATES.filter(a => {
+return UPDATES.filter(a => {
   if (a.soCom === false) return false;
   const p = path.join(ROOT, a.arquivo);
   if (!fs.existsSync(p)) return false; // does not exist: the steps above already create it
   try { return !a.marca.test(fs.readFileSync(p, 'utf8')); } catch { return false; }
 });
+}
+const missing = pendingUpdates(GRAPHIFY, PONYTAIL, PLAYWRIGHT, COMMANDS);
 
 if (missing.length) {
   log('\n\x1b[1m10. Updates this project does not have yet\x1b[0m');

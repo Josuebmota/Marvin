@@ -117,7 +117,9 @@ barato de todos falhou um caso de aceite na implementação — fica para locali
 **O que impede que ele desande:** o hook de toda sessão avisa quando o contexto fixo passa do
 teto, quando a nota vira relatório e quando há US sem modelo por etapa; o `--status` acusa
 subagente que rodou no degrau mais caro sem papel; o `marvin --regenerar` traz uma base antiga
-de volta aos templates atuais sem tocar em US, nota, decisões nem nos seus agentes.
+de volta aos templates atuais sem tocar em US, nota, decisões nem nos seus agentes. Quando o hook
+acusa que a base está velha (carimbo antigo, agentes do ECC faltando, seções novas de template),
+o `/retomar` roda o `marvin` para sincronizá-la antes de oferecer as portas.
 
 ## O que ele cria
 
@@ -734,7 +736,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-453 verificações, zero dependência. Cobre os invariantes que protegem o disco
+467 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

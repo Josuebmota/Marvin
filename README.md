@@ -116,7 +116,9 @@ failed an acceptance case on implementation — it is kept for locating, not for
 **What keeps it from drifting:** the session hook warns when the fixed context passes its
 ceiling, when the note turns into a report and when USs have no model per stage; `--status`
 flags subagents that ran on the top tier without a role; `marvin --regenerar` brings an old
-base back to the current templates without touching USs, notes, decisions or your agents.
+base back to the current templates without touching USs, notes, decisions or your agents. When the
+hook says the base is stale (older stamp, ECC agents missing, new template sections), `/retomar`
+runs `marvin` to sync it before offering the doors.
 
 ## What it creates
 
@@ -747,7 +749,7 @@ rather than final text.
 node teste.mjs
 ```
 
-453 checks, no dependencies. It covers the invariants that protect other
+467 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.
