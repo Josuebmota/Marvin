@@ -3,6 +3,39 @@
 O que está sendo **feito**, em três níveis: `<Epic>/<Feature>/<US>/`, cada um com o seu
 `Sobre.md`. `Manutencao/` para o que já existe; `Novos/` para o que ainda não.
 
+## Antes de qualquer US — mapear, montar o time, propor skills
+
+**Nenhuma US começa sem esta passada, e ela se repete a cada atividade nova.** É o que
+faz o time crescer em camadas em vez de nascer genérico.
+
+1. **Mapear o que a atividade toca:** o fluxo, a arquitetura, o código. Fluxo que ainda
+   não tem nota em `../Contexto/Fluxos/` ganha uma agora — é assim que ela cresce.
+2. **Propor o time desta atividade** e registrar na seção *Time* do `Sobre.md` da US.
+   Consulte `../Contexto/IA.md` e o inventário local antes de escolher modelo/esforço:
+   atividade, domínio, papéis, skills e capacidades vêm antes da marca. Registre por
+   etapa modelo/integração, motivo e solicitado/aplicado; declaração não prova acesso.
+   O que a atividade não usa **não é criado**. Os papéis, o que cada um faz e quando entra
+   estão no [glossário da equipe](../Contexto/Equipe.md) — lido aqui, na triagem.
+
+   **Quem faz a triagem:** o `tl` junto com o `po`, com o contexto inteiro da US. Eles
+   definem quem toca, quais agentes e skills (só os que a atividade usa), esforço e modelo,
+   e registram em *Time*/*Skills* da US. Agente ou skill novos nascem aqui: o agente só vira
+   arquivo com uma armadilha concreta; a skill, na segunda execução.
+   **Na primeira rodada depois de instalar**, a LLM só **propõe** o time e as skills, a partir
+   do [glossário da equipe](../Contexto/Equipe.md) e do código: só papel ligado a fronteira detectada no código (stack, schema,
+   CI), nunca o catálogo inteiro. A proposta fica em *Time*/*Skills* e o arquivo nasce pela
+   regra acima.
+   **O grafo é opcional nos projetos montados pelo Marvin; neste repositório, Graphify é
+   obrigatório na triagem.** Ausente, velho ou indisponível: registre a limitação e use
+   Grep/Glob só para localizar arquivos. Fluxo completo de escolha por tarefa e `tl` por risco:
+   [delegação](../Contexto/Fluxos/delegacao.md).
+3. **Atualizar os agentes em camadas:** `.claude/agents/<papel>.md` recebe as armadilhas
+   descobertas **nesta** atividade — acrescenta, não reescreve o que já valia. Um papel só
+   existe como arquivo depois de ter uma armadilha concreta para carregar.
+4. **Propor skills:** procedimento que esta atividade vai repetir (rodar migração, gerar
+   release, subir ambiente) entra na seção *Skills* da US como proposta — e vira
+   `.claude/skills/<nome>/SKILL.md` na **segunda** vez que rodar, não na primeira.
+
 Regras:
 
 - **Decisão mora no nó que a tomou.** Da US, na US; da feature, na feature. Estrutural,
@@ -11,24 +44,12 @@ Regras:
   cancela os filhos e abre novos — a entrada fica no Rumo do pai.
 - **Nada muda de pasta.** US concluída fica onde está, com `estado: concluida` e a
   evidência preenchida. Reabrir é outra release.
+- **Refinada não é ativa.** US que passou pelo crivo e ainda não começou é `estado: refinada`:
+  fica na fila, fora da nota; vira `ativa` quando alguém a pega (`marvin --us` de novo põe o
+  ponteiro). O `--status` agrupa as refinadas em **ilhas** pelo arquivo do *Código tocado* —
+  a ilha é o que uma sessão ataca em sequência, uma por vez.
 - **Aresta é link.** Fluxo ligado, código tocado e pai são links/caminhos — é o que o
   grafo lê.
-- **Time decide por tarefa.** Ao abrir uma US ou antes de executar uma tarefa dela,
-  seguir [delegação](../Contexto/Fluxos/delegacao.md): decompor atividade/domínio,
-  escolher papéis e skills, consultar capacidades sob demanda e selecionar
-  modelo/ferramenta/esforço entre acessos elegíveis, sem fornecedor fixo. Registrar solicitado versus
-  aplicado. A declaração não prova acesso: confirme-o ou registre como não confirmado.
-  Herança inclui origem; limitações ficam explícitas. Verificação e subida
-  de capacidade seguem esse fluxo; mudanças de escolha ficam no *Rumo*.
-
-Na triagem do `tl` com o `po`, decidam quem trabalha, quais agentes e skills usar e o
-modelo, ferramenta e esforço por etapa. O grafo é opcional nos projetos montados pelo
-Marvin; neste repositório, Graphify é obrigatório na triagem. Se estiver ausente, velho ou
-indisponível, registrem a limitação e usem Grep/Glob como fallback para localizar arquivos.
-**Na primeira rodada depois de instalar**, a LLM só **propõe** o time e as skills, a partir
-do [glossário da equipe](../Contexto/Equipe.md) e do código: só papel ligado a fronteira detectada no código (stack, schema,
-CI), nunca o catálogo inteiro. A proposta fica em *Time*/*Skills* e o arquivo nasce quando
-houver armadilha concreta (agente) ou na segunda execução (skill).
 
 ## O formato — um só para Epic, Feature e US
 
@@ -53,17 +74,16 @@ pai: ../Sobre.md
 - `src/checkout/pagamento.ts` — `calcularEstorno`
 
 ## Time
-<!-- proposto ANTES de começar, pela regra do AGENTS.md e do fluxo delegação.
-     Só os papéis usados; a camada da atividade quando necessária. Preencher modelo
-     domínio/etapa, capacidade, motivo da escolha, modelo concreto e esforço suportado;
-     os placeholders abaixo não configuram execução. Skills ficam na seção própria.
-     Estado por etapa: pendente | em andamento | feita (<evidência>). Atualize ao fechar
-     cada etapa, DURANTE o trabalho: o executor pode parar a qualquer momento (cota) e
-     quem assume só tem isto e o Rumo. -->
-- dev-back · fornecedor/<modelo> · <ferramenta> · esforço solicitado: <valor suportado>
-  — implementar <tarefa>; estado: pendente; aplicado: não confirmado; check: <verificação pelo risco>
-- tl · fornecedor/<modelo> · <ferramenta> · esforço solicitado: <valor suportado>
-  — revisar diff; estado: pendente; aplicado: não confirmado
+<!-- proposto ANTES de começar, pela regra do AGENTS.md. Uma linha por ETAPA, com o modelo.
+     Partida no Equipe.md: o degrau mais barato que serve; subir exige motivo. Quem decide
+     (tl/po) não é quem executa. Etapa sem modelo trava a execução e volta ao /refinar. -->
+| etapa | papel | modelo · esforço | motivo | estado |
+|---|---|---|---|---|
+| mapear o código | scout | Haiku · baixo | recuperação | pendente |
+| implementar | dev-back | Sonnet · médio | partida | pendente |
+| migrar o schema de pagamentos | dba | Sonnet · médio | partida | pendente |
+| verificar | qa | Sonnet · baixo | partida | pendente |
+| ler o diff | tl | Opus · médio | toca invariante | pendente |
 
 ## Skills
 <!-- procedimento que esta atividade vai repetir; vira SKILL.md na segunda vez -->
@@ -79,6 +99,3 @@ pai: ../Sobre.md
 
 *Código tocado* usa crase com o caminho a partir da raiz do repositório, e o nome da
 função depois de um traço — é assim que o grafo liga a US ao nó de código.
-
-Uma US com `estado: refinada` espera na fila, não em `onde_paramos.md`; `marvin --status`
-agrupa as refinadas em ilhas.

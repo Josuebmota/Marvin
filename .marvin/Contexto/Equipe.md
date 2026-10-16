@@ -32,6 +32,8 @@ antes de modelo —, com o motivo no *Time* da US. Tarefa trivial vai direto, se
 A última coluna é ponto de partida no Claude, não regra fixa: com outro fornecedor,
 consulte o guia de IA em [`IA.md`](IA.md).
 
+**Papel sem arquivo de agente:** ao delegar, passe na chamada o modelo da tabela (o parâmetro `model` do subagente); sem isso ele herda o modelo da sessão — e a execução sai no Opus. Ao criar o arquivo do papel, declare `model:` e `effort:`.
+
 **Catálogo de referência, não instalação.** Quando um papel vira arquivo de agente (ou um
 procedimento vira skill), pode-se partir de um catálogo de especialistas de terceiros — por
 exemplo os agentes por stack do ECC ou as skills de processo do Superpowers, ambos MIT —
