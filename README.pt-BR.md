@@ -386,6 +386,10 @@ turno relê o contexto inteiro.
                   da nota. Sem tag, sem commit — imprime o git tag para você rodar
 --migrar          layout antigo (08_Memoria/, 10_Decisoes/) → layout por grafo. Faz backup,
                   move, reescreve caminhos; o que exige julgamento é listado no fim
+--regenerar       refaz os comandos gerados, Planejamento/README.md, o glossário da equipe
+                  e agents/README.md pelo template atual: backup em 99_Backup (conferido
+                  byte a byte) antes, depois recria; lista as linhas suas que o texto novo
+                  não tem. Combine com --dry-run para ver o plano
 --clean-legacy    remove artefatos de orquestrador antigo
 --no-git          não roda git init nem gera .gitignore
 --graphify        gera o grafo de código para consulta estrutural (requer o graphify no PATH)
@@ -708,7 +712,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-408 verificações, zero dependência. Cobre os invariantes que protegem o disco
+430 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

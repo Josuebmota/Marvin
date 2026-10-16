@@ -392,6 +392,10 @@ usually ~⅔ of it: every turn re-reads the whole context.
                   leaves the note. No tag, no commit — it prints the git tag to run
 --migrar          old layout (08_Memoria/, 10_Decisoes/) → graph layout. Backs up,
                   moves, rewrites paths; what takes judgment is listed at the end
+--regenerar       rebuilds the generated commands, Planejamento/README.md, the team glossary
+                  and agents/README.md from the current template: backup to 99_Backup
+                  (verified byte-identical) first, then recreate; lists the lines of yours
+                  that the new text lacks. Combine with --dry-run to see the plan
 --clean-legacy    removes old orchestrator leftovers
 --no-git          skips git init and .gitignore
 --graphify        builds a code graph for structural queries (needs graphify on PATH)
@@ -723,7 +727,7 @@ rather than final text.
 node teste.mjs
 ```
 
-408 checks, no dependencies. It covers the invariants that protect other
+430 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

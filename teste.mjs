@@ -1836,6 +1836,32 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(b);
 }
 
+// ── Role without an agent file: the glossary says to pass the model; --status warns about Opus turns.
+{
+  const a = arena('semarquivo');
+  run(a, '--no-git', '--no-questions');
+  const eq = path.join(a.proj, '.marvin', 'Contexto', 'Equipe.md');
+  check('Equipe.md gerado traz "Papel sem arquivo de agente" com o parâmetro model',
+        /\*\*Papel sem arquivo de agente:\*\*[^\n]*`model`[^\n]*herda o modelo da sessão/.test(fs.readFileSync(eq, 'utf8')));
+  const oldTxt = '# Glossário da equipe\n\n**Regra do sênior:** começa no degrau mais barato.\n';
+  fs.writeFileSync(eq, oldTxt);
+  const old = run(a, '--no-git', '--no-questions');
+  check('Equipe.md antigo: passo 10 acusa desde 3.2.0 e não reescreve',
+        /Equipe\.md — missing[^\n]*desde 3\.2\.0/.test(old.stdout) && fs.readFileSync(eq, 'utf8') === oldTxt, old.stdout.slice(-500));
+  const dir = path.dirname(memoryPath(a.lar, a.proj));
+  const sd = path.join(dir, 's1', 'subagents'); fs.mkdirSync(sd, { recursive: true });
+  const turn = (model) => JSON.stringify({ type: 'assistant', timestamp: '2026-09-11T10:00:00Z', sessionId: 's1', isSidechain: true,
+    message: { id: 'msg_g', model, usage: { input_tokens: 10, output_tokens: 100 } } }) + NLQ;
+  fs.writeFileSync(path.join(sd, 'agent-g.meta.json'), JSON.stringify({ agentType: 'general-purpose' }));
+  fs.writeFileSync(path.join(sd, 'agent-g.jsonl'), turn('claude-opus-5'));
+  const opus = run(a, '--status');
+  check('--status avisa subagente sem papel no Opus', /1 turno\(s\) de subagente sem papel no Opus \(≈ \$0\.00\)[^\n]*Equipe\.md/.test(opus.stdout), opus.stdout.slice(-500));
+  fs.writeFileSync(path.join(sd, 'agent-g.jsonl'), turn('claude-sonnet-5'));
+  const son = run(a, '--status');
+  check('--status não avisa quando o subagente sem papel está no Sonnet', !/subagente sem papel no Opus/.test(son.stdout) && /general-purpose/.test(son.stdout), son.stdout.slice(-500));
+  cleanup(a);
+}
+
 // ── US-52. `estado: anotada` is visible: counted in --status, only a number in the hook.
 {
   const a = arena('us52');
@@ -2069,6 +2095,80 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   check('--graphify: sem "report step failed", e os nós de docs entram depois', !/report step failed/.test(rg.stdout) && finalNodes > 3, 'nós finais: ' + finalNodes);
   fs.rmSync(fk, { recursive: true, force: true });
   cleanup(a);
+}
+
+// ── US-57. The Time is a table with a model per stage; execution obeys it and --status flags the gap.
+{
+  const a = arena('us57');
+  run(a, '--no-git', '--no-questions');
+  run(a, '--us', 'Novos/epx/featx/US-01-x');
+  const sobre = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'epx', 'featx', 'US-01-x', 'Sobre.md');
+  const cmd = (n) => fs.readFileSync(path.join(a.proj, '.claude', 'commands', n + '.md'), 'utf8');
+  const rule = /Cada\s+etapa\s+roda\s+no\s+modelo\s+da\s+sua\s+linha\s+do\s+\*Time\*/;
+  check('US-57: Sobre.md novo traz o Time como tabela etapa/papel/modelo/motivo', /\| etapa \| papel \| modelo · esforço \| motivo \| estado \|/.test(fs.readFileSync(sobre, 'utf8')));
+  check('US-57: /continuar e /retomar gerados têm a regra do modelo por etapa', rule.test(cmd('continuar')) && rule.test(cmd('retomar')) && /proponha\s+o\s+`\/refinar`/.test(cmd('retomar')) && /refinar: falta o modelo por etapa/.test(cmd('continuar')));
+  check('US-57: /refinar e /us gerados mandam preencher a tabela', /etapa \| papel \| modelo/.test(cmd('refinar')) && /etapa \| papel \| modelo/.test(cmd('us')));
+  const full = run(a, '--status').stdout, curto = run(a, '--status', '--curto').stdout;
+  check('US-57: --status acusa a US sem modelo, com o id', /1 US sem modelo por etapa no Time — \/refinar antes de executar: US-01-x/.test(full), full.slice(-500));
+  check('US-57: --curto só o número, numa linha', /1 US sem modelo por etapa no Time — \/refinar/.test(curto) && !/US-01-x\b[^\n]*sem modelo/.test(curto) && curto.split('\n').filter(l => /sem modelo/.test(l)).length === 1, curto);
+  const txt = fs.readFileSync(sobre, 'utf8');
+  const SEP = '|---|---|---|---|---|\n', ROW = '| implementar | dev-back | Sonnet · médio | partida | pendente |\n';
+  fs.writeFileSync(sobre, txt.replace(SEP, () => SEP + ROW + '| verificar | qa |  | partida | pendente |\n'));
+  check('US-57: uma linha preenchida e outra sem modelo conta como sem modelo', /1 US sem modelo por etapa/.test(run(a, '--status', '--curto').stdout));
+  fs.writeFileSync(sobre, txt.replace(SEP, () => '').replace('| etapa | papel | modelo · esforço | motivo | estado |\n', () => 'Usar Sonnet aqui.\n'));
+  check('US-57: prosa "usar Sonnet" sem tabela conta como sem modelo', /1 US sem modelo por etapa/.test(run(a, '--status', '--curto').stdout));
+  fs.writeFileSync(sobre, txt.replace(SEP, () => SEP + ROW));
+  const okFull = run(a, '--status').stdout, okCurto = run(a, '--status', '--curto').stdout;
+  check('US-57: tabela preenchida não é acusada (nem no --curto)', !/sem modelo por etapa/.test(okFull) && !/sem modelo por etapa/.test(okCurto), okFull.slice(-500));
+  cleanup(a);
+  const b = arena('us57-antigo');
+  run(b, '--no-git', '--no-questions');
+  const old = path.join(b.proj, '.claude', 'commands', 'continuar.md');
+  const oldTxt = 'Continue o roadmap sem esperar confirmação\n';
+  fs.writeFileSync(old, oldTxt);
+  const r = run(b, '--no-git', '--no-questions');
+  check('US-57: base 3.1.0 só recebe o aviso desde 3.2.0 no /continuar, sem reescrever', /continuar\.md — missing[^\n]*desde 3\.2\.0/.test(r.stdout) && fs.readFileSync(old, 'utf8') === oldTxt, r.stdout.slice(-600));
+  cleanup(b);
+}
+
+// ── US-58. --regenerar: backup byte-identical first, then the generated files are rebuilt from the template.
+{
+  const a = arena('regenerar');
+  const BASE = ['--no-git', '--no-questions'];
+  run(a, ...BASE);
+  run(a, '--us', 'Novos/epx/featx/US-01-x');
+  const read = (...p) => fs.readFileSync(path.join(a.proj, ...p));
+  const snap = (dir) => { const out = []; (function w(d) { for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((x, y) => x.name.localeCompare(y.name))) {
+    const p = path.join(d, e.name); if (e.isSymbolicLink()) out.push('L ' + path.relative(dir, p)); else if (e.isDirectory()) { out.push('D ' + path.relative(dir, p)); w(p); } else out.push('F ' + path.relative(dir, p) + ' ' + fs.readFileSync(p).toString('base64')); } })(dir); return out.join('\n'); };
+  const contRel = ['.claude', 'commands', 'continuar.md'];
+  const oldCont = 'Continue o roadmap sem esperar confirmação\nlinha antiga do template, que o novo não tem\nlinha extra do projeto que o humano escreveu aqui\n';
+  fs.writeFileSync(path.join(a.proj, ...contRel), oldCont);
+  const untouched = [['AGENTS.md'], ['.marvin', 'Memoria', 'onde_paramos.md'], ['.marvin', 'Planejamento', 'Novos', 'epx', 'featx', 'US-01-x', 'Sobre.md']];
+  const before = untouched.map(p => read(...p));
+  const treeBefore = snap(a.proj), homeBefore = snap(a.lar);
+  const flatRel = ['claude', 'commands', 'continuar.md'];
+  const dry = run(a, ...BASE, '--dry-run', '--regenerar');
+  check('US-58: --dry-run --regenerar não escreve nada e mostra backup e remoção', snap(a.proj) === treeBefore && snap(a.lar) === homeBefore && /copy[^\n]*continuar\.md[^\n]*99_Backup/.test(dry.stdout) && /REMOVE[^\n]*continuar\.md/.test(dry.stdout) && /rewrite file\s+\.claude[\\/]commands[\\/]continuar\.md/.test(dry.stdout), dry.stdout.slice(-800));
+  const ver = JSON.parse(fs.readFileSync(path.join(HERE, 'package.json'), 'utf8')).version;
+  const bk = path.join(a.proj, '.marvin', '99_Backup', 'regenerar-' + ver);
+  const r = run(a, ...BASE, '--regenerar');
+  check('US-58: backup do /continuar antigo é byte-idêntico, em caminho achatado (sem .claude aninhado)', fs.existsSync(path.join(bk, ...flatRel)) && fs.readFileSync(path.join(bk, ...flatRel), 'utf8') === oldCont && !fs.existsSync(path.join(bk, '.claude')), r.stdout.slice(-800));
+  check('US-58: o /continuar novo tem a regra do modelo por etapa', /Cada\s+etapa\s+roda\s+no\s+modelo/.test(read(...contRel).toString('utf8')));
+  check('US-58: a linha extra do projeto aparece no relatório, com o caminho do backup', /linhas suas que não estão no template novo[^\n]*\n[^\n]*continuar\.md[^\n]*99_Backup[\s\S]*linha extra do projeto que o humano escreveu aqui/.test(r.stdout), r.stdout.slice(-900));
+  check('US-58: AGENTS.md, a nota e a US ficam byte-idênticos', untouched.every((p, i) => read(...p).equals(before[i])));
+  check('US-58: os outros comandos regenerados saem do template (sem backup fantasma quando idênticos)', fs.existsSync(path.join(a.proj, '.claude', 'commands', 'retomar.md')) && !fs.existsSync(path.join(bk, 'claude', 'commands', 'retomar.md')));
+  const bkTree = snap(path.join(a.proj, '.marvin', '99_Backup'));
+  const again = run(a, ...BASE, '--regenerar');
+  check('US-58: rodar --regenerar de novo não duplica nem altera o backup', again.status === 0 && snap(path.join(a.proj, '.marvin', '99_Backup')) === bkTree, again.stdout.slice(-600));
+  check('US-58: sem a flag nada muda (segunda passada normal não reescreve)', (() => { const c = read(...contRel); run(a, ...BASE); return read(...contRel).equals(c); })());
+  cleanup(a);
+  // pruning never removes a 99_Backup that was already there, even empty, when every backup is identical
+  const e = arena('regenerar-vazio');
+  run(e, ...BASE);
+  fs.mkdirSync(path.join(e.proj, '.marvin', '99_Backup'));
+  const er = run(e, ...BASE, '--regenerar');
+  check('US-58: 99_Backup vazio pré-existente sobrevive a um --regenerar com tudo idêntico', er.status === 0 && fs.existsSync(path.join(e.proj, '.marvin', '99_Backup')) && fs.readdirSync(path.join(e.proj, '.marvin', '99_Backup')).length === 0, er.stdout.slice(-600));
+  cleanup(e);
 }
 
 // ── LAST. The number of checks claimed in the READMEs matches the real one.

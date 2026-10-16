@@ -18,6 +18,8 @@ pelas capacidades disponíveis, com conhecimento curado sob demanda.
 - [US-37-condutor-autonomo-sessoes-curtas](US-37-condutor-autonomo-sessoes-curtas/Sobre.md)
 - [US-39-time-na-primeira-rodada](US-39-time-na-primeira-rodada/Sobre.md)
 - [US-42-execucao-nao-herda-opus](US-42-execucao-nao-herda-opus/Sobre.md)
+- [US-57-execucao-obedece-o-time](US-57-execucao-obedece-o-time/Sobre.md)
+- [US-58-regenerar](US-58-regenerar/Sobre.md)
 
 ## Rumo
 - **09/10/2026** — Josué propôs avaliar a abertura automática de uma nova conversa quando uma atividade ou conjunto de atividades terminar, ou quando o contexto acumulado indicar que continuar ficou caro; tarefas pequenas devem permanecer no chat atual. Objetivo: sustentar trabalho por horas com o estado sempre registrado e atualizado. Triagem do `po`: manter como candidata de baixa prioridade, sem abrir US ou alterar a US-20 concluída. `/retomar` e `/fechar` já sugerem nova conversa quando o assunto mudou, a sessão está longa e o estado foi salvo. Reavaliar após um caso real em que contexto acumulado cause custo, retrabalho ou risco observável, e confirmar capacidade oficial de criar/retomar chats; qualquer proposta deve persistir o estado antes da troca e excluir tarefas pequenas. A triagem usou links e `rg` como fallback; Graphify está desatualizado.

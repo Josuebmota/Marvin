@@ -114,6 +114,8 @@ const USE = new Set(process.argv.filter(a => a.startsWith('--use=') || a.startsW
 const NO_QUESTIONS = hasFlag('--no-questions', '--sem-perguntas');
 // --install (US-50): runs the install commands of tools the record says `sim` but the machine lacks.
 const INSTALL = hasFlag('--install');
+// --regenerar (US-58): backs up and removes the generated command/glossary files so the normal blocks recreate them from the current template.
+const REGENERAR = hasFlag('--regenerar');
 
 // --tools=claude,codex,cursor  (default: claude)   [alias: --ferramentas=]
 // Running again with a different list ADDS the missing adapter; nothing is removed.
@@ -167,6 +169,13 @@ Flags:
   --install         install the optional tools the record says \`sim\` and this machine lacks:
                     ponytail at project scope, graphify via uv (user profile, by nature).
                     Without it the commands are only shown. A failure warns and exits 0
+  --regenerar       rebuild the files Marvin generates from the current template: the
+                    /retomar /us /fechar /refinar /continuar commands, Planejamento/README.md,
+                    the team glossary and .claude/agents/README.md. Each existing one is
+                    copied to <docs>/99_Backup/regenerar-<version>/, the copy is verified
+                    byte-identical, and only then the original is removed and recreated.
+                    Never touches AGENTS.md, CLAUDE.md, the note, USs, agents or other Contexto/.
+                    Lists the lines of yours that are not in the new text. Works with --dry-run
   --no-questions    assume \`não\` for every optional tool, even with a terminal
                     skip AI availability questions; undeclared access stays unknown
   --executor=<id>   declare the session tool (${VALID_TOOLS.join(', ')}, other)
@@ -306,6 +315,7 @@ const fsw = !DRY ? fs : {
   rmSync:         (p) => plan.push('REMOVE        ' + p),
   // Only the LINK, never the content — the distinction AGENTS.md repeats and the plan
   // has to show in those words, otherwise whoever reads the dry-run gets scared.
+  rmdirSync:      (p) => plan.push('REMOVE        ' + rel(p) + '  (empty dir)'),
   unlinkSync:     (p) => plan.push('remove link   ' + p + '  (only the link)'),
   symlinkSync:    (target, link) => plan.push('junction      ' + link + '  →  ' + rel(target)),
   copyFileSync:   (a, b) => plan.push('copy          ' + rel(a) + '  →  ' + rel(b)),
@@ -550,8 +560,15 @@ const readNode = (file) => {
   const timeSec = (bare.match(/^##\s+Time\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m) || [])[1] || '';
   const timeTxt = timeSec.replace(/_\([^)]*\)_/g, '');
   const time = TEAM_ROLES.filter(r => new RegExp('(?<![\\w-])' + r + '(?![\\w-])', 'i').test(timeTxt));
+  // US-57: the Time is a table `| etapa | papel | modelo · esforço | motivo | estado |`; a stage with no model
+  // is a lock. Strict: at least one data row (header and separator ignored) and EVERY data row has a real 3rd cell.
+  // Prose naming a model does not count — only the table is read by the execution.
+  const rows = timeSec.replace(/<!--[\s\S]*?-->/g, '').replace(/_\([^)]*\)_/g, '').split(/\r?\n/).map(l => l.trim()).filter(l => l.startsWith('|'))
+    .map(l => l.replace(/^\||\|$/g, '').split('|').map(s => s.trim()))
+    .filter(c => !c.every(x => /^:?-+:?$/.test(x)) && !/^etapa$/i.test(c[0]));
+  const comModelo = rows.length > 0 && rows.every(c => c.length >= 3 && /\S/.test(c[2]) && !/^(\?|—|-|a definir|tbd)$/i.test(c[2].trim()));
   return { arq: file, tipo: field('tipo'), estado: field('estado'), pai: field('pai'), titulo: title, rumo,
-           evidencia: cleanEvidence, comEvidencia: /\S/.test(cleanEvidence), tocados, perguntas, time };
+           evidencia: cleanEvidence, comEvidencia: /\S/.test(cleanEvidence), tocados, perguntas, time, comModelo };
 };
 // Role vocabulary = base + optional of suggestTeam() (below); a constant because suggestTeam
 // reads `stacks`, which --status never builds. Keep the two in sync.
@@ -662,8 +679,9 @@ const computeSpend = () => {
     // main session apart from the sub-agents; a sidechain turn with no meta falls in "sem papel"
     const role = r.papel || (r.sub ? 'sem papel' : null);
     if (role) {
-      const p = (byRole[role] = byRole[role] || { ...zero(), custo: 0, modelos: new Set(), esforcos: new Set() });
+      const p = (byRole[role] = byRole[role] || { ...zero(), custo: 0, opusMsgs: 0, opusCusto: 0, modelos: new Set(), esforcos: new Set() });
       add(p, r); p.custo += costOf(r, r.modelo); p.modelos.add(r.modelo); if (r.esforco) p.esforcos.add(r.esforco);
+      if (/opus/.test(r.modelo)) { p.opusMsgs++; p.opusCusto += costOf(r, r.modelo); }
     }
     (byModel[r.modelo] = byModel[r.modelo] || zero()); add(byModel[r.modelo], r);
     (byDay[r.dia] = byDay[r.dia] || zero()); add(byDay[r.dia], r);
@@ -687,6 +705,13 @@ const printSpend = (g, fixedTk) => {
     info(`  ${'(main session)'.padEnd(16)} ${g.total.msgs - g.sub.msgs} turns  ≈ $${(g.custo - roles.reduce((t, [, p]) => t + p.custo, 0)).toFixed(2)}`);
     for (const [r, p] of roles.sort((a, b) => b[1].custo - a[1].custo))
       info(`  ${r.padEnd(16)} ${[...p.modelos].join('/')}  effort ${[...p.esforcos].join('/') || '?'}  ${p.msgs} turns  ≈ $${p.custo.toFixed(2)}`);
+    // A role with no agent file runs as a generic subagent: with no `model:` it inherits the session's.
+    let have = []; try { have = fs.readdirSync(path.join(ROOT, '.claude', 'agents')).filter(f => /\.md$/.test(f)).map(f => f.replace(/\.md$/, '')); } catch {}
+    const semArq = roles.filter(([r, p]) => p.opusMsgs && (r === 'general-purpose' || r === 'sem papel' || !have.includes(r)));
+    if (semArq.length) {
+      const n = semArq.reduce((t, [, p]) => t + p.opusMsgs, 0), c = semArq.reduce((t, [, p]) => t + p.opusCusto, 0);
+      warn(`${n} turno(s) de subagente sem papel no Opus (≈ $${c.toFixed(2)}) — a execução herdou o modelo da sessão: crie o arquivo do papel com \`model:\` ou passe o modelo ao delegar (Equipe.md)`);
+    }
   }
   info(`≈ $${g.custo.toFixed(2)} total at ${PRICES_DATE} list prices — an estimate; check the current price table`);
   if (fixedTk && g.contextoMedio) {
@@ -1284,6 +1309,9 @@ const computeStatus = () => {
                                rumo: n.rumo.length ? { texto: n.rumo[n.rumo.length - 1].texto, idade: days(n.rumo[n.rumo.length - 1].data) } : null, comEvidencia: n.comEvidencia }));
   st.perguntas = nodes.filter(n => n.tipo === 'us' && (n.estado === 'ativa' || n.estado === 'refinada'))
     .flatMap(n => n.perguntas.map(texto => ({ titulo: n.titulo, arq: n.arq, estado: n.estado, texto })));
+  // US-57: ativa/refinada whose Time names no model per stage — execution refuses it, /refinar fixes it.
+  st.semModelo = nodes.filter(n => n.tipo === 'us' && (n.estado === 'ativa' || n.estado === 'refinada') && !n.comModelo)
+    .map(n => n.titulo.split(' — ')[0]).sort();
   // Roadmap: read-only view of estado + ilha order. Open USs outside any ilha come after, by short id.
   const idOf = (n) => n.titulo.split(' — ')[0];
   const ilhaPos = new Map(st.ilhas.ilhas.flatMap(i => i.us).map((u, k) => [path.resolve(u.arq), k]));
@@ -1359,6 +1387,8 @@ const printStatus = (st, short) => {
   printIlhas(st.ilhas, short);
   // US-52: anotada is outside the queue; the hook gets only the number, never the list.
   if (short && st.roadmap.anotada.length) info(st.roadmap.anotada.length + ' anotada(s) fora da fila — /refinar');
+  if (st.semModelo.length) info(short ? st.semModelo.length + ' US sem modelo por etapa no Time — /refinar'
+    : `${st.semModelo.length} US sem modelo por etapa no Time — /refinar antes de executar: ${st.semModelo.join(', ')}`);
   if (short) return;
   if (st.epics.length) {
     log('\n\x1b[1mEpics\x1b[0m');
@@ -1439,7 +1469,10 @@ _(link para ${path.relative(dir, path.join(DOCS, 'Contexto', 'Fluxos')).replace(
 _(crase com o caminho a partir da raiz, e a função depois de um traço — é o que liga a US ao grafo)_
 
 ## Time
-_(base: tl · po · dev-front · dev-back · qa · scout; mais design/dba/sec/infra se a atividade pede. O que ela não usa não entra.)_
+_(uma linha por etapa. Papéis: base tl · po · dev-front · dev-back · qa · scout; mais design/dba/sec/infra se a atividade pede, e o que ela não usa não entra. Modelo: a partida está no Equipe.md, o degrau mais barato que serve; subir exige motivo. Quem decide, tl/po, não é quem executa. Etapa sem modelo trava a execução.)_
+
+| etapa | papel | modelo · esforço | motivo | estado |
+|---|---|---|---|---|
 
 ## Skills
 _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
@@ -2386,6 +2419,57 @@ if (gl && toTokens(gl[1].chars) > 2000) {
 log('');
 printFixedContext();
 
+// ═══════════════════════════════════════════ 4b. --regenerar (US-58)
+// The generated files are born only when missing (invariant 2), so a base scaffolded by an older
+// version never gets the new text. This block makes them "missing" on purpose — but only after a
+// byte-identical copy sits in 99_Backup (invariant 1); the normal blocks below then recreate them.
+// Deterministic: no clock — a different backup already at the destination gets -2, -3…
+const regen = [];
+const sameBytes = (a, b) => { try { return fs.readFileSync(a).equals(fs.readFileSync(b)); } catch { return false; } };
+const BACKUP_BASE = path.join(DOCS, '99_Backup');
+const madeDirs = [];   // directories THIS run created (recursive mkdirSync returns the first one): the only ones it may prune
+if (REGENERAR) {
+  log('\n\x1b[1m4b. --regenerar\x1b[0m');
+  const relOf = (p) => path.relative(ROOT, p).replace(/\\/g, '/');
+  const targets = [
+    '.claude/commands/retomar.md',
+    ...(OLD_LAYOUT ? [] : ['us', 'fechar', 'refinar', 'continuar'].map(c => `.claude/commands/${c}.md`)),
+    ...(OLD_LAYOUT ? [] : [relOf(path.join(DOCS, 'Planejamento', 'README.md'))]),
+    relOf(path.join(DOCS, TEAM_GUIDE)),
+    '.claude/agents/README.md',
+  ];
+  const bkRoot = path.join(BACKUP_BASE, 'regenerar-' + SELF_VERSION.replace(/[^\w.-]/g, '_'));
+  const pending = [];
+  for (const r of targets) {
+    const src = path.join(ROOT, r);
+    let isFile = false; try { isFile = fs.statSync(src).isFile(); } catch {}
+    if (!isFile) continue;
+    // flattened: a nested `.claude/` inside the backup could be discovered as live commands
+    const flat = r.split('/').map(s => s.replace(/^\./, '')).join('/');
+    const ext = path.extname(flat), stem = flat.slice(0, flat.length - ext.length);
+    let dest, created = true;
+    for (let n = 1; ; n++) {
+      dest = path.join(bkRoot, n === 1 ? flat : `${stem}-${n}${ext}`);
+      if (!fs.existsSync(dest)) break;
+      if (sameBytes(src, dest)) { created = false; break; }   // already backed up, identical: do not copy again
+    }
+    if (created) { const made = fsw.mkdirSync(path.dirname(dest), { recursive: true }); if (made) madeDirs.push(path.normalize(made.replace(/^\\\\\?\\/, ''))); /* Windows returns a \\?\ long path */ fsw.copyFileSync(src, dest); }
+    pending.push({ r, src, dest, created });
+  }
+  // Every copy is conferred BEFORE any original is removed; one mismatch aborts the whole run.
+  if (!DRY) for (const p of pending) if (!sameBytes(p.src, p.dest)) {
+    err(p.r + ': the backup copy differs from the original — aborting, nothing was removed');
+    process.exit(1);
+  }
+  for (const p of pending) {
+    fsw.rmSync(p.src);
+    if (DRY) plan.push('rewrite file  ' + p.r);
+    ok(p.r + '  → backup ' + relOf(p.dest) + ', regenerated below');
+    regen.push(p);
+  }
+  if (!pending.length) info('nothing to regenerate: none of the generated files exists yet');
+}
+
 // ═══════════════════════════════════════════ 5. KNOWLEDGE BASE IN .marvin/
 log('\n\x1b[1m5. Knowledge base (a single folder — plain markdown, organized as a graph)\x1b[0m');
 // DOCS was detected up top, before any write, because --check needs it.
@@ -2506,6 +2590,8 @@ bem especificada); a verificação (\`qa\`, teste) confere; **sobe só se falhar
 antes de modelo —, com o motivo no *Time* da US. Tarefa trivial vai direto, sem triagem.
 A última coluna é ponto de partida no Claude, não regra fixa: com outro fornecedor,
 consulte o guia de IA em [\`IA.md\`](IA.md).
+
+**Papel sem arquivo de agente:** ao delegar, passe na chamada o modelo da tabela (o parâmetro \`model\` do subagente); sem isso ele herda o modelo da sessão — e a execução sai no Opus. Ao criar o arquivo do papel, declare \`model:\` e \`effort:\`.
 
 **Catálogo de referência, não instalação.** Quando um papel vira arquivo de agente (ou um
 procedimento vira skill), pode-se partir de um catálogo de especialistas de terceiros — por
@@ -2737,10 +2823,16 @@ pai: ../Sobre.md
 - \`src/checkout/pagamento.ts\` — \`calcularEstorno\`
 
 ## Time
-<!-- proposto ANTES de começar, pela regra do AGENTS.md. Base: tl · po · dev-front · dev-back · qa · scout.
-     Mais a camada da atividade (design, dba, sec, infra) quando ela pede. -->
-- tl, po, dev-back, qa, scout
-- dba — a US muda o schema de pagamentos
+<!-- proposto ANTES de começar, pela regra do AGENTS.md. Uma linha por ETAPA, com o modelo.
+     Partida no Equipe.md: o degrau mais barato que serve; subir exige motivo. Quem decide
+     (tl/po) não é quem executa. Etapa sem modelo trava a execução e volta ao /refinar. -->
+| etapa | papel | modelo · esforço | motivo | estado |
+|---|---|---|---|---|
+| mapear o código | scout | Haiku · baixo | recuperação | pendente |
+| implementar | dev-back | Sonnet · médio | partida | pendente |
+| migrar o schema de pagamentos | dba | Sonnet · médio | partida | pendente |
+| verificar | qa | Sonnet · baixo | partida | pendente |
+| ler o diff | tl | Opus · médio | toca invariante | pendente |
 
 ## Skills
 <!-- procedimento que esta atividade vai repetir; vira SKILL.md na segunda vez -->
@@ -3239,7 +3331,10 @@ ${OLD_LAYOUT ? '' : `
    - **Desenvolver** — a ilha da vez (a que tem US ativa; senão a primeira) e as US dela, em
      ordem. Uma ilha por vez, uma sessão de desenvolvimento por vez: sem branch nem worktree
      por ilha. Ao pegar uma US \`refinada\`: \`estado: ativa\` no Sobre.md e \`marvin --us <caminho>\`
-     para o ponteiro na nota.
+     para o ponteiro na nota. Cada etapa roda no modelo da sua linha do *Time*: delegue ao subagente
+     do papel passando \`model\` e \`effort\` da linha na chamada — isso vale mais que o arquivo do papel
+     e que o modelo da sessão. Etapa sem linha com modelo é trava: não executa; registre "refinar: falta
+     o modelo por etapa" e proponha o \`/refinar\` dela.
    - **Refinar** — anotações sem US (as linhas ⚪ da nota): \`/refinar\`. Pode correr ao lado de
      um chat de desenvolvimento — escreve em arquivos diferentes.
    Pergunte: **"qual? (1 ou 2)"**.
@@ -3296,7 +3391,10 @@ se eu passei só o nome, pergunte em qual Epic e Feature ela entra (liste os que
      \`${relDocs}/Contexto/Fluxos/\` ganha uma agora. Preencha *Fluxos ligados* e *Código tocado*
      (crase com o caminho, e a função depois de um traço — é o que liga a US ao grafo).
    - **Propor o time** desta US, a partir da base do \`AGENTS.md\`: só os papéis que ela usa,
-     mais a camada da atividade (design, dba, sec, infra) se ela pede. Escreva em *Time*.
+     mais a camada da atividade (design, dba, sec, infra) se ela pede. Escreva em *Time* como
+     a tabela \`| etapa | papel | modelo · esforço | motivo | estado |\`, uma linha por etapa: modelo e esforço
+     partem do glossário (\`${relDocs}/${TEAM_GUIDE}\`), no degrau mais barato que serve; subir exige
+     motivo; quem decide (\`tl\`/\`po\`) não é quem executa. Etapa sem modelo trava a execução.
    - **Propor skills**: procedimento que a US vai repetir vai em *Skills* como proposta.
    - **Escolher capacidades**: consulte \`${relDocs}/${AI_GUIDE}\` e o inventário local;
      registre modelo/integração/esforço solicitado e aplicado, sem fornecedor fixo.
@@ -3372,6 +3470,10 @@ Entrada: **$ARGUMENTS** (uma anotação, um print, uma linha ⚪ de
    e preencha o \`Sobre.md\`: **Por quê** · **Pronto quando** · **Não entra** · **Código tocado**
    (o arquivo:linha do \`tl\` é isto — é o que define a ilha) · **Time**. Depois
    \`marvin --us <caminho>\` de novo: o *Impacto* sai do grafo, se houver.
+   O *Time* é a tabela \`| etapa | papel | modelo · esforço | motivo | estado |\`, uma linha por etapa,
+   preenchida pelo \`tl\` e pelo \`po\` a partir do glossário (\`${relDocs}/${TEAM_GUIDE}\`): partida no
+   degrau mais barato que serve; subir exige motivo; quem decide não é quem executa. É a economia
+   decidida aqui — a execução obedece (\`/continuar\`, \`/retomar\`); etapa sem modelo trava.
 
 4. Pergunta que só eu respondo fica na US como \`❓\` — não invente a resposta.
 
@@ -3413,9 +3515,14 @@ dependência (trava abaixo), não licença. **Nunca apague, mova ou renomeie** n
 \`git reset\`, \`git checkout --\`, \`git stash\`, \`rm -rf\`; nunca \`push\`, merge, publish nem tag.
 Nunca destruir dado vale dobrado sem ninguém olhando.
 
+**Cada etapa roda no modelo da sua linha do *Time*:** delegue ao subagente do papel passando \`model\` e
+\`effort\` da linha na chamada — isso vale mais que o arquivo do papel e que o modelo da sessão.
+Etapa sem linha com modelo é trava: não executa; registre "refinar: falta o modelo por etapa" e
+siga para outra US.
+
 **Estado por etapa, ao fechar cada uma — não só no passo 3.** A cota pode acabar no meio e
 quem assume (outro executor, a pedido do humano) só tem o *Time* e o *Rumo*. Ao terminar
-cada etapa, atualize o estado dela no *Time* (\`feita\` com a evidência) e, ao começar, marque
+cada etapa, atualize a coluna \`estado\` da linha dela no *Time* (\`feita\` com a evidência) e, ao começar, marque
 \`em andamento\`; o passo 3 é o fechamento, não o único registro.
 
 **Trava = qualquer coisa que o *Pronto quando* não decide.** Escolha de produto, nome de coisa
@@ -4448,6 +4555,22 @@ const UPDATES = [
   { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
     marca: /anotada\s+\|\s+refinada/, soCom: !OLD_LAYOUT, desde: '3.0.0',
     o_que: 'the `estado: anotada` in the state comment — an annotated US outside the queue; --status counts it, --curto shows only the number' },
+  // A role with no agent file inherits the session model (Opus) unless the delegation passes `model`.
+  { arquivo: path.relative(ROOT, path.join(DOCS, TEAM_GUIDE)).replace(/\\/g, '/'),
+    marca: /Papel\s+sem\s+arquivo\s+de\s+agente/, desde: '3.2.0',
+    o_que: 'the "role without an agent file" rule — pass the table model when delegating, or the subagent inherits the session model (Opus)' },
+  // US-57: the Time becomes a table, one row per stage with its model; execution obeys it.
+  { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
+    marca: /etapa\s+\|\s+papel\s+\|\s+modelo/, soCom: !OLD_LAYOUT, desde: '3.2.0',
+    o_que: 'the Time as a table `| stage | role | model · effort | reason |` in the US example — the model is chosen per stage at refinement' },
+  { arquivo: '.claude/commands/refinar.md', marca: /etapa\s+\|\s+papel\s+\|\s+modelo/, soCom: !OLD_LAYOUT, desde: '3.2.0',
+    o_que: 'the /refinar step that fills the Time table (stage, role, model · effort, reason) from the team glossary' },
+  { arquivo: '.claude/commands/us.md', marca: /etapa\s+\|\s+papel\s+\|\s+modelo/, soCom: !OLD_LAYOUT, desde: '3.2.0',
+    o_que: 'the /us step that fills the Time table (stage, role, model · effort, reason) from the team glossary' },
+  { arquivo: '.claude/commands/continuar.md', marca: /Cada\s+etapa\s+roda\s+no\s+modelo/, soCom: !OLD_LAYOUT, desde: '3.2.0',
+    o_que: 'the rule that each stage runs on the model of its Time row (passed as `model`/`effort` when delegating); a stage with no model is a lock' },
+  { arquivo: '.claude/commands/retomar.md', marca: /Cada\s+etapa\s+roda\s+no\s+modelo/, soCom: !OLD_LAYOUT, desde: '3.2.0',
+    o_que: 'the rule that each stage runs on the model of its Time row (passed as `model`/`effort` when delegating); a stage with no model sends the US back to /refinar' },
 ];
 
 const missing = UPDATES.filter(a => {
@@ -4465,6 +4588,31 @@ if (missing.length) {
   info('nothing was rewritten: these files are yours and may have been edited on purpose.');
   info('to see the current text of each block, generate a clean project in a throwaway');
   info('directory:  mkdir /tmp/marvin-ref && cd /tmp/marvin-ref && node <path>/marvin.mjs --no-git');
+}
+
+// --regenerar report: the lines of the old file that the new template does not have — what may have
+// been the project's own customization. A backup identical to the new file (nothing changed, e.g. a
+// second run) is dropped when this run created it, so running twice leaves no duplicate.
+if (regen.length && !DRY) {
+  let titled = false;
+  for (const p of regen) {
+    let neu, old;
+    try { neu = fs.readFileSync(p.src); old = fs.readFileSync(p.dest); } catch { continue; }
+    if (neu.equals(old)) {
+      if (!p.created) continue;
+      fsw.rmSync(p.dest);
+      for (let d = path.dirname(p.dest); d !== BACKUP_BASE && madeDirs.some(m => d === m || d.startsWith(m + path.sep)) && fs.readdirSync(d).length === 0; d = path.dirname(d)) fsw.rmdirSync(d);
+      info(p.r + ' — identical to the new template, backup dropped');
+      continue;
+    }
+    const have = new Set(neu.toString('utf8').split(/\r?\n/).map(l => l.trim()));
+    const lost = old.toString('utf8').split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 20 && !have.has(l));
+    if (!lost.length) continue;
+    if (!titled) { log('\n\x1b[1mlinhas suas que não estão no template novo (confira se eram customização):\x1b[0m'); titled = true; }
+    info(p.r + '  (backup: ' + path.relative(ROOT, p.dest).replace(/\\/g, '/') + ')');
+    lost.slice(0, 8).forEach(l => info('    ' + l));
+    if (lost.length > 8) info('    … +' + (lost.length - 8) + ' more in the backup');
+  }
 }
 
 if (DRY) {
