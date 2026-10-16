@@ -2466,7 +2466,8 @@ com uma armadilha concreta do código; skill, na segunda execução.
 
 | Papel | Dono de | Quando entra | O que não faz | Partida no Claude: modelo · esforço |
 |---|---|---|---|---|
-| \`tl\` | invariantes, diff, decisão de rumo | toda mudança que toca um invariante ou o rumo | implementar a feature; achar arquivo | Opus · médio |
+| sessão principal | dividir a atividade, delegar, juntar e registrar | sempre — é quem conversa com o dono | implementar o que um papel faz; julgar invariante (é do \`tl\`) | Sonnet · médio |
+| \`tl\` | invariantes, diff, decisão de rumo | mudança que toca invariante, escreve no disco de alguém ou mexe em atualização/release | implementar a feature; achar arquivo | Opus · médio |
 | \`po\` | o porquê, o critério de pronto, a prioridade | ao abrir ou refinar uma US | decidir como o código é feito | Opus · médio |
 | \`dev-front\` | tela e componente | a atividade muda a interface | serviço, schema, deploy | Sonnet · médio |
 | \`dev-back\` | serviço, regra, integração | a atividade muda regra ou integração | tela; fechar a própria revisão | Sonnet · médio |
@@ -2480,7 +2481,9 @@ com uma armadilha concreta do código; skill, na segunda execução.
 \`dev\` serve de fusão de \`dev-front\` + \`dev-back\` quando o projeto tem uma fronteira só.
 
 **É isto que barateia — quem decide não é quem executa.** O \`tl\` e o \`po\` julgam no Opus;
-quem executa começa no degrau abaixo (\`dev-back\` no Sonnet, esforço médio), e quem só
+a sessão principal coordena no Sonnet (ela relê o contexto inteiro a cada turno, então o
+modelo dela pesa mais que o de qualquer papel); quem executa começa no degrau abaixo
+(\`dev-back\` no Sonnet, esforço médio), e quem só
 localiza vai no Haiku. Spec clara faz o pensamento antes: o esforço parte do que a tabela diz, nunca acima.
 
 **Regra do sênior:** começa no degrau mais barato que serve (Haiku para tarefa mecânica

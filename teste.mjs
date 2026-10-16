@@ -1802,6 +1802,8 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
         roles.every(r => txt.includes('| `' + r + '` |')) && /Quando entra/.test(txt) && /O que não faz/.test(txt));
   check('US-44: o glossário traz modelo e esforço de partida por papel (dev-back no Sonnet, esforço médio)',
         /\| `dev-back` \|[^\n]*\| Sonnet · médio \|/.test(txt) && /sobe só se falhar/.test(txt));
+  check('US-29: o glossário põe a sessão principal (coordenador) no Sonnet e o tl por risco, não em toda mudança',
+        /\| sessão principal \|[^\n]*\| Sonnet · médio \|/.test(txt) && /\| `tl` \|[^\n]*escreve no disco de alguém/.test(txt));
   check('US-48: o glossário trata catálogo de terceiros como referência na criação de agente, nunca instalação, citando a origem',
         /Catálogo de referência, não instalação/.test(txt) && /cite a origem/.test(txt));
   const plan = fs.readFileSync(path.join(a.proj, '.marvin', 'Planejamento', 'README.md'), 'utf8');

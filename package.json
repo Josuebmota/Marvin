@@ -1,7 +1,7 @@
 {
   "name": "marvin-kb",
   "version": "2.10.0",
-  "description": "Scaffolds a project's knowledge base for working with AI agents — one source, thin adapters, memory versioned inside the repository.",
+  "description": "Your LLM's exoskeleton: a cheap dev team — memory, roles, rituals and cost routing around the model. Same result, fewest tokens. Zero dependencies.",
   "type": "module",
   "bin": {
     "marvin": "marvin.mjs"
@@ -28,6 +28,9 @@
     "copilot",
     "cursor",
     "knowledge-base",
+    "model-routing",
+    "subagents",
+    "token-cost",
     "scaffold"
   ],
   "license": "MIT",
