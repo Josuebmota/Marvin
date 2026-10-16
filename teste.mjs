@@ -472,7 +472,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
 
   const c = arena('ponytail-ativo');
   const cl2 = path.join(c.lar, '.claude', 'plugins'); fs.mkdirSync(cl2, { recursive: true });
-  fs.writeFileSync(path.join(cl2, 'installed_plugins.json'), '{"plugins":{"ponytail@ponytail":[]}}');
+  fs.writeFileSync(path.join(cl2, 'installed_plugins.json'), '{"plugins":{"ponytail@ponytail":[{"scope":"user"}]}}');
   fs.writeFileSync(path.join(c.lar, '.claude', '.ponytail-active'), 'full\n');
   const r2 = run(c, '--no-git', '--dry-run');
   check('ativo: a mensagem traz o nível', /ponytail is installed and active \(full\)/.test(r2.stdout), r2.stdout.slice(-400));
@@ -564,7 +564,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   // "Flip them" line, cannot happen now that graphify never defers: that branch has no test.)
   const f = arena('juntos');
   fs.mkdirSync(path.join(f.lar, '.claude', 'plugins'), { recursive: true });
-  fs.writeFileSync(path.join(f.lar, '.claude', 'plugins', 'installed_plugins.json'), '{"plugins":{"ponytail@ponytail":[]}}');
+  fs.writeFileSync(path.join(f.lar, '.claude', 'plugins', 'installed_plugins.json'), '{"plugins":{"ponytail@ponytail":[{"scope":"user"}]}}');
   fs.writeFileSync(path.join(f.lar, '.claude', '.ponytail-active'), 'full\n');
   const bin = fakeGraphify(path.join(f.base, 'bin'), 0);
   const rf = spawnSync(process.execPath, [SCRIPT, '--no-git'], {
@@ -1898,7 +1898,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   // The real detection reads installed_plugins.json + .ponytail-active under HOME: plant both.
   const plug = path.join(a.lar, '.claude');
   fs.mkdirSync(path.join(plug, 'plugins'), { recursive: true });
-  fs.writeFileSync(path.join(plug, 'plugins', 'installed_plugins.json'), '{"plugins":{"ponytail@x":[{}]}}\n');
+  fs.writeFileSync(path.join(plug, 'plugins', 'installed_plugins.json'), '{"plugins":{"ponytail@x":[{"scope":"user"}]}}\n');
   fs.writeFileSync(path.join(plug, '.ponytail-active'), 'full\n');
   const r2 = comFake('--install');
   check('US-50: com o ponytail detectado, a segunda execução não roda nenhum exec', r2.status === 0 && calls().length === 2, JSON.stringify(calls()));
@@ -1918,6 +1918,62 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
         rh.status === 0 && /SessionStart/.test(cfg) && /--status --curto/.test(cfg), cfg + rh.stdout.slice(-500));
   fs.rmSync(fk, { recursive: true, force: true });
   cleanup(b);
+}
+
+// ── US-55. Ponytail detection honors the entry scope (hermetic: plants installed_plugins.json in the arena home).
+{
+  const plant = (x, json) => {
+    fs.mkdirSync(path.join(x.lar, '.claude', 'plugins'), { recursive: true });
+    fs.writeFileSync(path.join(x.lar, '.claude', 'plugins', 'installed_plugins.json'), typeof json === 'string' ? json : JSON.stringify(json));
+  };
+  const mine = (x) => fs.realpathSync(x.proj);
+  const entry = (scope, projectPath) => ({ plugins: { 'ponytail@ponytail': [{ scope, projectPath }] } });
+  const state = (x) => run(x, '--no-git', '--no-questions').stdout;
+
+  const a = arena('us55-proj');
+  plant(a, entry('project', mine(a)));
+  check('US-55: entrada `project` com o projectPath deste projeto conta como instalado', /ponytail is installed but NOT active/.test(state(a)) && !/user scope/.test(state(a)));
+  cleanup(a);
+
+  const l = arena('us55-local');
+  plant(l, entry('local', process.platform === 'win32' ? mine(l).toUpperCase() : mine(l)));
+  check('US-55: `local` conta, e no Windows a comparação ignora maiúsculas', /ponytail is installed but NOT active/.test(state(l)));
+  cleanup(l);
+
+  const u = arena('us55-user');
+  plant(u, { plugins: { 'ponytail@ponytail': [{ scope: 'user' }] } });
+  check('US-55: escopo de usuário conta e a mensagem diz que é global', /ponytail is installed[^\n]*user scope \(global/.test(state(u)));
+  cleanup(u);
+
+  const o = arena('us55-outro');
+  plant(o, entry('project', path.join(path.dirname(mine(o)), 'outro-projeto')));
+  const ro = state(o);
+  check('US-55: só entrada de outro projeto = não instalado (registra `não`, ensina a instalar)',
+        /ponytail not found/.test(ro) && /^\| ponytail \| não \|/m.test(fs.readFileSync(path.join(o.proj, '.marvin', 'ferramentas.md'), 'utf8')), ro.slice(-400));
+  cleanup(o);
+
+  const d = arena('us55-dry');
+  run(d, '--no-git', '--no-questions', '--use=ponytail');
+  plant(d, entry('project', path.join(path.dirname(mine(d)), 'outro-projeto')));
+  const rd = run(d, '--no-git', '--no-questions', '--install', '--dry-run');
+  check('US-55: registro `sim` + só outro projeto: --install --dry-run lista o install em escopo de projeto',
+        /run +claude plugin install ponytail --scope project/.test(rd.stdout), rd.stdout.slice(-500));
+  cleanup(d);
+
+  const m = arena('us55-ruim');
+  const rm = run(m, '--no-git', '--no-questions');
+  cleanup(m);
+  const m2 = arena('us55-json');
+  plant(m2, '{not json');
+  const rb = run(m2, '--no-git', '--no-questions');
+  check('US-55: arquivo ausente ou JSON inválido = não instalado, sem exceção',
+        rm.status === 0 && rb.status === 0 && /ponytail not found/.test(rm.stdout) && /ponytail not found/.test(rb.stdout) && !/SyntaxError/.test(rb.stdout + rb.stderr), rm.stdout.slice(-300) + rb.stdout.slice(-300) + rb.stderr);
+  cleanup(m2);
+
+  const w = arena('us55-nome');
+  plant(w, { plugins: { 'ponytail-x@y': [{ scope: 'user' }] } });
+  check('US-55: outro plugin com prefixo `ponytail-x@y` não conta como ponytail', /ponytail not found/.test(state(w)));
+  cleanup(w);
 }
 
 // ── LAST. The number of checks claimed in the READMEs matches the real one.

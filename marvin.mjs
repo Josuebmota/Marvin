@@ -1896,12 +1896,29 @@ const RECORD_REL = path.relative(ROOT, RECORD).replace(/\\/g, '/');
 // without being active is the misleading half: the plugin exists and does nothing.
 const CLAUDE_HOME = path.join(os.homedir(), '.claude');
 const onPath = (cmd) => { try { execSync(cmd, { stdio: 'ignore' }); return 'on PATH'; } catch { return false; } };
+// US-55: each entry has a scope. `project`/`local` count only for THIS project (projectPath
+// is its root); `user` is global. Missing file, bad JSON or another project's entry: not installed.
+const samePath = (a, b) => {
+  const n = (p) => { let r = path.resolve(String(p)); try { r = fs.realpathSync.native(r); } catch {} return process.platform === 'win32' ? r.toLowerCase() : r; };
+  return n(a) === n(b);
+};
 const detectPonytail = () => {
-  let installed = false;
-  try { installed = /ponytail/i.test(fs.readFileSync(path.join(CLAUDE_HOME, 'plugins', 'installed_plugins.json'), 'utf8')); } catch {}
-  if (!installed) return false;
+  let scope = '';
+  try {
+    const plugins = JSON.parse(fs.readFileSync(path.join(CLAUDE_HOME, 'plugins', 'installed_plugins.json'), 'utf8')).plugins || {};
+    for (const [key, entries] of Object.entries(plugins)) {
+      if (!/^ponytail@/i.test(key) || !Array.isArray(entries)) continue;
+      for (const e of entries) {
+        if (!e || typeof e !== 'object') continue;
+        if (e.scope === 'project' || e.scope === 'local') { if (e.projectPath && samePath(e.projectPath, ROOT)) scope = scope || 'project'; }
+        else if (!e.scope || e.scope === 'user') scope = 'user';
+      }
+    }
+  } catch {}
+  if (!scope) return false;
+  const where = scope === 'user' ? ' — user scope (global, loads in every project; no reinstall here)' : '';
   let level = ''; try { level = fs.readFileSync(path.join(CLAUDE_HOME, '.ponytail-active'), 'utf8').trim(); } catch {}
-  return level ? 'installed and active (' + level + ')' : 'installed but NOT active — run /ponytail in a Claude session';
+  return (level ? 'installed and active (' + level + ')' : 'installed but NOT active — run /ponytail in a Claude session') + where;
 };
 // Ponytail's reach depends on WHERE it loads (plugin README, 4.10.0): a plugin with hooks
 // in Claude Code, Codex and Copilot CLI — each with ITS OWN install; in Cursor, hooks in

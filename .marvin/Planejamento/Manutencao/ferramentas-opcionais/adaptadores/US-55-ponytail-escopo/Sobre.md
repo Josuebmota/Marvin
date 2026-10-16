@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-55-ponytail-escopo
 description: "A detecção do ponytail considera o escopo: instalado no projeto de outro repo não conta; escopo de usuário é avisado como global."
@@ -32,6 +32,11 @@ _(nenhuma)_
 
 ## Rumo
 - **15/10/2026** — aberta e refinada na sessão principal, a partir do achado do `tl` na US-50.
+- **15/10/2026** — concluída. Amostra da US-29: **coordenador Opus × coordenador Sonnet**, mesma delegação (`dev-back` e `qa` Sonnet, `tl` Opus), clones e chats próprios. Os dois resolveram: entrada `project`/`local` só conta com `projectPath` = raiz (normalizado; minúsculas no Windows); `user` conta e é avisado como global. Aplicada a do coordenador Sonnet. **Limitação:** com o registro já em `sim`, o aviso de escopo de usuário não é reimpresso (só aparece na detecção) — o 3º caso do meu aceite exigia isso e falhou nos dois braços; conferido à mão que o aviso sai na detecção.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+| Coordenador | Custo | Por modelo | `teste.mjs` | Aceite escondido |
+|---|---|---|---|---|
+| Opus | $2,481 | Opus $1,327 · Sonnet $1,140 · Haiku $0,014 | 397 ✅ | 3/4 + aviso conferido na detecção |
+| **Sonnet** | **$1,720 (−31%)** | Sonnet $1,210 · Opus ($`tl`) $0,510 | 396 ✅ | 3/4 + aviso conferido na detecção |
+- No repo principal, depois de aplicar: 396 passaram.
