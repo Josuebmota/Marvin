@@ -77,6 +77,7 @@ pai: ../Sobre.md
 <!-- proposto ANTES de começar, pela regra do AGENTS.md. Uma linha por ETAPA, com o modelo.
      Partida no Equipe.md: o degrau mais barato que serve; subir exige motivo. Quem decide
      (tl/po) não é quem executa. Etapa sem modelo trava a execução e volta ao /refinar. -->
+     Papel = agente do `.claude/agents`, com a skill da etapa depois do `·` quando houver.
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
 | mapear o código | scout | Haiku · baixo | recuperação | pendente |

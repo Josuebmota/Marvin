@@ -29,6 +29,7 @@ Invariante 1 (nunca destruir dado sem conferir) vale dobrado sem ninguém olhand
 `effort` da linha na chamada — isso vale mais que o arquivo do papel e que o modelo da sessão.
 Etapa sem linha com modelo é trava: não executa; registre "refinar: falta o modelo por etapa" e
 siga para outra US.
+Delegue ao agente da linha com a skill da linha, passando `model` e `effort` na chamada.
 
 **Estado por etapa, ao fechar cada uma — não só no passo 3.** A cota pode acabar no meio e
 quem assume (outro executor, a pedido do humano — ver o handoff em

@@ -19,6 +19,7 @@ se eu passei só o nome, pergunte em qual Epic e Feature ela entra (liste os que
      a tabela `| etapa | papel | modelo · esforço | motivo | estado |`, uma linha por etapa: modelo e esforço
      partem do glossário (`.marvin/Contexto/Equipe.md`), no degrau mais barato que serve; subir exige
      motivo; quem decide (`tl`/`po`) não é quem executa. Etapa sem modelo trava a execução.
+     Para cada etapa, o refino escolhe o agente, a skill (se houver), o modelo e o esforço — o menor custo que entrega o mesmo resultado (`agente · skill` na coluna papel).
      Fluxo e risco em `.marvin/Contexto/Fluxos/delegacao.md`; o `tl` entra por risco (15/10), não sempre.
    - **Propor skills**: procedimento que a US vai repetir vai em *Skills* como proposta.
    - **Escolher capacidades**: consulte `.marvin/Contexto/IA.md` e o inventário local;

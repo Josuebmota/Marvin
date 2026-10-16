@@ -4,6 +4,11 @@ description: Retoma o trabalho a partir do estado corrente registrado — a port
 
 Retome o trabalho neste projeto.
 
+Se o resumo de abertura disser `base desatualizada`, rode o `marvin` neste projeto
+(`npx marvin-kb --no-questions`; de dentro do clone do Marvin, `node marvin.mjs --no-questions`)
+ANTES de oferecer as portas, e diga em até 3 linhas o que entrou (agentes/skills do ECC, seções,
+carimbo). Não commite por isso à parte: entra no commit da sessão. Nunca push.
+
 1. Leia `.marvin/Memoria/onde_paramos.md` — é a **única**
    porta de entrada, sempre atualizada. Se não existir, leia o `MEMORY.md` e diga que a
    nota canônica está faltando.
@@ -35,6 +40,7 @@ Retome o trabalho neste projeto.
      do papel passando `model` e `effort` da linha na chamada — isso vale mais que o arquivo do papel
      e que o modelo da sessão. Etapa sem linha com modelo é trava: não executa; registre "refinar: falta
      o modelo por etapa" e proponha o `/refinar` dela.
+     Delegue ao agente da linha com a skill da linha, passando `model` e `effort` na chamada.
    - **Refinar** — anotações sem US (as linhas ⚪ da nota): `/refinar`. Pode correr ao lado de
      um chat de desenvolvimento — escreve em arquivos diferentes.
    Pergunte: **"qual? (1 ou 2)"**.

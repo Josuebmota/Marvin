@@ -13,6 +13,7 @@ degrau mais barato que serve; subir exige motivo. "sem modelo" = as US que o `ma
 lista sem modelo por etapa — **em lote, só as da próxima ilha** (refinar a fila inteira de uma
 vez gasta mais do que economiza). É trabalho de tabela: faça na sessão, sem `tl`+`po`, e
 confira com `marvin --status` que elas saíram da contagem.
+Para cada etapa, o refino escolhe o agente, a skill (se houver), o modelo e o esforço — o menor custo que entrega o mesmo resultado (`agente · skill` na coluna papel).
 
 1. Leia a nota (as linhas ⚪ e as anotações sem US) e `marvin --status` (a fila e as ilhas que
    já existem). Se um chat de desenvolvimento estiver aberto, ele escreve só a linha da US
