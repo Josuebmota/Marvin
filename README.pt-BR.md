@@ -365,7 +365,8 @@ turno relê o contexto inteiro.
                   última release, a conta do contexto fixo, idade do grafo. Sai != 0 quando
                   a nota e os nós discordam. Rode ao abrir a sessão
    --curto        só US ativas e avisos, sem cabeçalho, sempre sai 0 — é o que o hook
-                  SessionStart que o scaffold escreve em .claude/settings.json roda
+                  SessionStart que o scaffold escreve em .claude/settings.json roda;
+                  avisa também quando o contexto fixo passa do teto ou a nota vira relatório
    --html         escreve também .marvin/.status/index.html — a base desenhada como rede
                   (Epic → Feature → US → fluxos → o código que tocam, colorida por estado;
                   layout de força inline, sem lib) — e grava um ponto por commit
@@ -707,7 +708,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-401 verificações, zero dependência. Cobre os invariantes que protegem o disco
+408 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

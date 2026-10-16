@@ -1859,6 +1859,33 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── Ceilings in the hook + pointers to context files (not US).
+{
+  const a = arena('teto-hook');
+  run(a, '--no-git', '--no-questions');
+  const normal = run(a, '--status', '--curto').stdout;
+  check('teto no hook: base normal não tem a linha do contexto fixo', !/contexto fixo/.test(normal) && !/onde_paramos\.md \d+ KB/.test(normal), normal);
+  fs.appendFileSync(path.join(a.proj, 'AGENTS.md'), '\n' + 'x'.repeat(26000) + '\n');
+  const big = run(a, '--status', '--curto');
+  check('teto no hook: AGENTS.md grande → UMA linha de contexto fixo, sai 0', big.status === 0 && (big.stdout.match(/contexto fixo ~\d+ tk \(teto ~6000\)/g) || []).length === 1, big.stdout);
+  fs.writeFileSync(path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md'), '# Onde paramos\n\n' + 'y'.repeat(7 * 1024) + '\n');
+  const nota = run(a, '--status', '--curto').stdout;
+  check('teto no hook: nota acima de NOTE_CEILING avisa', /onde_paramos\.md \d+ KB — é lista de ponteiros/.test(nota), nota);
+  cleanup(a);
+}
+{
+  const a = arena('ponteiro-contexto');
+  run(a, '--no-git', '--no-questions');
+  fs.mkdirSync(path.join(a.proj, '.marvin', 'Contexto'), { recursive: true });
+  fs.writeFileSync(path.join(a.proj, '.marvin', 'Contexto', 'x.md'), '# Canal x\n\nso contexto\n');
+  fs.writeFileSync(path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md'), '# Onde paramos\n\n- [canal x](../Contexto/x.md) — referência\n- [sumiu](../Contexto/nao-existe.md)\n');
+  const full = run(a, '--status').stdout, curto = run(a, '--status', '--curto').stdout;
+  check('ponteiro para contexto: sem ✗ para ele e com a linha agregada', !/✗[^\n]*Canal x/.test(full) && /1 ponteiro\(s\) para contexto \(não US\) na nota: x/.test(full), full);
+  check('ponteiro para contexto: alvo inexistente continua erro', /nao-existe\.md/.test(full) && /not found/.test(full));
+  check('ponteiro para contexto: o --curto não lista', !/ponteiro\(s\) para contexto/.test(curto), curto);
+  cleanup(a);
+}
+
 // ── US-50. --install: opt-in, dry-run honest, guarded by detection, failure = warning + exit 0.
 {
   const a = arena('us50');
@@ -1980,6 +2007,22 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   plant(w, { plugins: { 'ponytail-x@y': [{ scope: 'user' }] } });
   check('US-55: outro plugin com prefixo `ponytail-x@y` não conta como ponytail', /ponytail not found/.test(state(w)));
   cleanup(w);
+}
+
+// ── The note: a "Contexto" section is not a report, and every link of a line counts as "in the note".
+{
+  const a = arena('nota-contexto');
+  run(a, '--no-git', '--no-questions');
+  run(a, '--us', 'Novos/epy/featy/US-01-a');
+  run(a, '--us', 'Novos/epy/featy/US-02-b');
+  const nota = path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md');
+  let n = fs.readFileSync(nota, 'utf8').replace(/^## Em andamento[\s\S]*?(?=^## |(?![\s\S]))/m, '');
+  n += '\n## Em andamento\n\n- [US-01](../Planejamento/Novos/epy/featy/US-01-a/Sobre.md) e [US-02](../Planejamento/Novos/epy/featy/US-02-b/Sobre.md) — esperam o mesmo bruto\n\n## Contexto — canais\n\n- [Sobre](../Contexto/Sobre.md) — ponteiro de contexto\n';
+  fs.writeFileSync(nota, n);
+  const out = run(a, '--status').stdout.replace(/\x1b\[[0-9;]*m/g, '');
+  check('nota: seção "Contexto" não é relato, e a 2ª US da mesma linha conta como "na nota"',
+        !/look like a report/.test(out) && !/marked ativa but not in the note/.test(out), out.slice(-700));
+  cleanup(a);
 }
 
 // ── Epic marks: a known state never shows as ✗ (refinada/anotada epics did, before 3.0.0).

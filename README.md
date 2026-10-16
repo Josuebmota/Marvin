@@ -370,7 +370,9 @@ usually ~⅔ of it: every turn re-reads the whole context.
                   Epic, last release, the fixed-context bill, graph age. Exits non-zero
                   when the note and the nodes disagree. Run it when you open a session
    --curto        only active USs and warnings, no header, always exit 0 — the
-                  SessionStart hook the scaffold writes to .claude/settings.json runs it
+                  SessionStart hook the scaffold writes to .claude/settings.json runs it;
+                  it also warns when the fixed context passes its ceiling or the note
+                  turns into a report
    --html         also writes .marvin/.status/index.html — the knowledge base drawn as a
                   network (Epic → Feature → US → flows → the code they touch, colored by
                   state; inline force layout, no lib) — and records one point per
@@ -721,7 +723,7 @@ rather than final text.
 node teste.mjs
 ```
 
-401 checks, no dependencies. It covers the invariants that protect other
+408 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

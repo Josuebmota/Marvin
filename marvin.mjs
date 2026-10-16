@@ -1230,7 +1230,7 @@ const computeStatus = () => {
   const byFile = new Map(nodes.map(n => [path.resolve(n.arq), n]));
   const parentOf = (n) => n.pai ? byFile.get(path.resolve(path.dirname(n.arq), n.pai)) || null : null;
   const chain = (n) => { const c = []; for (let p = parentOf(n); p; p = parentOf(p)) c.unshift(p.titulo); return c; };
-  const st = { ativas: [], avisos: [], problemas: 0, epics: [], release: null, contexto: fixedContext(), grafo: null, gastos: computeSpend(), ilhas: ilhasOf(nodes),
+  const st = { ativas: [], avisos: [], contextoPonteiros: [], problemas: 0, epics: [], release: null, contexto: fixedContext(), grafo: null, gastos: computeSpend(), ilhas: ilhasOf(nodes),
                nos: { us: nodes.filter(n => n.tipo === 'us').length, concluidas: nodes.filter(n => n.tipo === 'us' && n.estado === 'concluida').length } };
   let note = ''; try { note = fs.readFileSync(path.join(DEST, 'onde_paramos.md'), 'utf8'); } catch {}
   const pointers = [...note.matchAll(/^- \[([^\]]+)\]\(([^)]+)\)(?:\s*[—-]+\s*(.*))?$/gm)];
@@ -1238,6 +1238,8 @@ const computeStatus = () => {
     const abs = path.resolve(DEST, href);
     const n = byFile.get(abs) || readNode(abs);
     if (!n) { st.avisos.push({ nivel: 'err', texto: label + ' → ' + href + '  (file not found)' }); st.problemas++; continue; }
+    // A pointer to a file that is not a planning node (Contexto/, an ADR) is not a US: no ✗, no problem.
+    if (!['us', 'epic', 'feature'].includes(n.tipo)) { st.contextoPonteiros.push(path.basename(abs, '.md')); continue; }
     const last = n.rumo.length ? n.rumo[n.rumo.length - 1] : null;
     const item = { titulo: n.titulo, arq: abs, cadeia: chain(n), estado: n.estado, proximo: (rest || '').trim(),
                    rumo: last ? last.texto : null, rumoData: last ? last.data : null, idade: last ? days(last.data) : null, avisos: [], time: n.time };
@@ -1248,9 +1250,11 @@ const computeStatus = () => {
   }
   if (!pointers.length) st.avisos.push({ nivel: 'info', texto: 'the note has no "- [US](path)" lines' });
   const sections = [...note.matchAll(/^##\s+(.+)$/gm)].map(m => m[1].trim());
-  const odd = sections.filter(s => !/^(Em andamento|Travado|Estado|Próxima|Depende|Primeira frase|Anotaç|Refin)/i.test(s));
+  const odd = sections.filter(s => !/^(Em andamento|Travado|Estado|Próxima|Depende|Primeira frase|Anotaç|Refin|Contexto)/i.test(s));
   if (odd.length) { st.avisos.push({ nivel: 'warn', texto: `the note has ${odd.length} section(s) that look like a report: ${odd.slice(0, 3).map(s => '"' + s + '"').join(', ')}${odd.length > 3 ? '…' : ''} → Rumo of the US` }); st.problemas++; }
-  const notInNote = nodes.filter(n => n.tipo === 'us' && n.estado === 'ativa' && !pointers.some(([, , h]) => path.resolve(DEST, h) === path.resolve(n.arq)));
+  // Every link counts, not only the first of a line: one line may group USs waiting on the same thing.
+  const linkedInNote = new Set([...note.matchAll(/\]\(([^)\s#]+)/g)].map(m => path.resolve(DEST, m[1])));
+  const notInNote = nodes.filter(n => n.tipo === 'us' && n.estado === 'ativa' && !linkedInNote.has(path.resolve(n.arq)));
   if (notInNote.length) st.avisos.push({ nivel: 'warn', texto: `${notInNote.length} US marked ativa but not in the note: ${notInNote.map(n => n.titulo.split(' — ')[0]).join(', ')}` });
   // ── The graph in the status: collision and dispersion. Two active USs on the same function
   // is the conflict two parallel sessions discover at the merge — here it shows up before.
@@ -1345,6 +1349,13 @@ const printStatus = (st, short) => {
     a.avisos.forEach(w => warn('  ' + w));
   }
   for (const w of st.avisos) (w.nivel === 'err' ? err : w.nivel === 'warn' ? warn : info)(w.texto);
+  if (!short && st.contextoPonteiros.length) info(`${st.contextoPonteiros.length} ponteiro(s) para contexto (não US) na nota: ${st.contextoPonteiros.join(', ')}`);
+  // The hook runs only --curto, so the ceilings (same constants as printFixedContext) must speak here, one line each.
+  if (short) {
+    if (st.contexto.total > FIXED_TK_CEILING) warn(`contexto fixo ~${st.contexto.total} tk (teto ~${FIXED_TK_CEILING}) — enxugue: o que não é de toda sessão vai para onde é lido (marvin --status mostra o quê)`);
+    const noteLine = st.contexto.linhas.find(l => l.nome === 'onde_paramos.md');
+    if (noteLine && noteLine.bytes > NOTE_CEILING) warn(`onde_paramos.md ${Math.round(noteLine.bytes / 1024)} KB — é lista de ponteiros: o estado de cada US mora no Sobre.md dela`);
+  }
   printIlhas(st.ilhas, short);
   // US-52: anotada is outside the queue; the hook gets only the number, never the list.
   if (short && st.roadmap.anotada.length) info(st.roadmap.anotada.length + ' anotada(s) fora da fila — /refinar');
