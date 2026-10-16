@@ -1994,6 +1994,40 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── --graphify: `cluster-only` must run BEFORE the docs nodes are appended (graphify 0.9.37
+// refuses to overwrite a graph.json with a smaller one). Hermetic: a fake `graphify` driven by a node script.
+// Gap: the refusal itself is the real binary's behavior and is not reproduced; the check pins the ORDER.
+{
+  const a = arena('graphify-ordem');
+  run(a, '--no-git', '--no-questions');
+  run(a, '--us', 'Novos/epx/featx/US-01-x');
+  const fk = fs.mkdtempSync(path.join(os.tmpdir(), 'marvin-teste-gfy-'));
+  const logf = path.join(fk, 'cluster.log');
+  fs.writeFileSync(path.join(fk, 'fake.mjs'), [
+    "import fs from 'node:fs';",
+    "const a = process.argv.slice(2);",
+    "if (a[0] === '--version') console.log('graphify 0.9.37');",
+    "else if (a[0] === 'cluster-only') {",
+    "  const g = JSON.parse(fs.readFileSync('graphify-out/graph.json', 'utf8'));",
+    "  fs.appendFileSync(" + JSON.stringify(logf) + ", g.nodes.length + ' docs=' + g.nodes.filter(n => n._origin === 'marvin').length + '\\n');",
+    "} else if (a.includes('--code-only')) {",
+    "  fs.mkdirSync('graphify-out', { recursive: true });",
+    "  fs.writeFileSync('graphify-out/graph.json', JSON.stringify({ nodes: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], edges: [] }));",
+    "}",
+  ].join('\n') + '\n');
+  fs.writeFileSync(path.join(fk, 'graphify'), '#!/bin/sh\nexec "' + process.execPath + '" "' + path.join(fk, 'fake.mjs') + '" "$@"\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(fk, 'graphify.cmd'), '@"' + process.execPath + '" "' + path.join(fk, 'fake.mjs') + '" %*\r\n');
+  const rg = spawnSync(process.execPath, [SCRIPT, '--no-git', '--no-questions', '--graphify'], {
+    cwd: a.proj, encoding: 'utf8', env: { ...process.env, HOME: a.lar, USERPROFILE: a.lar, ...pathWith(fk) },
+  });
+  const seen = fs.existsSync(logf) ? fs.readFileSync(logf, 'utf8').trim() : '(cluster-only não foi chamado)';
+  let finalNodes = 0; try { finalNodes = JSON.parse(fs.readFileSync(path.join(a.proj, 'graphify-out', 'graph.json'), 'utf8')).nodes.length; } catch {}
+  check('--graphify: cluster-only roda antes dos docs e vê só os nós de código', seen === '3 docs=0', seen + '\n' + rg.stdout.slice(-600));
+  check('--graphify: sem "report step failed", e os nós de docs entram depois', !/report step failed/.test(rg.stdout) && finalNodes > 3, 'nós finais: ' + finalNodes);
+  fs.rmSync(fk, { recursive: true, force: true });
+  cleanup(a);
+}
+
 // ── LAST. The number of checks claimed in the READMEs matches the real one.
 //
 // It has drifted THREE times in this repository: 26 when there were 28, 48 when there

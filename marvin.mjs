@@ -4055,6 +4055,32 @@ if (GRAPHIFY) {
 
     }
 
+    // ── Report and HTML. `extract` stops at graph.json ON PURPOSE: the report and the
+    // community names are a separate step, which is why so many people think the
+    // install broke when they cannot find the graph.html the graphify README shows.
+    // Without --graphify-label it runs --no-label: deterministic, free, no key — the
+    // html comes out the same, just with "Community 0/1/2" as names.
+    // Runs BEFORE the docs side, and only when the code was just extracted: cluster-only
+    // rebuilds the graph from the CODE extraction (it knows nothing of the doc nodes) and
+    // graphify refuses to overwrite a graph.json with a smaller one — so run after the
+    // append it always failed and the html never updated. The html comes from the code;
+    // a docs-only change needs no report.
+    if (version && built && (DRY || fs.existsSync(GRAPH))) {
+      let mode = '--no-label';
+      if (GRAPHIFY_LABEL) {
+        let hasClaude = false;
+        try { execSync('claude --version', { stdio: 'ignore' }); hasClaude = true; } catch {}
+        if (hasClaude) mode = '--backend claude-cli';
+        else warn('--graphify-label ignored: no `claude` on PATH — using --no-label');
+      }
+      try {
+        exec('graphify cluster-only . ' + mode, { cwd: ROOT, stdio: 'inherit' });
+        ok('GRAPH_REPORT.md and graph.html written — open the html in any browser');
+      } catch {
+        warn('the report step failed — graph.json is fine, only the html is missing');
+      }
+    }
+
     // ── The docs side: the knowledge base enters the SAME graph, generated HERE.
     //
     // Measured on 10/09/2026 before deciding: graphify only indexes `.md` through an LLM —
@@ -4110,34 +4136,6 @@ if (GRAPHIFY) {
           if (warnings.length > 8) info('  … and ' + (warnings.length - 8) + ' more');
         }
         info('  try:  graphify affected "<function>"   — which US and which code depend on it');
-      }
-    }
-
-    // ── Report and HTML. `extract` stops at graph.json ON PURPOSE: the report and the
-    // community names are a separate step, which is why so many people think the
-    // install broke when they cannot find the graph.html the graphify README shows.
-    // Without --graphify-label it runs --no-label: deterministic, free, no key — the
-    // html comes out the same, just with "Community 0/1/2" as names.
-    // Runs when the graph changed — built now or docs appended — and only with the binary.
-    if (version && (built || docsChanged) && (DRY || fs.existsSync(GRAPH))) {
-      let mode = '--no-label';
-      if (GRAPHIFY_LABEL) {
-        let hasClaude = false;
-        try { execSync('claude --version', { stdio: 'ignore' }); hasClaude = true; } catch {}
-        if (hasClaude) mode = '--backend claude-cli';
-        else warn('--graphify-label ignored: no `claude` on PATH — using --no-label');
-      }
-      // Only the docs changed? cluster-only rewrites graph.json, and the freshness check
-      // below compares the code against its mtime — without this, appending docs would
-      // make a stale graph look fresh.
-      let stBefore = null;
-      if (!built) { try { stBefore = fs.statSync(GRAPH); } catch {} }
-      try {
-        exec('graphify cluster-only . ' + mode, { cwd: ROOT, stdio: 'inherit' });
-        if (!DRY && stBefore) { try { fs.utimesSync(GRAPH, stBefore.atime, stBefore.mtime); } catch {} }
-        ok('GRAPH_REPORT.md and graph.html written — open the html in any browser');
-      } catch {
-        warn('the report step failed — graph.json is fine, only the html is missing');
       }
     }
 
