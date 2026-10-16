@@ -1352,7 +1352,7 @@ const printStatus = (st, short) => {
   if (st.epics.length) {
     log('\n\x1b[1mEpics\x1b[0m');
     for (const e of st.epics) {
-      const m = e.estado === 'ativa' ? '●' : e.estado === 'concluida' ? '✓' : '✗';
+      const m = { ativa: '●', concluida: '✓', refinada: '○', anotada: '·' }[e.estado] || '✗';   // ✗ only for an unknown state
       if (!e.total) { log(`  ${m} ${e.titulo}  \x1b[2mno children yet\x1b[0m`); continue; }
       log(`  ${m} ${e.titulo}  \x1b[2m${e.concluidas}/${e.total} ${e.rotulo} concluídas` + (e.canceladas ? ` · ${e.canceladas} cancelada(s)` : '') + (e.ativas ? ` · ${e.ativas} ativa(s)` : '') + (e.refinadas ? ` · ${e.refinadas} refinada(s)` : '') + (e.anotadas ? ` · ${e.anotadas} anotada(s)` : '') + '\x1b[0m');
     }

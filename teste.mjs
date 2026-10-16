@@ -1978,6 +1978,18 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(w);
 }
 
+// ── Epic marks: a known state never shows as ✗ (refinada/anotada epics did, before 3.0.0).
+{
+  const a = arena('epic-mark');
+  run(a, '--no-git', '--no-questions');
+  run(a, '--us', 'Novos/epx/featx/US-01-x', '--refinada');
+  const ep = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'epx', 'Sobre.md');
+  fs.writeFileSync(ep, fs.readFileSync(ep, 'utf8').replace(/^estado: \w+$/m, 'estado: anotada'));
+  const out = run(a, '--status').stdout.replace(/\x1b\[[0-9;]*m/g, '');
+  check('epic com estado anotada aparece com ·, não com ✗', /· epx/.test(out) && !/✗ epx/.test(out), out.slice(-600));
+  cleanup(a);
+}
+
 // ── LAST. The number of checks claimed in the READMEs matches the real one.
 //
 // It has drifted THREE times in this repository: 26 when there were 28, 48 when there
