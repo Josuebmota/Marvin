@@ -1823,8 +1823,8 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const oldPlan = '# Planejamento\n\ndeclaração não prova acesso\ngrafo é opcional\nCódigo tocado\nrefinada\nprimeira rodada depois de instalar\n';
   fs.writeFileSync(pr, oldPlan);
   const old = run(a, '--no-git', '--no-questions');
-  check('US-44: base antiga recebe o glossário, só o aviso (desde 2.10.0) no Planejamento/README, que fica byte-idêntico',
-        fs.existsSync(eq) && /Planejamento\/README\.md — missing[^\n]*desde 2\.10\.0/.test(old.stdout)
+  check('US-44: base antiga recebe o glossário, só o aviso (desde 3.0.0) no Planejamento/README, que fica byte-idêntico',
+        fs.existsSync(eq) && /Planejamento\/README\.md — missing[^\n]*desde 3\.0\.0/.test(old.stdout)
         && fs.readFileSync(pr, 'utf8') === oldPlan, old.stdout.slice(-500));
   cleanup(a);
 

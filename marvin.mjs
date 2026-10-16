@@ -1626,7 +1626,8 @@ if (argRelease || hasFlag('--release')) {
   for (const f of relFiles) {
     const txt = fs.readFileSync(path.join(relDir, f), 'utf8');
     const hrefs = [...txt.matchAll(/^- \[[^\]]*\]\(([^)\s#]+)/gm)].map(m => m[1]);
-    if (!hrefs.length) warn('Releases/' + f + ' has no "- [US](path)" line — not in the expected format, so it protects nothing');
+    // A release from before USs existed (no "US-<n>" at all) has nothing to protect — warn only when it names USs in another format.
+    if (!hrefs.length && /\bUS-\d+/.test(txt)) warn('Releases/' + f + ' names USs but has no "- [US](path)" line — not in the expected format, so it protects nothing');
     for (const h of hrefs) shipped.add(path.resolve(relDir, h));
   }
   const nodes = planningNodes();
@@ -4430,11 +4431,11 @@ const UPDATES = [
   // US-44: the role table left this README for the team glossary (Equipe.md is a new file, so
   // writeIfMissing creates it on an old base; only this pointer needs the warning).
   { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
-    marca: /\[glossário\s+da\s+equipe\]/, soCom: !OLD_LAYOUT, desde: '2.10.0',
+    marca: /\[glossário\s+da\s+equipe\]/, soCom: !OLD_LAYOUT, desde: '3.0.0',
     o_que: 'the link to the team glossary (Contexto/Equipe.md) in place of the role table' },
   // US-52: the state comment lists `anotada`; --status, the roadmap and the hook count them.
   { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
-    marca: /anotada\s+\|\s+refinada/, soCom: !OLD_LAYOUT, desde: '2.10.0',
+    marca: /anotada\s+\|\s+refinada/, soCom: !OLD_LAYOUT, desde: '3.0.0',
     o_que: 'the `estado: anotada` in the state comment — an annotated US outside the queue; --status counts it, --curto shows only the number' },
 ];
 

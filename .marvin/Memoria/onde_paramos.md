@@ -25,5 +25,5 @@ metadata:
 
 - [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — medir custo por tarefa aprovada em 3–4 US reais; na próxima US, fixar contexto, checks e corte de turnos antes de começar
 
-- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — 15/10: fila vazia; US-48, 54 e 55 concluídas depois da 2.10.0. US-29 com 3 amostras (Sonnet entrega o mesmo resultado por 50–69% do custo; coordenador no Sonnet −31%); falta o aceite do dono numa US real. Conectores da conta (~9,7k/sessão) é o dono. **Lançamento final como 3.0.0 (npm) só quando o plano todo fechar**
+- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — 15/10: **3.0.0 pronta** (tag no GitHub); fila vazia. Falta: publicar no npm, desligar conectores da conta (~9,7k/sessão) e o aceite do dono numa US real para fechar a US-29
 
