@@ -1421,6 +1421,9 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const outDot = run(a, '--status', '--curto').stdout;
   check('US-54: ilha cujo arquivo começa com ponto mantém o nome (.claude-plugin), nunca fica sem nome', /▹ \.claude-plugin\s+1 US: ○ US-04/.test(outDot) && !/[▹▶]\s+\d+ US/.test(outDot), outDot);
   check('/refinar é gerado', fs.existsSync(path.join(a.proj, '.claude', 'commands', 'refinar.md')));
+  check('/refinar aceita US existente e faz só a triagem de custo (a tabela do Time), em lote só a próxima ilha',
+        /só a triagem de custo/.test(fs.readFileSync(path.join(a.proj, '.claude', 'commands', 'refinar.md'), 'utf8'))
+        && /só as da próxima ilha/.test(fs.readFileSync(path.join(a.proj, '.claude', 'commands', 'refinar.md'), 'utf8')));
   const cont = path.join(a.proj, '.claude', 'commands', 'continuar.md');
   const contTxt = fs.readFileSync(cont, 'utf8');
   check('/continuar é gerado', /sem esperar confirmação/.test(contTxt));

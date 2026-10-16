@@ -3455,6 +3455,14 @@ Sessão de **refino**. Aqui não se implementa: a saída é US com \`estado: ref
 Entrada: **$ARGUMENTS** (uma anotação, um print, uma linha ⚪ de
 \`${path.relative(ROOT, DEST).replace(/\\/g, '/')}/onde_paramos.md\`, ou "tudo que está ⚪").
 
+**Entrada = US que já existe (um id, um caminho, ou "sem modelo") → só a triagem de custo.**
+Não refaça *Por quê*, *Pronto quando* nem *Código tocado*: preencha só a tabela do *Time*
+(\`| etapa | papel | modelo · esforço | motivo | estado |\`) pelo glossário da equipe, partindo do
+degrau mais barato que serve; subir exige motivo. "sem modelo" = as US que o \`marvin --status\`
+lista sem modelo por etapa — **em lote, só as da próxima ilha** (refinar a fila inteira de uma
+vez gasta mais do que economiza). É trabalho de tabela: faça na sessão, sem \`tl\`+\`po\`, e
+confira com \`marvin --status\` que elas saíram da contagem.
+
 1. Leia a nota (as linhas ⚪ e as anotações sem US) e \`marvin --status\` (a fila e as ilhas que
    já existem). Se um chat de desenvolvimento estiver aberto, ele escreve só a linha da US
    dele na nota — você escreve só as suas. **Releia antes de salvar.**
@@ -4565,6 +4573,9 @@ const UPDATES = [
     o_que: 'the Time as a table `| stage | role | model · effort | reason |` in the US example — the model is chosen per stage at refinement' },
   { arquivo: '.claude/commands/refinar.md', marca: /etapa\s+\|\s+papel\s+\|\s+modelo/, soCom: !OLD_LAYOUT, desde: '3.2.0',
     o_que: 'the /refinar step that fills the Time table (stage, role, model · effort, reason) from the team glossary' },
+  // A US that already exists (refined before 3.2.0, no model per stage) had no path: /refinar only took annotations.
+  { arquivo: '.claude/commands/refinar.md', marca: /só\s+a\s+triagem\s+de\s+custo/, soCom: !OLD_LAYOUT, desde: '3.2.1',
+    o_que: 'an existing US (id, path or "sem modelo") gets only the cost triage — the Time table — not a full re-refinement; in batch, only the next ilha' },
   { arquivo: '.claude/commands/us.md', marca: /etapa\s+\|\s+papel\s+\|\s+modelo/, soCom: !OLD_LAYOUT, desde: '3.2.0',
     o_que: 'the /us step that fills the Time table (stage, role, model · effort, reason) from the team glossary' },
   { arquivo: '.claude/commands/continuar.md', marca: /Cada\s+etapa\s+roda\s+no\s+modelo/, soCom: !OLD_LAYOUT, desde: '3.2.0',
