@@ -59,8 +59,8 @@ O Claude é o fornecedor principal. Cada papel começa aqui; o motivo para sair 
 
 | Modelo | Papéis | Quando |
 |---|---|---|
-| **Haiku** | `scout` (acha arquivo para dev, `po` e `tl`); `dev-*`, `qa`, `design`, `dba` | tarefa simples e bem especificada: localizar, mudança mecânica, conferência |
-| **Sonnet** | `dev-back`, `dev-front`, `qa`, `design`, `dba` | o trabalho normal de execução |
+| **Haiku** | `scout` (acha arquivo para dev, `po` e `tl`) | localizar. **Medido (US-29):** implementar no Haiku falhou o aceite escondido (7/8) — não entrega o mesmo resultado |
+| **Sonnet** | **sessão principal (coordenador)**, `dev-back`, `dev-front`, `qa`, `design`, `dba` | coordenar e executar. **Medido (US-29):** mesmo resultado do Opus por 37–69% do custo; coordenador no Sonnet −31% |
 | **Opus** | `tl`, `po` | julgamento: escopo, invariantes, leitura de diff |
 
 **Regra do sênior:** começa no degrau mais barato que serve e a verificação (`qa`, teste) confere.
@@ -72,7 +72,7 @@ direto (regra de custo 8).
 
 Referência: reel de @donimas (15/10/2026), custo por tarefa resolvida nas mesmas 6 tarefas:
 modelo top em tudo $5,10; escolha à mão $0,75; o mais barato primeiro, verifica e sobe $0,45;
-roteador barato $0,32. É uma simulação do autor, não um benchmark. O número do Marvin vem da US-29.
+roteador barato $0,32. É uma simulação do autor, não um benchmark. **O número do Marvin (US-29, 15/10, 3 amostras com aceite independente):** tarefa controlada Opus $0,43 × Sonnet $0,21; US-54 Opus $0,97 × Sonnet $0,36; US-55 coordenador Opus $2,48 × coordenador Sonnet $1,72 — mesmo resultado nos três.
 
 ## O fluxo de uma atividade
 
@@ -128,20 +128,20 @@ Epic → Feature → US | Defect → Task
 
 ## Estado atual × alvo
 
+Atualizado em 15/10/2026, depois da 2.10.0 e das US-48, 54 e 55.
+
 | Peça | Hoje | Falta | US |
 |---|---|---|---|
-| Memória e listagem sem custo | ✅ `--status`, hook de sessão, base em grafo | — | — |
-| Grafo de código e de US, fresco | ✅ hook `post-commit` e passo de estrutura obrigatório (15/10) | documentação religada a cada commit (edição manual do hook) | — |
-| Papéis definidos na instalação | 🟡 tabela de papéis no `AGENTS.md` gerado, que carrega em toda sessão | mover para `Equipe.md`, lido só na triagem, com "quando entra" e "o que não faz" | [US-44](../../Planejamento/Novos/time/glossario/US-44-glossario-da-equipe/Sobre.md) |
-| Porta única de orquestração | 🟡 ritos separados (`/refinar`, `/us`, `/continuar`) | "toma minhas atividades e orquestra" | [US-45](../../Planejamento/Novos/time/orquestracao/US-45-porta-unica/Sobre.md) |
-| Modelo e esforço por atividade | 🟡 ponto de partida no Claude decidido pelo dono (seção acima); política (US-19, US-42) | levar a tabela ao `Equipe.md` gerado; confirmar ou corrigir com o par medido (US-29) | [US-29](../../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) |
-| Telas de refino e desenvolvimento | 🟡 painel único (US-36) | separar as duas visões, se o uso pedir | — |
-| Defect e Task | 🔴 só Epic, Feature e US | tipos novos no script, `--status` e painel | [US-47](../../Planejamento/Novos/organizacao-por-grafo/hierarquia/US-47-defect-e-task/Sobre.md) |
-| Superpowers e ECC em uso | 🔴 Superpowers só citado (US-25); ECC instalado à mão no perfil global, com agentes que disputam papel com a equipe do Marvin | avaliar os dois como ferramentas de execução da C5, chamadas pela equipe, nunca como segunda equipe | [US-48](../../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-48-superpowers-e-ecc/Sobre.md) |
-| Identidade pública | 🔴 README: "monta a base e sai da frente" | "equipe barata" nos dois READMEs | [US-49](../../Planejamento/Manutencao/publicacao/identidade/US-49-identidade-equipe-barata/Sobre.md) |
-| Marvin como plugin único e curador por projeto | 🔴 ferramentas eram globais (limpas em 15/10, backup reversível) | o Marvin instala ECC, graphify, ponytail e Superpowers no escopo do projeto | [US-50](../../Planejamento/Novos/ferramentas-opcionais/curadoria/US-50-marvin-plugin-e-curador/Sobre.md) |
-| Prova de economia | 🔴 custo medido (US-41), nenhuma amostra | pares medidos | [US-29](../../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) |
-| Grafo como rota de busca | 🟡 regra atual: Grep localiza | medir Grep × grafo | [US-43](../../Planejamento/Manutencao/ferramentas-opcionais/adaptadores/US-43-grafo-rota-de-busca/Sobre.md) |
+| Memória e listagem sem custo | ✅ `--status`, hook de sessão, base em grafo; `anotada` aparece (US-52) | — | — |
+| Grafo de código e de US, fresco | ✅ hook `post-commit` e passo de estrutura obrigatório | — | — |
+| Papéis definidos na instalação | ✅ `Contexto/Equipe.md` gerado, lido só na triagem, com modelo · esforço por papel e a sessão principal no Sonnet | — | [US-44](../../Planejamento/Novos/time/glossario/US-44-glossario-da-equipe/Sobre.md) |
+| Modelo e esforço por atividade | ✅ tabela de partida confirmada pela medição; `tl` por risco | — | [US-29](../../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) |
+| Prova de economia | 🟡 3 amostras com aceite independente: Sonnet = mesmo resultado por 37–69% do custo | o aceite do dono numa US que ele pediu | [US-29](../../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) |
+| Identidade pública | ✅ "equipe barata" nos dois READMEs e no `package.json` | — | [US-49](../../Planejamento/Manutencao/publicacao/identidade/US-49-identidade-equipe-barata/Sobre.md) |
+| Contexto fixo mínimo | 🟡 repo 6,5k (era 7,9k); `AGENTS.md` 6,4 KB | conectores da conta (~9,7k/sessão) — ação do dono | [US-51](../../Planejamento/Manutencao/publicacao/contexto-fixo/US-51-agents-md-enxuto/Sobre.md) |
+| Curador por projeto | ✅ `marvin --install` no escopo do projeto, opt-in; escopo de cada instalação conferido (US-55) | — | [US-50](../../Planejamento/Novos/ferramentas-opcionais/curadoria/US-50-marvin-plugin-e-curador/Sobre.md) |
+| ECC e Superpowers | ✅ medidos: instalar não paga; **catálogo de referência** na criação de agente e skill | — | [US-48](../../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-48-superpowers-e-ecc/Sobre.md) |
+| Porta única, Defect/Task, plugin, grafo como busca | ❌ canceladas pelo dono em 15/10 por especulação (US-45, US-47, US-53, US-43); reabrem com caso real | — | — |
 
 ## Plano estratégico
 
@@ -154,8 +154,8 @@ Epic → Feature → US | Defect → Task
 |---|---|---|---|
 | Contexto fixo por sessão | `/context` num chat novo e passo 4b | 74,8k, dos quais `AGENTS.md` 5,7k | ≤ 50k; `AGENTS.md` ≤ 3k |
 | Contexto fixo medido sem UI (15/10, depois da 2.10.0) | `claude -p "Responda apenas: ok" --output-format json` → soma de `input`+`cache_*` | **55,6k** neste repo · 49,1k numa pasta vazia · 39,4k sem nenhum MCP. Repo = 6,5k (o `AGENTS.md` antigo pesava +1,4k); conectores/MCP da conta = 9,7k; Claude Code = 39,4k, fora do nosso alcance | o que sobra para cortar: conectores (dono) e os 6,5k do repo |
-| Custo por tarefa aprovada | `--status` por papel e corte de turnos (US-29); micro-benchmark sem UI com aceite escondido | 15/10, tarefa controlada: Opus $0,430 × **Sonnet $0,215 (mesmo resultado)** × Haiku $0,121 (falhou 1 de 8). Em US real: sem amostra | cai a cada fase, com a mesma aprovação |
-| Execução fora do Opus | linhas do *Time* | não medido | a maior parte em Sonnet e Haiku; Opus só em julgamento |
+| Custo por tarefa aprovada | `--status` por papel e corte de turnos (US-29); micro-benchmark sem UI com aceite escondido | 15/10, tarefa controlada: Opus $0,430 × **Sonnet $0,215 (mesmo resultado)** × Haiku $0,121 (falhou 1 de 8). Em US real: US-54 Opus $0,97 × Sonnet $0,36; US-55 coordenador Opus $2,48 × Sonnet $1,72 — mesmo resultado | cai a cada fase, com a mesma aprovação |
+| Execução fora do Opus | linhas do *Time*; `modelUsage` do chat sem UI | US-55 com coordenador Sonnet: Opus só no `tl`, 30% do custo | a maior parte em Sonnet e Haiku; Opus só em julgamento |
 
 **Portão:** nenhuma fase começa sem os três números da anterior registrados. Uma US de núcleo
 (`marvin.mjs`, `ATUALIZACOES`) ativa por vez.
@@ -167,7 +167,7 @@ Epic → Feature → US | Defect → Task
   Sonnet para `dev-back`/`qa` e Haiku para o `scout`.
 - Grafo obrigatório no passo de estrutura, mantido fresco pelo hook `post-commit`.
 
-### Fase 1 — Contexto fixo mínimo (o que toda sessão paga)
+### Fase 1 — Contexto fixo mínimo ✅ (15/10/2026, 2.10.0)
 
 - **US-49 identidade.** README em "equipe barata". Barata, e tira a mentira pública.
 - **US-44 glossário.** A tabela de papéis sai do `AGENTS.md` gerado para `Equipe.md`, lido só na
@@ -175,7 +175,7 @@ Epic → Feature → US | Defect → Task
   o que é regra de comando volta ao comando ("regra mora onde dispara").
 - **Sai com:** `/context` de novo; Memory files menor.
 
-### Fase 2 — Prova (portão de tudo que vem depois)
+### Fase 2 — Prova 🟡 (3 amostras em 15/10; falta o aceite do dono)
 
 - **US-29 com 2 amostras.** As US-49 e US-44 contam, com papel, modelo e esforço declarados antes
   de rodar e o corte de turnos registrado.
@@ -184,7 +184,7 @@ Epic → Feature → US | Defect → Task
 - **Sai com:** custo por tarefa aprovada, e a tabela de partida confirmada ou corrigida pelo par
   medido. Se não economizou, o plano para aqui e o Rumo diz por quê.
 
-### Fase 3 — Curador (o Marvin vira o único plugin)
+### Fase 3 — Curador ✅ (15/10/2026: US-48, US-50, US-55; o plugin, US-53, foi cancelado)
 
 - **US-50 plugin e curador.** `marvin` num projeto instala no **escopo do projeto** só o que o
   registro diz: graphify, ponytail e, conforme a **US-48** (dentro desta fase), ECC e Superpowers.
@@ -192,14 +192,14 @@ Epic → Feature → US | Defect → Task
 - **Sai com:** contexto fixo de um projeto com o curador, comparado ao da Fase 1. Nada volta para
   o global.
 
-### Fase 4 — Orquestração (a equipe trabalha sozinha)
+### Fase 4 — Orquestração ❌ (cancelada em 15/10: o `/refinar` com N atividades cobre o essencial)
 
 - **US-45 porta única** e **US-47 Defect e Task**. Cada uma depende de uma decisão do dono, que
   está no ❓ de cada US.
 - O roteamento é **regra escrita** aplicada pelo comando, sem chamada de Opus por atividade.
 - **Sai com:** custo por atividade entregue pela porta única × conduzida à mão (US-29).
 
-### Fase 5 — Grafo como rota de busca (só se o número mandar)
+### Fase 5 — Grafo como rota de busca ❌ (cancelada em 15/10: o único número, Grep ~18 tk × grafo ~1.650, é contra)
 
 - **US-43.** Grep × grafo em "onde está X". Só muda a regra "Grep localiza" se a medição sustentar.
 
