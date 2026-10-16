@@ -32,7 +32,18 @@ Triagem 10/10/2026 (sessão principal com o dono; decisão do dono: fatiar a US-
 - `tl`: confere se cada par é comparável e se os checks são os mesmos.
 - `scout`: recuperação delimitada nos logs e no `--status`, quando a atribuição estiver clara.
 
-Modelo e esforço por etapa ficam para quando a primeira amostra for escolhida, no formato por etapa da US-19.
+Triagem de custo 16/10/2026 (`/refinar`, só a tabela; partida pelo `Equipe.md`, nada subiu de degrau). Vale para a 4ª amostra; a 5ª e a 6ª, se houver, repetem a tabela.
+
+| etapa | papel | modelo · esforço | motivo | estado |
+|---|---|---|---|---|
+| escolher a US-amostra e declarar o braço antes de abrir o chat | po | Opus · médio | partida; julgamento de escopo, barra amostra fabricada | pendente |
+| conferir se o par é comparável (classe, projeto, checks, corte de turnos) | tl | Opus · médio | partida; julgamento, não toca invariante | pendente |
+| coordenar a US-amostra num chat próprio | sessão principal | Sonnet · médio | partida; é o braço medido (coordenador no Sonnet) | pendente |
+| coletar o custo (`marvin --status` com subagentes, régua `claude -p`) | scout | Haiku · baixo | recuperação delimitada; a atribuição já vem declarada | pendente |
+| aprovar a amostra | dono | humano | o que falta: "aprovada" pelo dono, não pelo aceite escrito pela sessão | pendente |
+| declarar a economia medida (critério 2), registrar o glossário ou "não ocorreu" (critério 3) e decidir o template | po | Opus · médio | partida; decisão, não execução | pendente |
+
+Grafo: *Código tocado* vazio, sem símbolo para consultar; `graph.json` mais novo que o último commit (fresco).
 
 ## Skills
 Nenhuma ainda. Medir a mesma coisa pela segunda vez é o gatilho para uma skill de medição.
