@@ -6,6 +6,14 @@ Sessão de **refino**. Aqui não se implementa: a saída é US com `estado: refi
 Entrada: **$ARGUMENTS** (uma anotação, um print, uma linha ⚪ de
 `.marvin/Memoria/onde_paramos.md`, ou "tudo que está ⚪").
 
+**Entrada = US que já existe (um id, um caminho, ou "sem modelo") → só a triagem de custo.**
+Não refaça *Por quê*, *Pronto quando* nem *Código tocado*: preencha só a tabela do *Time*
+(`| etapa | papel | modelo · esforço | motivo | estado |`) pelo glossário da equipe, partindo do
+degrau mais barato que serve; subir exige motivo. "sem modelo" = as US que o `marvin --status`
+lista sem modelo por etapa — **em lote, só as da próxima ilha** (refinar a fila inteira de uma
+vez gasta mais do que economiza). É trabalho de tabela: faça na sessão, sem `tl`+`po`, e
+confira com `marvin --status` que elas saíram da contagem.
+
 1. Leia a nota (as linhas ⚪ e as anotações sem US) e `marvin --status` (a fila e as ilhas que
    já existem). Se um chat de desenvolvimento estiver aberto, ele escreve só a linha da US
    dele na nota — você escreve só as suas. **Releia antes de salvar.**
