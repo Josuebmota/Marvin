@@ -1,6 +1,6 @@
 ---
 name: tdd-guide
-description: Test-Driven Development specialist enforcing write-tests-first methodology. Ensures 80%+ test coverage. Chame quando a linha do Time indicar este papel.
+description: Test-Driven Development specialist enforcing write-tests-first methodology. Chame quando a linha do Time indicar este papel.
 tools: Read, Write, Edit, Bash, Grep
 model: sonnet
 effort: medium

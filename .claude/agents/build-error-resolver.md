@@ -1,6 +1,6 @@
 ---
 name: build-error-resolver
-description: Build and TypeScript error resolution specialist. Fixes build/type errors only with minimal diffs, no architectural edits. Focuses on getting the build green quickly. Chame quando a linha do Time indicar este papel.
+description: Build and TypeScript error resolution specialist. Chame quando a linha do Time indicar este papel.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
 effort: medium

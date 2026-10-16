@@ -2067,8 +2067,11 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
         && /^description: Expert code review specialist\. Chame quando a linha do Time indicar este papel\.$/m.test(cr), cr);
   check('US-60: o corpo do agente fica como veio', /\n# code-reviewer\n/.test(cr) && /^tools: Read, Grep, Glob, Bash$/m.test(cr));
   const tdd = rd(a, '.claude', 'agents', 'tdd-guide.md');
-  check('US-60: tdd-guide também (opus vira sonnet · medium; "Use PROACTIVELY" some, o resto da descrição fica)',
-        /^model: sonnet$/m.test(tdd) && /^effort: medium$/m.test(tdd) && !/PROACTIVELY/.test(tdd) && /Ensures 80%\+ test coverage\./.test(tdd), tdd);
+  check('US-60: tdd-guide também (opus vira sonnet · medium; a descrição fica só com a 1ª frase — o resto é gatilho)',
+        /^model: sonnet$/m.test(tdd) && /^effort: medium$/m.test(tdd) && !/PROACTIVELY|Ensures 80%/.test(tdd), tdd);
+  const tsr = rd(a, '.claude', 'agents', 'typescript-reviewer.md');
+  check('3.4.0: "Use for all …" e qualquer frase de gatilho depois da 1ª saem (mapeado no catálogo inteiro)',
+        /^description: TypeScript reviewer\. Chame quando a linha do Time indicar este papel\.$/m.test(tsr), tsr);
   const outsiders = ['commands/plan.md', 'rules/common.md', 'hooks/hooks.json'].filter(p => fs.existsSync(path.join(a.proj, '.claude', ...p.split('/'))));
   const hookKeys = Object.keys(JSON.parse(rd(a, '.claude', 'settings.json')).hooks || {});
   check('US-60: nenhum comando, regra ou hook do ECC chega ao projeto; o instalador do ECC nunca é chamado',

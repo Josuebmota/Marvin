@@ -1982,10 +1982,15 @@ const eccAgent = (txt, id) => {
   let head = m[2];
   const setKey = (k, v) => { const re = new RegExp('^' + k + ':[ \\t]*.*$', 'm'); head = re.test(head) ? head.replace(re, () => k + ': ' + v) : head + nl + k + ': ' + v; };
   setKey('model', model); setKey('effort', effort);
+  // Mapped on the whole catalog (67 agents, 65 trigger sentences: "MUST BE USED", "Use for all…", "Use
+  // proactively…", "Use when <lang>…", "Automatically detects…"): the FIRST sentence says what the agent
+  // is; every later one says when to call it. Only the first stays — the Time row decides the call.
   head = head.replace(/^description:[ \t]*(.*)$/m, (all, d) => {
-    if (/^["'>|]/.test(d) || !d) return all;   // quoted or block scalar: not rewritten blindly
-    const kept = d.split(/(?<=\.)\s+/).filter(s => !/must be used|proactively|automatically activated|use immediately/i.test(s)).join(' ').trim();
-    return 'description: ' + (kept ? kept + ' ' : '') + 'Chame quando a linha do Time indicar este papel.';
+    if (/^[>|]/.test(d) || !d) return all;   // block scalar: not rewritten blindly
+    const plain = /^(["'])(.*)\1\s*$/.test(d) ? d.replace(/^(["'])(.*)\1\s*$/, '$2') : d;
+    let first = plain.split(/(?<=[.!?])\s+/)[0].trim();
+    if (/must be used|proactiv|automatically|immediately|^use\b|^invoke\b|^call\b/i.test(first)) first = '';
+    return 'description: ' + (first ? first + ' ' : '') + 'Chame quando a linha do Time indicar este papel.';
   });
   // MIT asks for attribution: the copy says where it came from (a YAML comment, ignored by the loader).
   if (!/^# origem: ECC/m.test(head)) head += nl + '# origem: ECC (MIT) — https://github.com/affaan-m/ECC — model/effort pela matriz do Marvin';
