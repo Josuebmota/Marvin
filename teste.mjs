@@ -86,19 +86,47 @@ function fakeGraphify(dir, code) {
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'graphify'), '#!/bin/sh\nexit ' + code + '\n', { mode: 0o755 });
   fs.writeFileSync(path.join(dir, 'graphify.cmd'), '@exit /b ' + code + '\r\n');
+  // US-59: graphify, ponytail and ecc install themselves without a flag. Every case therefore also gets
+  // `claude` and `uv` that FAIL at the head of PATH — a test must never reach the real ones.
+  for (const bin of ['claude', 'uv']) {
+    fs.writeFileSync(path.join(dir, bin), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+    fs.writeFileSync(path.join(dir, bin + '.cmd'), '@exit /b 1\r\n');
+  }
   return dir;
 }
 const NO_GRAPHIFY = fakeGraphify(fs.mkdtempSync(path.join(os.tmpdir(), 'marvin-teste-sem-graphify-')), 1);
-process.on('exit', () => { try { fs.rmSync(NO_GRAPHIFY, { recursive: true, force: true }); } catch {} });
+// `arena.real` keeps the REAL graphify on PATH but must still never reach the real `claude`/`uv`.
+const NO_INSTALL = fs.mkdtempSync(path.join(os.tmpdir(), 'marvin-teste-sem-install-'));
+for (const bin of ['claude', 'uv']) {
+  fs.writeFileSync(path.join(NO_INSTALL, bin), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(NO_INSTALL, bin + '.cmd'), '@exit /b 1\r\n');
+}
+process.on('exit', () => { for (const d of [NO_GRAPHIFY, NO_INSTALL]) try { fs.rmSync(d, { recursive: true, force: true }); } catch {} });
 const pathWith = (dir) => ({ [PATH_KEY]: dir + path.delimiter + process.env[PATH_KEY] });
 
 /** Runs marvin with HOME/USERPROFILE redirected. */
-function run({ proj: proj, lar: home, real }, ...flags) {
+function run({ proj: proj, lar: home, real, bin }, ...flags) {
   return spawnSync(process.execPath, [SCRIPT, ...flags], {
     cwd: proj,
     encoding: 'utf8',
-    env: { ...process.env, HOME: home, USERPROFILE: home, ...(real ? {} : pathWith(NO_GRAPHIFY)) },
+    env: { ...process.env, HOME: home, USERPROFILE: home, ...pathWith(bin || (real ? NO_INSTALL : NO_GRAPHIFY)) },
   });
+}
+
+/** US-59: a machine that already has the mandatory tools (graphify on PATH, ponytail at user scope, ECC catalog),
+ *  so a run has nothing to install. `fill` adds files to the fake ECC catalog (agents/<id>.md, skills/<id>/SKILL.md). */
+function equipped(x, fill = {}) {
+  const plug = path.join(x.lar, '.claude', 'plugins');
+  fs.mkdirSync(path.join(plug, 'marketplaces', 'ecc', 'agents'), { recursive: true });
+  fs.writeFileSync(path.join(plug, 'installed_plugins.json'), '{"plugins":{"ponytail@ponytail":[{"scope":"user"}]}}\n');
+  fs.writeFileSync(path.join(x.lar, '.claude', '.ponytail-active'), 'full\n');
+  for (const [rel, txt] of Object.entries(fill)) {
+    const p = path.join(plug, 'marketplaces', 'ecc', rel);
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, txt);
+  }
+  x.bin = fakeGraphify(path.join(x.base, 'bin'), 0);
+  return x;
 }
 
 // Exercise real readline with a TTY marker and prompt-driven pipe input. No mocked
@@ -355,7 +383,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
 // needed to say. It listed 9 "create dir" for existing folders — mkdir recursive on an
 // existing directory creates nothing — and the "nothing to do" message never showed.
 {
-  const a = arena('planolimpo');
+  const a = equipped(arena('planolimpo'));
   run(a, '--no-git');
   const r = run(a, '--dry-run', '--no-git');
   check('dry-run em projeto montado não promete trabalho',
@@ -388,6 +416,10 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
 // mention has to be one line, after what matters, and say to read the caveats first.
 {
   const a = arena('grafomencao');
+  run(a, '--no-git');
+  // US-59: graphify is mandatory, so the mention only shows for whoever wrote `não` on purpose.
+  const recG = path.join(a.proj, '.marvin', 'ferramentas.md');
+  fs.writeFileSync(recG, fs.readFileSync(recG, 'utf8').replace(/^\| graphify \| sim \|/m, '| graphify | não |'));
   const r = run(a, '--no-git');
   check('a saída normal menciona o graphify e o --use', /--use=graphify/.test(r.stdout));
   check('a menção ensina como instalar', /graphifyy/.test(r.stdout));
@@ -408,14 +440,18 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const r0 = run(a, '--no-git', '--dry-run');
   check('--dry-run não escreve o registro', !fs.existsSync(rec) && /ferramentas\.md/.test(r0.stdout));
   const r = run(a, '--no-git');
-  check('sem TTY o registro nasce com `não` e avisa',
-        fs.existsSync(rec) && /^\| graphify \| não \|/m.test(fs.readFileSync(rec, 'utf8'))
-        && /(no interactive terminal|not on PATH)/.test(r.stdout), r.stdout.slice(-400));
-  // US-38: no graphify on PATH (the CI case, here a failing fake) → exit 0, strong warning, no `sim`.
-  check('US-38: sem graphify no PATH a instalação termina com exit 0 e aviso forte de como instalar',
-        r.status === 0 && /graphify NOT found on PATH/.test(r.stdout) && /uv tool install graphifyy/.test(r.stdout), r.stdout.slice(-500));
-  check('US-38: sem graphify o registro não tem `sim` para ele', !/^\| graphify \| sim \|/m.test(fs.readFileSync(rec, 'utf8')));
+  check('US-59: sem TTY o registro nasce com `sim` (obrigatório), sem perguntar',
+        fs.existsSync(rec) && /^\| graphify \| sim \|/m.test(fs.readFileSync(rec, 'utf8'))
+        && /graphify not found — recording `sim` \(mandatory\)/.test(r.stdout), r.stdout.slice(-400));
+  // US-59/US-38: graphify missing and the install failing (here a failing fake `uv`) → exit 0, warning, never an abort.
+  check('US-59: sem graphify no PATH, o `uv` falhando: exit 0, aviso do install e aviso forte de como instalar',
+        r.status === 0 && /graphify: `uv tool install graphifyy` failed/.test(r.stdout) && /graphify NOT found on PATH/.test(r.stdout) && /uv tool install graphifyy/.test(r.stdout), r.stdout.slice(-500));
+  // The owner's explicit `não` is respected (invariant 2), with a warning that the default is mandatory.
+  fs.writeFileSync(rec, fs.readFileSync(rec, 'utf8').replace(/^\| graphify \| sim \|/m, '| graphify | não |'));
   const before = fs.readFileSync(rec, 'utf8');
+  const rNao = run(a, '--no-git');
+  check('US-59: `não` explícito é respeitado, com aviso de que o padrão é obrigatório',
+        fs.readFileSync(rec, 'utf8') === before && /graphify is `não`[^\n]*MANDATORY/.test(rNao.stdout) && !/graphify: `uv/.test(rNao.stdout), rNao.stdout.slice(-500));
   run(a, '--no-git');
   check('rodar de novo não pergunta nem duplica a linha', fs.readFileSync(rec, 'utf8') === before);
   check('sem TTY nada trava esperando resposta', !/Use it in this project/.test(r.stdout));
@@ -455,12 +491,13 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
 {
   const a = arena('ponytail');
   const r0 = run(a, '--no-git');
-  check('ponytail ausente registra `não` e ensina a instalar',
-        /^\| ponytail \| não \|/m.test(fs.readFileSync(path.join(a.proj, '.marvin', 'ferramentas.md'), 'utf8'))
-        && /ponytail not found[\s\S]*marketplace add DietrichGebert\/ponytail/.test(r0.stdout), r0.stdout.slice(-400));
-  check('ausente: nada de ponytail no AGENTS.md nem no agents/README',
-        !/ponytail/i.test(fs.readFileSync(path.join(a.proj, 'AGENTS.md'), 'utf8'))
-        && !/ponytail/i.test(fs.readFileSync(path.join(a.proj, '.claude', 'agents', 'README.md'), 'utf8')));
+  check('US-59: ponytail ausente registra `sim` (obrigatório) e a instalação que falha vira aviso, exit 0',
+        /^\| ponytail \| sim \|/m.test(fs.readFileSync(path.join(a.proj, '.marvin', 'ferramentas.md'), 'utf8'))
+        && /ponytail not found — recording `sim`/.test(r0.stdout)
+        && /ponytail: `claude plugin marketplace add DietrichGebert\/ponytail[^\n]*failed/.test(r0.stdout) && r0.status === 0, r0.stdout.slice(-600));
+  check('US-59: ponytail obrigatório: AGENTS.md e agents/README já trazem a seção dele',
+        /ponytail/i.test(fs.readFileSync(path.join(a.proj, 'AGENTS.md'), 'utf8'))
+        && /Ponytail: em que papel entra/.test(fs.readFileSync(path.join(a.proj, '.claude', 'agents', 'README.md'), 'utf8')));
   cleanup(a);
 
   const b = arena('ponytail-inst');
@@ -554,7 +591,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const sAfter = fs.readFileSync(recOf(s), 'utf8');
   run(s, '--no-git', '--use=playwright');
   check('linha nova entra na tabela, antes da seção do projeto; 2º run não muda nada',
-        /^\| ponytail \|[^\n]*\n\| playwright \| sim \|[^\n]*\n\n## Painel do projeto\n\ntexto do projeto\n$/m.test(sAfter)
+        /^\| ponytail \|[^\n]*\n\| ecc \|[^\n]*\n\| playwright \| sim \|[^\n]*\n\n## Painel do projeto\n\ntexto do projeto\n$/m.test(sAfter)
         && fs.readFileSync(recOf(s), 'utf8') === sAfter, sAfter.slice(-600));
   cleanup(s);
 
@@ -572,11 +609,9 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
     env: { ...process.env, HOME: f.lar, USERPROFILE: f.lar, ...pathWith(bin) },
   });
   const recF = fs.readFileSync(recOf(f), 'utf8');
-  check('US-38: graphify no PATH e sem TTY grava `sim` sem perguntar; ponytail continua `não`',
-        /^\| graphify \| sim \|/m.test(recF) && /^\| ponytail \| não \|/m.test(recF) && rf.status === 0, rf.stdout.slice(-500));
+  check('US-38: graphify no PATH e sem TTY grava `sim` sem perguntar; ponytail instalado também (obrigatório)',
+        /^\| graphify \| sim \|/m.test(recF) && /^\| ponytail \| sim \|/m.test(recF) && rf.status === 0, rf.stdout.slice(-500));
   check('US-38: com graphify no PATH não há aviso de falta', !/graphify NOT found/.test(rf.stdout), rf.stdout.slice(-500));
-  check('US-32: o aviso de ponytail sem TTY continua com o comando de flip',
-        /ponytail is [^\n]*no interactive terminal[^\n]*marvin --use=ponytail/.test(rf.stdout), rf.stdout.slice(-500));
   // an explicit `não` from the human survives graphify being on PATH (invariant 2)
   fs.writeFileSync(recOf(f), recF.replace(/^\| graphify \| sim \|/m, '| graphify | não |'));
   const noBefore = fs.readFileSync(recOf(f), 'utf8');
@@ -1124,7 +1159,9 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const foreign = '{\n  "permissions": { "allow": ["Bash(ls)"] }\n}\n';
   fs.writeFileSync(settings, foreign);
   const r = run(a, '--no-git');
-  check('settings.json alheio fica intocado byte a byte, e o bloco é impresso', fs.readFileSync(settings, 'utf8') === foreign && /not merged/.test(r.stdout) && /SessionStart/.test(r.stdout));
+  // US-61: the only thing marvin adds to someone else's settings.json is `model` (when absent); the rest stays.
+  check('settings.json alheio: só ganha o `model`, o resto fica igual, e o bloco do hook é impresso',
+        JSON.stringify(JSON.parse(fs.readFileSync(settings, 'utf8'))) === JSON.stringify({ ...JSON.parse(foreign), model: 'sonnet' }) && /not merged/.test(r.stdout) && /SessionStart/.test(r.stdout));
   check('o passo 10 cobra o hook que falta', /settings\.json — missing/.test(r.stdout));
   cleanup(a);
 }
@@ -1718,8 +1755,10 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   check('US-21: repetir a flag não reescreve o registro', rec() === before);
   run(b, '--untrack=grafo');
   check('US-21: --untrack flipa só o item pedido', /^versiona: grafo=não, status=sim$/m.test(rec()));
+  // graphify is mandatory (US-59), so the run that records `não` already builds the graph and git-ignores it: that line stays.
+  const giU = readGi(b);
   run(b, '--no-git', '--graphify', '--track=grafo');
-  check('US-21: a flag vence o registro', readGi(b) === giB && /^versiona: grafo=sim/m.test(rec()));
+  check('US-21: a flag vence o registro', readGi(b) === giU && giU.startsWith(giB) && /^versiona: grafo=sim/m.test(rec()));
   cleanup(b);
 
   // (c) the line is already there and the owner chose sim → warning, nothing removed
@@ -1807,8 +1846,9 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
         /\| `dev-back` \|[^\n]*\| Sonnet · médio \|/.test(txt) && /sobe só se falhar/.test(txt));
   check('US-29: o glossário põe a sessão principal (coordenador) no Sonnet e o tl por risco, não em toda mudança',
         /\| sessão principal \|[^\n]*\| Sonnet · médio \|/.test(txt) && /\| `tl` \|[^\n]*escreve no disco de alguém/.test(txt));
-  check('US-48: o glossário trata catálogo de terceiros como referência na criação de agente, nunca instalação, citando a origem',
-        /Catálogo de referência, não instalação/.test(txt) && /cite a origem/.test(txt));
+  check('US-60: o glossário manda procurar primeiro no ECC e instalar só aquele agente/skill, e diz que a sessão abre no Sonnet',
+        /Procure primeiro no ECC/.test(txt) && /só aquele/.test(txt) && /só escreva do zero se o ECC não tiver/i.test(txt)
+        && !/Catálogo de referência, não instalação/.test(txt) && /sessão principal abre no Sonnet/.test(txt));
   const plan = fs.readFileSync(path.join(a.proj, '.marvin', 'Planejamento', 'README.md'), 'utf8');
   check('US-44: o Planejamento/README gerado não tem a tabela de papéis e linka o glossário da equipe',
         !plan.includes('| `scout` |') && /\[glossário\s+da\s+equipe\]\(\.\.\/Contexto\/Equipe\.md\)/.test(plan));
@@ -1915,67 +1955,222 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
-// ── US-50. --install: opt-in, dry-run honest, guarded by detection, failure = warning + exit 0.
+// ── US-59. graphify, ponytail and ecc are mandatory: the ones the machine lacks install themselves, no flag.
+// Dry-run honest, failure = warning + exit 0. Hermetic: fake `claude` and `uv` that log every call.
 {
-  const a = arena('us50');
-  run(a, '--no-git', '--no-questions', '--use=ponytail');   // record says `sim`; the hermetic home has no ponytail
+  const a = arena('us59');
+  run(a, '--no-git', '--no-questions');   // the record is born `sim` for all three; the installs fail (failing fake claude/uv)
   const snap = () => JSON.stringify([files(a.proj), files(a.lar)]);
   const PT = 'claude plugin install ponytail --scope project';
   const before = snap();
-  const dry = run(a, '--no-git', '--no-questions', '--install', '--dry-run');
-  check('US-50: --install --dry-run lista o run do ponytail em escopo de projeto',
-        dry.status === 0 && /run +claude plugin marketplace add DietrichGebert\/ponytail --scope project/.test(dry.stdout) && new RegExp('run +' + PT).test(dry.stdout), dry.stdout.slice(-600));
-  check('US-50: --install --dry-run não escreve nada', snap() === before);
-  // A fake `claude` that logs each call (a regression must never reach the REAL claude).
+  const dry = run(a, '--no-git', '--no-questions', '--dry-run');
+  check('US-59: --dry-run (sem flag) lista os installs dos três: ponytail, graphify e o catálogo ECC',
+        dry.status === 0 && /run +claude plugin marketplace add DietrichGebert\/ponytail --scope project/.test(dry.stdout) && new RegExp('run +' + PT).test(dry.stdout)
+        && /run +uv tool install graphifyy/.test(dry.stdout) && /run +claude plugin marketplace add affaan-m\/ECC --scope project/.test(dry.stdout), dry.stdout.slice(-700));
+  check('US-59: --dry-run não escreve nada', snap() === before);
+  // Fake `claude` and `uv` that log each call (a regression must never reach the REAL ones).
   const fake = fs.mkdtempSync(path.join(os.tmpdir(), 'marvin-teste-claude-'));
   const logf = path.join(fake, 'chamadas.log');
-  fs.writeFileSync(path.join(fake, 'claude'), '#!/bin/sh\necho "$@" >> "' + logf + '"\n', { mode: 0o755 });
-  fs.writeFileSync(path.join(fake, 'claude.cmd'), '@echo %* >> "' + logf + '"\r\n');
-  const calls = () => fs.existsSync(logf) ? fs.readFileSync(logf, 'utf8').split(/\r?\n/).filter(Boolean) : [];
+  const logging = () => {
+    fs.writeFileSync(path.join(fake, 'claude'), '#!/bin/sh\necho "claude $@" >> "' + logf + '"\n', { mode: 0o755 });
+    fs.writeFileSync(path.join(fake, 'claude.cmd'), '@echo claude %* >> "' + logf + '"\r\n');
+    fs.writeFileSync(path.join(fake, 'uv'), '#!/bin/sh\necho "uv $@" >> "' + logf + '"\n', { mode: 0o755 });
+    fs.writeFileSync(path.join(fake, 'uv.cmd'), '@echo uv %* >> "' + logf + '"\r\n');
+  };
+  logging();
+  const calls = () => fs.existsSync(logf) ? fs.readFileSync(logf, 'utf8').split(/\r?\n/).map(l => l.trim()).filter(Boolean) : [];
   const comFake = (...flags) => spawnSync(process.execPath, [SCRIPT, '--no-git', '--no-questions', ...flags], {
     cwd: a.proj, encoding: 'utf8', env: { ...process.env, HOME: a.lar, USERPROFILE: a.lar, ...pathWith(fake + path.delimiter + NO_GRAPHIFY) },
   });
-  const sem = comFake();
-  check('US-50: sem --install o claude não é chamado, mas o comando aparece como instrução',
-        sem.status === 0 && calls().length === 0 && sem.stdout.includes(PT) && /--install/.test(sem.stdout), sem.stdout.slice(-600) + JSON.stringify(calls()));
-  check('US-50: sem --install nada é escrito', snap() === before);
+  const r1 = comFake();
+  const c1 = calls();
+  check('US-59: sem nenhuma flag o marvin instala o que falta, na ordem (graphify, ponytail em dois passos, catálogo ECC)',
+        r1.status === 0 && c1.length === 4 && /^uv tool install graphifyy/.test(c1[0]) && /marketplace add DietrichGebert\/ponytail/.test(c1[1])
+        && /plugin install ponytail --scope project/.test(c1[2]) && /marketplace add affaan-m\/ECC --scope project/.test(c1[3]), r1.stdout.slice(-500) + JSON.stringify(c1));
+  check('US-59: --install continua aceita e faz o mesmo', comFake('--install').status === 0 && calls().length === 8);
 
-  // Missing command: PATH with an empty directory, so `claude` does not exist (shell itself is found by absolute path).
+  // Missing commands: PATH with an empty directory, so neither `claude` nor `uv` exist (the shell itself is found by absolute path).
   const vazio = fs.mkdtempSync(path.join(os.tmpdir(), 'marvin-teste-vazio-'));
-  const semClaude = spawnSync(process.execPath, [SCRIPT, '--no-git', '--no-questions', '--install'], {
+  const semClaude = spawnSync(process.execPath, [SCRIPT, '--no-git', '--no-questions'], {
     cwd: a.proj, encoding: 'utf8', env: { ...process.env, HOME: a.lar, USERPROFILE: a.lar, [PATH_KEY]: vazio },
   });
-  check('US-50: --install com `claude` ausente do PATH sai 0 com aviso, não aborta',
-        semClaude.status === 0 && /failed/.test(semClaude.stdout) && /marketplace add/.test(semClaude.stdout), semClaude.status + ' ' + semClaude.stdout.slice(-600) + semClaude.stderr);
+  check('US-59: `claude` e `uv` ausentes do PATH: sai 0, um aviso por install, não aborta',
+        semClaude.status === 0 && /graphify: `uv tool install graphifyy` failed/.test(semClaude.stdout) && /ecc: `claude plugin marketplace add affaan-m\/ECC[^\n]*failed/.test(semClaude.stdout),
+        semClaude.status + ' ' + semClaude.stdout.slice(-600) + semClaude.stderr);
   fs.rmSync(vazio, { recursive: true, force: true });
 
-  // Positive path with the fake `claude`; detection is simulated inside the hermetic home.
-  const r1 = comFake('--install');
-  check('US-50: --install chama o claude duas vezes, na ordem (marketplace, depois plugin)',
-        r1.status === 0 && calls().length === 2 && /marketplace add/.test(calls()[0]) && /plugin install ponytail/.test(calls()[1]), r1.stdout.slice(-500) + JSON.stringify(calls()));
-  // The real detection reads installed_plugins.json + .ponytail-active under HOME: plant both.
+  // Everything detected → the next run executes nothing. Detection is simulated inside the hermetic home.
+  const n0 = calls().length;
   const plug = path.join(a.lar, '.claude');
-  fs.mkdirSync(path.join(plug, 'plugins'), { recursive: true });
+  fs.mkdirSync(path.join(plug, 'plugins', 'marketplaces', 'ecc', 'agents'), { recursive: true });
   fs.writeFileSync(path.join(plug, 'plugins', 'installed_plugins.json'), '{"plugins":{"ponytail@x":[{"scope":"user"}]}}\n');
   fs.writeFileSync(path.join(plug, '.ponytail-active'), 'full\n');
-  const r2 = comFake('--install');
-  check('US-50: com o ponytail detectado, a segunda execução não roda nenhum exec', r2.status === 0 && calls().length === 2, JSON.stringify(calls()));
+  fakeGraphify(fake, 0);   // a graphify that works, ahead of everything; it also resets the claude/uv stubs, so log again
+  logging();
+  const r3 = comFake();
+  check('US-59: com os três detectados, a execução seguinte não roda nenhum exec', r3.status === 0 && calls().length === n0, JSON.stringify(calls().slice(n0)) + r3.stdout.slice(-400));
   fs.rmSync(fake, { recursive: true, force: true });
   cleanup(a);
 
   // The plugin CLI creates .claude/settings.json: the install must run AFTER marvin's SessionStart hook is written.
-  const b = arena('us50-hook');
+  const b = arena('us59-hook');
   const fk = fs.mkdtempSync(path.join(os.tmpdir(), 'marvin-teste-claude-'));
   fs.writeFileSync(path.join(fk, 'claude'), '#!/bin/sh\n[ -f .claude/settings.json ] || { mkdir -p .claude; echo \'{"x":1}\' > .claude/settings.json; }\n', { mode: 0o755 });
   fs.writeFileSync(path.join(fk, 'claude.cmd'), '@if not exist .claude\\settings.json (mkdir .claude 2>nul & echo {"x":1}> .claude\\settings.json)\r\n');
-  const rh = spawnSync(process.execPath, [SCRIPT, '--no-git', '--no-questions', '--use=ponytail', '--install'], {
+  const rh = spawnSync(process.execPath, [SCRIPT, '--no-git', '--no-questions'], {
     cwd: b.proj, encoding: 'utf8', env: { ...process.env, HOME: b.lar, USERPROFILE: b.lar, ...pathWith(fk + path.delimiter + NO_GRAPHIFY) },
   });
   let cfg = ''; try { cfg = fs.readFileSync(path.join(b.proj, '.claude', 'settings.json'), 'utf8'); } catch {}
-  check('US-50: projeto novo com --use=ponytail --install: o settings.json final tem o hook SessionStart do marvin',
+  check('US-59: projeto novo: o settings.json final tem o hook SessionStart do marvin (o install do plugin não o atropela)',
         rh.status === 0 && /SessionStart/.test(cfg) && /--status --curto/.test(cfg), cfg + rh.stdout.slice(-500));
   fs.rmSync(fk, { recursive: true, force: true });
   cleanup(b);
+}
+
+// ── US-60. ECC is the source of the team: ONLY the agents/skills the project uses are copied from the catalog
+// clone, with the cost matrix on top, and never what is already there. The ECC installer is NOT used: it brings
+// the whole module (measured: 67 agents, 94 commands, 122 rules, 116 skills for one `--with`). Hermetic: a fake
+// catalog whose `scripts/install-apply.js` leaves a marker if anyone runs it, plus commands/rules/hooks that must not arrive.
+{
+  const agent = (name, model, desc) => '---\nname: ' + name + '\ndescription: ' + desc + '\ntools: Read, Grep, Glob, Bash\nmodel: ' + model + '\n---\n\n# ' + name + '\n';
+  const catalog = (marker) => ({
+    'agents/code-reviewer.md': agent('code-reviewer', 'opus', 'Expert code review specialist. Proactively reviews code. Use immediately after writing code. MUST BE USED for all code changes.'),
+    'agents/tdd-guide.md': agent('tdd-guide', 'opus', 'TDD specialist. Use PROACTIVELY when writing new features. Ensures 80%+ test coverage.'),
+    'agents/typescript-reviewer.md': agent('typescript-reviewer', 'sonnet', 'TypeScript reviewer. Use for all TypeScript changes. MUST BE USED for TypeScript projects.'),
+    'agents/build-error-resolver.md': agent('build-error-resolver', 'sonnet', 'Build error specialist. Use PROACTIVELY when build fails.'),
+    'agents/python-reviewer.md': agent('python-reviewer', 'sonnet', 'Python reviewer. MUST BE USED for Python projects.'),
+    'agents/planner.md': agent('planner', 'opus', 'Planning. Use PROACTIVELY. Automatically activated for planning tasks.'),
+    'skills/python-patterns/SKILL.md': '---\nname: python-patterns\ndescription: Python idioms\n---\n',
+    'skills/python-patterns/ref/extra.md': 'extra\n',
+    'commands/plan.md': 'a command that must not arrive\n',
+    'rules/common.md': 'an always-loaded rule that must not arrive\n',
+    'hooks/hooks.json': '{"hooks":{}}\n',
+    'scripts/install-apply.js': 'require("fs").writeFileSync(' + JSON.stringify(marker) + ', process.argv.slice(2).join(" "));\n',
+  });
+  const rd = (x, ...p) => fs.readFileSync(path.join(x.proj, ...p), 'utf8');
+  const has = (x, id) => fs.existsSync(path.join(x.proj, '.claude', 'agents', id + '.md'));
+
+  // a TypeScript project
+  const a = arena('us60-ts');
+  fs.writeFileSync(path.join(a.proj, 'tsconfig.json'), '{}\n');
+  const marker = path.join(a.base, 'install-apply-invocado.txt');
+  equipped(a, catalog(marker));
+  const r = run(a, '--no-git', '--no-questions');
+  check('US-60: projeto TS recebe code-reviewer, tdd-guide, typescript-reviewer e build-error-resolver, e só eles',
+        r.status === 0 && ['code-reviewer', 'tdd-guide', 'typescript-reviewer', 'build-error-resolver'].every(id => has(a, id)) && !has(a, 'python-reviewer') && !has(a, 'planner'), r.stdout.slice(-600));
+  const rec = rd(a, '.marvin', 'ferramentas.md');
+  check('US-60: o registro ganha `| ecc | sim | componentes: … |` com os componentes escolhidos',
+        /^\| ecc \| sim \| componentes: agent:code-reviewer, agent:tdd-guide, lang:typescript /m.test(rec), rec.slice(-500));
+  const cr = rd(a, '.claude', 'agents', 'code-reviewer.md');
+  check('US-60: o agente instalado sai com model: sonnet, effort: medium e sem "MUST BE USED"/"Proactively"/"Use immediately"',
+        /^model: sonnet$/m.test(cr) && !/^model: opus/m.test(cr) && /^effort: medium$/m.test(cr) && !/MUST BE USED|proactively|use immediately/i.test(cr)
+        && /^description: Expert code review specialist\. Chame quando a linha do Time indicar este papel\.$/m.test(cr), cr);
+  check('US-60: o corpo do agente fica como veio', /\n# code-reviewer\n/.test(cr) && /^tools: Read, Grep, Glob, Bash$/m.test(cr));
+  const tdd = rd(a, '.claude', 'agents', 'tdd-guide.md');
+  check('US-60: tdd-guide também (opus vira sonnet · medium; "Use PROACTIVELY" some, o resto da descrição fica)',
+        /^model: sonnet$/m.test(tdd) && /^effort: medium$/m.test(tdd) && !/PROACTIVELY/.test(tdd) && /Ensures 80%\+ test coverage\./.test(tdd), tdd);
+  const outsiders = ['commands/plan.md', 'rules/common.md', 'hooks/hooks.json'].filter(p => fs.existsSync(path.join(a.proj, '.claude', ...p.split('/'))));
+  const hookKeys = Object.keys(JSON.parse(rd(a, '.claude', 'settings.json')).hooks || {});
+  check('US-60: nenhum comando, regra ou hook do ECC chega ao projeto; o instalador do ECC nunca é chamado',
+        outsiders.length === 0 && hookKeys.join() === 'SessionStart' && !fs.existsSync(marker), outsiders.join(', ') + ' ' + hookKeys);
+  const treeAgents = () => JSON.stringify(fs.readdirSync(path.join(a.proj, '.claude', 'agents')).sort().map(f => [f, rd(a, '.claude', 'agents', f)]));
+  const t1 = treeAgents();
+  run(a, '--no-git', '--no-questions');
+  check('US-60: rodar de novo não duplica nem reescreve nada', treeAgents() === t1);
+  cleanup(a);
+
+  // an agent that already existed is the human's
+  const d = arena('us60-existente');
+  fs.writeFileSync(path.join(d.proj, 'tsconfig.json'), '{}\n');
+  equipped(d, catalog(path.join(d.base, 'm.txt')));
+  fs.mkdirSync(path.join(d.proj, '.claude', 'agents'), { recursive: true });
+  const mine = agent('code-reviewer', 'opus', 'O meu revisor. MUST BE USED nas minhas regras.');
+  fs.writeFileSync(path.join(d.proj, '.claude', 'agents', 'code-reviewer.md'), mine);
+  const rdx = run(d, '--no-git', '--no-questions');
+  check('US-60: agente que já existia não é tocado (continua opus e com a frase dele); os que faltavam entram',
+        rd(d, '.claude', 'agents', 'code-reviewer.md') === mine && has(d, 'tdd-guide') && /code-reviewer\.md already exists/.test(rdx.stdout), rdx.stdout.slice(-500));
+  cleanup(d);
+
+  // skills are copied whole (the folder), and only the ones the stack asks for
+  const p = arena('us60-py');
+  fs.rmSync(path.join(p.proj, 'package.json'));   // the arena's Node marker would also bring the TypeScript pair
+  fs.writeFileSync(path.join(p.proj, 'requirements.txt'), 'flask\n');
+  equipped(p, catalog(path.join(p.base, 'm.txt')));
+  run(p, '--no-git', '--no-questions');
+  check('US-60: projeto Python recebe o python-reviewer e a skill python-patterns inteira (com subpasta)',
+        has(p, 'python-reviewer') && fs.existsSync(path.join(p.proj, '.claude', 'skills', 'python-patterns', 'ref', 'extra.md')) && !has(p, 'typescript-reviewer'));
+  cleanup(p);
+
+  // dry-run: the plan lists the copies and writes nothing
+  const f = arena('us60-dry');
+  fs.writeFileSync(path.join(f.proj, 'tsconfig.json'), '{}\n');
+  equipped(f, catalog(path.join(f.base, 'm.txt')));
+  const snapF = () => JSON.stringify([files(f.proj), files(f.lar).filter(x => !x.includes('marketplaces'))]);
+  const bf = snapF();
+  const df = run(f, '--no-git', '--no-questions', '--dry-run');
+  check('US-60: --dry-run lista os agentes que viriam e não escreve nada',
+        df.status === 0 && /create file +\.claude[\\/]agents[\\/]code-reviewer\.md/.test(df.stdout) && snapF() === bf && !fs.existsSync(path.join(f.proj, '.claude')), df.stdout.slice(-700));
+  cleanup(f);
+
+  // the catalog is missing and cannot be installed: a warning, not an abort, and nothing invented
+  const g = arena('us60-sem-catalogo');
+  const rg = run(g, '--no-git', '--no-questions');
+  check('US-60: sem catálogo (e o install falhando) avisa, sai 0 e não cria agente nenhum',
+        rg.status === 0 && /ecc: catalog not found/.test(rg.stdout) && !has(g, 'code-reviewer'), rg.stdout.slice(-500));
+  cleanup(g);
+
+  // capabilities follow what the project has
+  const h = arena('us60-cap');
+  fs.mkdirSync(path.join(h.proj, 'migrations'), { recursive: true });
+  fs.writeFileSync(path.join(h.proj, 'package.json'), JSON.stringify({ dependencies: { jsonwebtoken: '9' } }));
+  equipped(h, { ...catalog(path.join(h.base, 'm.txt')), 'agents/database-reviewer.md': agent('database-reviewer', 'sonnet', 'DB.'), 'agents/security-reviewer.md': agent('security-reviewer', 'sonnet', 'Sec. Use PROACTIVELY.') });
+  run(h, '--no-git', '--no-questions');
+  check('US-60: migrations/ traz o database-reviewer e jsonwebtoken traz o security-reviewer',
+        has(h, 'database-reviewer') && has(h, 'security-reviewer') && /capability:database, capability:security/.test(rd(h, '.marvin', 'ferramentas.md')));
+  cleanup(h);
+}
+
+// ── US-61. The main session opens on Sonnet: `.claude/settings.json` gets "model": "sonnet" when it has none.
+{
+  const setOf = (x) => path.join(x.proj, '.claude', 'settings.json');
+  const n = arena('us61-novo');
+  run(n, '--no-git', '--no-questions');
+  const cfgN = JSON.parse(fs.readFileSync(setOf(n), 'utf8'));
+  check('US-61: settings.json novo nasce com "model": "sonnet" e o hook', cfgN.model === 'sonnet' && !!cfgN.hooks?.SessionStart);
+  cleanup(n);
+
+  const s = arena('us61-sem-model');
+  fs.mkdirSync(path.join(s.proj, '.claude'), { recursive: true });
+  fs.writeFileSync(setOf(s), '{"permissions":{"allow":["Bash(ls)"]}}\n');
+  run(s, '--no-git', '--no-questions');
+  const cfgS = JSON.parse(fs.readFileSync(setOf(s), 'utf8'));
+  check('US-61: settings.json existente sem `model` ganha a chave e mantém o resto', cfgS.model === 'sonnet' && cfgS.permissions.allow[0] === 'Bash(ls)');
+  const bytes = fs.readFileSync(setOf(s), 'utf8');
+  run(s, '--no-git', '--no-questions');
+  check('US-61: rodar de novo não reescreve', fs.readFileSync(setOf(s), 'utf8') === bytes);
+  cleanup(s);
+
+  const m = arena('us61-com-model');
+  fs.mkdirSync(path.join(m.proj, '.claude'), { recursive: true });
+  const own = '{\n    "model": "opus",\n    "permissions": {}\n}\n';
+  fs.writeFileSync(setOf(m), own);
+  run(m, '--no-git', '--no-questions');
+  check('US-61: settings.json com `model` definido não é alterado (escolha do dono)', fs.readFileSync(setOf(m), 'utf8') === own);
+  cleanup(m);
+
+  const i = arena('us61-invalido');
+  fs.mkdirSync(path.join(i.proj, '.claude'), { recursive: true });
+  fs.writeFileSync(setOf(i), '{not json');
+  const ri = run(i, '--no-git', '--no-questions');
+  check('US-61: JSON inválido: avisa e não toca no arquivo', ri.status === 0 && fs.readFileSync(setOf(i), 'utf8') === '{not json' && /not a valid JSON object/.test(ri.stdout), ri.stdout.slice(-400));
+  cleanup(i);
+
+  const dr = arena('us61-dry');
+  fs.mkdirSync(path.join(dr.proj, '.claude'), { recursive: true });
+  fs.writeFileSync(setOf(dr), '{"a":1}\n');
+  run(dr, '--no-git', '--no-questions', '--dry-run');
+  check('US-61: --dry-run não escreve o model', fs.readFileSync(setOf(dr), 'utf8') === '{"a":1}\n');
+  cleanup(dr);
 }
 
 // ── US-55. Ponytail detection honors the entry scope (hermetic: plants installed_plugins.json in the arena home).
@@ -2010,8 +2205,8 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const o = arena('us55-outro');
   plant(o, entry('project', path.join(path.dirname(mine(o)), 'outro-projeto')));
   const ro = state(o);
-  check('US-55: só entrada de outro projeto = não instalado (registra `não`, ensina a instalar)',
-        /ponytail not found/.test(ro) && /^\| ponytail \| não \|/m.test(fs.readFileSync(path.join(o.proj, '.marvin', 'ferramentas.md'), 'utf8')), ro.slice(-400));
+  check('US-55: só entrada de outro projeto = não instalado (registra `sim`, obrigatório, e ensina a instalar)',
+        /ponytail not found/.test(ro) && /^\| ponytail \| sim \|/m.test(fs.readFileSync(path.join(o.proj, '.marvin', 'ferramentas.md'), 'utf8')), ro.slice(-400));
   cleanup(o);
 
   const d = arena('us55-dry');
@@ -2054,6 +2249,34 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── 3.3.1: android/build.gradle beside a package.json is a JS app's Android shell, not Java;
+// and a settings.json with a BOM is valid JSON (Windows editors write one).
+{
+  const agent = (id) => `---\nname: ${id}\ndescription: ${id}. MUST BE USED.\nmodel: opus\n---\nbody\n`;
+  const fill = { 'agents/code-reviewer.md': agent('code-reviewer'), 'agents/tdd-guide.md': agent('tdd-guide'),
+    'agents/java-reviewer.md': agent('java-reviewer'), 'agents/java-build-resolver.md': agent('java-build-resolver') };
+  const a = equipped(arena('ecc-android'), fill);
+  fs.writeFileSync(path.join(a.proj, 'package.json'), '{"name":"app","dependencies":{"@capacitor/core":"6"}}');
+  fs.mkdirSync(path.join(a.proj, 'android'), { recursive: true });
+  fs.writeFileSync(path.join(a.proj, 'android', 'build.gradle'), 'apply plugin: "com.android.application"\n');
+  run(a, '--no-git', '--no-questions');
+  const ag = (x, id) => fs.existsSync(path.join(x.proj, '.claude', 'agents', id + '.md'));
+  check('ECC: android/build.gradle de um app JS não traz os agentes de Java', ag(a, 'code-reviewer') && !ag(a, 'java-reviewer') && !ag(a, 'java-build-resolver'));
+  cleanup(a);
+  const b = equipped(arena('ecc-java'), fill);
+  fs.writeFileSync(path.join(b.proj, 'pom.xml'), '<project></project>\n');
+  run(b, '--no-git', '--no-questions');
+  check('ECC: projeto Java de verdade (pom.xml) traz os agentes de Java', ag(b, 'java-reviewer'));
+  cleanup(b);
+  const c = equipped(arena('settings-bom'));
+  fs.mkdirSync(path.join(c.proj, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(c.proj, '.claude', 'settings.json'), '﻿{\n  "hooks": {}\n}\n');
+  run(c, '--no-git', '--no-questions');
+  let cfg = {}; try { cfg = JSON.parse(fs.readFileSync(path.join(c.proj, '.claude', 'settings.json'), 'utf8').replace(/^﻿/, '')); } catch {}
+  check('US-61: settings.json com BOM recebe "model": "sonnet" e mantém o que tinha', cfg.model === 'sonnet' && 'hooks' in cfg);
+  cleanup(c);
+}
+
 // ── Epic marks: a known state never shows as ✗ (refinada/anotada epics did, before 3.0.0).
 {
   const a = arena('epic-mark');
@@ -2090,7 +2313,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   fs.writeFileSync(path.join(fk, 'graphify'), '#!/bin/sh\nexec "' + process.execPath + '" "' + path.join(fk, 'fake.mjs') + '" "$@"\n', { mode: 0o755 });
   fs.writeFileSync(path.join(fk, 'graphify.cmd'), '@"' + process.execPath + '" "' + path.join(fk, 'fake.mjs') + '" %*\r\n');
   const rg = spawnSync(process.execPath, [SCRIPT, '--no-git', '--no-questions', '--graphify'], {
-    cwd: a.proj, encoding: 'utf8', env: { ...process.env, HOME: a.lar, USERPROFILE: a.lar, ...pathWith(fk) },
+    cwd: a.proj, encoding: 'utf8', env: { ...process.env, HOME: a.lar, USERPROFILE: a.lar, ...pathWith(fk + path.delimiter + NO_GRAPHIFY) },
   });
   const seen = fs.existsSync(logf) ? fs.readFileSync(logf, 'utf8').trim() : '(cluster-only não foi chamado)';
   let finalNodes = 0; try { finalNodes = JSON.parse(fs.readFileSync(path.join(a.proj, 'graphify-out', 'graph.json'), 'utf8')).nodes.length; } catch {}

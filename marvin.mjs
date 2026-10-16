@@ -89,6 +89,8 @@ let PONYTAIL = false;
 // Playwright CLI (US-34): no flag of its own either — the record (block 0b, `--use=playwright`)
 // decides. Turns on the browser-evidence rule in the generated AGENTS.md.
 let PLAYWRIGHT = false;
+// ECC (US-60): the catalog the team's agents/skills come from; the record decides, like ponytail.
+let ECC = false;
 // Names the communities using the `claude` on PATH (graphify's claude-cli backend, which
 // asks for no key). Off by default on purpose: that backend is forced to ONE call at a
 // time, so on a graph of ~130 communities the run takes minutes and burns the subscription
@@ -113,6 +115,7 @@ const USE = new Set(process.argv.filter(a => a.startsWith('--use=') || a.startsW
   .flatMap(a => a.split('=').slice(1).join('=').split(',')).map(s => s.trim().toLowerCase()).filter(Boolean));
 const NO_QUESTIONS = hasFlag('--no-questions', '--sem-perguntas');
 // --install (US-50): runs the install commands of tools the record says `sim` but the machine lacks.
+// US-59: graphify, ponytail and ecc are mandatory (cost) and install themselves WITHOUT the flag; it stays accepted.
 const INSTALL = hasFlag('--install');
 // --regenerar (US-58): backs up and removes the generated command/glossary files so the normal blocks recreate them from the current template.
 const REGENERAR = hasFlag('--regenerar');
@@ -166,9 +169,10 @@ Flags:
   --graphify-git-hook  write .git/hooks/post-commit so the graph refreshes itself.
                     Never overwrites a post-commit you already have
   --use=<tool>      record \`sim\` for an optional tool without asking (alias: --usar=)
-  --install         install the optional tools the record says \`sim\` and this machine lacks:
-                    ponytail at project scope, graphify via uv (user profile, by nature).
-                    Without it the commands are only shown. A failure warns and exits 0
+  --install         graphify, ponytail and ecc are MANDATORY (cost): the ones this machine lacks
+                    install themselves, no flag needed (ponytail and the ecc catalog at project
+                    scope, graphify via uv in the user profile, by nature). The flag is accepted
+                    and also installs other tools the record says \`sim\`. A failure warns, exits 0
   --regenerar       rebuild the files Marvin generates from the current template: the
                     /retomar /us /fechar /refinar /continuar commands, Planejamento/README.md,
                     the team glossary and .claude/agents/README.md. Each existing one is
@@ -176,7 +180,7 @@ Flags:
                     byte-identical, and only then the original is removed and recreated.
                     Never touches AGENTS.md, CLAUDE.md, the note, USs, agents or other Contexto/.
                     Lists the lines of yours that are not in the new text. Works with --dry-run
-  --no-questions    assume \`não\` for every optional tool, even with a terminal
+  --no-questions    assume \`não\` for every OPTIONAL tool (playwright), even with a terminal
                     skip AI availability questions; undeclared access stays unknown
   --executor=<id>   declare the session tool (${VALID_TOOLS.join(', ')}, other)
   --ai=<id>:<access>:<configured>  declare available AI; repeat for multiple options
@@ -1338,7 +1342,7 @@ const computeStatus = () => {
   st.herdam = [];
   try {
     for (const f of fs.readdirSync(path.join(ROOT, '.claude', 'agents')).filter(f => f.endsWith('.md') && f !== 'README.md').sort()) {
-      const fm = (fs.readFileSync(path.join(ROOT, '.claude', 'agents', f), 'utf8').replace(/^﻿/, '').match(/^---\r?\n([\s\S]*?)\r?\n---/) || [])[1] || '';
+      const fm = (fs.readFileSync(path.join(ROOT, '.claude', 'agents', f), 'utf8').replace(/^\uFEFF/, '').match(/^---\r?\n([\s\S]*?)\r?\n---/) || [])[1] || '';
       const m = fm.match(/^model:[ \t]*["']?([^\s"']*)/m);
       if (!m || !m[1] || m[1] === 'inherit') st.herdam.push(f.replace(/\.md$/, ''));
     }
@@ -1923,6 +1927,63 @@ const HAS_WEB_FRONT = pkgDeps.some(deps => deps.some(x => /^(react-native|expo)$
   ? deps.includes('react-dom')
   : deps.some(x => FRONT_RE.test(x) || x === 'vite'));
 
+// ── US-60. Which ECC agents/skills this project USES. Pure read of the stack markers, the manifests
+// and a few folders — fact, not guess. The ECC installer (`install-apply.js --with lang:x`) brings the
+// whole MODULE (every agent, ~100 commands, ~120 always-loaded rules): measured, so Marvin copies only
+// the agent/skill files listed here, straight from the catalog clone, and nothing else.
+const ECC_ROOT = path.join(os.homedir(), '.claude', 'plugins', 'marketplaces', 'ecc');
+const ECC_PLAN = (() => {
+  const MANIFESTS = new Set(['package.json', 'requirements.txt', 'pyproject.toml', 'go.mod', 'Cargo.toml', 'Gemfile', 'composer.json', 'pom.xml', 'build.gradle']);
+  const dirs = [...stacks.keys()];
+  const text = dirs.flatMap(d => {
+    let names = []; try { names = fs.readdirSync(path.join(ROOT, d)); } catch {}
+    return names.filter(n => MANIFESTS.has(n) || /\.csproj$/.test(n)).map(n => { try { return fs.readFileSync(path.join(ROOT, d, n), 'utf8'); } catch { return ''; } });
+  }).join('\n');
+  const has = (...t) => [...stacks.values()].some(s => t.some(x => s.has(x)));
+  const dirHas = (...names) => dirs.some(d => names.some(n => fs.existsSync(path.join(ROOT, d, n))));
+  const dep = (name) => new RegExp('"' + name + '"\\s*:').test(text);
+  const pick = [
+    ['agent:code-reviewer', true, ['code-reviewer'], []],
+    ['agent:tdd-guide', true, ['tdd-guide'], []],
+    ['lang:typescript', has('TypeScript', 'Node/JS'), ['typescript-reviewer', 'build-error-resolver'], []],
+    ['lang:python', has('Python'), ['python-reviewer'], ['python-patterns', 'python-testing']],
+    ['lang:csharp', has('.NET/C#'), ['csharp-reviewer'], ['dotnet-patterns', 'csharp-testing']],
+    ['lang:go', has('Go'), ['go-reviewer', 'go-build-resolver'], ['golang-patterns', 'golang-testing']],
+    ['lang:rust', has('Rust'), ['rust-reviewer', 'rust-build-resolver'], ['rust-patterns', 'rust-testing']],
+    // android/build.gradle next to a package.json is the Android shell of a JS app (RN/Capacitor), not Java.
+    ['lang:java', dirs.some(d => { const st = stacks.get(d); return st && (st.has('Java/Maven') || st.has('Gradle'))
+      && !(path.basename(d).toLowerCase() === 'android' && fs.existsSync(path.join(ROOT, d, '..', 'package.json'))); }), ['java-reviewer', 'java-build-resolver'], ['java-coding-standards']],
+    ['lang:php', has('PHP'), ['php-reviewer'], []],
+    ['framework:react', dep('react'), ['react-reviewer', 'react-build-resolver'], ['react-patterns', 'react-testing']],
+    ['framework:vue', dep('vue'), ['vue-reviewer'], ['vue-patterns']],
+    ['framework:django', /\bdjango\b/i.test(text), ['django-reviewer', 'django-build-resolver'], ['django-patterns', 'django-tdd']],
+    ['framework:fastapi', /\bfastapi\b/i.test(text), ['fastapi-reviewer'], ['fastapi-patterns']],
+    ['capability:database', dirHas('migrations', 'Migrations', 'alembic', 'prisma', 'drizzle', path.join('db', 'migrate'))
+      || /prisma|typeorm|sequelize|knex|drizzle|sqlalchemy|psycopg|alembic|EntityFramework|mongoose/i.test(text), ['database-reviewer'], ['database-migrations']],
+    ['capability:security', /passport|jsonwebtoken|next-auth|"@auth\/|bcrypt|argon2|clerk|firebase-admin|pyjwt|python-jose|authlib|allauth|JwtBearer|AspNetCore\.Identity|devise/i.test(text), ['security-reviewer'], ['security-review']],
+  ];
+  return pick.filter(p => p[1]).map(([component, , agents, skills]) => ({ component, agents, skills }));
+})();
+// Cost matrix (team glossary): planner/architect on Opus · medium; locate/explore on Haiku · low;
+// everything else Sonnet · medium. Applied to every agent THIS run installs, never to one that already existed.
+const eccCost = (id) => /^(planner|architect|code-architect)$/.test(id) ? ['opus', 'medium']
+  : /^(code-explorer|docs-lookup)$/.test(id) ? ['haiku', 'low'] : ['sonnet', 'medium'];
+// Rewrites the frontmatter of an ECC agent: model/effort from the matrix, and the phrases that make it call itself dropped.
+const eccAgent = (txt, id) => {
+  const m = txt.match(/^(---\r?\n)([\s\S]*?)(\r?\n---)/);
+  if (!m) return txt;
+  const nl = m[1].slice(3), [model, effort] = eccCost(id);
+  let head = m[2];
+  const setKey = (k, v) => { const re = new RegExp('^' + k + ':[ \\t]*.*$', 'm'); head = re.test(head) ? head.replace(re, () => k + ': ' + v) : head + nl + k + ': ' + v; };
+  setKey('model', model); setKey('effort', effort);
+  head = head.replace(/^description:[ \t]*(.*)$/m, (all, d) => {
+    if (/^["'>|]/.test(d) || !d) return all;   // quoted or block scalar: not rewritten blindly
+    const kept = d.split(/(?<=\.)\s+/).filter(s => !/must be used|proactively|automatically activated|use immediately/i.test(s)).join(' ').trim();
+    return 'description: ' + (kept ? kept + ' ' : '') + 'Chame quando a linha do Time indicar este papel.';
+  });
+  return txt.slice(0, m.index) + m[1] + head + m[3] + txt.slice(m.index + m[0].length);
+};
+
 // ── 0b. Optional tools: the `.marvin/ferramentas.md` record.
 //
 // Nobody discovers a flag that only exists in --help. So, without `--graphify`, the
@@ -1980,13 +2041,21 @@ const ponytailReach = () => {
 };
 const PENDING_INSTALL = [];   // US-50: tools whose --install commands run late, once the settings.json hook is written
 const OPTIONAL_TOOLS = [
-  { nome: 'graphify', padrao: true, detecta: () => onPath('graphify --version'), instalar: 'uv tool install graphifyy  ·  pipx install graphifyy',
+  // US-59: `obrigatorio` = mandatory for cost. A new record is born `sim`, a missing tool installs itself
+  // (no flag), and an explicit `não` from the owner is respected, with a warning that the default is mandatory.
+  { nome: 'graphify', padrao: true, obrigatorio: true, detecta: () => onPath('graphify --version'), instalar: 'uv tool install graphifyy  ·  pipx install graphifyy',
     instalarProjeto: ['uv tool install graphifyy'], global: true,   // US-50: lands in the user profile by nature (owner-accepted exception)
     alcance: 'saída JSON/markdown em graphify-out/ — qualquer agente lê; só o hook é do Claude, e não é usado' },
-  { nome: 'ponytail', detecta: detectPonytail, instalar: 'claude plugin marketplace add DietrichGebert/ponytail  ·  claude plugin install ponytail',
+  { nome: 'ponytail', obrigatorio: true, detecta: detectPonytail, instalar: 'claude plugin marketplace add DietrichGebert/ponytail  ·  claude plugin install ponytail',
     // US-50: --scope project verified on the installed CLI (user|project|local); no -y/--accept-command
     instalarProjeto: ['claude plugin marketplace add DietrichGebert/ponytail --scope project', 'claude plugin install ponytail --scope project'],
     get alcance() { return ponytailReach(); } },
+  // US-60: ECC is the source of the team. Detection is the catalog clone; what the project USES is copied later (installEcc).
+  { nome: 'ecc', obrigatorio: true, aplica: () => TOOLS.includes('claude'),
+    detecta: () => fs.existsSync(path.join(ECC_ROOT, 'agents')) ? 'catalog present' : false,
+    instalar: 'claude plugin marketplace add affaan-m/ECC --scope project',
+    instalarProjeto: ['claude plugin marketplace add affaan-m/ECC --scope project'],
+    get alcance() { return 'componentes: ' + ECC_PLAN.map(c => c.component).join(', ') + ' — só agentes e skills (sem hook, regra nem comando), com model/effort pela matriz de custo'; } },
   // Playwright CLI (US-34): installation is not detectable (it may run through npx), so the trigger
   // is the project, not the machine. Outside a web front: no line, no warning — a backend needs no browser.
   { nome: 'playwright', aplica: () => HAS_WEB_FRONT, detecta: () => 'suggested (web front in package.json)',
@@ -2014,9 +2083,14 @@ const OPTIONAL_TOOLS = [
       }
     } else if (m) {
       uses = /^sim$/i.test(m[1]);
+      if (!uses && f.obrigatorio) warn(f.nome + ' is `não` in ' + RECORD_REL + ' — kept as your explicit choice, but the default is MANDATORY (cost). To adopt it:  marvin --use=' + f.nome);
     } else {
       const state = f.detecta();
-      if (!state) {
+      if (f.obrigatorio) {
+        uses = true;   // US-59: a new record is born `sim`; a missing tool is installed below, without a flag
+        if (state) ok(f.nome + ' is ' + state + ' — recording `sim` (mandatory; flip with `marvin --use=` or by editing ' + RECORD_REL + ')');
+        else info(f.nome + ' not found — recording `sim` (mandatory); installing it below');
+      } else if (!state) {
         uses = false;
         info(f.nome + ' not found — recording `não`. To adopt it later:  ' + f.instalar + '  then  marvin --use=' + f.nome);
       } else if (f.padrao) {
@@ -2036,7 +2110,7 @@ const OPTIONAL_TOOLS = [
     // US-50: the record says `sim` but the machine lacks the tool. Detected → no exec (invariant 2).
     const installedState = uses && f.instalarProjeto ? f.detecta() : null;
     if (uses && f.instalarProjeto && !installedState) {
-      if (!INSTALL) {
+      if (!INSTALL && !f.obrigatorio) {
         info(f.nome + ' is `sim` but not installed' + (f.global ? ' (global — user profile, not project)' : ' (project scope)')
           + '. To install:  ' + f.instalarProjeto.join('  &&  ') + '  — or rerun with  marvin --install');
       } else {
@@ -2048,6 +2122,7 @@ const OPTIONAL_TOOLS = [
     if (f.nome === 'graphify' && uses) GRAPHIFY = true;
     if (f.nome === 'ponytail' && uses) PONYTAIL = true;
     if (f.nome === 'playwright' && uses) PLAYWRIGHT = true;
+    if (f.nome === 'ecc' && uses) ECC = true;
   }
   // One tool: the same text as before. Two or more: one line — --use already takes a comma list (US-32).
   if (deferred.length) warn(deferred.map(([n, s]) => n + ' is ' + s).join(', ') + ' but '
@@ -2073,8 +2148,12 @@ tags: [referencia]
 # Ferramentas opcionais
 
 Registro de "este projeto usa X". O \`marvin\` detecta e escreve aqui (graphify no PATH
-entra como \`sim\`, sem perguntar; as demais perguntam uma vez); para mudar, edite a coluna **usa** ou rode \`marvin --use=<ferramenta>\`. **Alcance** diz
+entra como \`sim\`, sem perguntar; as opcionais perguntam uma vez); para mudar, edite a coluna **usa** ou rode \`marvin --use=<ferramenta>\`. **Alcance** diz
 quem consegue ler o que a ferramenta produz — nem tudo é de todo agente.
+
+**Obrigatórias (custo):** graphify, ponytail e ecc entram como \`sim\` e o \`marvin\` instala o
+que faltar na máquina, sem flag. Um \`não\` escrito aqui é respeitado, mas o \`marvin\` avisa que o
+padrão é obrigatório.
 
 **Versionar o derivado:** por padrão o grafo (\`graphify-out/\`) e a página de status
 (\`.marvin/.status/\`) vão para o \`.gitignore\`. Para versioná-los, rode
@@ -2593,12 +2672,20 @@ consulte o guia de IA em [\`IA.md\`](IA.md).
 
 **Papel sem arquivo de agente:** ao delegar, passe na chamada o modelo da tabela (o parâmetro \`model\` do subagente); sem isso ele herda o modelo da sessão — e a execução sai no Opus. Ao criar o arquivo do papel, declare \`model:\` e \`effort:\`.
 
-**Catálogo de referência, não instalação.** Quando um papel vira arquivo de agente (ou um
-procedimento vira skill), pode-se partir de um catálogo de especialistas de terceiros — por
-exemplo os agentes por stack do ECC ou as skills de processo do Superpowers, ambos MIT —
-lido só nesse momento, nunca instalado inteiro (custa contexto em toda sessão e traz
-agentes que se chamam sozinhos). Adapte modelo e esforço a esta tabela, acrescente as
-armadilhas do código e cite a origem. Confira a licença e a versão antes de copiar.
+**A sessão principal abre no Sonnet** (\`.claude/settings.json\`); troque com \`/model\` quando a
+conversa pedir julgamento.
+
+**O ECC é a fonte do time.** O Marvin já copiou para \`.claude/agents/\` e \`.claude/skills/\` só o que
+este projeto usa (a lista está em \`ferramentas.md\`), com \`model\`/\`effort\` desta tabela e sem as
+frases que fazem o agente se chamar sozinho (\`MUST BE USED\`, \`Use PROACTIVELY\`).
+
+**Precisa de agente ou skill que o projeto não tem? Procure primeiro no ECC** (\`<ecc>/agents\`,
+\`<ecc>/skills\`, com \`<ecc>\` = \`~/.claude/plugins/marketplaces/ecc\`) e instale só aquele: copie
+\`<ecc>/agents/<id>.md\` para \`.claude/agents/\` ou \`<ecc>/skills/<id>/\` para \`.claude/skills/\`.
+Não use o \`install-apply.js\`: cada \`--with\`/\`--skills\` traz o módulo inteiro (dezenas de agentes,
+comandos e regras sempre carregadas). Depois ajuste \`model\`/\`effort\` por esta tabela e troque na
+\`description\` o que faz o agente se chamar sozinho por "Chame quando a linha do Time indicar este
+papel." Só escreva do zero se o ECC não tiver.
 `);
 
 if (OLD_LAYOUT) {
@@ -3396,6 +3483,10 @@ se eu passei só o nome, pergunte em qual Epic e Feature ela entra (liste os que
      partem do glossário (\`${relDocs}/${TEAM_GUIDE}\`), no degrau mais barato que serve; subir exige
      motivo; quem decide (\`tl\`/\`po\`) não é quem executa. Etapa sem modelo trava a execução.
    - **Propor skills**: procedimento que a US vai repetir vai em *Skills* como proposta.
+   - **Precisa de agente ou skill que o projeto não tem? Procure primeiro no ECC** (\`<ecc>/agents\`,
+     \`<ecc>/skills\`; \`<ecc>\` = \`~/.claude/plugins/marketplaces/ecc\`) e instale só aquele, copiando o
+     arquivo (receita no glossário \`${relDocs}/${TEAM_GUIDE}\`); depois ajuste \`model\`/\`effort\` pela tabela.
+     Só escreva do zero se o ECC não tiver.
    - **Escolher capacidades**: consulte \`${relDocs}/${AI_GUIDE}\` e o inventário local;
      registre modelo/integração/esforço solicitado e aplicado, sem fornecedor fixo.
    - **Por quê** e **Pronto quando** — se eu não disse, pergunte; não invente.
@@ -3482,6 +3573,10 @@ confira com \`marvin --status\` que elas saíram da contagem.
    preenchida pelo \`tl\` e pelo \`po\` a partir do glossário (\`${relDocs}/${TEAM_GUIDE}\`): partida no
    degrau mais barato que serve; subir exige motivo; quem decide não é quem executa. É a economia
    decidida aqui — a execução obedece (\`/continuar\`, \`/retomar\`); etapa sem modelo trava.
+   **Precisa de agente ou skill que o projeto não tem? Procure primeiro no ECC** (\`<ecc>/agents\`,
+   \`<ecc>/skills\`; \`<ecc>\` = \`~/.claude/plugins/marketplaces/ecc\`) e instale só aquele, copiando o
+   arquivo (receita no glossário); depois ajuste \`model\`/\`effort\` pela tabela. Só escreva do zero se
+   o ECC não tiver.
 
 4. Pergunta que só eu respondo fica na US como \`❓\` — não invente a resposta.
 
@@ -3578,7 +3673,7 @@ $ARGUMENTS
   // `--curto` always exits 0 (exit != 0 in a hook becomes a visible error) and costs ~150 tk.
   // `--html` alongside regenerates the dashboard on every session start, silently — that is how it stays fresh.
   // MEDIUM confidence: hook conventions change fast — the warning says to check (invariant 3).
-  // An existing settings.json is someone else's: NO merge — prints the block and stops.
+  // An existing settings.json is someone else's: NO merge of the hook — prints the block; only `model` is added later when absent (US-61).
   const settings = path.join(ROOT, '.claude', 'settings.json');
   // The command points to THE SCRIPT THAT SCAFFOLDED, not to `npx marvin-kb`: npx downloads
   // the published version, and a version that does not know `--status` would ignore the
@@ -3587,8 +3682,8 @@ $ARGUMENTS
     : 'node "' + process.argv[1].replace(/\\/g, '/') + '" --status --curto --html';
   const hookBlock = { hooks: { SessionStart: [{ matcher: '', hooks: [{ type: 'command', command: hookCommand }] }] } };
   if (!fs.existsSync(settings)) {
-    fsw.writeFileSync(settings, JSON.stringify(hookBlock, null, 2) + '\n');
-    ok('.claude/settings.json — SessionStart hook: `' + hookCommand + '` (confidence: medium — check the hook format in the current Claude Code docs)');
+    fsw.writeFileSync(settings, JSON.stringify({ model: 'sonnet', ...hookBlock }, null, 2) + '\n');   // US-61: the main session opens on Sonnet
+    ok('.claude/settings.json — "model": "sonnet" + SessionStart hook: `' + hookCommand + '` (confidence: medium — check the hook format in the current Claude Code docs)');
   } else {
     let txt = ''; try { txt = fs.readFileSync(settings, 'utf8'); } catch {}
     if (/--status --curto/.test(txt)) info('.claude/settings.json already runs the status hook');
@@ -3609,6 +3704,52 @@ for (const f of PENDING_INSTALL) {
     try { exec(cmd, { cwd: ROOT, stdio: 'pipe' }); if (!DRY) ok(f.nome + ': ' + cmd); }
     catch (e) { warn(f.nome + ': `' + cmd + '` failed (' + String(e.message).split('\n').filter(Boolean).pop().trim() + ')' + (last ? ' — install it by hand; continuing.' : ' — trying the next step.')); }
   });
+}
+
+// US-60: bring ONLY the agents and skills this project uses from the ECC catalog clone. Hooks, rules and
+// commands never come (they cost context in every session). A file that already exists is the human's
+// (invariant 2): it is not touched, so the cost matrix only reaches what THIS run installed.
+if (ECC) {
+  const eccAgents = path.join(ECC_ROOT, 'agents'), eccSkills = path.join(ECC_ROOT, 'skills');
+  const wantAgents = [...new Set(ECC_PLAN.flatMap(c => c.agents))], wantSkills = [...new Set(ECC_PLAN.flatMap(c => c.skills))];
+  if (!fs.existsSync(eccAgents)) {
+    if (DRY) info('ecc: catalog not on this machine yet — a real run installs it, then copies ' + wantAgents.length + ' agent(s) and ' + wantSkills.length + ' skill(s)');
+    else warn('ecc: catalog not found at ' + ECC_ROOT + ' — agents and skills not installed; add it by hand (claude plugin marketplace add affaan-m/ECC) and rerun');
+  } else {
+    const agentsOut = path.join(ROOT, '.claude', 'agents'), skillsOut = path.join(ROOT, '.claude', 'skills');
+    for (const id of wantAgents) {
+      const src = path.join(eccAgents, id + '.md'), dest = path.join(agentsOut, id + '.md');
+      if (!fs.existsSync(src)) { info('ecc: agent ' + id + ' not in the catalog — skipped'); continue; }
+      if (fs.existsSync(dest)) { info('.claude/agents/' + id + '.md already exists'); continue; }
+      fsw.mkdirSync(agentsOut, { recursive: true });
+      fsw.writeFileSync(dest, eccAgent(fs.readFileSync(src, 'utf8'), id));
+      ok('.claude/agents/' + id + '.md ← ecc (' + eccCost(id).join(' · ') + ')');
+    }
+    for (const id of wantSkills) {
+      const src = path.join(eccSkills, id), dest = path.join(skillsOut, id);
+      if (!fs.existsSync(src)) { info('ecc: skill ' + id + ' not in the catalog — skipped'); continue; }
+      if (fs.existsSync(dest)) { info('.claude/skills/' + id + ' already exists'); continue; }
+      fsw.mkdirSync(skillsOut, { recursive: true });
+      fsw.cpSync(src, dest, { recursive: true });
+      ok('.claude/skills/' + id + ' ← ecc');
+    }
+  }
+}
+
+// US-61: the main session opens on Sonnet (it rereads the whole context every turn, so its model weighs
+// more than any role's). A new settings.json is born with the key (hook block above); an existing one gets
+// it only when it has NO `model` and is valid JSON — a `model` already there is the owner's choice.
+{
+  const cfgPath = path.join(ROOT, '.claude', 'settings.json');
+  if (fs.existsSync(cfgPath)) {
+    // A BOM (Windows editors write one) is not invalid JSON — JSON.parse just refuses it.
+    let cfg = null; try { cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8').replace(/^\uFEFF/, '')); } catch {}
+    if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) warn('.claude/settings.json is not a valid JSON object — "model": "sonnet" not added (add it by hand)');
+    else if (cfg.model === undefined) {
+      fsw.writeFileSync(cfgPath, JSON.stringify({ ...cfg, model: 'sonnet' }, null, 2) + '\n');
+      ok('.claude/settings.json: "model": "sonnet" added (switch with /model when the conversation asks for judgment)');
+    } else info('.claude/settings.json already defines model (' + JSON.stringify(cfg.model) + ') — left as is');
+  }
 }
 
 const whereWeStopped = path.join(DEST, 'onde_paramos.md');
@@ -4582,6 +4723,19 @@ const UPDATES = [
     o_que: 'the rule that each stage runs on the model of its Time row (passed as `model`/`effort` when delegating); a stage with no model is a lock' },
   { arquivo: '.claude/commands/retomar.md', marca: /Cada\s+etapa\s+roda\s+no\s+modelo/, soCom: !OLD_LAYOUT, desde: '3.2.0',
     o_que: 'the rule that each stage runs on the model of its Time row (passed as `model`/`effort` when delegating); a stage with no model sends the US back to /refinar' },
+  // US-60/61: ECC is the source of the team's agents/skills; the main session opens on Sonnet.
+  { arquivo: path.relative(ROOT, path.join(DOCS, TEAM_GUIDE)).replace(/\\/g, '/'),
+    marca: /Procure\s+primeiro\s+no\s+ECC/, desde: '3.3.0',
+    o_que: 'the rule "need an agent or skill the project lacks? look in the ECC first and install only that one" (replaces "Catálogo de referência, não instalação")' },
+  { arquivo: path.relative(ROOT, path.join(DOCS, TEAM_GUIDE)).replace(/\\/g, '/'),
+    marca: /sessão\s+principal\s+abre\s+no\s+Sonnet/, desde: '3.3.0',
+    o_que: 'the note that the main session opens on Sonnet (.claude/settings.json) and is switched with /model' },
+  { arquivo: '.claude/commands/us.md', marca: /Procure\s+primeiro\s+no\s+ECC/, soCom: !OLD_LAYOUT, desde: '3.3.0',
+    o_que: 'the /us step that sends a missing agent or skill to the ECC catalog before writing one from scratch' },
+  { arquivo: '.claude/commands/refinar.md', marca: /Procure\s+primeiro\s+no\s+ECC/, soCom: !OLD_LAYOUT, desde: '3.3.0',
+    o_que: 'the /refinar step that sends a missing agent or skill to the ECC catalog before writing one from scratch' },
+  { arquivo: path.relative(ROOT, RECORD).replace(/\\/g, '/'), marca: /Obrigatórias\s+\(custo\)/, desde: '3.3.0',
+    o_que: 'the note that graphify, ponytail and ecc are mandatory (installed by marvin; an explicit `não` is respected with a warning)' },
 ];
 
 const missing = UPDATES.filter(a => {

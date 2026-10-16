@@ -34,9 +34,17 @@ consulte o guia de IA em [`IA.md`](IA.md).
 
 **Papel sem arquivo de agente:** ao delegar, passe na chamada o modelo da tabela (o parâmetro `model` do subagente); sem isso ele herda o modelo da sessão — e a execução sai no Opus. Ao criar o arquivo do papel, declare `model:` e `effort:`.
 
-**Catálogo de referência, não instalação.** Quando um papel vira arquivo de agente (ou um
-procedimento vira skill), pode-se partir de um catálogo de especialistas de terceiros — por
-exemplo os agentes por stack do ECC ou as skills de processo do Superpowers, ambos MIT —
-lido só nesse momento, nunca instalado inteiro (custa contexto em toda sessão e traz
-agentes que se chamam sozinhos). Adapte modelo e esforço a esta tabela, acrescente as
-armadilhas do código e cite a origem. Confira a licença e a versão antes de copiar.
+**A sessão principal abre no Sonnet** (`.claude/settings.json`); troque com `/model` quando a
+conversa pedir julgamento.
+
+**O ECC é a fonte do time.** O Marvin já copiou para `.claude/agents/` e `.claude/skills/` só o que
+este projeto usa (a lista está em `ferramentas.md`), com `model`/`effort` desta tabela e sem as
+frases que fazem o agente se chamar sozinho (`MUST BE USED`, `Use PROACTIVELY`).
+
+**Precisa de agente ou skill que o projeto não tem? Procure primeiro no ECC** (`<ecc>/agents`,
+`<ecc>/skills`, com `<ecc>` = `~/.claude/plugins/marketplaces/ecc`) e instale só aquele: copie
+`<ecc>/agents/<id>.md` para `.claude/agents/` ou `<ecc>/skills/<id>/` para `.claude/skills/`.
+Não use o `install-apply.js`: cada `--with`/`--skills` traz o módulo inteiro (dezenas de agentes,
+comandos e regras sempre carregadas). Depois ajuste `model`/`effort` por esta tabela e troque na
+`description` o que faz o agente se chamar sozinho por "Chame quando a linha do Time indicar este
+papel." Só escreva do zero se o ECC não tiver.

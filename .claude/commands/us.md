@@ -33,3 +33,8 @@ se eu passei só o nome, pergunte em qual Epic e Feature ela entra (liste os que
      e o fallback usado. Grep/Glob só para **localizar** arquivo ou símbolo.
 
 3. Me mostre o `Sobre.md` preenchido e a linha da nota. **Não comece a implementar.**
+
+**Precisa de agente ou skill que o projeto não tem? Procure primeiro no ECC** (`<ecc>/agents`,
+`<ecc>/skills`; `<ecc>` = `~/.claude/plugins/marketplaces/ecc`) e instale só aquele, copiando o
+arquivo (receita no glossário `.marvin/Contexto/Equipe.md`); depois ajuste `model`/`effort` pela
+tabela. Só escreva do zero se o ECC não tiver.

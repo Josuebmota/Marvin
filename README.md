@@ -40,7 +40,7 @@ structure; the agents and commands it sets up run the team on top of it.
 | 🧠 **Memory in git** | an inverted junction makes the agent's memory land inside `.marvin/` |
 | 🔁 **Idempotent** | run it twice, nothing duplicates or gets overwritten |
 | 🔍 **Diagnostics** | fixed-context cost per session, empty "services", junk in the root, canonical commands read from the manifest |
-| 🔌 **Optional tools** | `graphify` code graph, `ponytail` and `playwright`, recorded in `.marvin/ferramentas.md` — never required |
+| 🔌 **Tools** | `graphify`, `ponytail` and the ECC catalog are **mandatory** (cost) and installed by marvin; `playwright` stays optional. All recorded in `.marvin/ferramentas.md` |
 
 > **The package is `marvin-kb`, the command is `marvin`.** `marvin` was already taken on
 > npm, so `npx marvin` would fetch someone else's package — use `npx marvin-kb`. After
@@ -103,10 +103,10 @@ The rule behind every decision: **same result, fewer tokens.** Four levers, each
 
 | Lever | How Marvin uses it | Where it lives |
 |---|---|---|
-| **Model per stage** | Refinement writes the US *Time* as a table — stage · role · model · effort · reason — starting from the cheapest tier that does the job. Execution delegates each stage **passing that model**; a stage with no model goes back to `/refinar` instead of inheriting the session's (usually the priciest) model. | `Contexto/Equipe.md`, the US `Sobre.md`, the generated commands |
-| **Code graph** (`graphify`) | Used at triage to see *who depends on what* before deciding. Locating a file stays with Grep — ~18 tokens against ~1,650 through the graph. | `.marvin/ferramentas.md` (per repo) |
-| **Simplicity ladder** (`ponytail`) | For whoever **implements**: stop at the first rung that solves it. It does not replace the invariants, the diff review or the tests. | `.marvin/ferramentas.md` (per repo) |
-| **Specialist catalogs** (ECC, Superpowers) | **Reference, not installation**: when a role becomes an agent file, start from the matching specialist and adapt model, effort and the project's traps. Installed whole, they cost ~2k tokens per session and showed no gain on the same task. | the team glossary |
+| **Model per stage** | Refinement writes the US *Time* as a table — stage · role · model · effort · reason — starting from the cheapest tier that does the job. Execution delegates each stage **passing that model**; a stage with no model goes back to `/refinar` instead of inheriting the session's (usually the priciest) model. The main session itself opens on **Sonnet** (`"model": "sonnet"` in `.claude/settings.json`, added only when the file has no `model`); switch with `/model` when the conversation asks for judgment. | `Contexto/Equipe.md`, the US `Sobre.md`, the generated commands |
+| **Code graph** (`graphify`, mandatory) | Installed by marvin when missing (no flag). Used at triage to see *who depends on what* before deciding. Locating a file stays with Grep — ~18 tokens against ~1,650 through the graph. | `.marvin/ferramentas.md` (per repo) |
+| **Simplicity ladder** (`ponytail`, mandatory) | Installed by marvin when missing (no flag). For whoever **implements**: stop at the first rung that solves it. It does not replace the invariants, the diff review or the tests. | `.marvin/ferramentas.md` (per repo) |
+| **Specialist catalog** (ECC, mandatory) | marvin adds the catalog and copies **only the agents and skills the project uses** (read from the stack, schema and auth) — never hooks, always-loaded rules or commands, which cost context in every session (measured: one ECC `--with` brings 67 agents, 94 commands and 122 rules, so marvin copies the files itself instead of running the installer). The cost matrix goes on top: `model`/`effort` from the glossary and no "MUST BE USED"/"Use PROACTIVELY", so nothing calls itself. An agent that already exists is never touched. | `.claude/agents/`, `.claude/skills/`, `.marvin/ferramentas.md` |
 
 Measured on real work (US-29, hidden acceptance tests written outside the agent): the cheaper
 tier delivered the **same result** as the top tier for **37–69% of the cost**; coordinating the
@@ -258,9 +258,7 @@ Running again with a different list **adds** what's missing; nothing is removed.
 
 Some tools are not adapters but things a project *chooses* to use. marvin detects them
 on PATH (`playwright` is offered by a web front in a `package.json`, not by PATH).
-**`graphify` found on PATH is recorded as `sim` without asking**, terminal or not; without
-it, marvin keeps working but ends with a strong warning on how to install it
-(`uv tool install graphifyy`). The others ask **once** (only with a terminal — without one
+**`graphify`, `ponytail` and `ecc` are mandatory** (cost): a new record is born `sim` without asking and marvin installs what the machine lacks (a failure is a warning, never an abort). A `não` you wrote in the record is respected, with a warning that the default is mandatory. The others ask **once** (only with a terminal — without one
 they record `não` and warn). The answer goes to `.marvin/ferramentas.md`, and later runs
 read the record instead of asking — a `não` you wrote there is never overwritten. Flip it
 with `--use=<tool>`; `--no-questions` records `não` for the tools that ask, even with a
@@ -428,9 +426,10 @@ usually ~⅔ of it: every turn re-reads the whole context.
 --graphify-git-hook  writes .git/hooks/post-commit so the graph refreshes itself.
                   Never overwrites a post-commit you already have
 --use=<tool>      records `sim` for an optional tool without asking (alias: --usar=)
---install         installs the optional tools marked `sim` that the machine lacks (ponytail at
-                  project scope; graphify via uv, which is user-profile). Without it, only prints the command
---no-questions    records `não` for every optional tool, even with a terminal
+--install         accepted, no longer needed: graphify, ponytail and the ECC catalog install themselves
+                  when missing (ponytail/ECC at project scope; graphify via uv, which is user-profile).
+                  A failure warns and exits 0
+--no-questions    records `não` for every OPTIONAL tool (playwright), even with a terminal
 --help, -h        usage; exits without writing
 ```
 
@@ -748,7 +747,7 @@ rather than final text.
 node teste.mjs
 ```
 
-431 checks, no dependencies. It covers the invariants that protect other
+450 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.
