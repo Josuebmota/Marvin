@@ -1945,6 +1945,10 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const u = arena('us55-user');
   plant(u, { plugins: { 'ponytail@ponytail': [{ scope: 'user' }] } });
   check('US-55: escopo de usuário conta e a mensagem diz que é global', /ponytail is installed[^\n]*user scope \(global/.test(state(u)));
+  run(u, '--no-git', '--no-questions', '--use=ponytail');
+  const again = state(u);
+  check('US-55: com o registro já em `sim`, o escopo de usuário segue avisado como global (e nada é instalado)',
+        /ponytail installed[^\n]*user scope \(global/.test(again) && !/run +claude plugin/.test(again), again.slice(-400));
   cleanup(u);
 
   const o = arena('us55-outro');

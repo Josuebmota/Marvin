@@ -1989,7 +1989,8 @@ const OPTIONAL_TOOLS = [
       newOnes.push('| ' + f.nome + ' | ' + (uses ? 'sim' : 'não') + ' | ' + f.alcance + ' | ' + recordDate + ' |');
     }
     // US-50: the record says `sim` but the machine lacks the tool. Detected → no exec (invariant 2).
-    if (uses && f.instalarProjeto && !f.detecta()) {
+    const installedState = uses && f.instalarProjeto ? f.detecta() : null;
+    if (uses && f.instalarProjeto && !installedState) {
       if (!INSTALL) {
         info(f.nome + ' is `sim` but not installed' + (f.global ? ' (global — user profile, not project)' : ' (project scope)')
           + '. To install:  ' + f.instalarProjeto.join('  &&  ') + '  — or rerun with  marvin --install');
@@ -1997,6 +1998,8 @@ const OPTIONAL_TOOLS = [
         PENDING_INSTALL.push(f);   // runs AFTER the settings.json block: the plugin CLI creates that file (see below)
       }
     }
+    // US-55: installed at USER scope loads in every project — say so even when the record already says `sim`.
+    else if (installedState && /user scope/i.test(installedState)) info(f.nome + ' ' + installedState);
     if (f.nome === 'graphify' && uses) GRAPHIFY = true;
     if (f.nome === 'ponytail' && uses) PONYTAIL = true;
     if (f.nome === 'playwright' && uses) PLAYWRIGHT = true;
