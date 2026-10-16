@@ -97,6 +97,27 @@ The tool writes to its own default path; the files are born inside the repositor
 as plain markdown inside the project, one source. Switch tools and **the files stay** —
 only the auto-loading goes away.
 
+## How it saves tokens
+
+The rule behind every decision: **same result, fewer tokens.** Four levers, each used where it pays:
+
+| Lever | How Marvin uses it | Where it lives |
+|---|---|---|
+| **Model per stage** | Refinement writes the US *Time* as a table — stage · role · model · effort · reason — starting from the cheapest tier that does the job. Execution delegates each stage **passing that model**; a stage with no model goes back to `/refinar` instead of inheriting the session's (usually the priciest) model. | `Contexto/Equipe.md`, the US `Sobre.md`, the generated commands |
+| **Code graph** (`graphify`) | Used at triage to see *who depends on what* before deciding. Locating a file stays with Grep — ~18 tokens against ~1,650 through the graph. | `.marvin/ferramentas.md` (per repo) |
+| **Simplicity ladder** (`ponytail`) | For whoever **implements**: stop at the first rung that solves it. It does not replace the invariants, the diff review or the tests. | `.marvin/ferramentas.md` (per repo) |
+| **Specialist catalogs** (ECC, Superpowers) | **Reference, not installation**: when a role becomes an agent file, start from the matching specialist and adapt model, effort and the project's traps. Installed whole, they cost ~2k tokens per session and showed no gain on the same task. | the team glossary |
+
+Measured on real work (US-29, hidden acceptance tests written outside the agent): the cheaper
+tier delivered the **same result** as the top tier for **37–69% of the cost**; coordinating the
+session on Sonnet, with Opus only for judgment (`tl`), cost **31% less**. The cheapest tier
+failed an acceptance case on implementation — it is kept for locating, not for building.
+
+**What keeps it from drifting:** the session hook warns when the fixed context passes its
+ceiling, when the note turns into a report and when USs have no model per stage; `--status`
+flags subagents that ran on the top tier without a role; `marvin --regenerar` brings an old
+base back to the current templates without touching USs, notes, decisions or your agents.
+
 ## What it creates
 
 ```

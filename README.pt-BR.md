@@ -98,6 +98,27 @@ A ferramenta escreve no caminho padrão dela; os arquivos nascem no repositório
 markdown puro dentro do projeto, uma fonte só. Se trocar de ferramenta, **os arquivos
 ficam** — só o carregamento automático some.
 
+## Como ele economiza
+
+A régua de toda decisão: **mesmo resultado, gastando menos.** Quatro alavancas, cada uma onde paga:
+
+| Alavanca | Como o Marvin usa | Onde mora |
+|---|---|---|
+| **Modelo por etapa** | O refino escreve o *Time* da US como tabela — etapa · papel · modelo · esforço · motivo —, partindo do degrau mais barato que faz o serviço. A execução delega cada etapa **passando esse modelo**; etapa sem modelo volta ao `/refinar` em vez de herdar o modelo da sessão (em geral o mais caro). | `Contexto/Equipe.md`, o `Sobre.md` da US, os comandos gerados |
+| **Grafo de código** (`graphify`) | Usado na triagem para ver *quem depende do quê* antes de decidir. Localizar arquivo continua com o Grep — ~18 tokens contra ~1.650 pelo grafo. | `.marvin/ferramentas.md` (por repo) |
+| **Escada de simplicidade** (`ponytail`) | Para quem **implementa**: parar no primeiro degrau que resolve. Não substitui os invariantes, a leitura do diff nem o teste. | `.marvin/ferramentas.md` (por repo) |
+| **Catálogos de especialistas** (ECC, Superpowers) | **Referência, não instalação**: quando um papel vira arquivo de agente, parte-se do especialista correspondente e adaptam-se modelo, esforço e as armadilhas do projeto. Instalados inteiros, custam ~2k tokens por sessão e não mostraram ganho na mesma tarefa. | o glossário da equipe |
+
+Medido em trabalho real (US-29, com teste de aceite escondido, escrito fora do agente): o
+degrau mais barato entregou o **mesmo resultado** do mais caro por **37–69% do custo**; coordenar a
+sessão no Sonnet, com o Opus só no julgamento (`tl`), custou **31% menos**. O degrau mais
+barato de todos falhou um caso de aceite na implementação — fica para localizar, não para construir.
+
+**O que impede que ele desande:** o hook de toda sessão avisa quando o contexto fixo passa do
+teto, quando a nota vira relatório e quando há US sem modelo por etapa; o `--status` acusa
+subagente que rodou no degrau mais caro sem papel; o `marvin --regenerar` traz uma base antiga
+de volta aos templates atuais sem tocar em US, nota, decisões nem nos seus agentes.
+
 ## O que ele cria
 
 ```
