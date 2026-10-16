@@ -4,6 +4,7 @@ description: Expert code review specialist. Chame quando a linha do Time indicar
 tools: Read, Grep, Glob, Bash
 model: sonnet
 effort: medium
+# origem: ECC (MIT) — https://github.com/affaan-m/ECC — model/effort pela matriz do Marvin
 ---
 
 ## Prompt Defense Baseline

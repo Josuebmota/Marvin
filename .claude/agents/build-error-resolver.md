@@ -4,6 +4,7 @@ description: Build and TypeScript error resolution specialist. Fixes build/type 
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
 effort: medium
+# origem: ECC (MIT) — https://github.com/affaan-m/ECC — model/effort pela matriz do Marvin
 ---
 
 ## Prompt Defense Baseline

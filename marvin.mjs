@@ -1894,6 +1894,7 @@ const MARK = {
   'package.json': 'Node/JS', 'tsconfig.json': 'TypeScript', 'requirements.txt': 'Python',
   'pyproject.toml': 'Python', 'go.mod': 'Go', 'Cargo.toml': 'Rust',
   'pom.xml': 'Java/Maven', 'build.gradle': 'Gradle', 'Gemfile': 'Ruby', 'composer.json': 'PHP',
+  'pubspec.yaml': 'Flutter/Dart',
 };
 const IGNORE = new Set(['node_modules', 'dist', 'build', 'bin', 'obj', '__pycache__', '.git', 'venv', '.venv']);
 const stacks = new Map();
@@ -1933,7 +1934,7 @@ const HAS_WEB_FRONT = pkgDeps.some(deps => deps.some(x => /^(react-native|expo)$
 // the agent/skill files listed here, straight from the catalog clone, and nothing else.
 const ECC_ROOT = path.join(os.homedir(), '.claude', 'plugins', 'marketplaces', 'ecc');
 const ECC_PLAN = (() => {
-  const MANIFESTS = new Set(['package.json', 'requirements.txt', 'pyproject.toml', 'go.mod', 'Cargo.toml', 'Gemfile', 'composer.json', 'pom.xml', 'build.gradle']);
+  const MANIFESTS = new Set(['package.json', 'requirements.txt', 'pyproject.toml', 'go.mod', 'Cargo.toml', 'Gemfile', 'composer.json', 'pom.xml', 'build.gradle', 'pubspec.yaml']);
   const dirs = [...stacks.keys()];
   const text = dirs.flatMap(d => {
     let names = []; try { names = fs.readdirSync(path.join(ROOT, d)); } catch {}
@@ -1950,9 +1951,14 @@ const ECC_PLAN = (() => {
     ['lang:csharp', has('.NET/C#'), ['csharp-reviewer'], ['dotnet-patterns', 'csharp-testing']],
     ['lang:go', has('Go'), ['go-reviewer', 'go-build-resolver'], ['golang-patterns', 'golang-testing']],
     ['lang:rust', has('Rust'), ['rust-reviewer', 'rust-build-resolver'], ['rust-patterns', 'rust-testing']],
-    // android/build.gradle next to a package.json is the Android shell of a JS app (RN/Capacitor), not Java.
-    ['lang:java', dirs.some(d => { const st = stacks.get(d); return st && (st.has('Java/Maven') || st.has('Gradle'))
-      && !(path.basename(d).toLowerCase() === 'android' && fs.existsSync(path.join(ROOT, d, '..', 'package.json'))); }), ['java-reviewer', 'java-build-resolver'], ['java-coding-standards']],
+    // Anything under android/ whose parent has package.json or pubspec.yaml is the Android shell of a
+    // JS (RN/Capacitor) or Flutter app, not Java.
+    ['lang:java', dirs.some(d => { const st = stacks.get(d); if (!st || !(st.has('Java/Maven') || st.has('Gradle'))) return false;
+      const seg = d.split(/[\\/]/), i = seg.map(x => x.toLowerCase()).lastIndexOf('android');
+      if (i < 0) return true;
+      const app = path.join(ROOT, ...seg.slice(0, i));
+      return !(fs.existsSync(path.join(app, 'package.json')) || fs.existsSync(path.join(app, 'pubspec.yaml'))); }), ['java-reviewer', 'java-build-resolver'], ['java-coding-standards']],
+    ['framework:flutter', has('Flutter/Dart'), ['flutter-reviewer', 'dart-build-resolver'], ['dart-flutter-patterns']],
     ['lang:php', has('PHP'), ['php-reviewer'], []],
     ['framework:react', dep('react'), ['react-reviewer', 'react-build-resolver'], ['react-patterns', 'react-testing']],
     ['framework:vue', dep('vue'), ['vue-reviewer'], ['vue-patterns']],
@@ -1981,6 +1987,8 @@ const eccAgent = (txt, id) => {
     const kept = d.split(/(?<=\.)\s+/).filter(s => !/must be used|proactively|automatically activated|use immediately/i.test(s)).join(' ').trim();
     return 'description: ' + (kept ? kept + ' ' : '') + 'Chame quando a linha do Time indicar este papel.';
   });
+  // MIT asks for attribution: the copy says where it came from (a YAML comment, ignored by the loader).
+  if (!/^# origem: ECC/m.test(head)) head += nl + '# origem: ECC (MIT) — https://github.com/affaan-m/ECC — model/effort pela matriz do Marvin';
   return txt.slice(0, m.index) + m[1] + head + m[3] + txt.slice(m.index + m[0].length);
 };
 

@@ -4,6 +4,7 @@ description: Test-Driven Development specialist enforcing write-tests-first meth
 tools: Read, Write, Edit, Bash, Grep
 model: sonnet
 effort: medium
+# origem: ECC (MIT) — https://github.com/affaan-m/ECC — model/effort pela matriz do Marvin
 ---
 
 ## Prompt Defense Baseline

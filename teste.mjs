@@ -2262,12 +2262,23 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   run(a, '--no-git', '--no-questions');
   const ag = (x, id) => fs.existsSync(path.join(x.proj, '.claude', 'agents', id + '.md'));
   check('ECC: android/build.gradle de um app JS não traz os agentes de Java', ag(a, 'code-reviewer') && !ag(a, 'java-reviewer') && !ag(a, 'java-build-resolver'));
+  check('ECC: o agente copiado cita a origem (MIT) no frontmatter',
+        /^# origem: ECC \(MIT\)/m.test(fs.readFileSync(path.join(a.proj, '.claude', 'agents', 'code-reviewer.md'), 'utf8')));
   cleanup(a);
   const b = equipped(arena('ecc-java'), fill);
   fs.writeFileSync(path.join(b.proj, 'pom.xml'), '<project></project>\n');
   run(b, '--no-git', '--no-questions');
   check('ECC: projeto Java de verdade (pom.xml) traz os agentes de Java', ag(b, 'java-reviewer'));
   cleanup(b);
+  const fl = equipped(arena('ecc-flutter'), { ...fill, 'agents/flutter-reviewer.md': agent('flutter-reviewer'), 'agents/dart-build-resolver.md': agent('dart-build-resolver') });
+  fs.writeFileSync(path.join(fl.proj, 'pubspec.yaml'), 'name: app\n');
+  fs.mkdirSync(path.join(fl.proj, 'android', 'app'), { recursive: true });
+  fs.writeFileSync(path.join(fl.proj, 'android', 'build.gradle'), '// shell\n');
+  fs.writeFileSync(path.join(fl.proj, 'android', 'app', 'build.gradle'), '// shell\n');
+  run(fl, '--no-git', '--no-questions');
+  check('ECC: app Flutter (android/ e android/app/ com gradle) traz os agentes de Flutter e nenhum de Java',
+        ag(fl, 'flutter-reviewer') && ag(fl, 'dart-build-resolver') && !ag(fl, 'java-reviewer'));
+  cleanup(fl);
   const c = equipped(arena('settings-bom'));
   fs.mkdirSync(path.join(c.proj, '.claude'), { recursive: true });
   fs.writeFileSync(path.join(c.proj, '.claude', 'settings.json'), '﻿{\n  "hooks": {}\n}\n');
