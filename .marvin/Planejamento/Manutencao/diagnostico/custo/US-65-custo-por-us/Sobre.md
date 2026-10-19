@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: ativa
 pai: ../Sobre.md
 name: US-65-custo-por-us
 description: "O --status soma o custo por US (e por etapa, se o sinal existir) a partir de um sinal que já está na transcrição, sem subtração manual do total; turno sem sinal vai para 'sem US', nunca é rateado."
@@ -18,8 +18,8 @@ description: "O --status soma o custo por US (e por etapa, se o sinal existir) a
 **Não entra:** escrever no `Sobre.md` pelo script; linha de "orquestração" no template do *Time* (é da [US-29](../../../../Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) ou de texto); preço novo.
 
 ## Perguntas
-- ❓ **Regra de atribuição — duas propostas:** o `po` propõe `US-NN` no prompt de toda delegação (1ª mensagem do `agent-*.jsonl`) e "uma US por chat" na sessão principal; o `tl` propõe a janela entre a chamada `marvin --us <caminho>` gravada na transcrição e o próximo `--us`/`--fechar`, com os subagentes herdando pelo `toolUseId`. Qual vale (ou as duas, uma de reserva)?
-- ❓ Etapa entra (implementar, verificar, ler o diff) ou só a US? Etapa exige o nome dela no prompt.
+- ✅ **Regra de atribuição** (decidida pelo `po`, Opus · médio, 19/10/2026; o dono confirma ao aprovar): **só a janela do `--us`**, sem reserva. Um turno da sessão principal é da US-NN se cair na janela que abre no tool_use Bash que roda `marvin`/`marvin.mjs` com `--us <caminho>` (US-NN = último segmento do caminho; o próprio turno da chamada entra) e fecha no próximo `--us <caminho>` ou `--fechar`. Não abrem janela: comando com `--status` (o próprio `marvin --status --us US-NN`), com `--dry-run`, ou cujo tool_result deu erro. Subagente herda a US da janela que contém o tool_use `Agent` cujo `id` é o `toolUseId` do `agent-<id>.meta.json`. Fora de janela, sem meta ou com `toolUseId` órfão → **sem US**, à vista, sem rateio; soma das US + sem US = total. `US-NN` no prompt **não** atribui: na sessão da US-64 pegaria 1 de 5 subagentes e o prompt cita várias US. Custo aceito: a sessão que implementou a US-64 (`3bebfbc3`) cai inteira em "sem US", porque não rodou `--us`; a janela da US-64 que o `--status` mostra vem da sessão `47700f96`, que rodou `--us` para ela (conferido pelo `tl`). O `delegacao.md` não muda.
+- ✅ **Etapa fica fora:** exige o nome dela em texto livre, e nenhuma sessão medida traz o sinal.
 - ❓ **Divergência `po` × `tl` sobre a US-29:** o `po` diz que esta US **não é porta** da US-29 (ela já mede com um chat por US e espera só o seu aceite); o `tl` diz que é **pré-requisito**, porque sem corte de turnos a amostra em sessão de várias US não conta. Partida do refino: não bloqueia a US-29 — abre amostra nova em sessão autônoma.
 
 ## Fluxos ligados
@@ -31,14 +31,17 @@ description: "O --status soma o custo por US (e por etapa, se o sinal existir) a
 - `teste.mjs`
 
 ## Time
-Triagem 19/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo). Trava até a ❓ da regra.
+Triagem 19/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo). Destravada: a regra foi decidida pelo `po` em 19/10.
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| decidir a regra de atribuição | po | Opus · médio | partida; julgamento, com a resposta do dono | pendente |
-| implementar | dev-back | Sonnet · médio | partida | pendente |
-| verificar | qa | Sonnet · baixo | partida | pendente |
-| ler o diff | tl | Opus · médio | sobe por motivo: a regra alimenta a medição da US-29 e erro ali vira número falso | pendente |
+| decidir a regra de atribuição | po | Opus · médio | partida; julgamento; o dono confirma ao aprovar | feito |
+| localizar o sinal no `.jsonl` e os pontos de `computeSpend`/`printSpend` | scout | Haiku · baixo | recuperação delimitada; entra pelo parecer do `tl` (mesmo Time de baixo da US-64) | feito |
+| implementar | dev-back | Sonnet · médio | partida | feito |
+| verificar | qa | Sonnet · baixo | partida | feito |
+| ler o diff | tl | Opus · médio | sobe por motivo: a regra alimenta a medição da US-29 e erro ali vira número falso | feito |
+
+**19/10/2026** — amostra da [US-29](../../../../Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md), braço **anterior** (coordenador Opus · médio), par da US-64 (braço política, coordenador Sonnet · médio). Chat próprio, só a US-65 até o commit (sem release, push nem refino); id da sessão: c8558000-0944-4106-b3d7-2c6aad31a7e3. Mesmo Time de baixo da US-64 (`scout` Haiku · baixo, `dev-back` Sonnet · médio, `qa` Sonnet · baixo), com `model` e `effort` em cada delegação. Linhas à parte, fora da comparação (parecer do `tl`): o `po` que decide a regra e o `tl` que lê o diff. Checks: `node teste.mjs` e o aceite dos critérios 1–4. Juiz: o dono. Custo medido com o `--status` de `00ecc72`.
 
 Grafo (fresco): `computeSpend` → `affected`: `computeStatus`; `explain`: liga à US-41. `printSpend` → `affected`: `printStatus`.
 
@@ -52,8 +55,8 @@ Nenhuma.
 Toca 3 nó(s) de código em 3 comunidade(s).
 
 **Quem depende do que ela toca** (2, até 2 níveis) — é o que o QA precisa cobrir:
-- `computeStatus()  marvin.mjs:L1257`
-- `printStatus()  marvin.mjs:L1375`
+- `computeStatus()  marvin.mjs:L1280`
+- `printStatus()  marvin.mjs:L1398`
 
 **Outras US no mesmo código** — combine antes, não no merge:
 - [US-14-codigo-em-ingles](../../../codigo/ingles/US-14-codigo-em-ingles/Sobre.md) — 1 nó(s) em comum
@@ -101,6 +104,7 @@ Toca 3 nó(s) de código em 3 comunidade(s).
 
 ## Rumo
 - **19/10/2026** — aberta da issue #5 (fatia 3 do `tl`). Depois da US-64, que mexe nas mesmas funções.
+- **19/10/2026** — implementada na amostra da US-29 (braço anterior, coordenador Opus · médio; sessão `c8558000`). `computeSpend` lê os tool_use/tool_result da sessão principal em ordem e abre a janela só no segmento de comando que começa com `marvin`, `node …marvin.mjs` ou `npx marvin-kb` e traz `--us <caminho>` com chave `^US-\d+$`; `--status`, `--dry-run`, `--refinada` e tool_result com erro não abrem; `--us`/`--fechar` (sem `--dry-run`) fecham, e o turno do `--fechar` fica na janela que fecha. Subagente herda pelo `meta.toolUseId`; o resto vai para "sem US". Devolve `porUs`; `printSpend` mostra a US pedida e "sem US" com `--status --us US-NN`, e uma linha por US sem `--us` (só se houver janela). O `qa` achou US falsas (`$u` ≈ $231 de loops de shell) e falsos positivos de `marvin` em texto; corrigidos com check. `teste.mjs`: 8 checks novos, 481 verdes; READMEs 473→481. `tl`: aprovado com ressalva. **Fora:** a janela não atravessa arquivo de sessão (sessão retomada em transcript novo cai em "sem US"); com `--us`, o total das outras US não aparece, então a soma não fecha à vista (opcional, ressalva do `tl`). Não concluída: aguarda o dono confirmar a regra e olhar a saída do `--status`.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->

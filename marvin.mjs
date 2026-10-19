@@ -646,6 +646,8 @@ const PRICES = [
 ];
 const priceOf = (model) => (PRICES.find(([re]) => re.test(model)) || PRICES[1])[1];
 const costOf = (t, model) => { const p = priceOf(model); return (t.in * p.in + t.out * p.out + t.cw * p.cw + t.cr * p.cr) / 1e6; };
+// US-65: `Manutencao/…/US-65-custo-por-us` or `US-65` → `US-65` (the US-<n> prefix is the key; no number → the segment).
+const usKeyOf = (p) => { const s = String(p).replace(/\\/g, '/').replace(/\/+$/, '').split('/').pop(); const m = s.match(/^US-\d+/i); return m ? m[0].toUpperCase() : s; };
 const computeSpend = (nodes = []) => {
   const dir = path.dirname(MEM);   // ~/.claude/projects/<slug>/
   let files = []; try { files = fs.readdirSync(dir).filter(f => f.endsWith('.jsonl')); } catch {}
@@ -665,14 +667,37 @@ const computeSpend = (nodes = []) => {
       }
     }
   } catch {}
+  // US-65: a main-session turn belongs to the US whose window it falls in (see usKeyOf); a sub-agent
+  // inherits the window of the Agent/Task tool_use whose id is its meta.toolUseId. No signal → null.
+  const agentWin = new Map();
   for (const { file, name: f, meta } of sources) {
     let txt; try { txt = fs.readFileSync(file, 'utf8'); } catch { continue; }
+    const objs = [];
     for (const line of txt.split('\n')) {
-      if (!line.includes('"usage"')) continue;
-      let o; try { o = JSON.parse(line); } catch { continue; }
+      if (!line.includes('"usage"') && !(!meta && (line.includes('"tool_use"') || line.includes('"tool_result"')))) continue;
+      try { objs.push(JSON.parse(line)); } catch {}
+    }
+    const failed = new Set();   // a command whose tool_result is an error opens no window
+    for (const o of objs) if (o.type === 'user' && Array.isArray(o.message && o.message.content))
+      for (const b of o.message.content) if (b && b.type === 'tool_result' && b.is_error) failed.add(b.tool_use_id);
+    let cur = null;
+    for (const o of objs) {
+      let turnUs = cur;
+      if (!meta && o.type === 'assistant' && Array.isArray(o.message && o.message.content)) for (const b of o.message.content) {
+        if (!b || b.type !== 'tool_use') continue;
+        const cmd = b.input && b.input.command;
+        if (b.name === 'Agent' || b.name === 'Task') agentWin.set(b.id, cur);
+        else if (b.name === 'Bash' && typeof cmd === 'string') for (const seg of cmd.split(/&&|\|\||[;|(\n]/)) {
+          // only a command that STARTS with marvin counts (not `git commit -m "… --us …"`); `$var` or a non-US name is no signal
+          if (!/^\s*(?:(?:do|then)\s+)?(?:\w+=\S*\s+)*(?:node\s+\S*marvin\.mjs|npx\s+marvin-kb|marvin)(?:\s|$)/.test(seg) || /--dry-run/.test(seg)) continue;
+          const op = seg.match(/--us(?:=|\s+)["']?([^\s"']+)/);
+          if (/--fechar\b/.test(seg)) cur = null;   // the closing turn still belongs to the window it closes
+          else if (op && !/--status|--refinada/.test(seg) && !failed.has(b.id) && /^US-\d+$/.test(usKeyOf(op[1]))) cur = turnUs = usKeyOf(op[1]);
+        }
+      }
       const m = o.message; if (!m || !m.usage || o.type !== 'assistant') continue;
       const u = m.usage;
-      byId.set(m.id || o.uuid, { modelo: m.model || '?', dia: (o.timestamp || '').slice(0, 10), sessao: o.sessionId || f, sub: !!(o.isSidechain || meta),
+      byId.set(m.id || o.uuid, { us: meta ? agentWin.get(meta.toolUseId) || null : o.isSidechain ? null : turnUs, modelo: m.model || '?', dia: (o.timestamp || '').slice(0, 10), sessao: o.sessionId || f, sub: !!(o.isSidechain || meta),
         papel: meta ? (meta.agentType || 'sem papel') : null,
         esforco: [o.effort, meta && meta.effort].find(e => typeof e === 'string' && e) || null,   // US-64: the turn says it; meta is the fallback
         in: u.input_tokens || 0, out: u.output_tokens || 0, cw: u.cache_creation_input_tokens || 0, cr: u.cache_read_input_tokens || 0 });
@@ -685,8 +710,11 @@ const computeSpend = (nodes = []) => {
   // and every general-purpose / role-less turn as a deviation, grouped by session + day + model.
   const byRM = new Map(), desvios = new Map();
   let contextSum = 0;
+  const byUs = new Map();   // US-65: key (or null = "sem US") → turns and cost; never apportioned, so the buckets sum to the total
   for (const r of byId.values()) {
     add(total, r); if (r.sub) add(sub, r);
+    if (!byUs.has(r.us)) byUs.set(r.us, { us: r.us, msgs: 0, subMsgs: 0, custo: 0 });
+    const bu = byUs.get(r.us); bu.msgs++; bu.custo += costOf(r, r.modelo); if (r.sub) bu.subMsgs++;
     // main session apart from the sub-agents; a sidechain turn with no meta falls in "sem papel"
     const role = r.papel || (r.sub ? 'sem papel' : null);
     const rm = (role || 'sessão principal') + '\u0000' + r.modelo;
@@ -711,7 +739,7 @@ const computeSpend = (nodes = []) => {
   const avgContext = total.msgs ? Math.round(contextSum / total.msgs) : 0;
   const medidos = new Set([...byRM.values()].map(q => q.papel));
   const semMedicao = [...new Set(nodes.filter(n => n.tipo === 'us').flatMap(n => n.papeis || []))].filter(p => !medidos.has(p)).sort();
-  return { total, sub, porModelo: byModel, porDia: byDay, porPapel: byRole, porPapelModelo: [...byRM.values()], desvios: [...desvios.values()], semMedicao, sessoes: sessions.size, custo: cost, contextoMedio: avgContext, transcricoes: files.length };
+  return { total, sub, porModelo: byModel, porDia: byDay, porPapel: byRole, porPapelModelo: [...byRM.values()], desvios: [...desvios.values()], porUs: [...byUs.values()], semMedicao, sessoes: sessions.size, custo: cost, contextoMedio: avgContext, transcricoes: files.length };
 };
 const kTk = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n);
 const printSpend = (g, fixedTk) => {
@@ -740,6 +768,13 @@ const printSpend = (g, fixedTk) => {
       warn(`${n} turno(s) de subagente sem papel no Opus (≈ $${c.toFixed(2)}) — a execução herdou o modelo da sessão: crie o arquivo do papel com \`model:\` ou passe o modelo ao delegar (Equipe.md)`);
     }
   }
+  // US-65: cost per US from the --us windows; what has no signal stays in "sem US", in plain sight.
+  const ui = process.argv.findIndex(a => a === '--us' || a.startsWith('--us='));
+  const want = ui < 0 ? null : usKeyOf(process.argv[ui].startsWith('--us=') ? process.argv[ui].slice(5) : process.argv[ui + 1] || '');
+  const line = (u) => `${((u && u.us) || 'sem US').padEnd(8)} ${u ? u.msgs : 0} turns` + (u && u.subMsgs ? ` (${u.subMsgs} by subagents)` : '') + `  ≈ $${(u ? u.custo : 0).toFixed(2)}`;
+  const semUs = g.porUs.find(u => !u.us), withUs = g.porUs.filter(u => u.us).sort((a, b) => a.us.localeCompare(b.us, 'en', { numeric: true }));
+  if (want) { info('by US (windows opened by `marvin --us`; a turn outside one is "sem US", never apportioned):'); info('  ' + line(withUs.find(u => u.us === want) || { us: want, msgs: 0, subMsgs: 0, custo: 0 })); info('  ' + line(semUs)); }
+  else if (withUs.length) { info('by US (windows opened by `marvin --us`):'); for (const u of [...withUs, ...(semUs ? [semUs] : [])]) info('  ' + line(u)); }
   info(`≈ $${g.custo.toFixed(2)} total at ${PRICES_DATE} list prices — an estimate; check the current price table`);
   if (fixedTk && g.contextoMedio) {
     const share = Math.min(100, Math.round(100 * fixedTk / g.contextoMedio));

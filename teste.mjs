@@ -1310,6 +1310,62 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── 9y2. US-65: cost per US from the `--us` windows in the main session. A sub-agent inherits the
+//      window of the Agent tool_use named by its meta.toolUseId; no signal → "sem US", never apportioned.
+{
+  const a = arena('gastos-us');
+  run(a, '--no-git');
+  const dir = path.dirname(memoryPath(a.lar, a.proj));
+  const u = { input_tokens: 1, output_tokens: 10 };
+  const turn = (id, blocks = [], extra = {}) => JSON.stringify({ type: 'assistant', timestamp: '2026-10-19T10:00:00Z', sessionId: 's65', message: { id, model: 'claude-sonnet-5', usage: u, content: blocks }, ...extra });
+  const bash = (id, command) => ({ type: 'tool_use', id, name: 'Bash', input: { command } });
+  const agent = (id) => ({ type: 'tool_use', id, name: 'Agent', input: { prompt: 'faça algo da US-01' } });
+  const res = (id, isErr) => JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, is_error: !!isErr, content: 'x' }] } });
+  fs.writeFileSync(path.join(dir, 's65.jsonl'), [
+    turn('t0'),
+    turn('tf', [bash('bf', 'marvin --us Novos/E/F/US-03-z')]), res('bf', true),                      // errored: opens nothing
+    turn('tq', [bash('bq', 'marvin --status --us US-03')]), res('bq'),                               // --status: opens nothing
+    turn('t1', [bash('b1', 'marvin --us Novos/E/F/US-01-x')]), res('b1'),
+    turn('t1b', [agent('a1')]),
+    turn('t2', [bash('b2', 'node marvin.mjs --us=Manutencao/E/F/US-02-y')]), res('b2'),
+    turn('t2b', [agent('a2')]),
+    turn('td', [bash('bd', 'marvin --fechar --dry-run')]), res('bd'),                                                  // dry-run closes nothing
+    turn('t3', [bash('b3', 'marvin --fechar')]), res('b3'),
+    turn('t4', [agent('a3')]),
+    turn('l1', [bash('bl', 'for u in US-07-a US-08-b; do node marvin.mjs --us Novos/E/F/$u; done')]), res('bl'),   // $u: no signal
+    turn('l2', [bash('bg', 'git commit -m "marvin --us Novos/E/F/US-09-g"')]), res('bg'),                          // not a marvin command
+    turn('l3', [bash('br', 'marvin --us Novos/E/F/US-10-r --refinada')]), res('br'),                                // refinement opens nothing
+    ''].join(NLQ));
+  const sub = (name, id, toolUseId) => {
+    const sd = path.join(dir, 's65', 'subagents'); fs.mkdirSync(sd, { recursive: true });
+    fs.writeFileSync(path.join(sd, 'agent-' + name + '.jsonl'), turn(id, [], { isSidechain: true }) + NLQ);
+    fs.writeFileSync(path.join(sd, 'agent-' + name + '.meta.json'), JSON.stringify({ agentType: 'dev-back', toolUseId }));
+  };
+  sub('1', 's1', 'a1'); sub('2', 's2', 'a2'); sub('3', 's3', 'a3'); sub('4', 's4', 'orfao');
+  const r = run(a, '--status', '--us', 'Manutencao/E/F/US-01-x');
+  check('US-65: duas US numa sessão — US-01 = t1 + Agent + subagente', /US-01\s+3 turns \(1 by subagents\)/.test(r.stdout), r.stdout.slice(-900));
+  check('US-65: US-02 inclui o turno do --fechar que a fecha', /US-02\s+5 turns \(1 by subagents\)/.test(run(a, '--status', '--us=US-02').stdout));
+  check('US-65: Agent depois do --fechar, id órfão, comando com erro e --status caem em "sem US"', /sem US\s+9 turns \(2 by subagents\)/.test(r.stdout), r.stdout.slice(-900));
+  check('US-65: loop com $u, git commit com --us, --refinada e --fechar --dry-run não criam nem fecham janela', !/US-(0[7-9]|10)\s/.test(r.stdout) && !r.stdout.includes('$u'), r.stdout.slice(-900));
+  check('US-65: a soma das US mais "sem US" é o total', /17 model turns/.test(r.stdout), r.stdout.slice(-900));
+  const sem = run(a, '--status');
+  check('US-65: --status sem --us lista uma linha por US e "sem US"', /US-01\s+3 turns/.test(sem.stdout) && /US-02\s+5 turns/.test(sem.stdout) && /sem US\s+9 turns/.test(sem.stdout));
+  cleanup(a);
+}
+{
+  const a = arena('gastos-us2');
+  run(a, '--no-git');
+  const dir = path.dirname(memoryPath(a.lar, a.proj));
+  const mk = (id, blocks) => JSON.stringify({ type: 'assistant', sessionId: 's9', timestamp: '2026-10-19T10:00:00Z', message: { id, model: 'claude-sonnet-5', usage: { input_tokens: 1, output_tokens: 10 }, content: blocks } });
+  fs.writeFileSync(path.join(dir, 's9.jsonl'), [mk('x1', []), mk('x2', [{ type: 'tool_use', id: 'bb', name: 'Bash', input: { command: 'marvin --status --us US-01' } }]), ''].join(NLQ));
+  const snap = () => { const o = []; (function w(d) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (p === dir || e.name === '.git') continue; e.isDirectory() ? w(p) : o.push(p + '\0' + fs.readFileSync(p, 'utf8')); } })(a.proj); return o.sort().join('\n'); };
+  const before = snap();
+  const r = run(a, '--status', '--us', 'US-01');
+  check('US-65: sessão sem janela — US-01 = 0 e tudo em "sem US", sem erro', /US-01\s+0 turns\s+≈ \$0\.00/.test(r.stdout) && /sem US\s+2 turns/.test(r.stdout), r.stdout.slice(-700));
+  check('US-65: --status --us só lê (não cria US nem arquivo)', snap() === before);
+  cleanup(a);
+}
+
 // ── 9z. the graph in our favor. Measured: in 23,745 turns the agent queried the graph
 //     twice. So the script asks: Impacto in --us, collision in --status, drift in --fechar.
 //     Synthetic graph in graphify's format — the test does not need the binary.
