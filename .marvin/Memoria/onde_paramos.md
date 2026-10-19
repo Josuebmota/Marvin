@@ -23,8 +23,7 @@ metadata:
 
 ## Em andamento
 
-- [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — medir custo por tarefa aprovada em 3–4 US reais; na próxima US, fixar contexto, checks e corte de turnos antes de começar
-- [US-65-custo-por-us](../Planejamento/Manutencao/diagnostico/custo/US-65-custo-por-us/Sobre.md) — implementada 19/10/2026 (braço anterior da 4ª amostra da US-29); próximo passo: o dono confirma a regra da janela `--us` e aprova
+- [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — 4 amostras medidas (par US-64 × US-65 aprovado pelo dono: coordenador Sonnet −58%); próximo: o `po` declara a economia medida e decide o template (critério 2)
 
-- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — 16/10: **3.4.1 no npm** (tag `v3.4.1`); fila: US-63 e US-65 refinadas. Falta: desligar conectores da conta (~9,7k/sessão) e o aceite do dono numa US real para fechar a US-29
+- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — 16/10: **3.4.1 no npm** (tag `v3.4.1`); fila: US-63 refinada. Falta: desligar conectores da conta (~9,7k/sessão); o par US-64 × US-65 já tem o aceite do dono
 
