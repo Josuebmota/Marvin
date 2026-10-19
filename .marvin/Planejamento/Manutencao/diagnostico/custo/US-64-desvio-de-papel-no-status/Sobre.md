@@ -102,6 +102,7 @@ Toca 4 nó(s) de código em 4 comunidade(s) — **escopo largo**: vale fatiar?.
 ## Rumo
 - **19/10/2026** — aberta da issue #5 (fatias 1 e 2 do `tl`). Primeira na ordem do `po`: maior número medido, só leitura, uma rodada.
 - **19/10/2026** — implementada na amostra da US-29 (coordenador Sonnet · médio; scout Haiku, dev-back e qa Sonnet, sem `tl`). `computeSpend` agrega por papel e modelo e gera `desvios` (sessão de 8 chars, dia, modelo, ≈$) e `semMedicao`; `printSpend` imprime esforço do turno (`effort` do registro, `meta.effort` de reserva, "não registrado" só sem os dois), "sessão principal" como papel, uma linha por papel e modelo, desvios (máx. 15 + resto) e "sem medição"; `readNode` ganhou `papeis`. `teste.mjs`: 5 checks novos com transcrições falsas; 472 verdes; contagem dos dois READMEs 467→472. **Fora:** o ramo "não registrado" não tem check próprio (qa); `--html` segue lendo `porPapel`, sem desvio; custo por US (US-65). Não concluída: aguarda o dono olhar o diff e a saída do `--status`.
+- **19/10/2026** — retrabalho pedido pelo dono: "sem medição" listava o `dono` (humano). `readNode` agora ignora linha do Time com 3ª coluna `humano` (e o papel `dono`); check novo no `teste.mjs`; 473 verdes, READMEs 472→473. Entra no custo da amostra da US-29. O `--status` deste repo não imprime mais a linha.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->

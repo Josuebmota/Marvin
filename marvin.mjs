@@ -572,7 +572,8 @@ const readNode = (file) => {
     .filter(c => !c.every(x => /^:?-+:?$/.test(x)) && !/^etapa$/i.test(c[0]));
   const comModelo = rows.length > 0 && rows.every(c => c.length >= 3 && /\S/.test(c[2]) && !/^(\?|—|-|a definir|tbd)$/i.test(c[2].trim()));
   // US-64: roles named in the table's "papel" column (2nd cell), for the "sem medição" line in --status.
-  const papeis = [...new Set(rows.flatMap(c => (c[1] || '').split('·')[0].split(/[\/,+&]|\s+e\s+/).map(s => s.replace(/`/g, '').trim().toLowerCase()).filter(s => /^[a-z][\w-]*$/.test(s))))];
+  // A human row (3rd cell "humano", or role "dono") is not an LLM role and has no turn to measure.
+  const papeis = [...new Set(rows.filter(c => !/^humano\b/i.test(c[2] || '') && !/^dono$/i.test((c[1] || '').trim())).flatMap(c => (c[1] || '').split('·')[0].split(/[\/,+&]|\s+e\s+/).map(s => s.replace(/`/g, '').trim().toLowerCase()).filter(s => /^[a-z][\w-]*$/.test(s))))];
   return { arq: file, tipo: field('tipo'), estado: field('estado'), pai: field('pai'), titulo: title, rumo, papeis,
            evidencia: cleanEvidence, comEvidencia: /\S/.test(cleanEvidence), tocados, perguntas, time, comModelo };
 };
