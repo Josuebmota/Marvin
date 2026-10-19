@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: ativa
 pai: ../Sobre.md
 name: US-64-desvio-de-papel-no-status
 description: "O --status mostra o que rodou fora do Time e quanto custou: esforço por turno, sessão principal como papel, desvio com sessão e data, papel declarado sem medição e papel misto quebrado por modelo. Só leitura."
@@ -33,9 +33,11 @@ Triagem 19/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo). `tl
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| localizar os campos no `.jsonl` | scout | Haiku · baixo | recuperação delimitada | pendente |
-| implementar | dev-back | Sonnet · médio | partida | pendente |
-| verificar | qa | Sonnet · baixo | partida; aceite com transcrições falsas | pendente |
+| localizar os campos no `.jsonl` | scout | Haiku · baixo | recuperação delimitada | feito |
+| implementar | dev-back | Sonnet · médio | partida | feito |
+| verificar | qa | Sonnet · baixo | partida; aceite com transcrições falsas | feito |
+
+**19/10/2026** — amostra da [US-29](../../../../Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) (braço política: coordenador Sonnet · médio; par declarado com a US-65 no braço anterior). Chat próprio, sem outra atividade até o commit (sem release, push nem refino); id da sessão: 3bebfbc3-543e-4abf-a988-f22991ceb531. Checks: `node teste.mjs` e o aceite dos critérios 1–6. Juiz: o dono, não o aceite da sessão. Custo medido com o `--status` de 4a1ec36.
 
 Grafo (fresco): `computeSpend` → `affected`: `computeStatus`; `explain`: chama `costOf`, liga à US-41. `printSpend` → `affected`: `printStatus`. `readNode` → `affected`: `computeStatus`, `planningNodes`.
 
@@ -99,6 +101,7 @@ Toca 4 nó(s) de código em 4 comunidade(s) — **escopo largo**: vale fatiar?.
 
 ## Rumo
 - **19/10/2026** — aberta da issue #5 (fatias 1 e 2 do `tl`). Primeira na ordem do `po`: maior número medido, só leitura, uma rodada.
+- **19/10/2026** — implementada na amostra da US-29 (coordenador Sonnet · médio; scout Haiku, dev-back e qa Sonnet, sem `tl`). `computeSpend` agrega por papel e modelo e gera `desvios` (sessão de 8 chars, dia, modelo, ≈$) e `semMedicao`; `printSpend` imprime esforço do turno (`effort` do registro, `meta.effort` de reserva, "não registrado" só sem os dois), "sessão principal" como papel, uma linha por papel e modelo, desvios (máx. 15 + resto) e "sem medição"; `readNode` ganhou `papeis`. `teste.mjs`: 5 checks novos com transcrições falsas; 472 verdes; contagem dos dois READMEs 467→472. **Fora:** o ramo "não registrado" não tem check próprio (qa); `--html` segue lendo `porPapel`, sem desvio; custo por US (US-65). Não concluída: aguarda o dono olhar o diff e a saída do `--status`.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->

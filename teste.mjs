@@ -1272,9 +1272,31 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   fs.writeFileSync(path.join(sd, 'agent-x.meta.json'), JSON.stringify({ agentType: 'dev-back', model: 'sonnet', effort: 'medium' }));
   fs.writeFileSync(path.join(sd, 'agent-y.jsonl'), line('msg_4', 'claude-haiku-5', { input_tokens: 3, output_tokens: 30 }, { isSidechain: true }) + NLQ);   // no meta
   const r2 = run(a, '--status');
-  check('subagents/ entra no total e a mesma mensagem nos dois lugares conta uma vez', /4 model turns/.test(r2.stdout) && /3 by subagents/.test(r2.stdout) && /\(main session\)\s+1 turns/.test(r2.stdout), r2.stdout.slice(-700));
+  check('subagents/ entra no total e a mesma mensagem nos dois lugares conta uma vez', /4 model turns/.test(r2.stdout) && /3 by subagents/.test(r2.stdout) && /sessão principal\s+claude-opus-5\s+effort não registrado\s+1 turns/.test(r2.stdout), r2.stdout.slice(-700));
   check('a linha do papel traz modelo, esforço, turnos e custo', /dev-back\s+claude-sonnet-5\s+effort medium\s+2 turns\s+≈ \$0\.00/.test(r2.stdout), r2.stdout.slice(-700));
-  check('subagente sem meta vai para "sem papel" sem derrubar', r2.status === 0 && /sem papel\s+claude-haiku-5\s+effort \?\s+1 turns/.test(r2.stdout));
+  check('subagente sem meta vai para "sem papel" sem derrubar', r2.status === 0 && /sem papel\s+claude-haiku-5\s+effort não registrado\s+1 turns/.test(r2.stdout));
+  // US-64: effort from the turn, main session as a role, deviations with session+day, mixed models, "sem medição"
+  const sdz = path.join(dir, 'abcdef123456', 'subagents'); fs.mkdirSync(sdz, { recursive: true });
+  const ex = { sessionId: 'abcdef123456' };
+  const us = { input_tokens: 1, output_tokens: 10 };
+  fs.writeFileSync(path.join(dir, 'abcdef123456.jsonl'), [
+    line('m_a', 'claude-opus-5', us, { ...ex, effort: 'xhigh' }),
+    line('m_b', 'claude-sonnet-5', us, { ...ex, effort: 'low' }),
+    ''].join(NLQ));
+  fs.writeFileSync(path.join(sdz, 'agent-g.jsonl'), line('m_c', 'claude-opus-5', us, { ...ex, isSidechain: true, effort: 'high', timestamp: '2026-09-12T10:00:00Z' }) + NLQ);
+  fs.writeFileSync(path.join(sdz, 'agent-g.meta.json'), JSON.stringify({ agentType: 'general-purpose' }));
+  fs.writeFileSync(path.join(sdz, 'agent-d.jsonl'), [
+    line('m_d', 'claude-opus-5', us, { ...ex, isSidechain: true }),
+    line('m_e', 'claude-sonnet-5', us, { ...ex, isSidechain: true }), ''].join(NLQ));
+  fs.writeFileSync(path.join(sdz, 'agent-d.meta.json'), JSON.stringify({ agentType: 'dev-back', effort: 'medium' }));
+  const usDir = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E', 'F', 'US-9-x'); fs.mkdirSync(usDir, { recursive: true });
+  fs.writeFileSync(path.join(usDir, 'Sobre.md'), '---\ntipo: us\nestado: ativa\n---\n# US-9 — x\n\n## Time\n\n| etapa | papel | modelo · esforço | motivo | estado |\n|---|---|---|---|---|\n| a | dev-back · skill-x | Sonnet · médio | p | pendente |\n| b | dba | Sonnet · baixo | p | pendente |\n');
+  const r3 = run(a, '--status');
+  check('US-64: esforço vem do turno (xhigh/low na sessão principal) e meta.effort é reserva', /sessão principal\s+claude-opus-5\s+effort xhigh\s+2 turns/.test(r3.stdout) && /dev-back\s+claude-opus-5\s+effort medium/.test(r3.stdout), r3.stdout.slice(-1500));
+  check('US-64: papel com modelos misturados sai uma linha por modelo', /dev-back\s+claude-opus-5/.test(r3.stdout) && /dev-back\s+claude-sonnet-5/.test(r3.stdout) && /sessão principal\s+claude-sonnet-5\s+effort low/.test(r3.stdout));
+  check('US-64: turno de general-purpose em qualquer modelo vira linha de desvio com sessão curta, dia e custo', /abcdef12\s+2026-09-12\s+general-purpose\s+claude-opus-5\s+1 turns\s+≈ \$0\.00/.test(r3.stdout), r3.stdout.slice(-1500));
+  check('US-64: o turno sem papel (haiku) também aparece como desvio', /s1\s+2026-09-11\s+sem papel\s+claude-haiku-5\s+1 turns/.test(r3.stdout));
+  check('US-64: papel declarado no Time e sem turno sai como "sem medição" (o medido não)', /sem medição[^\n]*dba/.test(r3.stdout) && !/sem medição[^\n]*dev-back/.test(r3.stdout), r3.stdout.slice(-1500));
   run(a, '--us', 'Novos/E/F/US-1');
   run(a, '--status', '--html');
   const html = fs.readFileSync(path.join(a.proj, '.marvin', '.status', 'index.html'), 'utf8');

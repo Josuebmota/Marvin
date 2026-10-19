@@ -571,7 +571,9 @@ const readNode = (file) => {
     .map(l => l.replace(/^\||\|$/g, '').split('|').map(s => s.trim()))
     .filter(c => !c.every(x => /^:?-+:?$/.test(x)) && !/^etapa$/i.test(c[0]));
   const comModelo = rows.length > 0 && rows.every(c => c.length >= 3 && /\S/.test(c[2]) && !/^(\?|—|-|a definir|tbd)$/i.test(c[2].trim()));
-  return { arq: file, tipo: field('tipo'), estado: field('estado'), pai: field('pai'), titulo: title, rumo,
+  // US-64: roles named in the table's "papel" column (2nd cell), for the "sem medição" line in --status.
+  const papeis = [...new Set(rows.flatMap(c => (c[1] || '').split('·')[0].split(/[\/,+&]|\s+e\s+/).map(s => s.replace(/`/g, '').trim().toLowerCase()).filter(s => /^[a-z][\w-]*$/.test(s))))];
+  return { arq: file, tipo: field('tipo'), estado: field('estado'), pai: field('pai'), titulo: title, rumo, papeis,
            evidencia: cleanEvidence, comEvidencia: /\S/.test(cleanEvidence), tocados, perguntas, time, comModelo };
 };
 // Role vocabulary = base + optional of suggestTeam() (below); a constant because suggestTeam
@@ -643,7 +645,7 @@ const PRICES = [
 ];
 const priceOf = (model) => (PRICES.find(([re]) => re.test(model)) || PRICES[1])[1];
 const costOf = (t, model) => { const p = priceOf(model); return (t.in * p.in + t.out * p.out + t.cw * p.cw + t.cr * p.cr) / 1e6; };
-const computeSpend = () => {
+const computeSpend = (nodes = []) => {
   const dir = path.dirname(MEM);   // ~/.claude/projects/<slug>/
   let files = []; try { files = fs.readdirSync(dir).filter(f => f.endsWith('.jsonl')); } catch {}
   const byId = new Map();
@@ -670,18 +672,30 @@ const computeSpend = () => {
       const m = o.message; if (!m || !m.usage || o.type !== 'assistant') continue;
       const u = m.usage;
       byId.set(m.id || o.uuid, { modelo: m.model || '?', dia: (o.timestamp || '').slice(0, 10), sessao: o.sessionId || f, sub: !!(o.isSidechain || meta),
-        papel: meta ? (meta.agentType || 'sem papel') : null, esforco: meta && meta.effort || null,
+        papel: meta ? (meta.agentType || 'sem papel') : null,
+        esforco: [o.effort, meta && meta.effort].find(e => typeof e === 'string' && e) || null,   // US-64: the turn says it; meta is the fallback
         in: u.input_tokens || 0, out: u.output_tokens || 0, cw: u.cache_creation_input_tokens || 0, cr: u.cache_read_input_tokens || 0 });
     }
   }
   const zero = () => ({ in: 0, out: 0, cw: 0, cr: 0, msgs: 0 });
   const add = (a, b) => { a.in += b.in; a.out += b.out; a.cw += b.cw; a.cr += b.cr; a.msgs++; };
   const total = zero(), sub = zero(), byModel = {}, byDay = {}, byRole = {}, sessions = new Set();
+  // US-64: per role × model (a role on mixed models gets one line each), the main session as a role,
+  // and every general-purpose / role-less turn as a deviation, grouped by session + day + model.
+  const byRM = new Map(), desvios = new Map();
   let contextSum = 0;
   for (const r of byId.values()) {
     add(total, r); if (r.sub) add(sub, r);
     // main session apart from the sub-agents; a sidechain turn with no meta falls in "sem papel"
     const role = r.papel || (r.sub ? 'sem papel' : null);
+    const rm = (role || 'sessão principal') + '\u0000' + r.modelo;
+    if (!byRM.has(rm)) byRM.set(rm, { papel: role || 'sessão principal', modelo: r.modelo, ...zero(), custo: 0, esforcos: new Set() });
+    const q = byRM.get(rm); add(q, r); q.custo += costOf(r, r.modelo); if (r.esforco) q.esforcos.add(r.esforco);
+    if (role === 'general-purpose' || role === 'sem papel') {
+      const dk = r.sessao + '\u0000' + r.dia + '\u0000' + r.modelo + '\u0000' + role;
+      if (!desvios.has(dk)) desvios.set(dk, { sessao: String(r.sessao).slice(0, 8), dia: r.dia, modelo: r.modelo, papel: role, msgs: 0, custo: 0 });
+      const d = desvios.get(dk); d.msgs++; d.custo += costOf(r, r.modelo);
+    }
     if (role) {
       const p = (byRole[role] = byRole[role] || { ...zero(), custo: 0, opusMsgs: 0, opusCusto: 0, modelos: new Set(), esforcos: new Set() });
       add(p, r); p.custo += costOf(r, r.modelo); p.modelos.add(r.modelo); if (r.esforco) p.esforcos.add(r.esforco);
@@ -694,7 +708,9 @@ const computeSpend = () => {
   }
   let cost = 0; for (const [m, t] of Object.entries(byModel)) cost += costOf(t, m);
   const avgContext = total.msgs ? Math.round(contextSum / total.msgs) : 0;
-  return { total, sub, porModelo: byModel, porDia: byDay, porPapel: byRole, sessoes: sessions.size, custo: cost, contextoMedio: avgContext, transcricoes: files.length };
+  const medidos = new Set([...byRM.values()].map(q => q.papel));
+  const semMedicao = [...new Set(nodes.filter(n => n.tipo === 'us').flatMap(n => n.papeis || []))].filter(p => !medidos.has(p)).sort();
+  return { total, sub, porModelo: byModel, porDia: byDay, porPapel: byRole, porPapelModelo: [...byRM.values()], desvios: [...desvios.values()], semMedicao, sessoes: sessions.size, custo: cost, contextoMedio: avgContext, transcricoes: files.length };
 };
 const kTk = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n);
 const printSpend = (g, fixedTk) => {
@@ -704,11 +720,17 @@ const printSpend = (g, fixedTk) => {
   for (const [m, t] of Object.entries(g.porModelo).sort((a, b) => b[1].cr + b[1].in - (a[1].cr + a[1].in)))
     info(`${m.padEnd(18)} ${kTk(t.in).padStart(6)} in  ${kTk(t.cw).padStart(6)} cache-write  ${kTk(t.cr).padStart(7)} cache-read  ${kTk(t.out).padStart(6)} out  ≈ $${costOf(t, m).toFixed(2)}`);
   const roles = Object.entries(g.porPapel);
-  if (roles.length) {
-    info('by subagent role:');
-    info(`  ${'(main session)'.padEnd(16)} ${g.total.msgs - g.sub.msgs} turns  ≈ $${(g.custo - roles.reduce((t, [, p]) => t + p.custo, 0)).toFixed(2)}`);
-    for (const [r, p] of roles.sort((a, b) => b[1].custo - a[1].custo))
-      info(`  ${r.padEnd(16)} ${[...p.modelos].join('/')}  effort ${[...p.esforcos].join('/') || '?'}  ${p.msgs} turns  ≈ $${p.custo.toFixed(2)}`);
+  if (g.porPapelModelo.length) {
+    info('by role (main session and subagents; one line per role × model):');
+    for (const q of [...g.porPapelModelo].sort((a, b) => b.custo - a.custo))
+      info(`  ${q.papel.padEnd(16)} ${q.modelo}  effort ${[...q.esforcos].join('/') || 'não registrado'}  ${q.msgs} turns  ≈ $${q.custo.toFixed(2)}`);
+    if (g.desvios.length) {
+      info('outside the Time (general-purpose / no role), by session · day · model:');
+      const ds = [...g.desvios].sort((a, b) => b.custo - a.custo);
+      for (const d of ds.slice(0, 15)) info(`  ${d.sessao}  ${d.dia || '?'}  ${d.papel}  ${d.modelo}  ${d.msgs} turns  ≈ $${d.custo.toFixed(2)}`);
+      if (ds.length > 15) info(`  … +${ds.length - 15} more (≈ $${ds.slice(15).reduce((t, d) => t + d.custo, 0).toFixed(2)})`);
+    }
+    if (g.semMedicao.length) info('sem medição (declared in a Time, no turn measured): ' + g.semMedicao.join(', '));
     // A role with no agent file runs as a generic subagent: with no `model:` it inherits the session's.
     let have = []; try { have = fs.readdirSync(path.join(ROOT, '.claude', 'agents')).filter(f => /\.md$/.test(f)).map(f => f.replace(/\.md$/, '')); } catch {}
     const semArq = roles.filter(([r, p]) => p.opusMsgs && (r === 'general-purpose' || r === 'sem papel' || !have.includes(r)));
@@ -1259,7 +1281,7 @@ const computeStatus = () => {
   const byFile = new Map(nodes.map(n => [path.resolve(n.arq), n]));
   const parentOf = (n) => n.pai ? byFile.get(path.resolve(path.dirname(n.arq), n.pai)) || null : null;
   const chain = (n) => { const c = []; for (let p = parentOf(n); p; p = parentOf(p)) c.unshift(p.titulo); return c; };
-  const st = { ativas: [], avisos: [], contextoPonteiros: [], problemas: 0, epics: [], release: null, contexto: fixedContext(), grafo: null, gastos: computeSpend(), ilhas: ilhasOf(nodes),
+  const st = { ativas: [], avisos: [], contextoPonteiros: [], problemas: 0, epics: [], release: null, contexto: fixedContext(), grafo: null, gastos: computeSpend(nodes), ilhas: ilhasOf(nodes),
                nos: { us: nodes.filter(n => n.tipo === 'us').length, concluidas: nodes.filter(n => n.tipo === 'us' && n.estado === 'concluida').length } };
   let note = ''; try { note = fs.readFileSync(path.join(DEST, 'onde_paramos.md'), 'utf8'); } catch {}
   const pointers = [...note.matchAll(/^- \[([^\]]+)\]\(([^)]+)\)(?:\s*[—-]+\s*(.*))?$/gm)];

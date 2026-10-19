@@ -5,7 +5,7 @@ description: "ÚNICA porta de entrada do Marvin. Só ponteiros para as US em and
 tags: [moc, entrada]
 metadata:
   type: project
-  atualizado: 2026-10-16
+  atualizado: 2026-10-19
 ---
 
 # ▶ ONDE PARAMOS
@@ -19,11 +19,12 @@ metadata:
 > - Criar `onde_paramos_<data>.md` **ou uma seção de relato aqui dentro** é o mesmo erro:
 >   o histórico já está no `git log`, e o porquê já está no Rumo da US.
 
-**Atualizado:** 16/10/2026
+**Atualizado:** 19/10/2026
 
 ## Em andamento
 
 - [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — medir custo por tarefa aprovada em 3–4 US reais; na próxima US, fixar contexto, checks e corte de turnos antes de começar
+- [US-64-desvio-de-papel-no-status](../Planejamento/Manutencao/diagnostico/custo/US-64-desvio-de-papel-no-status/Sobre.md) — aberta 19/10/2026 como 4ª amostra da US-29 (braço política, coordenador Sonnet); próximo passo: chat próprio no Sonnet implementa (dev-back) e verifica (qa)
 
-- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — 16/10: **3.4.1 no npm** (tag `v3.4.1`); fila vazia. Falta: desligar conectores da conta (~9,7k/sessão) e o aceite do dono numa US real para fechar a US-29
+- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — 16/10: **3.4.1 no npm** (tag `v3.4.1`); fila: US-63 e US-65 refinadas. Falta: desligar conectores da conta (~9,7k/sessão) e o aceite do dono numa US real para fechar a US-29
 
