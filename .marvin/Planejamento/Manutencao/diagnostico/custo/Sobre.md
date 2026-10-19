@@ -10,6 +10,8 @@ pai: ../Sobre.md
 
 ## Filhos
 - [US-41-custo-dos-subagentes](US-41-custo-dos-subagentes/Sobre.md)
+- [US-64-desvio-de-papel-no-status](US-64-desvio-de-papel-no-status/Sobre.md)
+- [US-65-custo-por-us](US-65-custo-por-us/Sobre.md)
 
 ## Rumo
 - **15/10/2026** — aberta, com a primeira US.
