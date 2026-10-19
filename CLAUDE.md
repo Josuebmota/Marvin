@@ -25,6 +25,7 @@ domínio e skills e usa as capacidades efetivamente disponíveis; plugin instala
 não fixa fornecedor para delegação ou revisão.
 A escolha visa o mesmo resultado com o menor gasto; o degrau sobe só com motivo
 registrado no Time da US. Se o `tl` já decidiu, quem executa não precisa do modelo do `tl`.
+Ao delegar, passe `model` e `effort` da linha do Time na chamada (autorização do dono, 19/10/2026).
 
 | Precisa de | Modelo |
 |---|---|

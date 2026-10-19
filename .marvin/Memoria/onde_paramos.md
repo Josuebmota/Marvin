@@ -23,7 +23,6 @@ metadata:
 
 ## Em andamento
 
-- [US-29-medir-economia-do-roteamento](../Planejamento/Novos/time/roteamento/US-29-medir-economia-do-roteamento/Sobre.md) — 4 amostras medidas (par US-64 × US-65 aprovado pelo dono: coordenador Sonnet −58%); próximo: o `po` declara a economia medida e decide o template (critério 2)
 
-- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — 16/10: **3.4.1 no npm** (tag `v3.4.1`); fila: US-63 refinada. Falta: desligar conectores da conta (~9,7k/sessão); o par US-64 × US-65 já tem o aceite do dono
+- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — 16/10: **3.4.1 no npm** (tag `v3.4.1`); fila: US-63 refinada. Falta: desligar conectores da conta (~9,7k/sessão) · US-29 concluída 19/10 (−58% com coordenador Sonnet)
 

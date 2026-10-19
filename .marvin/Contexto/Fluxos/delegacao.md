@@ -62,6 +62,9 @@ passo 2 do `/us`, agora com dono explícito; não é uma etapa nova.
   que prevalece sobre o frontmatter; `CLAUDE_CODE_EFFORT_LEVEL` prevalece sobre ambos.
   Em versão anterior, usar frontmatter ou herança da sessão e registrar a origem.
   Conferir versão e configuração aplicada. Esforço menor nunca reduz a revisão dos invariantes.
+  **Ao delegar, o esforço vai explícito:** `model` e `effort` da linha do *Time* na chamada, e
+  a etapa sem esforço declarado não roda. A ferramenta só aceita `effort` com autorização escrita
+  do dono no `CLAUDE.md` (US-29, critério 4).
 - **Grafo na triagem — obrigatório neste repo (dono, 08/10/2026; nos projetos que o Marvin
   monta continua opcional):** o `tl` e o `po` **sempre** partem do
   grafo: a seção *Impacto* e as ilhas da US dizem quem depende do que ela toca e qual o
