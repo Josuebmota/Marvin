@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 name: US-64-desvio-de-papel-no-status
 description: "O --status mostra o que rodou fora do Time e quanto custou: esforço por turno, sessão principal como papel, desvio com sessão e data, papel declarado sem medição e papel misto quebrado por modelo. Só leitura."
@@ -105,4 +105,6 @@ Toca 4 nó(s) de código em 4 comunidade(s) — **escopo largo**: vale fatiar?.
 - **19/10/2026** — retrabalho pedido pelo dono: "sem medição" listava o `dono` (humano). `readNode` agora ignora linha do Time com 3ª coluna `humano` (e o papel `dono`); check novo no `teste.mjs`; 473 verdes, READMEs 472→473. Entra no custo da amostra da US-29. O `--status` deste repo não imprime mais a linha.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- Commits `5b5676c` (implementação) e `ed7d228` (retrabalho pedido pelo dono: papel humano fora de "sem medição"); `node teste.mjs` 473 passaram.
+- `--status` deste repo: linha por papel × modelo com esforço do turno, "sessão principal" como papel, desvios `general-purpose` por sessão · dia · modelo; nenhum "sem medição" falso.
+- **Aprovada pelo dono em 19/10/2026**, depois do retrabalho.
