@@ -2674,6 +2674,108 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── 9r. US-70: the post-commit hook refreshes the docs side of the graph too.
+//     `graphify update .` rewrites graph.json and drops the marvin doc nodes; `--graph-docs` puts them back.
+//     No real graphify needed: the graph is synthetic and `equipped` puts a fake one (exit 0) on PATH.
+{
+  const OLD_HOOK = [
+    '#!/bin/sh',
+    '# marvin — atualiza o grafo de código depois do commit.',
+    '# O grafo é DERIVADO: envelhece a cada commit e não avisa. Isto é o que fecha essa lacuna.',
+    '# Instalado por: marvin --graphify --graphify-git-hook   ·   remover: apague este arquivo.',
+    '',
+    '[ "${MARVIN_SKIP_GRAPH_HOOK:-0}" = "1" ] && exit 0',
+    'export PYTHONHASHSEED=0',
+    'LOG="${TMPDIR:-/tmp}/marvin-graph-refresh.log"',
+    '{ graphify update . ; } >"$LOG" 2>&1 &', ''].join(NLQ);
+  const idOf = (rel) => rel.replace(/\\/g, '/').replace(/\.[^./]+$/, '')
+    .replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
+  const hookOf = (x) => path.join(x.proj, '.git', 'hooks', 'post-commit');
+  const readHook = (x) => { try { return fs.readFileSync(hookOf(x), 'utf8'); } catch { return ''; } };
+  // Minimal graph: the fake graphify prints no version, so step 8b only reaches the hook via an existing graph.json.
+  const plantGraph = (x) => {
+    fs.mkdirSync(path.join(x.proj, 'graphify-out'), { recursive: true });
+    fs.writeFileSync(path.join(x.proj, 'graphify-out', 'graph.json'), JSON.stringify({ directed: true, nodes: [], edges: [] }));
+  };
+  const plantHook = (x, txt) => { fs.mkdirSync(path.dirname(hookOf(x)), { recursive: true }); fs.writeFileSync(hookOf(x), txt); };
+
+  // 1-3. --graph-docs on a bare arena: only `.marvin/` docs and a graph without marvin doc nodes
+  const a = arena('graphdocs');
+  const relUs = '.marvin/Planejamento/Novos/E1/F1/US-1/Sobre.md';
+  const usDir = path.join(a.proj, ...relUs.split('/').slice(0, -1));
+  fs.mkdirSync(usDir, { recursive: true });
+  fs.writeFileSync(path.join(usDir, 'Sobre.md'), ['---', 'tipo: us', 'estado: ativa', '---', '# US-1 — hook', ''].join(NLQ));
+  const output = path.join(a.proj, 'graphify-out');
+  fs.mkdirSync(output, { recursive: true });
+  const gp = path.join(output, 'graph.json');
+  fs.writeFileSync(gp, JSON.stringify({ directed: true,
+    nodes: [{ id: 'src_x', label: 'x.js', file_type: 'code', source_file: 'src/x.js', _origin: 'ast' }], edges: [] }));
+  const past = new Date('2020-01-01T00:00:00Z');
+  fs.utimesSync(gp, past, past);
+  const mtimeBefore = fs.statSync(gp).mtimeMs;
+
+  const r1 = run(a, '--graph-docs');
+  const g1 = JSON.parse(fs.readFileSync(gp, 'utf8'));
+  const mine = g1.nodes.filter(n => n._origin === 'marvin');
+  check('US-70: --graph-docs repõe os nós-doc (_origin marvin, com tipo) num grafo que não os tem',
+        mine.some(n => n.id === idOf(relUs) && n.tipo === 'us'), r1.stdout.slice(-400) + r1.stderr.slice(-200));
+  check('US-70: --graph-docs sai cedo: não roda o scaffold (AGENTS.md e .claude/ não nascem)',
+        !fs.existsSync(path.join(a.proj, 'AGENTS.md')) && !fs.existsSync(path.join(a.proj, '.claude')));
+  const bytes1 = fs.readFileSync(gp);
+  const mtime1 = fs.statSync(gp).mtimeMs;
+  check('US-70: --graph-docs preserva o mtime do graph.json (frescor da extração)',
+        Math.abs(mtime1 - mtimeBefore) < 2000, mtimeBefore + ' -> ' + mtime1);
+  run(a, '--graph-docs');
+  check('US-70: 2ª rodada de --graph-docs deixa o graph.json byte a byte igual',
+        Buffer.compare(bytes1, fs.readFileSync(gp)) === 0);
+  check('US-70: 2ª rodada mantém o mtime do graph.json', Math.abs(fs.statSync(gp).mtimeMs - mtimeBefore) < 2000);
+
+  // --dry-run: on a graph without the docs, nothing is written
+  fs.writeFileSync(gp, JSON.stringify({ directed: true,
+    nodes: [{ id: 'src_x', label: 'x.js', file_type: 'code', source_file: 'src/x.js', _origin: 'ast' }], edges: [] }));
+  const bare = fs.readFileSync(gp);
+  run(a, '--graph-docs', '--dry-run');
+  check('US-70: --graph-docs --dry-run não escreve o graph.json', Buffer.compare(bare, fs.readFileSync(gp)) === 0);
+  cleanup(a);
+
+  // 4. new hook: `--graph-docs` chained with && right after `graphify update .`, same subshell
+  const b = equipped(arena('graphdocs-hook'));
+  fs.mkdirSync(path.join(b.proj, '.git'), { recursive: true });
+  plantGraph(b);
+  run(b, '--no-git', '--graphify', '--graphify-git-hook');
+  const nh = readHook(b);
+  check('US-70: hook novo roda `graphify update . && … --graph-docs` no mesmo subshell',
+        /\{[^\n}]*graphify update \.\s*&&[^\n}]*--graph-docs[^\n}]*\}/.test(nh), nh.slice(-400));
+  cleanup(b);
+
+  // 5. old Marvin hook: rewritten with the flag, warned (step 10) without it
+  const c = equipped(arena('graphdocs-velho'));
+  fs.mkdirSync(path.join(c.proj, '.git'), { recursive: true });
+  plantHook(c, OLD_HOOK);
+  plantGraph(c);
+  const w = run(c, '--no-git');
+  check('US-70: hook antigo do Marvin sem a flag: o passo 10 avisa e cita --graphify-git-hook',
+        /post-commit — missing[^\n]*/.test(w.stdout) && /--graphify-git-hook/.test(w.stdout), w.stdout.slice(-600));
+  check('US-70: sem a flag o hook antigo não é reescrito', readHook(c) === OLD_HOOK);
+  run(c, '--no-git', '--graphify', '--graphify-git-hook');
+  const rewritten = readHook(c);
+  check('US-70: hook antigo do Marvin é reescrito com --graphify-git-hook e passa a conter --graph-docs',
+        /--graph-docs/.test(rewritten) && /marvin\s+—\s+atualiza\s+o\s+grafo/.test(rewritten), rewritten.slice(-300));
+  cleanup(c);
+
+  // 6. someone else's hook: untouched with the flag, no UPDATES warning without it
+  const d = equipped(arena('graphdocs-alheio'));
+  fs.mkdirSync(path.join(d.proj, '.git'), { recursive: true });
+  const alheio = '#!/bin/sh\necho lint\n';
+  plantHook(d, alheio);
+  plantGraph(d);
+  const wd = run(d, '--no-git');
+  check('US-70: hook alheio: o passo 10 não acusa o post-commit', !/post-commit/.test(wd.stdout.split('10. Updates')[1] || ''), wd.stdout.slice(-500));
+  run(d, '--no-git', '--graphify', '--graphify-git-hook');
+  check('US-70: hook alheio fica intocado byte a byte com --graphify-git-hook', readHook(d) === alheio);
+  cleanup(d);
+}
+
 // ── LAST. The number of checks claimed in the READMEs matches the real one.
 //
 // It has drifted THREE times in this repository: 26 when there were 28, 48 when there

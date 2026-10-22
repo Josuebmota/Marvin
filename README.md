@@ -426,7 +426,10 @@ usually ~⅔ of it: every turn re-reads the whole context.
                   Off by default: one call at a time, so it costs minutes and quota
 --graphify-rebuild  rebuilds an existing graph (the default never overwrites one)
 --graphify-git-hook  writes .git/hooks/post-commit so the graph refreshes itself.
-                  Never overwrites a post-commit you already have
+                  Never overwrites a post-commit you already have, except an old one
+                  Marvin wrote itself, which is rewritten to also run --graph-docs
+--graph-docs      puts the knowledge base back into graphify-out/graph.json and exits
+                  (what the hook runs after `graphify update .`); honors --dry-run
 --use=<tool>      records `sim` for an optional tool without asking (alias: --usar=)
 --install         accepted, no longer needed: graphify, ponytail and the ECC catalog install themselves
                   when missing (ponytail/ECC at project scope; graphify via uv, which is user-profile).
@@ -636,7 +639,10 @@ immediately.
 It is **not** `graphify hook install`. That one rebuilds the *root* of the repository it's
 installed in — which in a monorepo is exactly the path that drops the sub-repos from the
 graph. It would automate the bug. Marvin's hook runs the refresh that fits the project:
-`graphify update .` in a single repo, the full cycle in a monorepo.
+`graphify update . && marvin --graph-docs` in a single repo (the update drops the knowledge-base
+nodes; `--graph-docs` puts them back), the full cycle in a monorepo. If Marvin was run from the
+npx cache, the hook calls `npx --no-install marvin-kb`, which only works with the package
+installed; otherwise it fails in the log, silently.
 
 Three things worth knowing before you turn it on:
 
@@ -749,7 +755,7 @@ rather than final text.
 node teste.mjs
 ```
 
-495 checks, no dependencies. It covers the invariants that protect other
+507 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

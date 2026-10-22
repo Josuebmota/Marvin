@@ -422,7 +422,10 @@ turno relê o contexto inteiro.
                   uma chamada por vez, então custa minutos e cota
 --graphify-rebuild  refaz um grafo que já existe (o padrão nunca sobrescreve)
 --graphify-git-hook  escreve .git/hooks/post-commit para o grafo se atualizar sozinho.
-                  Nunca sobrescreve um post-commit que já existe
+                  Nunca sobrescreve um post-commit que já existe, salvo um antigo que o
+                  próprio Marvin escreveu, reescrito para rodar também o --graph-docs
+--graph-docs      devolve a base de conhecimento ao graphify-out/graph.json e sai
+                  (o que o hook roda depois do `graphify update .`); respeita --dry-run
 --use=<ferramenta>  registra `sim` para uma ferramenta opcional sem perguntar (alias: --usar=)
 --install         aceita, já não é necessária: graphify, ponytail e o catálogo ECC se instalam sozinhos
                   quando faltam (ponytail/ECC no escopo do projeto; graphify via uv, do perfil do usuário).
@@ -630,8 +633,11 @@ escrevendo um `post-commit` que atualiza em segundo plano, então o `git commit`
 
 **Não** é o `graphify hook install`. Aquele reconstrói a *raiz* do repositório onde foi
 instalado — que num monorepo é exatamente o caminho que apaga os sub-repos do grafo. Ele
-automatizaria o bug. O hook do Marvin roda o refresh que serve ao projeto: `graphify update .`
-em repositório único, o ciclo inteiro em monorepo.
+automatizaria o bug. O hook do Marvin roda o refresh que serve ao projeto: `graphify update . &&
+marvin --graph-docs` em repositório único (o update apaga os nós da base; o `--graph-docs` os
+devolve), o ciclo inteiro em monorepo. Se o Marvin rodou do cache do npx, o hook chama
+`npx --no-install marvin-kb`, que só funciona com o pacote instalado; senão falha no log, em
+silêncio.
 
 Três coisas antes de ligar:
 
@@ -736,7 +742,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-495 verificações, zero dependência. Cobre os invariantes que protegem o disco
+507 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

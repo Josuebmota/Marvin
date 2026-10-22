@@ -167,7 +167,12 @@ Flags:
                     Off by default: one call at a time, so it costs minutes and quota
   --graphify-rebuild  rebuild an existing graph (the default never overwrites one)
   --graphify-git-hook  write .git/hooks/post-commit so the graph refreshes itself.
-                    Never overwrites a post-commit you already have
+                    Never overwrites a post-commit you already have, except an old one
+                    Marvin wrote itself (signature "marvin — atualiza o grafo"), which
+                    is rewritten to also run --graph-docs
+  --graph-docs      put the knowledge base back into graphify-out/graph.json and exit
+                    (what the post-commit hook runs after \`graphify update .\`);
+                    needs an existing graph, honors --dry-run
   --use=<tool>      record \`sim\` for an optional tool without asking (alias: --usar=)
   --install         graphify, ponytail and ecc are MANDATORY (cost): the ones this machine lacks
                     install themselves, no flag needed (ponytail and the ecc catalog at project
@@ -1811,6 +1816,95 @@ _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
   process.exit(0);
 }
 
+// ── Gitignored sub-repos (the monorepo case), shared by the step-8b scaffold and --graph-docs.
+// Exits != 0 from `git check-ignore` when NOT ignored — and also when there is no git here.
+const detectSubRepos = () => {
+  const found = [];
+  try {
+    const subdirs = (rel) => fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })
+      .filter(e => e.isDirectory() && !e.name.startsWith('.') && !IGNORE.has(e.name))
+      .map(e => rel ? rel + '/' + e.name : e.name);
+    // Depth 2: `repos/<x>` (a parent folder holding the repos) is as common as `<x>`.
+    // A top-level dir that is itself a repo is not descended into — its children are its own.
+    const consider = (rel) => {
+      try {
+        execSync('git check-ignore -q "' + rel + '"', { cwd: ROOT, stdio: 'ignore' });
+        found.push(rel);
+      } catch {}
+    };
+    for (const top of subdirs('')) {
+      if (fs.existsSync(path.join(ROOT, top, '.git'))) { consider(top); continue; }
+      try {
+        for (const child of subdirs(top)) {
+          if (fs.existsSync(path.join(ROOT, child, '.git'))) consider(child);
+        }
+      } catch {}
+    }
+  } catch {}
+  return found;
+};
+
+// ── The docs side of graph.json: Marvin's doc nodes and edges, appended by regex (zero LLM).
+// Used by step 8b and by --graph-docs (the post-commit hook, after `graphify update .`).
+// `_origin: 'marvin'` marks what is ours: removed and regenerated every run, so it is idempotent.
+function mergeDocs(GRAPH, subRepos) {
+  if (!fs.existsSync(GRAPH) || !fs.existsSync(DOCS)) return;
+  let g = null;
+  try { g = JSON.parse(fs.readFileSync(GRAPH, 'utf8')); } catch {}
+  if (!g || !Array.isArray(g.nodes)) return;
+  // `extract` writes `edges`; after `cluster-only` the file comes out in networkx
+  // format, with `links`. The append respects whatever it finds.
+  const KEY = Array.isArray(g.links) ? 'links' : 'edges';
+  g.edges = g[KEY] || [];
+  const before = JSON.stringify({ n: g.nodes.filter(n => n._origin === 'marvin'), e: g.edges.filter(e => e._origin === 'marvin') });
+  g.edges = g.edges.filter(e => e._origin !== 'marvin');
+  // US-66: graphify >= 0.9.37 indexes the .md itself, with the SAME id docsGraph generates
+  // (and a foreign `_origin`). docsGraph runs first and every node whose id it generates is
+  // dropped, so a graphify doc node never survives next to ours as a duplicate.
+  const ids = new Set(g.nodes.filter(n => n._origin !== 'marvin').map(n => n.id));
+  const { novosNos: newNodes, novasArestas: newEdges, avisos: warnings } = docsGraph(ids, subRepos);
+  const newIds = new Set(newNodes.map(n => n.id));
+  const nMarvin = g.nodes.filter(n => n._origin === 'marvin').length;
+  const kept = g.nodes.filter(n => n._origin !== 'marvin' && !newIds.has(n.id));
+  // Foreign doc nodes dropped here (an already-duplicated graph) must reach the disk too.
+  const dropped = g.nodes.length - kept.length - nMarvin;
+  g.nodes = kept;
+  g.nodes.push(...newNodes);
+  g.edges.push(...newEdges);
+  if (KEY !== 'edges') { g[KEY] = g.edges; delete g.edges; }
+  const after = JSON.stringify({ n: newNodes, e: newEdges });
+  const docsChanged = before !== after || dropped > 0;
+  if (docsChanged) {
+    // Preserves the mtime: the freshness check compares code against the
+    // EXTRACTION TIME, and appending docs re-extracted nothing.
+    let st = null; try { st = fs.statSync(GRAPH); } catch {}
+    fsw.writeFileSync(GRAPH, JSON.stringify(g, null, 1));
+    if (!DRY && st) { try { fs.utimesSync(GRAPH, st.atime, st.mtime); } catch {} }
+  }
+  ok('knowledge base in the graph — ' + newNodes.length + ' doc node(s), ' + newEdges.length + ' edge(s)' + (docsChanged ? '' : ' (unchanged)'));
+  if (warnings.length) {
+    warn(warnings.length + ' link(s) from docs to code did not land on a node:');
+    warnings.slice(0, 8).forEach(a => info('  ' + a));
+    if (warnings.length > 8) info('  … and ' + (warnings.length - 8) + ' more');
+  }
+  info('  try:  graphify affected "<function>"   — which US and which code depend on it');
+}
+
+// The line every post-commit hook written by Marvin carries (and nobody else's does).
+const HOOK_SIGNATURE = /#\s+marvin\s+—\s+atualiza\s+o\s+grafo/;
+
+// ── --graph-docs. Only the docs side of an existing graph.json: what the post-commit hook runs
+// after `graphify update .`, which rewrites the graph and drops these nodes. No scaffold.
+if (hasFlag('--graph-docs')) {
+  const GRAPH = path.join(ROOT, 'graphify-out', 'graph.json');
+  if (!fs.existsSync(GRAPH)) {
+    info('--graph-docs: no graphify-out/graph.json here — nothing to do (build one with `marvin --graphify`)');
+    process.exit(0);
+  }
+  mergeDocs(GRAPH, detectSubRepos());
+  process.exit(0);
+}
+
 // ── --fechar. The drift: what changed in git and is NOT in any active US's "Código
 // tocado". Either the US map is incomplete, or the US leaked out of scope — both are things
 // to record before closing, and nobody sees them without checking the diff against the
@@ -2400,31 +2494,7 @@ log('\x1b[1m1. Stack detected\x1b[0m');
 // call per directory, and without the flag nobody uses the result.
 // Lives up here because the generated CLAUDE.md (step 7) needs it so as not to tell the
 // agent to run `graphify update .`, which in a monorepo destroys the graph.
-const SUBREPOS = [];
-if (GRAPHIFY) {
-  try {
-    const subdirs = (rel) => fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })
-      .filter(e => e.isDirectory() && !e.name.startsWith('.') && !IGNORE.has(e.name))
-      .map(e => rel ? rel + '/' + e.name : e.name);
-    // Depth 2: `repos/<x>` (a parent folder holding the repos) is as common as `<x>`.
-    // A top-level dir that is itself a repo is not descended into — its children are its own.
-    const consider = (rel) => {
-      // Exits != 0 when NOT ignored — and also when there is no git here.
-      try {
-        execSync('git check-ignore -q "' + rel + '"', { cwd: ROOT, stdio: 'ignore' });
-        SUBREPOS.push(rel);
-      } catch {}
-    };
-    for (const top of subdirs('')) {
-      if (fs.existsSync(path.join(ROOT, top, '.git'))) { consider(top); continue; }
-      try {
-        for (const child of subdirs(top)) {
-          if (fs.existsSync(path.join(ROOT, child, '.git'))) consider(child);
-        }
-      } catch {}
-    }
-  } catch {}
-}
+const SUBREPOS = GRAPHIFY ? detectSubRepos() : [];
 
 if (stacks.size) for (const [d, t] of stacks) info(d.padEnd(40) + [...t].join(' + '));
 else warn('no stack marker found');
@@ -4496,49 +4566,7 @@ if (GRAPHIFY) {
     // Idempotent: everything this block writes carries `_origin: 'marvin'`, and is removed
     // and regenerated every run. A code node that does not exist in the graph becomes a
     // WARNING, never a ghost node — a renamed function is exactly what the ruler should flag.
-    let docsChanged = false;
-    if (fs.existsSync(GRAPH) && fs.existsSync(DOCS)) {
-      let g = null;
-      try { g = JSON.parse(fs.readFileSync(GRAPH, 'utf8')); } catch {}
-      if (g && Array.isArray(g.nodes)) {
-        // `extract` writes `edges`; after `cluster-only` the file comes out in networkx
-        // format, with `links`. The append respects whatever it finds.
-        const KEY = Array.isArray(g.links) ? 'links' : 'edges';
-        g.edges = g[KEY] || [];
-        const before = JSON.stringify({ n: g.nodes.filter(n => n._origin === 'marvin'), e: g.edges.filter(e => e._origin === 'marvin') });
-        g.edges = g.edges.filter(e => e._origin !== 'marvin');
-        // US-66: graphify >= 0.9.37 indexes the .md itself, with the SAME id docsGraph generates
-        // (and a foreign `_origin`). docsGraph runs first and every node whose id it generates is
-        // dropped, so a graphify doc node never survives next to ours as a duplicate.
-        const ids = new Set(g.nodes.filter(n => n._origin !== 'marvin').map(n => n.id));
-        const { novosNos: newNodes, novasArestas: newEdges, avisos: warnings } = docsGraph(ids, subRepos);
-        const newIds = new Set(newNodes.map(n => n.id));
-        const nMarvin = g.nodes.filter(n => n._origin === 'marvin').length;
-        const kept = g.nodes.filter(n => n._origin !== 'marvin' && !newIds.has(n.id));
-        // Foreign doc nodes dropped here (an already-duplicated graph) must reach the disk too.
-        const dropped = g.nodes.length - kept.length - nMarvin;
-        g.nodes = kept;
-        g.nodes.push(...newNodes);
-        g.edges.push(...newEdges);
-        if (KEY !== 'edges') { g[KEY] = g.edges; delete g.edges; }
-        const after = JSON.stringify({ n: newNodes, e: newEdges });
-        docsChanged = before !== after || dropped > 0;
-        if (docsChanged) {
-          // Preserves the mtime: the freshness check below compares code against the
-          // EXTRACTION TIME, and appending docs re-extracted nothing.
-          let st = null; try { st = fs.statSync(GRAPH); } catch {}
-          fsw.writeFileSync(GRAPH, JSON.stringify(g, null, 1));
-          if (!DRY && st) { try { fs.utimesSync(GRAPH, st.atime, st.mtime); } catch {} }
-        }
-        ok('knowledge base in the graph — ' + newNodes.length + ' doc node(s), ' + newEdges.length + ' edge(s)' + (docsChanged ? '' : ' (unchanged)'));
-        if (warnings.length) {
-          warn(warnings.length + ' link(s) from docs to code did not land on a node:');
-          warnings.slice(0, 8).forEach(a => info('  ' + a));
-          if (warnings.length > 8) info('  … and ' + (warnings.length - 8) + ' more');
-        }
-        info('  try:  graphify affected "<function>"   — which US and which code depend on it');
-      }
-    }
+    mergeDocs(GRAPH, subRepos);
 
     // ── Freshness: the check graphify's hook lacks — the whole tree, not 1 file.
     if (fs.existsSync(GRAPH)) {
@@ -4575,9 +4603,14 @@ if (GRAPHIFY) {
     if (GRAPHIFY_GIT_HOOK) {
       // Forward slash on Windows too: inside `sh` quotes the backslash only avoids
       // becoming an escape by luck, and node accepts both. Do not depend on luck.
+      // Monorepo: the full cycle already merges the docs. Otherwise `graphify update .` drops
+      // them, so the same subshell puts them back with --graph-docs (US-70). A script run
+      // from the npx cache has no stable path: ask npx for the installed package instead.
+      const selfPath = process.argv[1].replace(/\\/g, '/');
+      const marvinCmd = /_npx/.test(selfPath) ? 'npx --no-install marvin-kb' : 'node "' + selfPath + '"';
       const command = subRepos.length
-        ? 'node "' + process.argv[1].replace(/\\/g, '/') + '" --graphify --graphify-rebuild'
-        : 'graphify update .';
+        ? marvinCmd + ' --graphify --graphify-rebuild'
+        : 'graphify update . && ' + marvinCmd + ' --graph-docs';
       const script = `#!/bin/sh
 # marvin — atualiza o grafo de código depois do commit.
 # O grafo é DERIVADO: envelhece a cada commit e não avisa. Isto é o que fecha essa lacuna.
@@ -4608,11 +4641,25 @@ echo "[marvin] atualizando o grafo em segundo plano (log: $LOG)"
       if (!fs.existsSync(path.join(ROOT, '.git'))) {
         warn('--graphify-git-hook skipped: this is not a git repository');
       } else if (fs.existsSync(target)) {
-        // Invariant 1: someone else's hook is not overwritten. An existing post-commit
-        // may be the CI, the lint or someone else's changelog generator.
-        warn('a post-commit hook already exists — left untouched');
-        info('  to get the refresh, add this line to it by hand:');
-        info('    ' + command);
+        let current = '';
+        try { current = fs.readFileSync(target, 'utf8'); } catch {}
+        if (HOOK_SIGNATURE.test(current)) {
+          // Ours. Up to date = already runs --graph-docs (or the monorepo full cycle).
+          if (/--graph-docs|--graphify-rebuild/.test(current)) {
+            info('.git/hooks/post-commit already runs the docs refresh — nothing to do');
+          } else {
+            fsw.writeFileSync(target, script);
+            try { if (!DRY) fs.chmodSync(target, 0o755); } catch {}   // no-op on Windows
+            ok('.git/hooks/post-commit — updated: it now also puts the knowledge base back into the graph');
+            info('  it runs:  ' + command);
+          }
+        } else {
+          // Invariant 1: someone else's hook is not overwritten. An existing post-commit
+          // may be the CI, the lint or someone else's changelog generator.
+          warn('a post-commit hook already exists — left untouched');
+          info('  to get the refresh, add this line to it by hand:');
+          info('    ' + command);
+        }
       } else {
         fsw.mkdirSync(hooksDir, { recursive: true });
         fsw.writeFileSync(target, script);
@@ -4886,6 +4933,12 @@ const UPDATES = [
     o_que: 'the /refinar step that sends a missing agent or skill to the ECC catalog before writing one from scratch' },
   { arquivo: path.relative(ROOT, RECORD).replace(/\\/g, '/'), marca: /Obrigatórias\s+\(custo\)/, desde: '3.3.0',
     o_que: 'the note that graphify, ponytail and ecc are mandatory (installed by marvin; an explicit `não` is respected with a warning)' },
+  // US-70: the hook Marvin wrote runs only `graphify update .`, which drops the doc nodes at every
+  // commit. `soCom` = Marvin's own signature: someone else's hook (or none) gets no warning.
+  { arquivo: '.git/hooks/post-commit', marca: /--graph-docs|--graphify-rebuild/,
+    soCom: (() => { try { return HOOK_SIGNATURE.test(fs.readFileSync(path.join(ROOT, '.git', 'hooks', 'post-commit'), 'utf8')); } catch { return false; } })(),
+    desde: '3.4.2',
+    o_que: 'the docs refresh (`--graph-docs`): the graph loses the knowledge base at every commit — rewrite it with `marvin --graphify --graphify-git-hook`' },
 ];
 
 return UPDATES.filter(a => {
