@@ -522,6 +522,66 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   check('--use=ponytail: agents/README sugere a tabela de papéis', /Ponytail: em que papel entra[\s\S]*\| `tl` \| \*\*não\*\*/.test(rd));
   check('o registro guarda o alcance por plataforma', /\| ponytail \| sim \| .*Claude Code\/Codex/.test(fs.readFileSync(path.join(c.proj, '.marvin', 'ferramentas.md'), 'utf8')));
   cleanup(c);
+
+  // US-67: enabledPlugins in the settings files disables an installed plugin. Precedence: local > project > user.
+  // The project's .claude/settings.json is planted BEFORE the run: marvin never overwrites an existing one.
+  const plant = (name, userCfg, projFile, projCfg) => {
+    const x = arena(name);
+    const dir = path.join(x.lar, '.claude', 'plugins'); fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'installed_plugins.json'), '{"plugins":{"ponytail@ponytail":[{"scope":"user"}]}}');
+    fs.writeFileSync(path.join(x.lar, '.claude', '.ponytail-active'), 'full\n');
+    if (userCfg !== null) fs.writeFileSync(path.join(x.lar, '.claude', 'settings.json'), userCfg);
+    if (projFile) {
+      fs.mkdirSync(path.join(x.proj, '.claude'), { recursive: true });
+      fs.writeFileSync(path.join(x.proj, '.claude', projFile), projCfg);
+    }
+    return x;
+  };
+  const OFF = '{"enabledPlugins":{"ponytail@ponytail":false}}';
+  const ON = '{"enabledPlugins":{"ponytail@ponytail":true}}';
+
+  const d1 = plant('ponytail-desligado', OFF, null);
+  const s1 = run(d1, '--no-git');
+  check('US-67: enabledPlugins false no usuário: "installed but DISABLED", cita o arquivo, sem "loads in every project"',
+        /installed but DISABLED/.test(s1.stdout) && /enabledPlugins in/.test(s1.stdout)
+        && !/loads in every project/.test(s1.stdout) && !/run \/ponytail/.test(s1.stdout), s1.stdout.slice(-500));
+  cleanup(d1);
+
+  const d2 = plant('ponytail-local-vence', OFF, 'settings.local.json', ON);
+  const s2 = run(d2, '--no-git');
+  check('US-67: settings.local.json do projeto com true vence o false do usuário (não diz DISABLED)',
+        !/DISABLED/.test(s2.stdout) && s2.status === 0, s2.stdout.slice(-500));
+  cleanup(d2);
+
+  const d3 = plant('ponytail-projeto-vence', OFF, 'settings.json', ON);
+  const s3 = run(d3, '--no-git');
+  check('US-67: settings.json do projeto com true vence o false do usuário (não diz DISABLED)',
+        !/DISABLED/.test(s3.stdout) && s3.status === 0, s3.stdout.slice(-500));
+  cleanup(d3);
+
+  const d4 = plant('ponytail-json-ruim', '{ not json', null);
+  const s4 = run(d4, '--no-git');
+  check('US-67: settings.json do usuário com JSON inválido não quebra (exit 0) e não diz DISABLED',
+        s4.status === 0 && !/DISABLED/.test(s4.stdout), s4.stdout.slice(-500));
+  cleanup(d4);
+
+  // US-67: project already has the record `sim` → the 2nd run must still warn DISABLED.
+  const d5 = plant('ponytail-desligado-registrado', ON, null);
+  run(d5, '--no-git');
+  fs.writeFileSync(path.join(d5.lar, '.claude', 'settings.json'), OFF);
+  const s5 = run(d5, '--no-git');
+  check('US-67: registro já `sim` + false no usuário: a 2ª rodada avisa DISABLED',
+        /\| ponytail \| sim \|/.test(fs.readFileSync(path.join(d5.proj, '.marvin', 'ferramentas.md'), 'utf8'))
+        && /ponytail installed but DISABLED/.test(s5.stdout), s5.stdout.slice(-500));
+  cleanup(d5);
+
+  // US-67: local false beats project true.
+  const d6 = plant('ponytail-local-false', ON, 'settings.local.json', OFF);
+  fs.writeFileSync(path.join(d6.proj, '.claude', 'settings.json'), ON);
+  const s6 = run(d6, '--no-git');
+  check('US-67: settings.local.json false vence settings.json true: DISABLED citando o local',
+        /installed but DISABLED \(enabledPlugins in \.claude\/settings\.local\.json\)/.test(s6.stdout), s6.stdout.slice(-500));
+  cleanup(d6);
 }
 
 // ── 9e3. Playwright adapter (US-34), one warning for two tools (US-32), Makefile target (US-35)

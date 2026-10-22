@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-67-ponytail-enabledplugins
 description: "A detecção do ponytail lê enabledPlugins (local > projeto > usuário): plugin desligado sai como DISABLED, nunca como 'loads in every project' nem 'run /ponytail'."
@@ -31,9 +31,9 @@ Triagem 22/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo).
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| teste que falha | tdd-guide | Sonnet · baixo | agente do ECC que casa com a etapa (decisão do dono 22/10) | pendente |
-| implementar | dev-back | Sonnet · baixo | ~12 linhas; Haiku não: mexe em precedência | pendente |
-| verificar | qa | Sonnet · baixo | partida | pendente |
+| teste que falha | tdd-guide | Sonnet · baixo | agente do ECC que casa com a etapa (decisão do dono 22/10) | feito: 4 checks, só o caso novo falhou |
+| implementar | dev-back | Sonnet · baixo | ~12 linhas; Haiku não: mexe em precedência | feito, com 1 retrabalho |
+| verificar | qa | Sonnet · baixo | partida | reprovou em parte (aviso mudo com registro) → corrigido |
 
 `tl` fora do diff: não escreve em disco nem mexe em `UPDATES` (critério de risco, 15/10).
 
@@ -104,6 +104,9 @@ Toca 3 nó(s) de código em 3 comunidade(s).
 
 ## Rumo
 - **22/10/2026** — aberta e refinada (auditoria). Vem antes da US-68: sem ela a medição não sabe se o plugin estava ligado.
+- **22/10/2026** — concluída. `detectPonytail` lê `enabledPlugins` (local > projeto > usuário; o primeiro com chave `ponytail@` decide; só `false` desliga). O `qa` achou o buraco que o teste não pegava: em projeto **com registro** o aviso ficava mudo (o ramo da US-55 só imprimia "user scope"); ganhou `warn` próprio. Divergência registrada: o `--status` diz "marvin.mjs: tl no diff, sempre"; o *Time* deixou o `tl` fora por risco (só leitura) — o dono decide qual regra vale. Valor não booleano (`"false"` string) conta como ligado — aceito.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: 487 passaram (6 checks `US-67:` na seção 9e2: usuário false, local true vence, projeto true vence, JSON inválido, registro `sim` + false, local false sobre projeto true).
+- Máquina real, este repo: `node marvin.mjs --dry-run --no-questions` → `! ponytail installed but DISABLED (enabledPlugins in ~/.claude/settings.json) — the record says `sim` but it does not load`.

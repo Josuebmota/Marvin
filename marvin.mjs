@@ -2166,6 +2166,8 @@ const eccAgent = (txt, id) => {
 // ~/.claude/plugins/installed_plugins.json; ACTIVE on this machine is the file
 // ~/.claude/.ponytail-active (the SessionStart hook writes the level there). Installed
 // without being active is the misleading half: the plugin exists and does nothing.
+// US-67: `enabledPlugins` (settings.local.json > settings.json of the project > user
+// settings.json) can turn it off; the first file with a `ponytail@...` key decides.
 const CLAUDE_HOME = path.join(os.homedir(), '.claude');
 const onPath = (cmd) => { try { execSync(cmd, { stdio: 'ignore' }); return 'on PATH'; } catch { return false; } };
 // US-55: each entry has a scope. `project`/`local` count only for THIS project (projectPath
@@ -2188,6 +2190,20 @@ const detectPonytail = () => {
     }
   } catch {}
   if (!scope) return false;
+  // US-67: enabledPlugins false disables it. First file with a ponytail@ key decides:
+  // project local > project > user. Missing file or bad JSON: skip, never throws.
+  for (const [file, label] of [
+    [path.join(ROOT, '.claude', 'settings.local.json'), '.claude/settings.local.json'],
+    [path.join(ROOT, '.claude', 'settings.json'), '.claude/settings.json'],
+    [path.join(CLAUDE_HOME, 'settings.json'), '~/.claude/settings.json'],
+  ]) {
+    let ep; try { ep = JSON.parse(fs.readFileSync(file, 'utf8')).enabledPlugins; } catch { continue; }
+    if (!ep || typeof ep !== 'object') continue;
+    const k = Object.keys(ep).find(x => /^ponytail@/i.test(x));
+    if (k === undefined) continue;
+    if (ep[k] === false) return 'installed but DISABLED (enabledPlugins in ' + label + ')';
+    break;
+  }
   const where = scope === 'user' ? ' — user scope (global, loads in every project; no reinstall here)' : '';
   let level = ''; try { level = fs.readFileSync(path.join(CLAUDE_HOME, '.ponytail-active'), 'utf8').trim(); } catch {}
   return (level ? 'installed and active (' + level + ')' : 'installed but NOT active — run /ponytail in a Claude session') + where;
@@ -2285,6 +2301,8 @@ const OPTIONAL_TOOLS = [
     }
     // US-55: installed at USER scope loads in every project — say so even when the record already says `sim`.
     else if (installedState && /user scope/i.test(installedState)) info(f.nome + ' ' + installedState);
+    // US-67: disabled via enabledPlugins while the record says `sim` — needs action, so warn.
+    else if (installedState && /DISABLED/.test(installedState)) warn(f.nome + ' ' + installedState + ' — the record says `sim` but it does not load');
     if (f.nome === 'graphify' && uses) GRAPHIFY = true;
     if (f.nome === 'ponytail' && uses) PONYTAIL = true;
     if (f.nome === 'playwright' && uses) PLAYWRIGHT = true;
