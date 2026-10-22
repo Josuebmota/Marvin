@@ -22,6 +22,7 @@ pai: ../Sobre.md
 - [US-33-avaliar-agent-skills](US-33-avaliar-agent-skills/Sobre.md)
 - [US-34-playwright-front-mobile](US-34-playwright-front-mobile/Sobre.md)
 - [US-48-superpowers-e-ecc](US-48-superpowers-e-ecc/Sobre.md)
+- [US-68-ponytail-medido](US-68-ponytail-medido/Sobre.md)
 
 ## Rumo
 - **15/09/2026** — aberta com a US-11. No mesmo dia o Impacto acusou escopo largo (6 nós, 4 comunidades); **US-11 cancelada e fatiada** em 11a (registro + graphify) e 11b (ponytail + papéis). O Sobre.md da 11 fica como registro das decisões comuns.

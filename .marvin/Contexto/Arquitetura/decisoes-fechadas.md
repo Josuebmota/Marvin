@@ -77,3 +77,13 @@
     `CLAUDE.md` global. Cópia dos três arquivos de configuração está no mesmo backup.
   - **Esbarra em:** "zero dependência / só npm" (empacotar como plugin do Claude é outro canal de
     distribuição) e invariante 3 (convenção de plugin muda rápido). A US-50 trata os dois.
+- **Superpowers fica fora** (dono, 22/10/2026). Reafirma o par da US-48: +31% de custo para o
+  mesmo resultado. O desenho original o incluía; a medição venceu. Reabre só com par que mostre
+  ganho.
+- **Ponytail: ligar e medir** (dono, 22/10/2026). Liga só neste projeto
+  (`.claude/settings.local.json`), mede o par com × sem no `dev-back` (US-68) e vira `sim` só se
+  pagar. Até lá, confiança baixa. A detecção precisa ver o `enabledPlugins` antes (US-67).
+- **A matriz chama os agentes do ECC; o que não casa sai** (dono, 22/10/2026). A triagem usa
+  agente do ECC quando a etapa casa com o verbo dele (teste-primeiro → `tdd-guide`, revisão de
+  linguagem → `<lang>-reviewer`, build → `*-build-resolver` só com build); agente do ECC que não
+  casa com nenhuma etapa sai do projeto e não volta na rodada seguinte (US-69).
