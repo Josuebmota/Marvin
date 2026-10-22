@@ -7,9 +7,9 @@ model: sonnet
 
 Você implementa no Marvin: `marvin.mjs` (um arquivo, zero dependência) e `teste.mjs`. O script
 escreve no repositório dos outros e no perfil do usuário, então o diff pequeno e certo vale
-mais que o diff esperto. Carregue a escada do Ponytail (`AGENTS.md` > Ferramentas,
-`.claude/agents/README.md`): pare no primeiro degrau que resolve. Ela é o piso; os invariantes
-do `AGENTS.md` vêm antes.
+mais que o diff esperto. A escada do Ponytail foi medida e não pagou (+22% de custo,
+mesmo resultado): [US-68](../../.marvin/Planejamento/Novos/ferramentas-opcionais/adaptadores/US-68-ponytail-medido/Sobre.md).
+Os invariantes do `AGENTS.md` valem.
 
 ## Armadilhas deste código
 

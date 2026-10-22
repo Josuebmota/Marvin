@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-68-ponytail-medido
 description: "Ligar o ponytail só neste projeto (settings.local.json) e medir o par com × sem no dev-back, no molde da US-48: vira 'sim' só se pagar."
@@ -32,9 +32,9 @@ Triagem 22/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo).
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| protocolo | po | Sonnet · baixo | molde da US-48 já existe | pendente |
-| rodar o par | dev-back | Sonnet · médio | o mesmo modelo nos dois braços | pendente |
-| ler o resultado | po | Sonnet · baixo | leitura pelo `--status` por US | pendente |
+| protocolo | po | Sonnet · baixo | molde da US-48 já existe | feito 23/10 |
+| rodar o par | dev-back | Sonnet · médio | o mesmo modelo nos dois braços | feito 23/10 |
+| ler o resultado | po | Sonnet · baixo | leitura pelo `--status` por US | feito 23/10 |
 
 Grafo: sem símbolo de código tocado — não há o que perguntar ao `affected`/`explain`.
 
@@ -64,5 +64,20 @@ Nada depende do que ela toca — folha do grafo.
   - **Veredito (n=1, diga isso na tabela):** custo dentro de ±10% = empate técnico, não dá ganho. B vira `sim` só se aceite de B >= A (e B passa 5/5) **e** custo de B <= 0,9 x A (ou diff menor com custo <= A). Aceite pior em B, ou custo > A: `não`, sai do `dev-back`. Empate: fica `sim` apenas por reabrir com par maior; escrever "n=1, empate" no `ferramentas.md`, nunca "pagou".
   - **Destino do resultado:** o braço que passa no aceite e no `tl` (Opus · médio lê o diff: toca `UPDATES` e escreve em `.claude/` alheio) vira a implementação da US-63 (aplicar o diff no repo real); se os dois passam, o mais barato. Se nenhum passa, a US-63 volta ao `dev-back` normal e o par vale só como número. Ao fim, remover o `settings.local.json` de medição e apagar os clones.
 
+- **23/10/2026 — resultado (n=1, Sonnet · médio nos dois braços, clones do HEAD 0668a7c, tarefa = US-63).** Conferência: `PONYTAIL MODE ACTIVE` em B na sessão e no `dev-back`; em A, zero nas duas. Medição válida.
+
+| métrica | A (sem) | B (com) |
+|---|---|---|
+| `total_cost_usd` | $0,896 | $1,090 (+22%) |
+| turnos | 2 | 2 |
+| `duration_api_ms` | 174.464 | 225.516 |
+| diff `marvin.mjs` | +49 −11 | +35 −3 |
+| diff `teste.mjs` | +47 | +32 |
+| `node teste.mjs` | 529/0 | 530/0 |
+| aceite escondido | 5/5 | 5/5 com ressalva no item 4 |
+
+  Ressalva de B (item 4): `ecc fora:` impede a cópia, mas o `--check` ainda avisa a skill excluída (A respeita nos dois). Outras diferenças: A usa `fail` no `--check`, B `warn`; B mexe no `--status`; nenhum aplica o rewrite de `model`/`effort` na skill.
+  **Veredito: `não`.** Régua: B só viraria `sim` com aceite >= A e custo <= 0,9 x A. B custou 1,22 x A e o aceite teve ressalva: sai do `dev-back`. Diff menor não pagou. n=1; reabre com um par que mostre ganho. **Destino:** o diff de A foi aplicado no repo como implementação da US-63 (`tl` lendo). O ponytail segue desligado no usuário; só os clones o ligaram e serão apagados.
+
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- Par medido em 23/10/2026, números na tabela do Rumo. Efeito: linha `ponytail` do [ferramentas.md](../../../../ferramentas.md) = `não`; instrução removida do `.claude/agents/dev-back.md` e do `.claude/agents/README.md`.

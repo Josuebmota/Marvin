@@ -39,13 +39,14 @@ Detectado aqui: **Node/JS**.
 
 ### Ponytail: em que papel entra
 
-Este projeto usa o ponytail (`.marvin/ferramentas.md`). A escada dele vale para quem
-**implementa** sem convenção escrita — não para quem lê diff ou decide requisito. Sugestão,
-não regra; o corpo de cada agente é seu. Aqui, `tl` e `po` existem e **não** o carregam:
+Este projeto mediu o ponytail (`.marvin/ferramentas.md`, [US-68](../../.marvin/Planejamento/Novos/ferramentas-opcionais/adaptadores/US-68-ponytail-medido/Sobre.md))
+e **não** o carrega em nenhum papel: n=1, +22% de custo com o mesmo resultado. A escada vale,
+em tese, para quem **implementa** sem convenção escrita; reabre com um par que mostre ganho.
+Sugestão, não regra; o corpo de cada agente é seu.
 
 | papel | ponytail | por quê |
 |---|---|---|
-| `dev-back` / `dev-front` | **sim** | implementação: o menor diff que funciona |
+| `dev-back` / `dev-front` | **não** (medido) | +22% de custo, mesmo resultado (US-68) |
 | `qa` | talvez | o "um check executável" dele conflita com suíte real |
 | `tl` | **não** | lê diff; precisa do porquê, não do mais curto |
 | `po` | **não** | questiona requisito — a escada começa depois disso |

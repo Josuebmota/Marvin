@@ -461,6 +461,40 @@ if (!SHORT_HOOK) {
   log('agent memory: ' + MEM + '\n');
 }
 
+// ECC catalog clone (US-60), the record (`ferramentas.md`) and the `ecc fora:` list (US-69). Declared before
+// `--check` because the check reads them too (US-63).
+const ECC_ROOT = path.join(os.homedir(), '.claude', 'plugins', 'marketplaces', 'ecc');
+const RECORD = path.join(DOCS, 'ferramentas.md');
+const RECORD_REL = path.relative(ROOT, RECORD).replace(/\\/g, '/');
+// US-69: `ecc fora: <id>, <id>` — a loose line in ferramentas.md, written by the human (Marvin never writes it).
+// Ids in it are neither copied from the ECC catalog nor counted as "missing". Applies to agents and skills.
+const ECC_OUT = (() => {
+  let t = ''; try { t = fs.readFileSync(RECORD, 'utf8'); } catch {}
+  // Tolerates the way the templates show it: in backticks, as a list item or quoted (a silent miss would recopy the agent).
+  const m = t.match(/^[ \t>*-]*`?ecc fora:[ \t]*(.*)$/m);
+  return new Set(m ? m[1].replace(/`/g, '').split(/[,\s]+/).filter(Boolean) : []);
+})();
+
+// US-63: skills the project's own instructions cite as `/<id>` (between backticks, nothing else) and that
+// `.claude/skills/<id>/` lacks. Pure read. Not a citation of a missing skill: Marvin's own commands (static list —
+// on the first run the files are not written yet when this is read), any file in `.claude/commands/`, Claude Code
+// built-ins, a name that is a folder at the project root (`/src`), and an id the human put in `ecc fora:`.
+const CITE_OWN = new Set(['retomar', 'us', 'fechar', 'refinar', 'continuar',
+  'model', 'clear', 'compact', 'help', 'init', 'config', 'memory', 'agents', 'status', 'cost', 'review', 'resume', 'permissions', 'hooks', 'mcp', 'login', 'logout', 'doctor',
+  'plugin', 'context', 'exit', 'add-dir', 'usage', 'rewind', 'export', 'security-review']);
+const citedSkills = () => {
+  let cmds = []; try { cmds = fs.readdirSync(path.join(ROOT, '.claude', 'commands')).filter(f => f.endsWith('.md')); } catch {}
+  const first = new Map();
+  for (const f of ['CLAUDE.md', 'AGENTS.md', ...cmds.map(c => '.claude/commands/' + c)]) {
+    let t; try { t = fs.readFileSync(path.join(ROOT, f), 'utf8'); } catch { continue; }
+    for (const m of t.matchAll(/`\/([a-z][a-z0-9-]*)`/g)) if (!first.has(m[1])) first.set(m[1], f);
+  }
+  const own = new Set(cmds.map(c => c.replace(/\.md$/, '')));
+  return [...first].filter(([id]) => !CITE_OWN.has(id) && !own.has(id) && !ECC_OUT.has(id)
+      && !fs.existsSync(path.join(ROOT, id)) && !fs.existsSync(path.join(ROOT, '.claude', 'skills', id)))
+    .map(([id, file]) => ({ id, file, ecc: fs.existsSync(path.join(ECC_ROOT, 'skills', id, 'SKILL.md')) }));
+};
+
 // ── --check. Diagnoses the mount and exits. It exists because the junction breaks
 // SILENTLY: moving or renaming the project folder leaves it pointing at the old path,
 // and at the new path Claude Code creates a genuinely empty directory. Everything looks
@@ -497,6 +531,11 @@ if (CHECK) {
       ok('notes      ' + countNotes(MEM) + ' visible through the agent path');
     }
   }
+
+  // US-63: a skill the instructions cite and the project lacks ends in `Unknown skill` at run time.
+  // warn, not fail: the exit code of --check is the memory wiring's (tl, US-63).
+  for (const c of citedSkills())
+    warn('skill      `/' + c.id + '` citado no ' + c.file + ', ausente em .claude/skills; ' + (c.ecc ? 'o ECC tem: rode `marvin`' : 'o ECC não tem: crie a skill e registre a origem'));
 
   log('');
   printFixedContext();
@@ -1524,7 +1563,6 @@ const HAS_WEB_FRONT = pkgDeps.some(deps => deps.some(x => /^(react-native|expo)$
 // and a few folders — fact, not guess. The ECC installer (`install-apply.js --with lang:x`) brings the
 // whole MODULE (every agent, ~100 commands, ~120 always-loaded rules): measured, so Marvin copies only
 // the agent/skill files listed here, straight from the catalog clone, and nothing else.
-const ECC_ROOT = path.join(os.homedir(), '.claude', 'plugins', 'marketplaces', 'ecc');
 const ECC_PLAN = (() => {
   const MANIFESTS = new Set(['package.json', 'requirements.txt', 'pyproject.toml', 'go.mod', 'Cargo.toml', 'Gemfile', 'composer.json', 'pom.xml', 'build.gradle', 'pubspec.yaml']);
   const dirs = [...stacks.keys()];
@@ -1570,16 +1608,6 @@ const ECC_PLAN = (() => {
     ['capability:security', /passport|jsonwebtoken|next-auth|"@auth\/|bcrypt|argon2|clerk|firebase-admin|pyjwt|python-jose|authlib|allauth|JwtBearer|AspNetCore\.Identity|devise/i.test(text), ['security-reviewer'], ['security-review']],
   ];
   return pick.filter(p => p[1]).map(([component, , agents, skills]) => ({ component, agents, skills }));
-})();
-const RECORD = path.join(DOCS, 'ferramentas.md');
-const RECORD_REL = path.relative(ROOT, RECORD).replace(/\\/g, '/');
-// US-69: `ecc fora: <id>, <id>` — a loose line in ferramentas.md, written by the human (Marvin never writes it).
-// Ids in it are neither copied from the ECC catalog nor counted as "missing". Applies to agents and skills.
-const ECC_OUT = (() => {
-  let t = ''; try { t = fs.readFileSync(RECORD, 'utf8'); } catch {}
-  // Tolerates the way the templates show it: in backticks, as a list item or quoted (a silent miss would recopy the agent).
-  const m = t.match(/^[ \t>*-]*`?ecc fora:[ \t]*(.*)$/m);
-  return new Set(m ? m[1].replace(/`/g, '').split(/[,\s]+/).filter(Boolean) : []);
 })();
 
 // ── Canonical commands. Step 1 knew WHICH manifest exists and never opened it: the
@@ -2889,6 +2917,10 @@ comandos e regras sempre carregadas). Depois ajuste \`model\`/\`effort\` por est
 \`description\` o que faz o agente se chamar sozinho por "Chame quando a linha do Time indicar este
 papel." Só escreva do zero se o ECC não tiver.
 
+**\`Unknown skill /x\` → \`cp -r ~/.claude/plugins/marketplaces/ecc/skills/x .claude/skills/\`**; se o ECC
+não tiver, crie a skill e registre a origem. Skill citada entre crases em \`CLAUDE.md\`, \`AGENTS.md\` ou
+\`.claude/commands/\` que o ECC tem, o \`marvin\` já copia; o \`marvin --check\` lista a que falta.
+
 **Agente do ECC entra quando a etapa casa com o verbo dele:** teste-primeiro → \`tdd-guide\`; erro de
 build → \`*-build-resolver\`; segurança (\`sec\`) → \`security-reviewer\`; banco (\`dba\`) →
 \`database-reviewer\`. O casamento vai na linha do *Time*. Agente copiado que não casa com nenhuma etapa
@@ -3940,6 +3972,9 @@ if (ECC) {
   const eccAgents = path.join(ECC_ROOT, 'agents'), eccSkills = path.join(ECC_ROOT, 'skills');
   const wantAgents = [...new Set(ECC_PLAN.flatMap(c => c.agents))].filter(id => !ECC_OUT.has(id)),
         wantSkills = [...new Set(ECC_PLAN.flatMap(c => c.skills))].filter(id => !ECC_OUT.has(id));
+  // US-63: a skill the instructions cite (`/council`) comes from the catalog when it has it; when it does not, only a warning.
+  const cited = citedSkills();
+  for (const c of cited) if (c.ecc && !wantSkills.includes(c.id)) wantSkills.push(c.id);
   if (!fs.existsSync(eccAgents)) {
     if (DRY) info('ecc: catalog not on this machine yet — a real run installs it, then copies ' + wantAgents.length + ' agent(s) and ' + wantSkills.length + ' skill(s)');
     else warn('ecc: catalog not found at ' + ECC_ROOT + ' — agents and skills not installed; add it by hand (claude plugin marketplace add affaan-m/ECC) and rerun');
@@ -3961,6 +3996,7 @@ if (ECC) {
       fsw.cpSync(src, dest, { recursive: true });
       ok('.claude/skills/' + id + ' ← ecc');
     }
+    for (const c of cited) if (!c.ecc) warn('`/' + c.id + '` cited in ' + c.file + ' but there is no such skill in .claude/skills nor in the ECC — create it and record where it came from');
   }
 }
 
@@ -4972,6 +5008,10 @@ const UPDATES = [
     o_que: 'the /us rule "an ECC agent enters when the stage matches its verb; one that matches no stage leaves, listed in `ecc fora:` of ferramentas.md"' },
   { arquivo: '.claude/commands/refinar.md', marca: /etapa\s+casa\s+com\s+o\s+verbo/, soCom: !OLD_LAYOUT, desde: '3.4.2',
     o_que: 'the /refinar rule "an ECC agent enters when the stage matches its verb; one that matches no stage leaves, listed in `ecc fora:` of ferramentas.md"' },
+  // US-63: the trigger that links `Unknown skill /x` to the ECC catalog (the old "Procure primeiro" text stays as its own mark).
+  { arquivo: path.relative(ROOT, path.join(DOCS, TEAM_GUIDE)).replace(/\\/g, '/'),
+    marca: /Unknown\s+skill\s+\/x/, desde: '3.4.2',
+    o_que: 'the trigger "`Unknown skill /x` → copy the skill from the ECC catalog (`cp -r ~/.claude/plugins/marketplaces/ecc/skills/x .claude/skills/`); if the ECC lacks it, create it and record the origin"' },
   { arquivo: path.relative(ROOT, RECORD).replace(/\\/g, '/'), marca: /Obrigatórias\s+\(custo\)/, desde: '3.3.0',
     o_que: 'the note that graphify, ponytail and ecc are mandatory (installed by marvin; an explicit `não` is respected with a warning)' },
   // US-70: the hook Marvin wrote runs only `graphify update .`, which drops the doc nodes at every

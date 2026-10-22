@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 name: US-63-skill-citada-vem-do-ecc
 description: "Skill citada entre crases nas instruções do projeto (ex.: /council) e ausente em .claude/skills sai do catálogo do ECC; se o ECC não tiver, o marvin avisa pelo nome e o texto manda a LLM criar com a origem registrada."
@@ -10,7 +10,7 @@ description: "Skill citada entre crases nas instruções do projeto (ex.: /counc
 **Por quê:** [issue #6](https://github.com/Josuebmota/Marvin/issues/6). No Parci (19/10), o `CLAUDE.md` mandava usar `/council`; a skill não estava no projeto, o agente recebeu `Unknown skill` e montou o conselho à mão, com `skills/council/` no ECC já clonado. A [US-60](../US-60-ecc-fonte-da-equipe/Sobre.md) só copia o que o `ECC_PLAN` deriva da stack. **Correção da issue (`tl` e `po`):** o `marvin.mjs` nunca escreve `council` (Grep zero) — a citação foi escrita pela LLM ou pelo dono; e o texto já dá o caminho `~/.claude/plugins/marketplaces/ecc`, só que como pergunta condicional ("Precisa de…?"), que o agente não liga ao `Unknown skill`.
 
 **Pronto quando:**
-1. O `marvin` acha as citações `` `/<id>` `` entre crases em `CLAUDE.md`, `AGENTS.md` e `.claude/commands/*.md` do projeto; quando `<ecc>/skills/<id>/SKILL.md` existe e `.claude/skills/<id>/` não, a skill entra no plano do ECC e é copiada com o mesmo rewrite de `model`/`effort` da US-60. Rodar de novo não muda nada (invariante 2); id em `ecc fora:` não é copiado.
+1. O `marvin` acha as citações `` `/<id>` `` entre crases em `CLAUDE.md`, `AGENTS.md` e `.claude/commands/*.md` do projeto; quando `<ecc>/skills/<id>/SKILL.md` existe e `.claude/skills/<id>/` não, a skill entra no plano do ECC e é copiada literal, como as skills da US-60 (correção do `tl`, 23/10: nenhuma skill do catálogo tem `model:`; o rewrite vale só para agentes). Rodar de novo não muda nada (invariante 2); id em `ecc fora:` não é copiado.
 2. `marvin --check` diz o nome de cada citação ausente no projeto, e se o ECC a tem ("`/council` citado no CLAUDE.md, ausente; o ECC tem: rode `marvin`") ou não.
 3. O texto gerado ganha o gatilho explícito: "`Unknown skill /x` → `cp -r ~/.claude/plugins/marketplaces/ecc/skills/x .claude/skills/`; se o ECC não tiver, crie e registre a origem". A frase antiga fica (é marca da `UPDATES`) e o texto novo ganha marca própria com `desde: '<versão>'`.
 4. `teste.mjs`: `CLAUDE.md` falso cita `` `/council` `` e ECC falso tem `skills/council/` → copiada; citação sem catálogo → aviso, nenhum arquivo; comando do Marvin (`/retomar`) → nenhum aviso; 2ª rodada e `--dry-run` sem escrita.
@@ -37,9 +37,9 @@ Triagem 19/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo).
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| implementar | dev-back | Sonnet · médio | partida | pendente |
-| verificar | qa | Sonnet · baixo | partida; cenários: 2 rodadas, `--dry-run`, layout antigo, `/retomar` falso | pendente |
-| ler o diff | tl | Opus · médio | obrigatório: escreve em `.claude/` alheio e mexe em `UPDATES` | pendente |
+| implementar | dev-back | Sonnet · médio | partida | feito no par da US-68 (braço A, sem ponytail, $0,90) |
+| verificar | qa | Sonnet · baixo | partida; cenários: 2 rodadas, `--dry-run`, layout antigo, `/retomar` falso | aceite escondido 5/5 |
+| ler o diff | tl | Opus · médio | obrigatório: escreve em `.claude/` alheio e mexe em `UPDATES` | pediu `warn` no lugar de `fail`; aprovado com a troca |
 
 Grafo (fresco, 16/10 16:59, depois do último commit): `ECC_PLAN` tem nó (grau 1, constante; `affected` sem dependente); bloco instalador **sem nó** (não é função) — localizado por Grep; check e templates localizados por Grep.
 
@@ -108,6 +108,10 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **19/10/2026** — aberta da issue #6. `tl` e `po` corrigem a causa (o script não escreve `/council`; o texto não tem gatilho). Prioridade média, depois da US-64 (`po`): uma mordida só, sem número de custo.
+- **23/10/2026** — concluída. Implementada como a tarefa do par da [US-68](../../adaptadores/US-68-ponytail-medido/Sobre.md): o braço A (sem ponytail) venceu e o diff dele entrou. O `marvin` acha `` `/<id>` `` em `CLAUDE.md`, `AGENTS.md` e `.claude/commands/`, copia a skill do ECC quando ela existe (respeitando `ecc fora:`), e o `--check` avisa a que falta. Correções do `tl`: `warn` e não `fail` (o exit code do `--check` é o da junction da memória); o Pronto 1 pedia rewrite de `model`/`effort` em skill, mas nenhuma skill do catálogo tem `model:` — cópia literal. Acrescentados à lista de comandos nativos `plugin`, `context`, `exit`, `add-dir`, `usage`, `rewind`, `export`, `security-review`. Falso positivo conhecido, só ruído (é `warn`): `/tmp`, `/etc`, rotas como `/health`.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: 529 passaram (8 checks US-63).
+- Aceite escondido do par (`qa`, 23/10): `/council` copiado do ECC; 2ª rodada e `--dry-run` sem escrita; citação sem catálogo avisada pelo nome, sem arquivo; `/retomar` sem aviso; `ecc fora:` impede cópia e aviso; `UPDATES` `desde: '3.4.2'`; texto com `~/`.
+- Este repo: `marvin --check` sai 0; sem `UPDATES` pendente.

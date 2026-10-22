@@ -49,6 +49,10 @@ comandos e regras sempre carregadas). Depois ajuste `model`/`effort` por esta ta
 `description` o que faz o agente se chamar sozinho por "Chame quando a linha do Time indicar este
 papel." Só escreva do zero se o ECC não tiver.
 
+**`Unknown skill /x` → `cp -r ~/.claude/plugins/marketplaces/ecc/skills/x .claude/skills/`**; se o ECC
+não tiver, crie a skill e registre a origem. Skill citada entre crases em `CLAUDE.md`, `AGENTS.md` ou
+`.claude/commands/` que o ECC tem, o `marvin` já copia; o `marvin --check` lista a que falta.
+
 **Agente do ECC entra quando a etapa casa com o verbo dele:** teste-primeiro → `tdd-guide`; erro de
 build → `*-build-resolver`; segurança (`sec`) → `security-reviewer`; banco (`dba`) →
 `database-reviewer`. O casamento vai na linha do *Time*. Agente copiado que não casa com nenhuma etapa

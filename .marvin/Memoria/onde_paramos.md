@@ -23,7 +23,6 @@ metadata:
 
 ## Em andamento
 
-- [US-63-skill-citada-vem-do-ecc](../Planejamento/Novos/ferramentas-opcionais/curadoria/US-63-skill-citada-vem-do-ecc/Sobre.md) — aberta 22/10/2026; próximo passo: _(uma frase)_
 
 - ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — 16/10: **3.4.1 no npm** (tag `v3.4.1`); fila: US-63 refinada. Falta: desligar conectores da conta (~9,7k/sessão) · US-29 concluída 19/10 (−58% com coordenador Sonnet)
 

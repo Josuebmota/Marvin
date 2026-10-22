@@ -2417,6 +2417,53 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(t);
 }
 
+// ── US-63. A skill cited as `/<id>` in CLAUDE.md/AGENTS.md/.claude/commands comes from the ECC catalog when the project lacks it.
+{
+  const skillDir = (x, id) => path.join(x.proj, '.claude', 'skills', id);
+  const x = equipped(arena('us63'), { 'skills/council/SKILL.md': '---\nname: council\ndescription: council.\n---\n# council\n', 'skills/council/extra/nota.md': 'x\n' });
+  run(x, '--no-git', '--no-questions');
+  const claude = path.join(x.proj, 'CLAUDE.md');
+  fs.appendFileSync(claude, '\nPara decidir, use `/council`; fluxo: `/retomar`; sem catálogo: `/fantasma`.\n');
+
+  // --check names both citations (and not /retomar), exit != 0
+  const ck = run(x, '--check');
+  check('US-63: --check nomeia `/council` (ECC tem) e `/fantasma` (ECC não tem), não `/retomar`, e sai != 0',
+        ck.status === 0 && /`\/council` citado no CLAUDE\.md, ausente[^\n]*o ECC tem: rode `marvin`/.test(ck.stdout + ck.stderr)
+        && /`\/fantasma` citado no CLAUDE\.md[^\n]*o ECC não tem/.test(ck.stdout + ck.stderr) && !/`\/retomar` citado/.test(ck.stdout + ck.stderr),
+        (ck.stdout + ck.stderr).slice(-600));
+
+  const dry = run(x, '--no-git', '--no-questions', '--dry-run');
+  check('US-63: --dry-run não copia a skill citada', dry.status === 0 && !fs.existsSync(skillDir(x, 'council')), dry.stdout.slice(-300));
+
+  const r = run(x, '--no-git', '--no-questions');
+  const out = r.stdout + r.stderr;
+  check('US-63: a skill citada que o ECC tem é copiada inteira (com subpasta)',
+        r.status === 0 && fs.existsSync(path.join(skillDir(x, 'council'), 'SKILL.md')) && fs.existsSync(path.join(skillDir(x, 'council'), 'extra', 'nota.md')), out.slice(-400));
+  check('US-63: citação sem catálogo avisa pelo nome e não cria arquivo; `/retomar` não avisa',
+        /`\/fantasma` cited/.test(out) && !fs.existsSync(skillDir(x, 'fantasma')) && !/`\/retomar` cited/.test(out), out.slice(-500));
+  check('US-63: depois da cópia o --check só reclama da que o ECC não tem', !/`\/council` citado/.test(run(x, '--check').stdout));
+
+  const snap = () => JSON.stringify(files(x.proj).map(f => [f, fs.statSync(path.join(x.proj, f)).mtimeMs]));
+  const before = snap();
+  run(x, '--no-git', '--no-questions');
+  check('US-63: 2ª rodada não muda nada', snap() === before);
+
+  // `ecc fora:` keeps the cited id out
+  fs.rmSync(skillDir(x, 'council'), { recursive: true });
+  fs.appendFileSync(path.join(x.proj, '.marvin', 'ferramentas.md'), '\necc fora: council\n');
+  run(x, '--no-git', '--no-questions');
+  check('US-63: id em `ecc fora:` não volta pela citação', !fs.existsSync(skillDir(x, 'council')));
+  cleanup(x);
+
+  // the generated glossary carries the trigger
+  const t = equipped(arena('us63-tpl'));
+  run(t, '--no-git', '--no-questions');
+  const eq = fs.readFileSync(path.join(t.proj, '.marvin', 'Contexto', 'Equipe.md'), 'utf8');
+  check('US-63: Equipe.md traz o gatilho `Unknown skill /x` com caminho `~/`, sem caminho absoluto',
+        /Unknown\s+skill\s+\/x/.test(eq) && /cp -r ~\/\.claude\/plugins\/marketplaces\/ecc\/skills\/x/.test(eq) && !eq.includes(t.lar));
+  cleanup(t);
+}
+
 // ── US-61. The main session opens on Sonnet:`.claude/settings.json` gets "model": "sonnet" when it has none.
 {
   const setOf = (x) => path.join(x.proj, '.claude', 'settings.json');
