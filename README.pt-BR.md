@@ -107,7 +107,7 @@ A régua de toda decisão: **mesmo resultado, gastando menos.** Quatro alavancas
 | **Modelo por etapa** | O refino escreve o *Time* da US como tabela — etapa · papel · modelo · esforço · motivo —, partindo do degrau mais barato que faz o serviço. A execução delega cada etapa **passando esse modelo**; etapa sem modelo volta ao `/refinar` em vez de herdar o modelo da sessão (em geral o mais caro). A própria sessão principal abre no **Sonnet** (`"model": "sonnet"` no `.claude/settings.json`, acrescentado só quando o arquivo não tem `model`); troque com `/model` quando a conversa pedir julgamento. | `Contexto/Equipe.md`, o `Sobre.md` da US, os comandos gerados |
 | **Grafo de código** (`graphify`, obrigatório) | Instalado pelo marvin quando falta (sem flag). Usado na triagem para ver *quem depende do quê* antes de decidir. Localizar arquivo continua com o Grep — ~18 tokens contra ~1.650 pelo grafo. | `.marvin/ferramentas.md` (por repo) |
 | **Escada de simplicidade** (`ponytail`, obrigatório) | Instalado pelo marvin quando falta (sem flag). Para quem **implementa**: parar no primeiro degrau que resolve. Não substitui os invariantes, a leitura do diff nem o teste. | `.marvin/ferramentas.md` (por repo) |
-| **Catálogo de especialistas** (ECC, obrigatório) | O marvin acrescenta o catálogo e copia **só os agentes e skills que o projeto usa** (lidos da stack, do schema e da autenticação) — nunca hooks, regras sempre carregadas nem comandos, que custam contexto em toda sessão (medido: um `--with` do ECC traz 67 agentes, 94 comandos e 122 regras, então o marvin copia os arquivos em vez de rodar o instalador). A matriz de custo vai por cima: `model`/`effort` do glossário e sem "MUST BE USED"/"Use PROACTIVELY", para nada se chamar sozinho. Agente que já existe nunca é tocado. | `.claude/agents/`, `.claude/skills/`, `.marvin/ferramentas.md` |
+| **Catálogo de especialistas** (ECC, obrigatório) | O marvin acrescenta o catálogo e copia **só os agentes e skills que o projeto usa** (lidos da stack, do schema e da autenticação) — nunca hooks, regras sempre carregadas nem comandos, que custam contexto em toda sessão (medido: um `--with` do ECC traz 67 agentes, 94 comandos e 122 regras, então o marvin copia os arquivos em vez de rodar o instalador). A matriz de custo vai por cima: `model`/`effort` do glossário e sem "MUST BE USED"/"Use PROACTIVELY", para nada se chamar sozinho. Agente que já existe nunca é tocado; o que não casa com nenhuma etapa você apaga e lista numa linha `ecc fora: <id>` do `ferramentas.md` (o marvin não copia de novo e não escreve essa linha). | `.claude/agents/`, `.claude/skills/`, `.marvin/ferramentas.md` |
 
 Medido em trabalho real (US-29, com teste de aceite escondido, escrito fora do agente): o
 degrau mais barato entregou o **mesmo resultado** do mais caro por **37–69% do custo**; coordenar a
@@ -742,7 +742,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-507 verificações, zero dependência. Cobre os invariantes que protegem o disco
+521 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

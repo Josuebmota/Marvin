@@ -106,7 +106,7 @@ The rule behind every decision: **same result, fewer tokens.** Four levers, each
 | **Model per stage** | Refinement writes the US *Time* as a table — stage · role · model · effort · reason — starting from the cheapest tier that does the job. Execution delegates each stage **passing that model**; a stage with no model goes back to `/refinar` instead of inheriting the session's (usually the priciest) model. The main session itself opens on **Sonnet** (`"model": "sonnet"` in `.claude/settings.json`, added only when the file has no `model`); switch with `/model` when the conversation asks for judgment. | `Contexto/Equipe.md`, the US `Sobre.md`, the generated commands |
 | **Code graph** (`graphify`, mandatory) | Installed by marvin when missing (no flag). Used at triage to see *who depends on what* before deciding. Locating a file stays with Grep — ~18 tokens against ~1,650 through the graph. | `.marvin/ferramentas.md` (per repo) |
 | **Simplicity ladder** (`ponytail`, mandatory) | Installed by marvin when missing (no flag). For whoever **implements**: stop at the first rung that solves it. It does not replace the invariants, the diff review or the tests. | `.marvin/ferramentas.md` (per repo) |
-| **Specialist catalog** (ECC, mandatory) | marvin adds the catalog and copies **only the agents and skills the project uses** (read from the stack, schema and auth) — never hooks, always-loaded rules or commands, which cost context in every session (measured: one ECC `--with` brings 67 agents, 94 commands and 122 rules, so marvin copies the files itself instead of running the installer). The cost matrix goes on top: `model`/`effort` from the glossary and no "MUST BE USED"/"Use PROACTIVELY", so nothing calls itself. An agent that already exists is never touched. | `.claude/agents/`, `.claude/skills/`, `.marvin/ferramentas.md` |
+| **Specialist catalog** (ECC, mandatory) | marvin adds the catalog and copies **only the agents and skills the project uses** (read from the stack, schema and auth) — never hooks, always-loaded rules or commands, which cost context in every session (measured: one ECC `--with` brings 67 agents, 94 commands and 122 rules, so marvin copies the files itself instead of running the installer). The cost matrix goes on top: `model`/`effort` from the glossary and no "MUST BE USED"/"Use PROACTIVELY", so nothing calls itself. An agent that already exists is never touched; one that matches no stage you delete and list in an `ecc fora: <id>` line of `ferramentas.md` (marvin does not copy it again and never writes that line). | `.claude/agents/`, `.claude/skills/`, `.marvin/ferramentas.md` |
 
 Measured on real work (US-29, hidden acceptance tests written outside the agent): the cheaper
 tier delivered the **same result** as the top tier for **37–69% of the cost**; coordinating the
@@ -755,7 +755,7 @@ rather than final text.
 node teste.mjs
 ```
 
-507 checks, no dependencies. It covers the invariants that protect other
+521 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

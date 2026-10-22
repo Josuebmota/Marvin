@@ -48,3 +48,9 @@ Não use o `install-apply.js`: cada `--with`/`--skills` traz o módulo inteiro (
 comandos e regras sempre carregadas). Depois ajuste `model`/`effort` por esta tabela e troque na
 `description` o que faz o agente se chamar sozinho por "Chame quando a linha do Time indicar este
 papel." Só escreva do zero se o ECC não tiver.
+
+**Agente do ECC entra quando a etapa casa com o verbo dele:** teste-primeiro → `tdd-guide`; erro de
+build → `*-build-resolver`; segurança (`sec`) → `security-reviewer`; banco (`dba`) →
+`database-reviewer`. O casamento vai na linha do *Time*. Agente copiado que não casa com nenhuma etapa
+sai: apague o arquivo e anote o id em `ecc fora: <id>, <id>` (linha solta no `ferramentas.md`, escrita
+por você), senão o `marvin` copia de novo. O `tl` lê o diff mesmo depois de um revisor do ECC.

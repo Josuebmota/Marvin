@@ -2239,7 +2239,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
     'agents/code-reviewer.md': agent('code-reviewer', 'opus', 'Expert code review specialist. Proactively reviews code. Use immediately after writing code. MUST BE USED for all code changes.'),
     'agents/tdd-guide.md': agent('tdd-guide', 'opus', 'TDD specialist. Use PROACTIVELY when writing new features. Ensures 80%+ test coverage.'),
     'agents/typescript-reviewer.md': agent('typescript-reviewer', 'sonnet', 'TypeScript reviewer. Use for all TypeScript changes. MUST BE USED for TypeScript projects.'),
-    'agents/build-error-resolver.md': agent('build-error-resolver', 'sonnet', 'Build error specialist. Use PROACTIVELY when build fails.'),
+    'agents/build-error-resolver.md': agent('build-error-resolver', 'sonnet', 'Build error specialist. Use for all build failures. MUST BE USED for broken builds. Use PROACTIVELY when build fails.'),
     'agents/python-reviewer.md': agent('python-reviewer', 'sonnet', 'Python reviewer. MUST BE USED for Python projects.'),
     'agents/planner.md': agent('planner', 'opus', 'Planning. Use PROACTIVELY. Automatically activated for planning tasks.'),
     'skills/python-patterns/SKILL.md': '---\nname: python-patterns\ndescription: Python idioms\n---\n',
@@ -2255,25 +2255,25 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   // a TypeScript project
   const a = arena('us60-ts');
   fs.writeFileSync(path.join(a.proj, 'tsconfig.json'), '{}\n');
+  fs.writeFileSync(path.join(a.proj, 'package.json'), '{"name":"cobaia","scripts":{"build":"tsc"}}\n');   // scripts.build is what brings the build-resolver (US-69)
   const marker = path.join(a.base, 'install-apply-invocado.txt');
   equipped(a, catalog(marker));
   const r = run(a, '--no-git', '--no-questions');
-  check('US-60: projeto TS recebe code-reviewer, tdd-guide, typescript-reviewer e build-error-resolver, e só eles',
-        r.status === 0 && ['code-reviewer', 'tdd-guide', 'typescript-reviewer', 'build-error-resolver'].every(id => has(a, id)) && !has(a, 'python-reviewer') && !has(a, 'planner'), r.stdout.slice(-600));
+  check('US-60: projeto TS com scripts.build recebe tdd-guide e build-error-resolver, e só eles (US-69: sem code-reviewer nem typescript-reviewer)',
+        r.status === 0 && ['tdd-guide', 'build-error-resolver'].every(id => has(a, id)) && !has(a, 'code-reviewer') && !has(a, 'typescript-reviewer') && !has(a, 'python-reviewer') && !has(a, 'planner'), r.stdout.slice(-600));
   const rec = rd(a, '.marvin', 'ferramentas.md');
   check('US-60: o registro ganha `| ecc | sim | componentes: … |` com os componentes escolhidos',
-        /^\| ecc \| sim \| componentes: agent:code-reviewer, agent:tdd-guide, lang:typescript /m.test(rec), rec.slice(-500));
-  const cr = rd(a, '.claude', 'agents', 'code-reviewer.md');
+        /^\| ecc \| sim \| componentes: agent:tdd-guide, lang:typescript /m.test(rec), rec.slice(-500));
+  const cr = rd(a, '.claude', 'agents', 'build-error-resolver.md');
   check('US-60: o agente instalado sai com model: sonnet, effort: medium e sem "MUST BE USED"/"Proactively"/"Use immediately"',
         /^model: sonnet$/m.test(cr) && !/^model: opus/m.test(cr) && /^effort: medium$/m.test(cr) && !/MUST BE USED|proactively|use immediately/i.test(cr)
-        && /^description: Expert code review specialist\. Chame quando a linha do Time indicar este papel\.$/m.test(cr), cr);
-  check('US-60: o corpo do agente fica como veio', /\n# code-reviewer\n/.test(cr) && /^tools: Read, Grep, Glob, Bash$/m.test(cr));
+        && /^description: Build error specialist\. Chame quando a linha do Time indicar este papel\.$/m.test(cr), cr);
+  check('US-60: o corpo do agente fica como veio', /\n# build-error-resolver\n/.test(cr) && /^tools: Read, Grep, Glob, Bash$/m.test(cr));
   const tdd = rd(a, '.claude', 'agents', 'tdd-guide.md');
   check('US-60: tdd-guide também (opus vira sonnet · medium; a descrição fica só com a 1ª frase — o resto é gatilho)',
         /^model: sonnet$/m.test(tdd) && /^effort: medium$/m.test(tdd) && !/PROACTIVELY|Ensures 80%/.test(tdd), tdd);
-  const tsr = rd(a, '.claude', 'agents', 'typescript-reviewer.md');
-  check('3.4.0: "Use for all …" e qualquer frase de gatilho depois da 1ª saem (mapeado no catálogo inteiro)',
-        /^description: TypeScript reviewer\. Chame quando a linha do Time indicar este papel\.$/m.test(tsr), tsr);
+  check('3.4.0: "Use for all …", "MUST BE USED …" e qualquer frase de gatilho depois da 1ª saem (mapeado no catálogo inteiro)',
+        !/Use for all|build failures|broken builds/.test(cr) && /^description: Build error specialist\. Chame quando a linha do Time indicar este papel\.$/m.test(cr), cr);
   const outsiders = ['commands/plan.md', 'rules/common.md', 'hooks/hooks.json'].filter(p => fs.existsSync(path.join(a.proj, '.claude', ...p.split('/'))));
   const hookKeys = Object.keys(JSON.parse(rd(a, '.claude', 'settings.json')).hooks || {});
   check('US-60: nenhum comando, regra ou hook do ECC chega ao projeto; o instalador do ECC nunca é chamado',
@@ -2289,11 +2289,11 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   fs.writeFileSync(path.join(d.proj, 'tsconfig.json'), '{}\n');
   equipped(d, catalog(path.join(d.base, 'm.txt')));
   fs.mkdirSync(path.join(d.proj, '.claude', 'agents'), { recursive: true });
-  const mine = agent('code-reviewer', 'opus', 'O meu revisor. MUST BE USED nas minhas regras.');
-  fs.writeFileSync(path.join(d.proj, '.claude', 'agents', 'code-reviewer.md'), mine);
+  const mine = agent('tdd-guide', 'opus', 'O meu guia. MUST BE USED nas minhas regras.');
+  fs.writeFileSync(path.join(d.proj, '.claude', 'agents', 'tdd-guide.md'), mine);
   const rdx = run(d, '--no-git', '--no-questions');
-  check('US-60: agente que já existia não é tocado (continua opus e com a frase dele); os que faltavam entram',
-        rd(d, '.claude', 'agents', 'code-reviewer.md') === mine && has(d, 'tdd-guide') && /code-reviewer\.md already exists/.test(rdx.stdout), rdx.stdout.slice(-500));
+  check('US-60: agente que já existia não é tocado (continua opus e com a frase dele)',
+        rd(d, '.claude', 'agents', 'tdd-guide.md') === mine && /tdd-guide\.md already exists/.test(rdx.stdout), rdx.stdout.slice(-500));
   cleanup(d);
 
   // skills are copied whole (the folder), and only the ones the stack asks for
@@ -2302,8 +2302,8 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   fs.writeFileSync(path.join(p.proj, 'requirements.txt'), 'flask\n');
   equipped(p, catalog(path.join(p.base, 'm.txt')));
   run(p, '--no-git', '--no-questions');
-  check('US-60: projeto Python recebe o python-reviewer e a skill python-patterns inteira (com subpasta)',
-        has(p, 'python-reviewer') && fs.existsSync(path.join(p.proj, '.claude', 'skills', 'python-patterns', 'ref', 'extra.md')) && !has(p, 'typescript-reviewer'));
+  check('US-60: projeto Python recebe a skill python-patterns inteira (com subpasta); o python-reviewer saiu na US-69',
+        !has(p, 'python-reviewer') && fs.existsSync(path.join(p.proj, '.claude', 'skills', 'python-patterns', 'ref', 'extra.md')) && !has(p, 'typescript-reviewer'));
   cleanup(p);
 
   // dry-run: the plan lists the copies and writes nothing
@@ -2314,14 +2314,14 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const bf = snapF();
   const df = run(f, '--no-git', '--no-questions', '--dry-run');
   check('US-60: --dry-run lista os agentes que viriam e não escreve nada',
-        df.status === 0 && /create file +\.claude[\\/]agents[\\/]code-reviewer\.md/.test(df.stdout) && snapF() === bf && !fs.existsSync(path.join(f.proj, '.claude')), df.stdout.slice(-700));
+        df.status === 0 && /create file +\.claude[\\/]agents[\\/]tdd-guide\.md/.test(df.stdout) && snapF() === bf && !fs.existsSync(path.join(f.proj, '.claude')), df.stdout.slice(-700));
   cleanup(f);
 
   // the catalog is missing and cannot be installed: a warning, not an abort, and nothing invented
   const g = arena('us60-sem-catalogo');
   const rg = run(g, '--no-git', '--no-questions');
   check('US-60: sem catálogo (e o install falhando) avisa, sai 0 e não cria agente nenhum',
-        rg.status === 0 && /ecc: catalog not found/.test(rg.stdout) && !has(g, 'code-reviewer'), rg.stdout.slice(-500));
+        rg.status === 0 && /ecc: catalog not found/.test(rg.stdout) && !has(g, 'tdd-guide'), rg.stdout.slice(-500));
   cleanup(g);
 
   // capabilities follow what the project has
@@ -2335,7 +2335,89 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(h);
 }
 
-// ── US-61. The main session opens on Sonnet: `.claude/settings.json` gets "model": "sonnet" when it has none.
+// ── US-69. The triage calls ECC agents when the stage matches; ECC_PLAN stops installing what the stack does not ask for;
+// `ecc fora: <id>` in ferramentas.md is the human's exclusion list (never recopied, never "missing").
+{
+  const agent = (name) => '---\nname: ' + name + '\ndescription: ' + name + ' agent.\ntools: Read, Grep, Glob, Bash\nmodel: sonnet\n---\n\n# ' + name + '\n';
+  const ids = ['tdd-guide', 'code-reviewer', 'typescript-reviewer', 'build-error-resolver', 'python-reviewer', 'security-reviewer', 'database-reviewer'];
+  const catalog = () => Object.fromEntries(ids.map(id => ['agents/' + id + '.md', agent(id)]));
+  const has = (x, id) => fs.existsSync(path.join(x.proj, '.claude', 'agents', id + '.md'));
+  const rd = (x, ...p) => fs.readFileSync(path.join(x.proj, ...p), 'utf8');
+  const node = (name, pkg) => {
+    const x = arena(name);
+    fs.writeFileSync(path.join(x.proj, 'package.json'), JSON.stringify(pkg));
+    return equipped(x, catalog());
+  };
+
+  // 1. plain Node
+  const a = node('us69-puro', { name: 'cobaia' });
+  const ra = run(a, '--no-git', '--no-questions');
+  check('US-69: Node puro (sem typescript, sem scripts.build) recebe tdd-guide e NÃO recebe code-reviewer, typescript-reviewer nem build-error-resolver',
+        ra.status === 0 && has(a, 'tdd-guide') && !has(a, 'code-reviewer') && !has(a, 'typescript-reviewer') && !has(a, 'build-error-resolver'),
+        ['tdd-guide', 'code-reviewer', 'typescript-reviewer', 'build-error-resolver'].map(i => i + '=' + has(a, i)).join(' '));
+
+  // 2. scripts.build vs a dependency named "build"
+  const b = node('us69-build', { name: 'cobaia', scripts: { build: 'tsc' } });
+  run(b, '--no-git', '--no-questions');
+  check('US-69: Node com scripts.build recebe build-error-resolver', has(b, 'build-error-resolver'));
+  const b2 = node('us69-build-dep', { name: 'cobaia', dependencies: { build: '1.0.0' } });
+  run(b2, '--no-git', '--no-questions');
+  check('US-69: "build" só como dependência não traz build-error-resolver (o critério é scripts.build)', !has(b2, 'build-error-resolver'));
+  cleanup(b); cleanup(b2);
+
+  // 3. Python
+  const p = arena('us69-py');
+  fs.rmSync(path.join(p.proj, 'package.json'));
+  fs.writeFileSync(path.join(p.proj, 'requirements.txt'), 'flask\n');
+  equipped(p, catalog());
+  run(p, '--no-git', '--no-questions');
+  check('US-69: projeto Python não recebe python-reviewer (não há etapa de revisão de linguagem)', !has(p, 'python-reviewer') && !has(p, 'code-reviewer'));
+  cleanup(p);
+
+  // 4. `ecc fora:`
+  const ferr = path.join(a.proj, '.marvin', 'ferramentas.md');
+  fs.rmSync(path.join(a.proj, '.claude', 'agents', 'tdd-guide.md'));
+  fs.appendFileSync(ferr, '\necc fora: tdd-guide\n');
+  const r4 = run(a, '--no-git', '--no-questions');
+  check('US-69: `ecc fora: tdd-guide` — a 2ª rodada não recopia o agente', r4.status === 0 && !has(a, 'tdd-guide'), r4.stdout.slice(-400));
+  const st = run(a, '--status', '--curto').stdout + run(a, '--status').stdout + run(a, '--check').stdout;
+  check('US-69: id em `ecc fora:` não aparece como "agente do ECC faltando" no --status/--check', !/agentes? do ECC faltando/.test(st), st.slice(-500));
+
+  // 4b. the line formatted as the templates show it (backticks, list item) excludes just the same
+  for (const [nome, linha] of [['em crase', '`ecc fora: tdd-guide`'], ['com crase nos ids', 'ecc fora: `tdd-guide`, `outro`'], ['item de lista', '- ecc fora: tdd-guide']]) {
+    const x = node('us69-fora', { name: 'cobaia' });
+    run(x, '--no-git', '--no-questions');
+    fs.rmSync(path.join(x.proj, '.claude', 'agents', 'tdd-guide.md'));
+    fs.appendFileSync(path.join(x.proj, '.marvin', 'ferramentas.md'), '\n' + linha + '\n');
+    const rx = run(x, '--no-git', '--no-questions');
+    check('US-69: `ecc fora:` ' + nome + ' também exclui (não recopia)', rx.status === 0 && !has(x, 'tdd-guide'), rx.stdout.slice(-300));
+    cleanup(x);
+  }
+
+  // 5. a second run with nothing to change writes nothing
+  const snap = () => JSON.stringify(files(a.proj).map(f => [f, fs.statSync(path.join(a.proj, f)).mtimeMs]));
+  const before = snap();
+  run(a, '--no-git', '--no-questions');
+  const dry = run(a, '--no-git', '--no-questions', '--dry-run');
+  check('US-69: 2ª rodada sem mudança não escreve nada (--dry-run: nothing to do)', snap() === before && /nothing to do/.test(dry.stdout), dry.stdout.slice(-400));
+  cleanup(a);
+
+  // 6. the generic rule lands in the three generated templates
+  const t = equipped(arena('us69-tpl'));
+  run(t, '--no-git', '--no-questions');
+  for (const rel of [['.marvin', 'Contexto', 'Equipe.md'], ['.claude', 'commands', 'refinar.md'], ['.claude', 'commands', 'us.md']]) {
+    const txt = fs.existsSync(path.join(t.proj, ...rel)) ? rd(t, ...rel) : '';
+    check('US-69: ' + rel.join('/') + ' traz a regra "etapa casa com o verbo" e o `ecc fora:`',
+          /etapa\s+casa\s+com\s+o\s+verbo/.test(txt) && /ecc fora:/.test(txt), txt ? '' : 'arquivo ausente');
+  }
+
+  // 7. the ecc scope in the generated registry no longer claims "reference only"
+  check('US-69: o alcance do `ecc` no ferramentas.md não diz "Catálogo de referência, não instalação"',
+        !/Catálogo de referência, não instalação/.test(rd(t, '.marvin', 'ferramentas.md')) && /\| ecc \|/.test(rd(t, '.marvin', 'ferramentas.md')));
+  cleanup(t);
+}
+
+// ── US-61. The main session opens on Sonnet:`.claude/settings.json` gets "model": "sonnet" when it has none.
 {
   const setOf = (x) => path.join(x.proj, '.claude', 'settings.json');
   const n = arena('us61-novo');
@@ -2466,14 +2548,14 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   fs.writeFileSync(path.join(a.proj, 'android', 'build.gradle'), 'apply plugin: "com.android.application"\n');
   run(a, '--no-git', '--no-questions');
   const ag = (x, id) => fs.existsSync(path.join(x.proj, '.claude', 'agents', id + '.md'));
-  check('ECC: android/build.gradle de um app JS não traz os agentes de Java', ag(a, 'code-reviewer') && !ag(a, 'java-reviewer') && !ag(a, 'java-build-resolver'));
+  check('ECC: android/build.gradle de um app JS não traz os agentes de Java', ag(a, 'tdd-guide') && !ag(a, 'java-reviewer') && !ag(a, 'java-build-resolver'));
   check('ECC: o agente copiado cita a origem (MIT) no frontmatter',
-        /^# origem: ECC \(MIT\)/m.test(fs.readFileSync(path.join(a.proj, '.claude', 'agents', 'code-reviewer.md'), 'utf8')));
+        /^# origem: ECC \(MIT\)/m.test(fs.readFileSync(path.join(a.proj, '.claude', 'agents', 'tdd-guide.md'), 'utf8')));
   cleanup(a);
   const b = equipped(arena('ecc-java'), fill);
   fs.writeFileSync(path.join(b.proj, 'pom.xml'), '<project></project>\n');
   run(b, '--no-git', '--no-questions');
-  check('ECC: projeto Java de verdade (pom.xml) traz os agentes de Java', ag(b, 'java-reviewer'));
+  check('ECC: projeto Java de verdade (pom.xml) traz o build-resolver de Java (o reviewer saiu na US-69)', ag(b, 'java-build-resolver') && !ag(b, 'java-reviewer'));
   cleanup(b);
   const fl = equipped(arena('ecc-flutter'), { ...fill, 'agents/flutter-reviewer.md': agent('flutter-reviewer'), 'agents/dart-build-resolver.md': agent('dart-build-resolver') });
   fs.writeFileSync(path.join(fl.proj, 'pubspec.yaml'), 'name: app\n');
@@ -2482,7 +2564,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   fs.writeFileSync(path.join(fl.proj, 'android', 'app', 'build.gradle'), '// shell\n');
   run(fl, '--no-git', '--no-questions');
   check('ECC: app Flutter (android/ e android/app/ com gradle) traz os agentes de Flutter e nenhum de Java',
-        ag(fl, 'flutter-reviewer') && ag(fl, 'dart-build-resolver') && !ag(fl, 'java-reviewer'));
+        ag(fl, 'dart-build-resolver') && !ag(fl, 'flutter-reviewer') && !ag(fl, 'java-reviewer') && !ag(fl, 'java-build-resolver'));
   cleanup(fl);
   const c = equipped(arena('settings-bom'));
   fs.mkdirSync(path.join(c.proj, '.claude'), { recursive: true });
@@ -2617,7 +2699,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
 // reading only, that the base is stale; /retomar is what syncs it. Silent when nothing is behind.
 {
   const agent = (id) => `---\nname: ${id}\ndescription: ${id}. Use PROACTIVELY.\nmodel: opus\n---\nbody\n`;
-  const a = equipped(arena('us62'), { 'agents/code-reviewer.md': agent('code-reviewer'), 'agents/tdd-guide.md': agent('tdd-guide') });
+  const a = equipped(arena('us62'), { 'agents/tdd-guide.md': agent('tdd-guide') });
   run(a, '--no-git', '--no-questions');
   const curto = () => run(a, '--status', '--curto').stdout;
   const linhas = (s) => s.split('\n').filter(l => /base desatualizada/.test(l));
@@ -2631,7 +2713,8 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   check('US-62: base mais NOVA que o marvin não conta como desatualizada (US-30 segue valendo)', linhas(curto()).length === 0 && /base montada com marvin[^\n]*mais velho/.test(curto()), curto());
   fs.writeFileSync(rec, orig);
   // an agent of the plan that the catalog has and the project lacks
-  fs.writeFileSync(path.join(a.lar, '.claude', 'plugins', 'marketplaces', 'ecc', 'agents', 'typescript-reviewer.md'), agent('typescript-reviewer'));
+  fs.writeFileSync(path.join(a.proj, 'package.json'), '{"name":"cobaia","scripts":{"build":"tsc"}}\n');   // a build now exists: the plan asks for the resolver
+  fs.writeFileSync(path.join(a.lar, '.claude', 'plugins', 'marketplaces', 'ecc', 'agents', 'build-error-resolver.md'), agent('build-error-resolver'));
   const ecc = linhas(curto());
   check('US-62: agente do plano que o catálogo tem e o projeto não: a linha cita agentes do ECC', ecc.length === 1 && /1 agente do ECC faltando/.test(ecc[0]), ecc.join('|'));
   // the hook writes nothing: same tree before and after

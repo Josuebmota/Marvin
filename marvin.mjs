@@ -1535,35 +1535,52 @@ const ECC_PLAN = (() => {
   const has = (...t) => [...stacks.values()].some(s => t.some(x => s.has(x)));
   const dirHas = (...names) => dirs.some(d => names.some(n => fs.existsSync(path.join(ROOT, d, n))));
   const dep = (name) => new RegExp('"' + name + '"\\s*:').test(text);
+  // US-69: no `<lang>-reviewer` and no `code-reviewer` — there is no "language review" stage in the matrix until a
+  // measured pair exists. A build-resolver answers the stage "build error", so it needs a build to exist: JS ones
+  // only with `scripts.build` in some package.json (JSON.parse, never regex); compiled stacks always have one.
+  const hasBuildScript = dirs.some(d => { try { return !!JSON.parse(fs.readFileSync(path.join(ROOT, d, 'package.json'), 'utf8')).scripts?.build; } catch { return false; } });
+  // Criteria for the two capability agents (deterministic, from manifests and folders only — the code is never read):
+  //  - security-reviewer: an auth/secret library in a manifest (passport, jsonwebtoken, next-auth, @auth/*, bcrypt,
+  //    argon2, clerk, firebase-admin, pyjwt, python-jose, authlib, allauth, JwtBearer, AspNetCore.Identity, devise).
+  //  - database-reviewer (the agent targets Postgres/Supabase): a Postgres/SQL data layer in a manifest (pg, postgres,
+  //    @supabase/supabase-js, prisma, knex, drizzle, typeorm, sequelize, sqlalchemy, psycopg, alembic, EntityFramework)
+  //    or a migrations folder (migrations, Migrations, alembic, prisma, drizzle, db/migrate, supabase/migrations).
   const pick = [
-    ['agent:code-reviewer', true, ['code-reviewer'], []],
     ['agent:tdd-guide', true, ['tdd-guide'], []],
-    ['lang:typescript', has('TypeScript', 'Node/JS'), ['typescript-reviewer', 'build-error-resolver'], []],
-    ['lang:python', has('Python'), ['python-reviewer'], ['python-patterns', 'python-testing']],
-    ['lang:csharp', has('.NET/C#'), ['csharp-reviewer'], ['dotnet-patterns', 'csharp-testing']],
-    ['lang:go', has('Go'), ['go-reviewer', 'go-build-resolver'], ['golang-patterns', 'golang-testing']],
-    ['lang:rust', has('Rust'), ['rust-reviewer', 'rust-build-resolver'], ['rust-patterns', 'rust-testing']],
+    ['lang:typescript', (has('TypeScript', 'Node/JS') || dep('typescript')) && hasBuildScript, ['build-error-resolver'], []],
+    ['lang:python', has('Python'), [], ['python-patterns', 'python-testing']],
+    ['lang:csharp', has('.NET/C#'), [], ['dotnet-patterns', 'csharp-testing']],
+    ['lang:go', has('Go'), ['go-build-resolver'], ['golang-patterns', 'golang-testing']],
+    ['lang:rust', has('Rust'), ['rust-build-resolver'], ['rust-patterns', 'rust-testing']],
     // Anything under android/ whose parent has package.json or pubspec.yaml is the Android shell of a
     // JS (RN/Capacitor) or Flutter app, not Java.
     ['lang:java', dirs.some(d => { const st = stacks.get(d); if (!st || !(st.has('Java/Maven') || st.has('Gradle'))) return false;
       const seg = d.split(/[\\/]/), i = seg.map(x => x.toLowerCase()).lastIndexOf('android');
       if (i < 0) return true;
       const app = path.join(ROOT, ...seg.slice(0, i));
-      return !(fs.existsSync(path.join(app, 'package.json')) || fs.existsSync(path.join(app, 'pubspec.yaml'))); }), ['java-reviewer', 'java-build-resolver'], ['java-coding-standards']],
-    ['framework:flutter', has('Flutter/Dart'), ['flutter-reviewer', 'dart-build-resolver'], ['dart-flutter-patterns']],
-    ['lang:php', has('PHP'), ['php-reviewer'], []],
-    ['framework:react', dep('react'), ['react-reviewer', 'react-build-resolver'], ['react-patterns', 'react-testing']],
-    ['framework:vue', dep('vue'), ['vue-reviewer'], ['vue-patterns']],
-    ['framework:django', /\bdjango\b/i.test(text), ['django-reviewer', 'django-build-resolver'], ['django-patterns', 'django-tdd']],
-    ['framework:fastapi', /\bfastapi\b/i.test(text), ['fastapi-reviewer'], ['fastapi-patterns']],
-    ['capability:database', dirHas('migrations', 'Migrations', 'alembic', 'prisma', 'drizzle', path.join('db', 'migrate'))
-      || /prisma|typeorm|sequelize|knex|drizzle|sqlalchemy|psycopg|alembic|EntityFramework|mongoose/i.test(text), ['database-reviewer'], ['database-migrations']],
+      return !(fs.existsSync(path.join(app, 'package.json')) || fs.existsSync(path.join(app, 'pubspec.yaml'))); }), ['java-build-resolver'], ['java-coding-standards']],
+    ['framework:flutter', has('Flutter/Dart'), ['dart-build-resolver'], ['dart-flutter-patterns']],
+    ['framework:react', dep('react'), hasBuildScript ? ['react-build-resolver'] : [], ['react-patterns', 'react-testing']],
+    ['framework:vue', dep('vue'), [], ['vue-patterns']],
+    ['framework:django', /\bdjango\b/i.test(text), [], ['django-patterns', 'django-tdd']],
+    ['framework:fastapi', /\bfastapi\b/i.test(text), [], ['fastapi-patterns']],
+    ['capability:database', dirHas('migrations', 'Migrations', 'alembic', 'prisma', 'drizzle', path.join('db', 'migrate'), path.join('supabase', 'migrations'))
+      || dep('pg') || dep('postgres') || dep('@supabase/supabase-js')
+      || /prisma|typeorm|sequelize|knex|drizzle|sqlalchemy|psycopg|alembic|EntityFramework/i.test(text), ['database-reviewer'], ['database-migrations']],
     ['capability:security', /passport|jsonwebtoken|next-auth|"@auth\/|bcrypt|argon2|clerk|firebase-admin|pyjwt|python-jose|authlib|allauth|JwtBearer|AspNetCore\.Identity|devise/i.test(text), ['security-reviewer'], ['security-review']],
   ];
   return pick.filter(p => p[1]).map(([component, , agents, skills]) => ({ component, agents, skills }));
 })();
 const RECORD = path.join(DOCS, 'ferramentas.md');
 const RECORD_REL = path.relative(ROOT, RECORD).replace(/\\/g, '/');
+// US-69: `ecc fora: <id>, <id>` — a loose line in ferramentas.md, written by the human (Marvin never writes it).
+// Ids in it are neither copied from the ECC catalog nor counted as "missing". Applies to agents and skills.
+const ECC_OUT = (() => {
+  let t = ''; try { t = fs.readFileSync(RECORD, 'utf8'); } catch {}
+  // Tolerates the way the templates show it: in backticks, as a list item or quoted (a silent miss would recopy the agent).
+  const m = t.match(/^[ \t>*-]*`?ecc fora:[ \t]*(.*)$/m);
+  return new Set(m ? m[1].replace(/`/g, '').split(/[,\s]+/).filter(Boolean) : []);
+})();
 
 // ── Canonical commands. Step 1 knew WHICH manifest exists and never opened it: the
 // `AGENTS.md` came out with "_(como rodar teste e build)_" for the human to fill in,
@@ -1673,7 +1690,7 @@ if (hasFlag('--status')) {
     const usa = (f) => new RegExp('^\\|\\s*' + f + '\\s*\\|\\s*sim\\s*\\|', 'mi').test(rec);
     // Same gate as the installer (US-60): record says `sim`, catalog on the machine; a name the catalog lacks is not "missing".
     if (TOOLS.includes('claude') && usa('ecc') && fs.existsSync(path.join(ECC_ROOT, 'agents'))) {
-      const lacks = (kind, ids, ext) => ids.filter(id => fs.existsSync(path.join(ECC_ROOT, kind, id + ext)) && !fs.existsSync(path.join(ROOT, '.claude', kind, id + ext))).length;
+      const lacks = (kind, ids, ext) => ids.filter(id => !ECC_OUT.has(id) && fs.existsSync(path.join(ECC_ROOT, kind, id + ext)) && !fs.existsSync(path.join(ROOT, '.claude', kind, id + ext))).length;
       const na = lacks('agents', [...new Set(ECC_PLAN.flatMap(c => c.agents))], '.md'), ns = lacks('skills', [...new Set(ECC_PLAN.flatMap(c => c.skills))], '');
       if (na) why.push(pl(na, 'agente do ECC faltando', 'agentes do ECC faltando'));
       if (ns) why.push(pl(ns, 'skill do ECC faltando', 'skills do ECC faltando'));
@@ -2332,7 +2349,7 @@ const OPTIONAL_TOOLS = [
     detecta: () => fs.existsSync(path.join(ECC_ROOT, 'agents')) ? 'catalog present' : false,
     instalar: 'claude plugin marketplace add affaan-m/ECC --scope project',
     instalarProjeto: ['claude plugin marketplace add affaan-m/ECC --scope project'],
-    get alcance() { return 'componentes: ' + ECC_PLAN.map(c => c.component).join(', ') + ' — só agentes e skills (sem hook, regra nem comando), com model/effort pela matriz de custo'; } },
+    get alcance() { return 'componentes: ' + ECC_PLAN.map(c => c.component).join(', ') + ' — o marvin copia por stack só os agentes e skills que casam com uma etapa (sem hook, regra nem comando), com model/effort pela matriz de custo; `ecc fora: <id>` neste arquivo exclui um id'; } },
   // Playwright CLI (US-34): installation is not detectable (it may run through npx), so the trigger
   // is the project, not the machine. Outside a web front: no line, no warning — a backend needs no browser.
   { nome: 'playwright', aplica: () => HAS_WEB_FRONT, detecta: () => 'suggested (web front in package.json)',
@@ -2871,6 +2888,12 @@ Não use o \`install-apply.js\`: cada \`--with\`/\`--skills\` traz o módulo int
 comandos e regras sempre carregadas). Depois ajuste \`model\`/\`effort\` por esta tabela e troque na
 \`description\` o que faz o agente se chamar sozinho por "Chame quando a linha do Time indicar este
 papel." Só escreva do zero se o ECC não tiver.
+
+**Agente do ECC entra quando a etapa casa com o verbo dele:** teste-primeiro → \`tdd-guide\`; erro de
+build → \`*-build-resolver\`; segurança (\`sec\`) → \`security-reviewer\`; banco (\`dba\`) →
+\`database-reviewer\`. O casamento vai na linha do *Time*. Agente copiado que não casa com nenhuma etapa
+sai: apague o arquivo e anote o id em \`ecc fora: <id>, <id>\` (linha solta no \`ferramentas.md\`, escrita
+por você), senão o \`marvin\` copia de novo. O \`tl\` lê o diff mesmo depois de um revisor do ECC.
 `);
 
 if (OLD_LAYOUT) {
@@ -3679,6 +3702,11 @@ se eu passei só o nome, pergunte em qual Epic e Feature ela entra (liste os que
      \`<ecc>/skills\`; \`<ecc>\` = \`~/.claude/plugins/marketplaces/ecc\`) e instale só aquele, copiando o
      arquivo (receita no glossário \`${relDocs}/${TEAM_GUIDE}\`); depois ajuste \`model\`/\`effort\` pela tabela.
      Só escreva do zero se o ECC não tiver.
+   - **Agente do ECC entra quando a etapa casa com o verbo dele**: teste-primeiro → \`tdd-guide\`; erro de
+     build → \`*-build-resolver\`; segurança (\`sec\`) → \`security-reviewer\`; banco (\`dba\`) →
+     \`database-reviewer\`. O casamento vai na linha do *Time*. Agente copiado que não casa com nenhuma etapa
+     sai: apague o arquivo e anote o id em \`ecc fora:\` no \`ferramentas.md\`, senão o \`marvin\` copia de novo.
+     O \`tl\` lê o diff mesmo depois de um revisor do ECC.
    - **Escolher capacidades**: consulte \`${relDocs}/${AI_GUIDE}\` e o inventário local;
      registre modelo/integração/esforço solicitado e aplicado, sem fornecedor fixo.
    - **Por quê** e **Pronto quando** — se eu não disse, pergunte; não invente.
@@ -3771,7 +3799,11 @@ confira com \`marvin --status\` que elas saíram da contagem.
    **Precisa de agente ou skill que o projeto não tem? Procure primeiro no ECC** (\`<ecc>/agents\`,
    \`<ecc>/skills\`; \`<ecc>\` = \`~/.claude/plugins/marketplaces/ecc\`) e instale só aquele, copiando o
    arquivo (receita no glossário); depois ajuste \`model\`/\`effort\` pela tabela. Só escreva do zero se
-   o ECC não tiver.
+   o ECC não tiver. **Agente do ECC entra quando a etapa casa com o verbo dele**: teste-primeiro →
+   \`tdd-guide\`; erro de build → \`*-build-resolver\`; segurança (\`sec\`) → \`security-reviewer\`; banco
+   (\`dba\`) → \`database-reviewer\`; o casamento vai na linha do *Time*. Copiado que não casa com nenhuma
+   etapa sai: apague o arquivo e anote o id em \`ecc fora:\` no \`ferramentas.md\`, senão o \`marvin\` copia de
+   novo. O \`tl\` lê o diff mesmo depois de um revisor do ECC.
 
 4. Pergunta que só eu respondo fica na US como \`❓\` — não invente a resposta.
 
@@ -3906,7 +3938,8 @@ for (const f of PENDING_INSTALL) {
 // (invariant 2): it is not touched, so the cost matrix only reaches what THIS run installed.
 if (ECC) {
   const eccAgents = path.join(ECC_ROOT, 'agents'), eccSkills = path.join(ECC_ROOT, 'skills');
-  const wantAgents = [...new Set(ECC_PLAN.flatMap(c => c.agents))], wantSkills = [...new Set(ECC_PLAN.flatMap(c => c.skills))];
+  const wantAgents = [...new Set(ECC_PLAN.flatMap(c => c.agents))].filter(id => !ECC_OUT.has(id)),
+        wantSkills = [...new Set(ECC_PLAN.flatMap(c => c.skills))].filter(id => !ECC_OUT.has(id));
   if (!fs.existsSync(eccAgents)) {
     if (DRY) info('ecc: catalog not on this machine yet — a real run installs it, then copies ' + wantAgents.length + ' agent(s) and ' + wantSkills.length + ' skill(s)');
     else warn('ecc: catalog not found at ' + ECC_ROOT + ' — agents and skills not installed; add it by hand (claude plugin marketplace add affaan-m/ECC) and rerun');
@@ -4931,6 +4964,14 @@ const UPDATES = [
     o_que: 'the /us step that sends a missing agent or skill to the ECC catalog before writing one from scratch' },
   { arquivo: '.claude/commands/refinar.md', marca: /Procure\s+primeiro\s+no\s+ECC/, soCom: !OLD_LAYOUT, desde: '3.3.0',
     o_que: 'the /refinar step that sends a missing agent or skill to the ECC catalog before writing one from scratch' },
+  // US-69: the triage calls an ECC agent when the stage matches its verb; a copied agent that matches none leaves via `ecc fora:`.
+  { arquivo: path.relative(ROOT, path.join(DOCS, TEAM_GUIDE)).replace(/\\/g, '/'),
+    marca: /etapa\s+casa\s+com\s+o\s+verbo/, desde: '3.4.2',
+    o_que: 'the rule "an ECC agent enters when the stage matches its verb; one that matches no stage leaves, listed in `ecc fora:` of ferramentas.md"' },
+  { arquivo: '.claude/commands/us.md', marca: /etapa\s+casa\s+com\s+o\s+verbo/, soCom: !OLD_LAYOUT, desde: '3.4.2',
+    o_que: 'the /us rule "an ECC agent enters when the stage matches its verb; one that matches no stage leaves, listed in `ecc fora:` of ferramentas.md"' },
+  { arquivo: '.claude/commands/refinar.md', marca: /etapa\s+casa\s+com\s+o\s+verbo/, soCom: !OLD_LAYOUT, desde: '3.4.2',
+    o_que: 'the /refinar rule "an ECC agent enters when the stage matches its verb; one that matches no stage leaves, listed in `ecc fora:` of ferramentas.md"' },
   { arquivo: path.relative(ROOT, RECORD).replace(/\\/g, '/'), marca: /Obrigatórias\s+\(custo\)/, desde: '3.3.0',
     o_que: 'the note that graphify, ponytail and ecc are mandatory (installed by marvin; an explicit `não` is respected with a warning)' },
   // US-70: the hook Marvin wrote runs only `graphify update .`, which drops the doc nodes at every

@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-69-ecc-na-matriz
 description: "A triagem chama agente do ECC quando a etapa casa com o verbo dele; o ECC_PLAN para de instalar o que a stack não pede (typescript-reviewer e build-resolver em Node puro) e respeita o agente que o projeto removeu."
@@ -9,20 +9,24 @@ description: "A triagem chama agente do ECC quando a etapa casa com o verbo dele
 
 **Por quê:** auditoria de 22/10: 4 agentes copiados do ECC (`build-error-resolver`, `code-reviewer`, `tdd-guide`, `typescript-reviewer`), **0 chamadas** desde 16/10, e nenhum *Time* os cita. **Decisão do dono, 22/10/2026:** a triagem chama agente do ECC quando a etapa casa; o que não casa com nenhuma etapa sai do projeto. Hoje a regra só diz "procure no ECC quando faltar" (Equipe.md gerado, `marvin.mjs:2774-2784`; refinar gerado, `:3589` e `:3682`; `delegacao.md:233`). Apagar não basta: o laço do ECC (`marvin.mjs:3829`) só pula o que existe, então reinstala; e o `ECC_PLAN` (`:1535`) casa `'Node/JS'` com `typescript-reviewer` e `build-error-resolver`, e instala `code-reviewer` e `tdd-guide` sempre (`:1533-1534`). Funde com a [US-60](../US-60-ecc-fonte-da-equipe/Sobre.md), que copiou e nunca chamou.
 
-**Pronto quando:**
-1. O template do `Equipe.md` (e o do `/refinar`) ganha a regra genérica etapa → agente do ECC, sem stack nem caminho (invariante 4): teste-primeiro → `tdd-guide`; revisão de linguagem → `<lang>-reviewer`; erro de build → `*-build-resolver` só com build. O casamento concreto vai na linha do *Time* de cada US. Marca nova em `UPDATES` (`desde: '<versão>'`, regex com `\s+`).
-2. `ECC_PLAN`: `typescript-reviewer` só com TypeScript/`tsconfig`; `*-build-resolver` só com script de build.
-3. Registro de exclusão (no `ferramentas.md`) respeitado pelo laço: agente que o projeto removeu não volta na rodada seguinte (invariante 2).
-4. Neste repo: sai o `build-error-resolver` (não há build) de `.claude/agents` e `.codex/agents` juntos; o `tdd-guide` fica (já está no *Time* das US-66 e US-67).
-5. `teste.mjs`: Node puro sem TS não recebe `typescript-reviewer` nem build-resolver; agente excluído não é recopiado; 2ª rodada e `--dry-run` sem escrita.
-6. O alcance do `ecc` gerado para o `ferramentas.md` (texto no `marvin.mjs`) deixa de dizer "Catálogo de referência, não instalação" — falso desde a US-60, que instala por stack.
+**Pronto quando:** (fechado por `tl` + `po` em 22/10; linhas atualizadas: laço do ECC ~L3904-3932, regra no Equipe.md ~L2863-2873, `/refinar` ~L3678, `/us` ~L3771, checagem "faltando" ~L1675-1679, `UPDATES` ~L4925-4933)
+1. **Regra genérica** no template do `Equipe.md` e dos comandos `/refinar` e `/us` (invariante 4: sem stack nem caminho): "Agente do ECC entra quando a etapa casa com o verbo dele: teste-primeiro → `tdd-guide`; erro de build → `*-build-resolver`; segurança (`sec`) → `security-reviewer`; banco (`dba`) → `database-reviewer`. O casamento vai na linha do *Time*. Agente copiado que não casa com nenhuma etapa sai: apague o arquivo e anote o id em `ecc fora:` no `ferramentas.md`, senão o `marvin` copia de novo. O `tl` lê o diff mesmo depois de um revisor do ECC." A frase antiga "Procure primeiro no ECC" fica (é marca da `UPDATES`); marca nova `/etapa\s+casa\s+com\s+o\s+verbo/` nos três arquivos, `desde: '3.4.2'`.
+2. **`ECC_PLAN`:**
+   - sai o `code-reviewer` (era `true`) e saem os `<lang>-reviewer` de todas as stacks — não há etapa "revisão de linguagem" até um par medido (decisão do dono, 22/10, partida do `po`);
+   - `build-error-resolver`/`react-build-resolver` só com `scripts.build` num `package.json` (ler com `JSON.parse`, não regex); TypeScript passa a ser `has('TypeScript')` ou dependência `typescript` (só `Node/JS` não basta); compiladas (Go, Rust, Java, Dart, C#) mantêm o resolver; sai o `django-build-resolver` (Python não tem build);
+   - entram `security-reviewer` só com sinal de auth/segredo e `database-reviewer` só com SQL/migração (critério de stack definido pelo `tl` na implementação, sem chute; Postgres/Supabase — o agente é focado neles).
+3. **Registro de exclusão:** linha solta no `.marvin/ferramentas.md`, fora da tabela, escrita pelo humano: `ecc fora: <id>, <id>`. Leitura `/^ecc fora:[ 	]*(.*)$/m`, ids separados por `[,\s]+`, vale para agente e skill. Filtra em dois pontos: `wantAgents`/`wantSkills` no laço do ECC **e** a conta do "faltando" do `--status`/`--check`. O `marvin` nunca escreve a linha (invariante 2).
+4. **Neste repo:** saem `build-error-resolver`, `code-reviewer` e `typescript-reviewer` de `.claude/agents` (e de `.codex/agents`, depois de conferir de onde vieram os `.toml` não rastreados), com a linha `ecc fora:` listando os três; o `tdd-guide` fica.
+5. **`teste.mjs`:** Node puro sem TS e sem `scripts.build` não recebe reviewer nem build-resolver; com `scripts.build` recebe `build-error-resolver`; `code-reviewer` não é mais copiado; id em `ecc fora:` não é recopiado nem aparece no "faltando"; 2ª rodada e `--dry-run` sem escrita; a regra nova sai nos três templates.
+6. O alcance do `ecc` gerado para o `ferramentas.md` deixa de dizer "Catálogo de referência, não instalação" (falso desde a US-60).
 
-**Não entra:** escrever corpo de agente (só cópia literal do ECC); medir revisor ECC contra o `tl` (US própria, com par); hooks, regras e comandos do ECC.
+**Não entra:** escrever corpo de agente (só cópia literal do ECC); a etapa "revisão de linguagem" (volta com par medido, US própria); `e2e-runner` (choca com a US-34), `doc-updater` (derivado versionado), `refactor-cleaner`, `planner`/`architect` (duplicam `po`/`tl`); skills (é a US-63); hooks, regras e comandos do ECC; apagar arquivo já copiado em projeto alheio (invariantes 1 e 2: quem decide é o humano, pelo `ecc fora:`).
 
 ## Perguntas
-- ❓ **Divergência `po` × `tl` sobre os revisores:** o `po` mantém **um** entre `code-reviewer` e `typescript-reviewer` (os dois se sobrepõem); o `tl` tira **os dois** (o `code-reviewer` duplica o `tl` no diff; o `typescript-reviewer` só volta se alguém propuser a etapa "revisão Sonnet antes do `tl`" com par medido). O refino partiu do `tl`, porque nenhuma etapa deste repo casa com eles hoje — pela regra do dono, sai.
-- ❓ O `tl` lendo o diff continua obrigatório quando um revisor do ECC também revisou? `po` e `tl`: sim, o ECC não segura invariante.
-- ❓ Ordem: o `po` põe esta antes da [US-63](../US-63-skill-citada-vem-do-ecc/Sobre.md) (as duas mexem no `ECC_PLAN`; a 63 só fica certa depois do "casa ou sai"); o `tl` a deixa correr em paralelo à US-66. Combinar antes de abrir as duas juntas.
+- ✅ Revisores: saem os dois deste repo (`tl` e `po`). Nos projetos gerados, o dono (22/10, "pode fazer todas" — partida do `po`, a recomendada): sem etapa de revisão de linguagem até medir.
+- ✅ `sec`/`dba`: entram agora (dono, 22/10), com critério de stack.
+- ✅ O `tl` lê o diff mesmo depois de revisor do ECC (`tl` e `po`).
+- ✅ Ordem: US-69 antes da US-63, em série. A 63 herda um critério: a skill citada também respeita o `ecc fora:`.
 
 ## Fluxos ligados
 - [delegacao.md](../../../../../Contexto/Fluxos/delegacao.md): o "procure primeiro no ECC" vira "a etapa casa com o ECC?".
@@ -40,11 +44,11 @@ Triagem 22/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo).
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| fechar a regra e os ❓ | po + tl | Opus · médio | decisão de escopo; quem decide não executa | pendente |
-| teste que falha | tdd-guide | Sonnet · baixo | agente do ECC que casa com a etapa | pendente |
-| implementar | dev-back | Sonnet · médio | partida | pendente |
-| verificar | qa | Sonnet · baixo | cenários: Node puro, exclusão, 2 rodadas, `--dry-run` | pendente |
-| ler o diff | tl | Opus · médio | mexe em `UPDATES` e escreve `.claude/agents/` de terceiros | pendente |
+| fechar a regra e os ❓ | po + tl | Opus · médio | decisão de escopo; quem decide não executa | feito (2 ❓ levados ao dono) |
+| teste que falha | tdd-guide | Sonnet · baixo | agente do ECC que casa com a etapa | feito: 8 falharam pelo motivo certo |
+| implementar | dev-back | Sonnet · médio | partida | feito, com 1 retrabalho (2 itens do tl) |
+| verificar | qa | Sonnet · baixo | cenários: Node puro, exclusão, 2 rodadas, `--dry-run` | aprovado com o catálogo real |
+| ler o diff | tl | Opus · médio | mexe em `UPDATES` e escreve `.claude/agents/` de terceiros | pediu 2 mudanças, aprovou |
 
 Grafo (fresco, 22/10 07:01): `ECC_PLAN` → affected nenhum; explain só o contains, L1522. Laço do ECC **sem nó** (bloco de topo) — localizado por Grep. Templates: sem nó próprio — Grep.
 
@@ -76,6 +80,7 @@ Nada depende do que ela toca — folha do grafo.
 - [US-55 — o ponytail instalado em outro projeto não conta como instalado aqui](../../../../Manutencao/ferramentas-opcionais/adaptadores/US-55-ponytail-escopo/Sobre.md) — 1 nó(s) em comum
 - [US-66 — o refresh do graphify não apaga nem duplica os nós da base](../../../../Manutencao/ferramentas-opcionais/adaptadores/US-66-graphify-preserva-origem-doc/Sobre.md) — 2 nó(s) em comum
 - [US-67 — ponytail desligado aparece como desligado](../../../../Manutencao/ferramentas-opcionais/adaptadores/US-67-ponytail-enabledplugins/Sobre.md) — 1 nó(s) em comum
+- [US-70 — o hook pós-commit refaz o lado dos docs do grafo](../../../../Manutencao/ferramentas-opcionais/adaptadores/US-70-hook-refaz-docs-do-grafo/Sobre.md) — 2 nó(s) em comum
 - [US-13 — Sessão numa git worktree escreve memória num diretório vazio, sem aviso](../../../../Manutencao/memoria/junction/US-13-worktree/Sobre.md) — 2 nó(s) em comum
 - [US-11 — ferramentas opcionais: detectar, perguntar, registrar (graphify e ponytail)](../../adaptadores/US-11-ferramentas-opcionais/Sobre.md) — 2 nó(s) em comum
 - [US-11a — o registro `ferramentas.md`, com o graphify como primeiro adaptador](../../adaptadores/US-11a-registro-e-graphify/Sobre.md) — 2 nó(s) em comum
@@ -112,6 +117,10 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **22/10/2026** — aberta e refinada (auditoria; decisão do dono sobre o ECC).
+- **23/10/2026** — concluída. `ECC_PLAN` sem `code-reviewer` e sem `<lang>-reviewer`; build-resolver só com `scripts.build`; `security-reviewer`/`database-reviewer` por manifesto e pasta; `ecc fora:` lido (aceita crase e item de lista) e filtrado no laço e no "faltando"; regra nos 3 templates e na `UPDATES` (`desde: '3.4.2'`). O `tl` pegou dois buracos: um teste antigo que, ao trocar os revisores, virou cópia de outro e parou de provar o strip das frases de gatilho; e a linha `ecc fora:` escrita como o próprio template mostra (com crase) falhando em silêncio. Desvio aceito: o build-resolver de JS entra por `scripts.build` (o TypeScript sozinho não basta). Ressalva do `tl`, não bloqueia: `hasBuildScript` é global entre pastas — monorepo com build só no back leva o `react-build-resolver` ao front. Neste repo: saíram `build-error-resolver`, `code-reviewer`, `typescript-reviewer` (e os `.toml` do Codex), com `ecc fora:`; a regra foi trazida à mão para os 3 arquivos.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: 521 passaram (bloco US-69, casos 1-7 e 4b; testes antigos da US-60/62 e android ajustados).
+- `qa`, catálogo ECC real: Node puro → só `tdd-guide`; `scripts.build` → `build-error-resolver`; `ecc fora: tdd-guide` → não volta e o `--status` não acusa falta; `"pg"` → `database-reviewer`; `"jsonwebtoken"` → `security-reviewer`.
+- Este repo: `marvin --dry-run` não recopia nada do ECC e não tem mais nenhuma `UPDATES` pendente.

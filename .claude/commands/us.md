@@ -39,3 +39,9 @@ se eu passei só o nome, pergunte em qual Epic e Feature ela entra (liste os que
 `<ecc>/skills`; `<ecc>` = `~/.claude/plugins/marketplaces/ecc`) e instale só aquele, copiando o
 arquivo (receita no glossário `.marvin/Contexto/Equipe.md`); depois ajuste `model`/`effort` pela
 tabela. Só escreva do zero se o ECC não tiver.
+
+**Agente do ECC entra quando a etapa casa com o verbo dele:** teste-primeiro → `tdd-guide`; erro de
+build → `*-build-resolver`; segurança (`sec`) → `security-reviewer`; banco (`dba`) →
+`database-reviewer`. O casamento vai na linha do *Time*. Agente copiado que não casa com nenhuma etapa
+sai: apague o arquivo e anote o id em `ecc fora: <id>, <id>` (linha solta no `ferramentas.md`, escrita
+por você), senão o `marvin` copia de novo. O `tl` lê o diff mesmo depois de um revisor do ECC.
