@@ -1407,9 +1407,9 @@ const computeStatus = () => {
   } catch {}
   const GRAPH_ST = path.join(ROOT, 'graphify-out', 'graph.json');
   if (fs.existsSync(GRAPH_ST)) {
-    let n = 0, d = 0; try { const g = JSON.parse(fs.readFileSync(GRAPH_ST, 'utf8')); n = (g.nodes || []).length; d = (g.nodes || []).filter(x => x._origin === 'marvin').length; } catch {}
+    let n = 0, d = 0, me = 0; try { const g = JSON.parse(fs.readFileSync(GRAPH_ST, 'utf8')); n = (g.nodes || []).length; d = (g.nodes || []).filter(x => x._origin === 'marvin').length; me = (g.edges || g.links || []).filter(x => x._origin === 'marvin').length; } catch {}
     const mtime = fs.statSync(GRAPH_ST).mtime;
-    st.grafo = { nos: n, docs: d, mtime: mtime.toISOString(), idade: days(mtime) };
+    st.grafo = { nos: n, docs: d, mtime: mtime.toISOString(), idade: days(mtime), orfao: d === 0 && me > 0 };
   }
   return st;
 };
@@ -1468,6 +1468,7 @@ const printStatus = (st, short) => {
   if (st.herdam.length) warn('agent(s) without model: (inherit the session model): ' + st.herdam.join(', ') + ' — declare model: or record in the US why it inherits');
   log('\n\x1b[1mGraph\x1b[0m');
   info(st.grafo ? `${st.grafo.nos} nodes (${st.grafo.docs} from the knowledge base) — extracted ${st.grafo.idade}d ago` + (st.grafo.idade > 7 ? '  → marvin --graphify --graphify-rebuild' : '') : 'none — marvin --graphify builds it');
+  if (st.grafo && st.grafo.orfao) warn('graphify refresh replaced the docs side of the graph — run marvin --graphify');
 };
 
 // Read-only definitions the --status hook (US-62) needs; they sit ABOVE it so --status exits before any block that writes
@@ -4505,15 +4506,23 @@ if (GRAPHIFY) {
         const KEY = Array.isArray(g.links) ? 'links' : 'edges';
         g.edges = g[KEY] || [];
         const before = JSON.stringify({ n: g.nodes.filter(n => n._origin === 'marvin'), e: g.edges.filter(e => e._origin === 'marvin') });
-        g.nodes = g.nodes.filter(n => n._origin !== 'marvin');
         g.edges = g.edges.filter(e => e._origin !== 'marvin');
-        const ids = new Set(g.nodes.map(n => n.id));
-      const { novosNos: newNodes, novasArestas: newEdges, avisos: warnings } = docsGraph(ids, subRepos);
+        // US-66: graphify >= 0.9.37 indexes the .md itself, with the SAME id docsGraph generates
+        // (and a foreign `_origin`). docsGraph runs first and every node whose id it generates is
+        // dropped, so a graphify doc node never survives next to ours as a duplicate.
+        const ids = new Set(g.nodes.filter(n => n._origin !== 'marvin').map(n => n.id));
+        const { novosNos: newNodes, novasArestas: newEdges, avisos: warnings } = docsGraph(ids, subRepos);
+        const newIds = new Set(newNodes.map(n => n.id));
+        const nMarvin = g.nodes.filter(n => n._origin === 'marvin').length;
+        const kept = g.nodes.filter(n => n._origin !== 'marvin' && !newIds.has(n.id));
+        // Foreign doc nodes dropped here (an already-duplicated graph) must reach the disk too.
+        const dropped = g.nodes.length - kept.length - nMarvin;
+        g.nodes = kept;
         g.nodes.push(...newNodes);
         g.edges.push(...newEdges);
         if (KEY !== 'edges') { g[KEY] = g.edges; delete g.edges; }
         const after = JSON.stringify({ n: newNodes, e: newEdges });
-        docsChanged = before !== after;
+        docsChanged = before !== after || dropped > 0;
         if (docsChanged) {
           // Preserves the mtime: the freshness check below compares code against the
           // EXTRACTION TIME, and appending docs re-extracted nothing.

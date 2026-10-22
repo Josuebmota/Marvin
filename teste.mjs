@@ -1021,6 +1021,69 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── 9q-c. US-66: graphify 0.9.37 indexes .md itself and its doc file node has the SAME id
+//      marvin generates. The merge only removed `_origin === 'marvin'`, so ids came out duplicated.
+{
+  const a = arena('docgrafo-colisao');
+  run(a, '--no-git');
+  const relUs = '.marvin/Planejamento/Novos/E1/F1/US-1/Sobre.md';
+  const us = path.join(a.proj, ...relUs.split('/').slice(0, -1));
+  fs.mkdirSync(us, { recursive: true });
+  fs.writeFileSync(path.join(us, 'Sobre.md'), ['---', 'tipo: us', 'estado: ativa', '---', '# US-1 — colisão', ''].join(NLQ));
+  // same id formula as `idOf` in marvin.mjs (docsGraph)
+  const idOf = (rel) => rel.replace(/\\/g, '/').replace(/\.[^./]+$/, '')
+    .replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
+  const usId = idOf(relUs);
+  const output = path.join(a.proj, 'graphify-out');
+  fs.mkdirSync(output, { recursive: true });
+  const graph = { directed: true, nodes: [
+    { id: usId, label: 'Sobre.md', file_type: 'document', source_file: relUs, _origin: 'ast' },
+    { id: usId + '_secao', label: 'US-1 — colisão', file_type: 'document', source_file: relUs, _origin: 'ast' }],
+    edges: [{ source: usId, target: usId + '_secao', relation: 'contains', _origin: 'ast' }] };
+  fs.writeFileSync(path.join(output, 'graph.json'), JSON.stringify(graph));
+  const read = () => JSON.parse(fs.readFileSync(path.join(output, 'graph.json'), 'utf8'));
+  const dups = (g) => { const seen = new Set(); return g.nodes.map(n => n.id).filter(id => seen.has(id) || !seen.add(id)); };
+
+  run(a, '--no-git', '--graphify');
+  const g1 = read();
+  const mine = g1.nodes.filter(n => n.id === usId);
+  check('US-66: nó do doc que o graphify já indexou não duplica o id', dups(g1).length === 0, 'duplicados: ' + dups(g1).join(', '));
+  check('US-66: o nó do doc fica com _origin marvin e o tipo do frontmatter',
+        mine.length === 1 && mine[0]._origin === 'marvin' && mine[0].tipo === 'us', JSON.stringify(mine));
+  check('US-66: o nó de seção do graphify continua no grafo', g1.nodes.some(n => n.id === usId + '_secao'));
+
+  run(a, '--no-git', '--graphify');
+  const g2 = read();
+  check('US-66: 2ª rodada deixa os nós idênticos (mesma contagem, ids únicos)',
+        g2.nodes.length === g1.nodes.length && dups(g2).length === 0 &&
+        JSON.stringify(g2.nodes.map(n => n.id).sort()) === JSON.stringify(g1.nodes.map(n => n.id).sort()),
+        g1.nodes.length + ' -> ' + g2.nodes.length);
+
+  // already-duplicated graph (left by the old merge) with the marvin nodes up to date: must be cleaned ON DISK
+  const gp = path.join(output, 'graph.json');
+  const g3 = read();
+  g3.nodes.push({ id: usId, label: 'Sobre.md', file_type: 'document', source_file: relUs, _origin: 'ast' });
+  fs.writeFileSync(gp, JSON.stringify(g3));
+  const dirty = fs.readFileSync(gp, 'utf8');
+  run(a, '--no-git', '--graphify');
+  const clean = fs.readFileSync(gp, 'utf8');
+  check('US-66: grafo já duplicado e docs em dia: a rodada seguinte limpa e escreve', dups(read()).length === 0 && clean !== dirty, 'dups: ' + dups(read()).join(', '));
+  run(a, '--no-git', '--graphify');
+  check('US-66: 3ª rodada não reescreve o grafo', fs.readFileSync(gp, 'utf8') === clean);
+  check('US-66: a limpeza mantém o nó marvin e o de seção', read().nodes.filter(n => n.id === usId && n._origin === 'marvin').length === 1 && read().nodes.some(n => n.id === usId + '_secao'));
+
+  // --status: every doc node is `ast` but marvin edges exist -> the doc side was never merged
+  const alien = { directed: true, nodes: [
+    { id: usId, label: 'Sobre.md', file_type: 'document', source_file: relUs, _origin: 'ast' },
+    { id: 'src_x', label: 'x.js', file_type: 'code', source_file: 'src/x.js', _origin: 'ast' }],
+    edges: [{ source: usId, target: 'src_x', relation: 'touches', _origin: 'marvin' }] };
+  fs.writeFileSync(path.join(output, 'graph.json'), JSON.stringify(alien));
+  const st = run(a, '--status').stdout.replace(/\x1b\[[0-9;]*m/g, '');
+  check('US-66: --status avisa quando os nós-doc são todos do graphify e há arestas do marvin',
+        /marvin --graphify/.test(st), st.slice(-400));
+  cleanup(a);
+}
+
 // ── 9q-b. US-23b: "Código tocado" in a parent folder with repos/<x>. Needs git (sub-repo
 //      detection) but not graphify: the graph.json is synthetic, ids as merge-graphs writes them.
 {

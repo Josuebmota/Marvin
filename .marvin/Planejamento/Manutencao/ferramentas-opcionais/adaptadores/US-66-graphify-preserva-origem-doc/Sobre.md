@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-66-graphify-preserva-origem-doc
 description: "Desde o graphify 0.9.37 o refresh indexa os .md sozinho, com o mesmo id dos nós-doc do Marvin: os nossos perdem _origin/tipo/estado e a próxima mesclagem duplica 149 ids. A mesclagem passa a reconhecer os nós pelo id que ela mesma gera."
@@ -33,10 +33,10 @@ Triagem 22/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo).
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| teste que falha | tdd-guide | Sonnet · baixo | defeito com cenário concreto; agente do ECC que casa com a etapa (decisão do dono 22/10) | pendente |
-| implementar | dev-back | Sonnet · médio | partida | pendente |
-| verificar | qa | Sonnet · baixo | cenários: 2 rodadas, `--dry-run`, grafo sem docs | pendente |
-| ler o diff | tl | Opus · médio | escreve `graph.json` (disco de alguém) e toca o invariante 2 | pendente |
+| teste que falha | tdd-guide | Sonnet · baixo | defeito com cenário concreto; agente do ECC que casa com a etapa (decisão do dono 22/10) | feito: 5 checks, falharam pelo motivo certo |
+| implementar | dev-back | Sonnet · médio | partida | feito, com 1 retrabalho (pedido do tl) |
+| verificar | qa | Sonnet · baixo | cenários: 2 rodadas, `--dry-run`, grafo sem docs | aprovado (ressalva: colisão doc × código, aceita pelo tl) |
+| ler o diff | tl | Opus · médio | escreve `graph.json` (disco de alguém) e toca o invariante 2 | barrou 1×, aprovou o retrabalho |
 
 Grafo (fresco, 22/10 07:01, depois do 43e789e; graphify 0.9.37): `docsGraph` → affected `touchedByUS` L960, `writeStatusHtml` L1103, `computeStatus` L1351; explain: touches da US-18. `computeStatus` → chama `loadGraph`, `touchedByUS`, `usImpact`; touches das US-16 e US-56. Bloco de mesclagem **sem nó** (nível de topo) — localizado por Grep.
 
@@ -106,6 +106,11 @@ Toca 4 nó(s) de código em 4 comunidade(s) — **escopo largo**: vale fatiar?.
 
 ## Rumo
 - **22/10/2026** — aberta e refinada (auditoria "o Marvin usa graphify/ponytail como um todo?").
+- **22/10/2026** — seguimentos do `tl`, não bloqueiam: (1) em monorepo o graphify grava o doc como `_root::marvin_..._sobre`, o `newIds` não casa e o doc fica com dois nós; (2) o aviso do `--status` cala na substituição parcial e quando o graphify apaga também as arestas.
+- **22/10/2026** — concluída. A mesclagem roda o `docsGraph` antes e tira do grafo os nós `marvin` **e** os ids que ele gera; conta o que tirou (`dropped`) para que um grafo já duplicado seja reescrito (bloqueio do `tl`, reproduzido em simulação: o 1º diff respondia "unchanged" e deixava a duplicata). O `--status` avisa "run marvin --graphify" quando o refresh trocou o lado dos docs. Limite conhecido, aceito pelo `tl`: um arquivo de código dentro de `.marvin/` com o mesmo caminho de um `.md` (trocando só a extensão) teria o nó removido — sem caso concreto, e proteger traria de volta o id duplicado.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: 495 passaram (bloco 9q-c, 8 checks `US-66:`).
+- Clone descartável com o HEAD anterior: 1427 nós / 1274 ids (duplicado) → com a correção, sem mexer em doc: 1274 / 1274, 153 nós-doc `_origin:'marvin'`; rodada seguinte "unchanged".
+- `qa`: `--dry-run` com hash idêntico do `graph.json`; aviso do `--status` só no cenário certo.
