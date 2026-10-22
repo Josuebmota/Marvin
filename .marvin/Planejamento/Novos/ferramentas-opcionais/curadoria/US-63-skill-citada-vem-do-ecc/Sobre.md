@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: ativa
 pai: ../Sobre.md
 name: US-63-skill-citada-vem-do-ecc
 description: "Skill citada entre crases nas instruções do projeto (ex.: /council) e ausente em .claude/skills sai do catálogo do ECC; se o ECC não tiver, o marvin avisa pelo nome e o texto manda a LLM criar com a origem registrada."
@@ -10,7 +10,7 @@ description: "Skill citada entre crases nas instruções do projeto (ex.: /counc
 **Por quê:** [issue #6](https://github.com/Josuebmota/Marvin/issues/6). No Parci (19/10), o `CLAUDE.md` mandava usar `/council`; a skill não estava no projeto, o agente recebeu `Unknown skill` e montou o conselho à mão, com `skills/council/` no ECC já clonado. A [US-60](../US-60-ecc-fonte-da-equipe/Sobre.md) só copia o que o `ECC_PLAN` deriva da stack. **Correção da issue (`tl` e `po`):** o `marvin.mjs` nunca escreve `council` (Grep zero) — a citação foi escrita pela LLM ou pelo dono; e o texto já dá o caminho `~/.claude/plugins/marketplaces/ecc`, só que como pergunta condicional ("Precisa de…?"), que o agente não liga ao `Unknown skill`.
 
 **Pronto quando:**
-1. O `marvin` acha as citações `` `/<id>` `` entre crases em `CLAUDE.md`, `AGENTS.md` e `.claude/commands/*.md` do projeto; quando `<ecc>/skills/<id>/SKILL.md` existe e `.claude/skills/<id>/` não, a skill entra no plano do ECC e é copiada com o mesmo rewrite de `model`/`effort` da US-60. Rodar de novo não muda nada (invariante 2).
+1. O `marvin` acha as citações `` `/<id>` `` entre crases em `CLAUDE.md`, `AGENTS.md` e `.claude/commands/*.md` do projeto; quando `<ecc>/skills/<id>/SKILL.md` existe e `.claude/skills/<id>/` não, a skill entra no plano do ECC e é copiada com o mesmo rewrite de `model`/`effort` da US-60. Rodar de novo não muda nada (invariante 2); id em `ecc fora:` não é copiado.
 2. `marvin --check` diz o nome de cada citação ausente no projeto, e se o ECC a tem ("`/council` citado no CLAUDE.md, ausente; o ECC tem: rode `marvin`") ou não.
 3. O texto gerado ganha o gatilho explícito: "`Unknown skill /x` → `cp -r ~/.claude/plugins/marketplaces/ecc/skills/x .claude/skills/`; se o ECC não tiver, crie e registre a origem". A frase antiga fica (é marca da `UPDATES`) e o texto novo ganha marca própria com `desde: '<versão>'`.
 4. `teste.mjs`: `CLAUDE.md` falso cita `` `/council` `` e ECC falso tem `skills/council/` → copiada; citação sem catálogo → aviso, nenhum arquivo; comando do Marvin (`/retomar`) → nenhum aviso; 2ª rodada e `--dry-run` sem escrita.
@@ -18,9 +18,9 @@ description: "Skill citada entre crases nas instruções do projeto (ex.: /counc
 **Não entra:** o script criar a skill "com palavras próprias" (invariante 4 — é da LLM, pelo texto); agente citado por nome (ambíguo demais); prosa sem crase; hooks, regras e comandos do ECC; caminho absoluto pessoal no texto gerado (ver ❓).
 
 ## Perguntas
-- ❓ Copiar sozinho a skill citada (item 1), ou só avisar e deixar a cópia para a LLM? Copiar escreve no disco do usuário; o `tl` lê o diff por isso. Partida do refino: copiar, porque é a mesma cópia literal que a US-60 já faz.
-- ❓ **Divergência `po` × `tl`:** o `po` aceita o caminho resolvido por `os.homedir()` no texto gerado (com marcador em repo público); o `tl` diz não — o CLAUDE.md gerado é versionado no projeto, o caminho absoluto vaza o usuário e quebra na máquina do colega, e `~/` já é o caminho certo. O refino partiu do `tl`.
-- ❓ Quanto custou montar o conselho à mão no Parci? Sem esse número o item 1 é conveniência, não economia medida.
+- ✅ Copiar sozinho a skill citada (item 1): **copiar** (dono, 23/10) — a mesma cópia literal do ECC, e respeita o `ecc fora:` da [US-69](../US-69-ecc-na-matriz/Sobre.md) (critério herdado: o que o projeto excluiu não volta pela porta da citação).
+- ✅ Caminho no texto gerado: **`~/`** (dono, 23/10, partida do `tl`) — nada de caminho absoluto no `CLAUDE.md` versionado.
+- ✅ Custo do conselho à mão no Parci: **sem número** (dono, 23/10). A US entra como conveniência, sem declarar economia.
 
 ## Fluxos ligados
 - [delegacao.md](../../../../../Contexto/Fluxos/delegacao.md): o "procure primeiro no ECC".
@@ -69,6 +69,9 @@ Nada depende do que ela toca — folha do grafo.
 - [US-40-linha-fora-da-tabela](../../../../Manutencao/ferramentas-opcionais/adaptadores/US-40-linha-fora-da-tabela/Sobre.md) — 2 nó(s) em comum
 - [US-43 — o grafo como rota de busca, só depois da medição](../../../../Manutencao/ferramentas-opcionais/adaptadores/US-43-grafo-rota-de-busca/Sobre.md) — 1 nó(s) em comum
 - [US-55 — o ponytail instalado em outro projeto não conta como instalado aqui](../../../../Manutencao/ferramentas-opcionais/adaptadores/US-55-ponytail-escopo/Sobre.md) — 1 nó(s) em comum
+- [US-66 — o refresh do graphify não apaga nem duplica os nós da base](../../../../Manutencao/ferramentas-opcionais/adaptadores/US-66-graphify-preserva-origem-doc/Sobre.md) — 2 nó(s) em comum
+- [US-67 — ponytail desligado aparece como desligado](../../../../Manutencao/ferramentas-opcionais/adaptadores/US-67-ponytail-enabledplugins/Sobre.md) — 1 nó(s) em comum
+- [US-70 — o hook pós-commit refaz o lado dos docs do grafo](../../../../Manutencao/ferramentas-opcionais/adaptadores/US-70-hook-refaz-docs-do-grafo/Sobre.md) — 2 nó(s) em comum
 - [US-13 — Sessão numa git worktree escreve memória num diretório vazio, sem aviso](../../../../Manutencao/memoria/junction/US-13-worktree/Sobre.md) — 2 nó(s) em comum
 - [US-11 — ferramentas opcionais: detectar, perguntar, registrar (graphify e ponytail)](../../adaptadores/US-11-ferramentas-opcionais/Sobre.md) — 2 nó(s) em comum
 - [US-11a — o registro `ferramentas.md`, com o graphify como primeiro adaptador](../../adaptadores/US-11a-registro-e-graphify/Sobre.md) — 2 nó(s) em comum
@@ -81,6 +84,7 @@ Nada depende do que ela toca — folha do grafo.
 - [US-32 — graphify e ponytail juntos](../../adaptadores/US-32-graphify-e-ponytail-juntos/Sobre.md) — 2 nó(s) em comum
 - [US-34 — Playwright CLI obrigatório como evidência do `qa` em projeto com front ou mobile](../../adaptadores/US-34-playwright-front-mobile/Sobre.md) — 2 nó(s) em comum
 - [US-50 — o Marvin instala as ferramentas por projeto](../US-50-marvin-plugin-e-curador/Sobre.md) — 1 nó(s) em comum
+- [US-69 — a matriz chama os agentes do ECC; o que não casa sai](../US-69-ecc-na-matriz/Sobre.md) — 3 nó(s) em comum
 - [US-47 — Defect e Task na hierarquia](../../../organizacao-por-grafo/hierarquia/US-47-defect-e-task/Sobre.md) — 1 nó(s) em comum
 - [US-01 — Layout por grafo no script](../../../organizacao-por-grafo/script/US-01-layout-por-grafo/Sobre.md) — 2 nó(s) em comum
 - [US-02 — `marvin --status`, o dashboard derivado](../../../organizacao-por-grafo/script/US-02-status/Sobre.md) — 1 nó(s) em comum
