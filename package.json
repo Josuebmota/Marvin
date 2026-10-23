@@ -1,6 +1,6 @@
 {
   "name": "marvin-kb",
-  "version": "3.4.1",
+  "version": "3.4.2",
   "description": "Your LLM's exoskeleton: a cheap dev team — memory, roles, rituals and cost routing around the model. Same result, fewest tokens. Zero dependencies.",
   "type": "module",
   "bin": {
