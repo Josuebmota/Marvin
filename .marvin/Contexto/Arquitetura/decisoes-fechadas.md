@@ -87,3 +87,10 @@
   agente do ECC quando a etapa casa com o verbo dele (teste-primeiro → `tdd-guide`, revisão de
   linguagem → `<lang>-reviewer`, build → `*-build-resolver` só com build); agente do ECC que não
   casa com nenhuma etapa sai do projeto e não volta na rodada seguinte (US-69).
+- **Ferramenta é obrigatória no Marvin quando ajuda; medida e não pagou, sai do obrigatório** (dono,
+  23/10/2026). O Marvin é o apoio que se acopla ao projeto para o desenvolvimento por LLM: o que ajuda
+  nesse apoio — economia de tokens, memória, montagem de personas, decisão, ou outra coisa — vira
+  obrigatório; quando aparecer algo novo que otimize, acha-se e acopla-se. O mapa de hoje: **ECC** para
+  personas e skills, **graphify** para economia e memória, **ponytail** para decisão. O ponytail foi
+  medido no `dev-back` (US-68: +22%, n=1) e não pagou, então deixa de ser obrigatório (US-71); o uso
+  dele em **decisão** (`tl`/`po`) nunca foi medido — é a condição para ele voltar.

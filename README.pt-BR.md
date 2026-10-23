@@ -40,7 +40,7 @@ escreve a estrutura; os agentes e comandos que ele monta tocam a equipe em cima 
 | 🧠 **Memória no git** | uma junction invertida faz a memória do agente nascer dentro de `.marvin/` |
 | 🔁 **Idempotente** | rodar duas vezes não duplica nem sobrescreve nada |
 | 🔍 **Diagnóstico** | custo do contexto fixo por sessão, "serviços" vazios, lixo na raiz, comandos canônicos lidos do manifesto |
-| 🔌 **Ferramentas** | `graphify`, `ponytail` e o catálogo ECC são **obrigatórios** (custo) e o marvin instala; `playwright` continua opcional. Tudo registrado em `.marvin/ferramentas.md` |
+| 🔌 **Ferramentas** | `graphify` e o catálogo ECC são **obrigatórios** (custo) e o marvin instala; `ponytail` (medido, sem ganho no `dev-back`, US-68) e `playwright` continuam opcionais. Tudo registrado em `.marvin/ferramentas.md` |
 
 > **O pacote é `marvin-kb`, o comando é `marvin`.** O nome `marvin` já estava ocupado no
 > npm, então `npx marvin` baixaria o pacote de outra pessoa — use `npx marvin-kb`. Depois
@@ -106,7 +106,7 @@ A régua de toda decisão: **mesmo resultado, gastando menos.** Quatro alavancas
 |---|---|---|
 | **Modelo por etapa** | O refino escreve o *Time* da US como tabela — etapa · papel · modelo · esforço · motivo —, partindo do degrau mais barato que faz o serviço. A execução delega cada etapa **passando esse modelo**; etapa sem modelo volta ao `/refinar` em vez de herdar o modelo da sessão (em geral o mais caro). A própria sessão principal abre no **Sonnet** (`"model": "sonnet"` no `.claude/settings.json`, acrescentado só quando o arquivo não tem `model`); troque com `/model` quando a conversa pedir julgamento. | `Contexto/Equipe.md`, o `Sobre.md` da US, os comandos gerados |
 | **Grafo de código** (`graphify`, obrigatório) | Instalado pelo marvin quando falta (sem flag). Usado na triagem para ver *quem depende do quê* antes de decidir. Localizar arquivo continua com o Grep — ~18 tokens contra ~1.650 pelo grafo. | `.marvin/ferramentas.md` (por repo) |
-| **Escada de simplicidade** (`ponytail`, obrigatório) | Instalado pelo marvin quando falta (sem flag). Para quem **implementa**: parar no primeiro degrau que resolve. Não substitui os invariantes, a leitura do diff nem o teste. | `.marvin/ferramentas.md` (por repo) |
+| **Escada de simplicidade** (`ponytail`, opcional) | Desligado por padrão (medido sem ganho no `dev-back`, US-68); `--use=ponytail` liga. Para quem **implementa**: parar no primeiro degrau que resolve. Não substitui os invariantes, a leitura do diff nem o teste. | `.marvin/ferramentas.md` (por repo) |
 | **Catálogo de especialistas** (ECC, obrigatório) | O marvin acrescenta o catálogo e copia **só os agentes e skills que o projeto usa** (lidos da stack, do schema e da autenticação) — nunca hooks, regras sempre carregadas nem comandos, que custam contexto em toda sessão (medido: um `--with` do ECC traz 67 agentes, 94 comandos e 122 regras, então o marvin copia os arquivos em vez de rodar o instalador). A matriz de custo vai por cima: `model`/`effort` do glossário e sem "MUST BE USED"/"Use PROACTIVELY", para nada se chamar sozinho. Agente que já existe nunca é tocado; o que não casa com nenhuma etapa você apaga e lista numa linha `ecc fora: <id>` do `ferramentas.md` (o marvin não copia de novo e não escreve essa linha). | `.claude/agents/`, `.claude/skills/`, `.marvin/ferramentas.md` |
 
 Medido em trabalho real (US-29, com teste de aceite escondido, escrito fora do agente): o
@@ -256,9 +256,10 @@ Rodar de novo com outra lista **acrescenta** o que falta; nada é removido.
 
 Algumas ferramentas não são adaptador: são coisas que o projeto *escolhe* usar. O marvin
 detecta no PATH (o `playwright` é oferecido pelo front web num `package.json`, não pelo
-PATH). **`graphify`, `ponytail` e `ecc` são obrigatórios** (custo): o registro novo nasce `sim`
+PATH). **`graphify` e `ecc` são obrigatórios** (custo): o registro novo nasce `sim`
 sem perguntar e o marvin instala o que a máquina não tem (falha vira aviso, nunca aborta);
-um `não` escrito ali é respeitado, com aviso de que o padrão é obrigatório. As outras perguntam **uma vez** (só com terminal —
+um `não` escrito ali é respeitado, com aviso de que o padrão é obrigatório. O `ponytail`
+é opcional (a US-68 mediu +22% de custo sem ganho no `dev-back`). As outras perguntam **uma vez** (só com terminal —
 sem ele registram `não` e avisam). A resposta vai para `.marvin/ferramentas.md` e as
 próximas execuções leem o registro em vez de perguntar — um `não` escrito ali nunca é
 sobrescrito. `--use=<ferramenta>` flipa para `sim`; `--no-questions` registra `não` nas
@@ -427,8 +428,9 @@ turno relê o contexto inteiro.
 --graph-docs      devolve a base de conhecimento ao graphify-out/graph.json e sai
                   (o que o hook roda depois do `graphify update .`); respeita --dry-run
 --use=<ferramenta>  registra `sim` para uma ferramenta opcional sem perguntar (alias: --usar=)
---install         aceita, já não é necessária: graphify, ponytail e o catálogo ECC se instalam sozinhos
-                  quando faltam (ponytail/ECC no escopo do projeto; graphify via uv, do perfil do usuário).
+--install         aceita, já não é necessária: graphify e o catálogo ECC se instalam sozinhos
+                  quando faltam (ECC no escopo do projeto; graphify via uv, do perfil do usuário).
+                  Instala também o ponytail, mas só onde o registro diz `sim`.
                   Falha vira aviso e sai 0
 --no-questions    registra `não` para toda ferramenta OPCIONAL (playwright), mesmo com terminal
 --help, -h        uso; sai sem escrever nada
@@ -742,7 +744,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-529 verificações, zero dependência. Cobre os invariantes que protegem o disco
+532 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

@@ -115,7 +115,8 @@ const USE = new Set(process.argv.filter(a => a.startsWith('--use=') || a.startsW
   .flatMap(a => a.split('=').slice(1).join('=').split(',')).map(s => s.trim().toLowerCase()).filter(Boolean));
 const NO_QUESTIONS = hasFlag('--no-questions', '--sem-perguntas');
 // --install (US-50): runs the install commands of tools the record says `sim` but the machine lacks.
-// US-59: graphify, ponytail and ecc are mandatory (cost) and install themselves WITHOUT the flag; it stays accepted.
+// US-59/US-71: graphify and ecc are mandatory (cost) and install themselves WITHOUT the flag; it stays accepted.
+// Ponytail is optional again (US-68 measured no gain): the flag installs it only where the record says `sim`.
 const INSTALL = hasFlag('--install');
 // --regenerar (US-58): backs up and removes the generated command/glossary files so the normal blocks recreate them from the current template.
 const REGENERAR = hasFlag('--regenerar');
@@ -174,10 +175,11 @@ Flags:
                     (what the post-commit hook runs after \`graphify update .\`);
                     needs an existing graph, honors --dry-run
   --use=<tool>      record \`sim\` for an optional tool without asking (alias: --usar=)
-  --install         graphify, ponytail and ecc are MANDATORY (cost): the ones this machine lacks
-                    install themselves, no flag needed (ponytail and the ecc catalog at project
-                    scope, graphify via uv in the user profile, by nature). The flag is accepted
-                    and also installs other tools the record says \`sim\`. A failure warns, exits 0
+  --install         graphify and ecc are MANDATORY (cost): the ones this machine lacks
+                    install themselves, no flag needed (the ecc catalog at project scope,
+                    graphify via uv in the user profile, by nature). The flag is accepted
+                    and also installs other tools the record says \`sim\` (ponytail is optional:
+                    only where the record says \`sim\`). A failure warns, exits 0
   --regenerar       rebuild the files Marvin generates from the current template: the
                     /retomar /us /fechar /refinar /continuar commands, Planejamento/README.md,
                     the team glossary and .claude/agents/README.md. Each existing one is
@@ -2363,12 +2365,13 @@ const ponytailReach = () => {
 };
 const PENDING_INSTALL = [];   // US-50: tools whose --install commands run late, once the settings.json hook is written
 const OPTIONAL_TOOLS = [
-  // US-59: `obrigatorio` = mandatory for cost. A new record is born `sim`, a missing tool installs itself
+  // US-59: `obrigatorio` = mandatory for cost (graphify, ecc). A new record is born `sim`, a missing tool installs itself
   // (no flag), and an explicit `não` from the owner is respected, with a warning that the default is mandatory.
+  // US-71: ponytail is NOT mandatory (US-68 measured +22% cost, no gain): the pre-US-59 branches decide.
   { nome: 'graphify', padrao: true, obrigatorio: true, detecta: () => onPath('graphify --version'), instalar: 'uv tool install graphifyy  ·  pipx install graphifyy',
     instalarProjeto: ['uv tool install graphifyy'], global: true,   // US-50: lands in the user profile by nature (owner-accepted exception)
     alcance: 'saída JSON/markdown em graphify-out/ — qualquer agente lê; só o hook é do Claude, e não é usado' },
-  { nome: 'ponytail', obrigatorio: true, detecta: detectPonytail, instalar: 'claude plugin marketplace add DietrichGebert/ponytail  ·  claude plugin install ponytail',
+  { nome: 'ponytail', detecta: detectPonytail, instalar: 'claude plugin marketplace add DietrichGebert/ponytail  ·  claude plugin install ponytail',
     // US-50: --scope project verified on the installed CLI (user|project|local); no -y/--accept-command
     instalarProjeto: ['claude plugin marketplace add DietrichGebert/ponytail --scope project', 'claude plugin install ponytail --scope project'],
     get alcance() { return ponytailReach(); } },
@@ -2414,7 +2417,7 @@ const OPTIONAL_TOOLS = [
         else info(f.nome + ' not found — recording `sim` (mandatory); installing it below');
       } else if (!state) {
         uses = false;
-        info(f.nome + ' not found — recording `não`. To adopt it later:  ' + f.instalar + '  then  marvin --use=' + f.nome);
+        info(f.nome + ' not found — recording `não`. To adopt it later:  marvin --use=' + f.nome + ' --install');
       } else if (f.padrao) {
         uses = true;   // US-38: found on PATH → `sim` without asking (TTY or not); an existing record never gets here
         ok(f.nome + ' ' + state + ' — recording `sim` (flip with `marvin --use=` or by editing ' + RECORD_REL + ')');
@@ -2433,7 +2436,7 @@ const OPTIONAL_TOOLS = [
     const installedState = uses && f.instalarProjeto ? f.detecta() : null;
     if (uses && f.instalarProjeto && !installedState) {
       if (!INSTALL && !f.obrigatorio) {
-        info(f.nome + ' is `sim` but not installed' + (f.global ? ' (global — user profile, not project)' : ' (project scope)')
+        info(f.nome + ' not found — the record says `sim` but it is not installed' + (f.global ? ' (global — user profile, not project)' : ' (project scope)')
           + '. To install:  ' + f.instalarProjeto.join('  &&  ') + '  — or rerun with  marvin --install');
       } else {
         PENDING_INSTALL.push(f);   // runs AFTER the settings.json block: the plugin CLI creates that file (see below)
@@ -2472,10 +2475,10 @@ tags: [referencia]
 # Ferramentas opcionais
 
 Registro de "este projeto usa X". O \`marvin\` detecta e escreve aqui (graphify no PATH
-entra como \`sim\`, sem perguntar; as opcionais perguntam uma vez); para mudar, edite a coluna **usa** ou rode \`marvin --use=<ferramenta>\`. **Alcance** diz
+entra como \`sim\`, sem perguntar; as opcionais perguntam uma vez, se detectadas e com terminal — sem isso, \`não\`); para mudar, edite a coluna **usa** ou rode \`marvin --use=<ferramenta>\`. **Alcance** diz
 quem consegue ler o que a ferramenta produz — nem tudo é de todo agente.
 
-**Obrigatórias (custo):** graphify, ponytail e ecc entram como \`sim\` e o \`marvin\` instala o
+**Obrigatórias (custo):** graphify e ecc entram como \`sim\` e o \`marvin\` instala o
 que faltar na máquina, sem flag. Um \`não\` escrito aqui é respeitado, mas o \`marvin\` avisa que o
 padrão é obrigatório.
 
@@ -5013,7 +5016,11 @@ const UPDATES = [
     marca: /Unknown\s+skill\s+\/x/, desde: '3.4.2',
     o_que: 'the trigger "`Unknown skill /x` → copy the skill from the ECC catalog (`cp -r ~/.claude/plugins/marketplaces/ecc/skills/x .claude/skills/`); if the ECC lacks it, create it and record the origin"' },
   { arquivo: path.relative(ROOT, RECORD).replace(/\\/g, '/'), marca: /Obrigatórias\s+\(custo\)/, desde: '3.3.0',
-    o_que: 'the note that graphify, ponytail and ecc are mandatory (installed by marvin; an explicit `não` is respected with a warning)' },
+    o_que: 'the note that graphify and ecc are mandatory (installed by marvin; an explicit `não` is respected with a warning)' },
+  // US-71: ponytail left the mandatory list; the header of a record written in 3.3.0-3.4.1 still names it.
+  { arquivo: path.relative(ROOT, RECORD).replace(/\\/g, '/'), marca: /graphify\s+e\s+ecc\s+entram/, desde: '3.4.2',
+    soCom: (() => { try { return /Obrigatórias\s+\(custo\)/.test(fs.readFileSync(RECORD, 'utf8')); } catch { return false; } })(),
+    o_que: 'the note that only graphify and ecc are mandatory — ponytail is optional again (US-68 measured no gain); the old header still lists it' },
   // US-70: the hook Marvin wrote runs only `graphify update .`, which drops the doc nodes at every
   // commit. `soCom` = Marvin's own signature: someone else's hook (or none) gets no warning.
   { arquivo: '.git/hooks/post-commit', marca: /--graph-docs|--graphify-rebuild/,

@@ -491,13 +491,12 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
 {
   const a = arena('ponytail');
   const r0 = run(a, '--no-git');
-  check('US-59: ponytail ausente registra `sim` (obrigatório) e a instalação que falha vira aviso, exit 0',
-        /^\| ponytail \| sim \|/m.test(fs.readFileSync(path.join(a.proj, '.marvin', 'ferramentas.md'), 'utf8'))
-        && /ponytail not found — recording `sim`/.test(r0.stdout)
-        && /ponytail: `claude plugin marketplace add DietrichGebert\/ponytail[^\n]*failed/.test(r0.stdout) && r0.status === 0, r0.stdout.slice(-600));
-  check('US-59: ponytail obrigatório: AGENTS.md e agents/README já trazem a seção dele',
-        /ponytail/i.test(fs.readFileSync(path.join(a.proj, 'AGENTS.md'), 'utf8'))
-        && /Ponytail: em que papel entra/.test(fs.readFileSync(path.join(a.proj, '.claude', 'agents', 'README.md'), 'utf8')));
+  check('US-59: ponytail ausente registra `não` (opcional), não tenta instalar e sai 0',
+        /^\| ponytail \| não \|/m.test(fs.readFileSync(path.join(a.proj, '.marvin', 'ferramentas.md'), 'utf8'))
+        && !/DietrichGebert/.test(r0.stdout) && r0.status === 0, r0.stdout.slice(-600));
+  check('US-59: ponytail opcional: sem --use, AGENTS.md não ganha a seção e agents/README não ganha a tabela',
+        !/ponytail/i.test(fs.readFileSync(path.join(a.proj, 'AGENTS.md'), 'utf8'))
+        && !/Ponytail: em que papel entra/.test(fs.readFileSync(path.join(a.proj, '.claude', 'agents', 'README.md'), 'utf8')));
   cleanup(a);
 
   const b = arena('ponytail-inst');
@@ -567,7 +566,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
 
   // US-67: project already has the record `sim` → the 2nd run must still warn DISABLED.
   const d5 = plant('ponytail-desligado-registrado', ON, null);
-  run(d5, '--no-git');
+  run(d5, '--no-git', '--use=ponytail');
   fs.writeFileSync(path.join(d5.lar, '.claude', 'settings.json'), OFF);
   const s5 = run(d5, '--no-git');
   check('US-67: registro já `sim` + false no usuário: a 2ª rodada avisa DISABLED',
@@ -669,8 +668,8 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
     env: { ...process.env, HOME: f.lar, USERPROFILE: f.lar, ...pathWith(bin) },
   });
   const recF = fs.readFileSync(recOf(f), 'utf8');
-  check('US-38: graphify no PATH e sem TTY grava `sim` sem perguntar; ponytail instalado também (obrigatório)',
-        /^\| graphify \| sim \|/m.test(recF) && /^\| ponytail \| sim \|/m.test(recF) && rf.status === 0, rf.stdout.slice(-500));
+  check('US-38: graphify no PATH e sem TTY grava `sim` sem perguntar; ponytail instalado sem terminal grava `não` e avisa --use=ponytail (opcional)',
+        /^\| graphify \| sim \|/m.test(recF) && /^\| ponytail \| não \|/m.test(recF) && /--use=ponytail/.test(rf.stdout) && rf.status === 0, rf.stdout.slice(-500));
   check('US-38: com graphify no PATH não há aviso de falta', !/graphify NOT found/.test(rf.stdout), rf.stdout.slice(-500));
   // an explicit `não` from the human survives graphify being on PATH (invariant 2)
   fs.writeFileSync(recOf(f), recF.replace(/^\| graphify \| sim \|/m, '| graphify | não |'));
@@ -2166,8 +2165,8 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const PT = 'claude plugin install ponytail --scope project';
   const before = snap();
   const dry = run(a, '--no-git', '--no-questions', '--dry-run');
-  check('US-59: --dry-run (sem flag) lista os installs dos três: ponytail, graphify e o catálogo ECC',
-        dry.status === 0 && /run +claude plugin marketplace add DietrichGebert\/ponytail --scope project/.test(dry.stdout) && new RegExp('run +' + PT).test(dry.stdout)
+  check('US-59: --dry-run (sem flag) lista os installs dos obrigatórios (graphify e o catálogo ECC) e não o do ponytail',
+        dry.status === 0 && !/DietrichGebert\/ponytail/.test(dry.stdout) && !new RegExp('run +' + PT).test(dry.stdout)
         && /run +uv tool install graphifyy/.test(dry.stdout) && /run +claude plugin marketplace add affaan-m\/ECC --scope project/.test(dry.stdout), dry.stdout.slice(-700));
   check('US-59: --dry-run não escreve nada', snap() === before);
   // Fake `claude` and `uv` that log each call (a regression must never reach the REAL ones).
@@ -2186,10 +2185,11 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   });
   const r1 = comFake();
   const c1 = calls();
-  check('US-59: sem nenhuma flag o marvin instala o que falta, na ordem (graphify, ponytail em dois passos, catálogo ECC)',
-        r1.status === 0 && c1.length === 4 && /^uv tool install graphifyy/.test(c1[0]) && /marketplace add DietrichGebert\/ponytail/.test(c1[1])
-        && /plugin install ponytail --scope project/.test(c1[2]) && /marketplace add affaan-m\/ECC --scope project/.test(c1[3]), r1.stdout.slice(-500) + JSON.stringify(c1));
-  check('US-59: --install continua aceita e faz o mesmo', comFake('--install').status === 0 && calls().length === 8);
+  check('US-59: sem nenhuma flag o marvin instala o que falta, na ordem (graphify, catálogo ECC), sem ponytail',
+        r1.status === 0 && c1.length === 2 && /^uv tool install graphifyy/.test(c1[0]) && /marketplace add affaan-m\/ECC --scope project/.test(c1[1])
+        && !c1.some(l => /ponytail/.test(l)), r1.stdout.slice(-500) + JSON.stringify(c1));
+  { const k = calls().length; const ri = comFake('--install'); const c2 = calls().slice(k);
+    check('US-59: --install continua aceita e faz o mesmo (graphify e ECC; o `não` do ponytail é respeitado)', ri.status === 0 && c2.length === 2 && !c2.some(l => /ponytail/.test(l)), JSON.stringify(c2)); }
 
   // Missing commands: PATH with an empty directory, so neither `claude` nor `uv` exist (the shell itself is found by absolute path).
   const vazio = fs.mkdtempSync(path.join(os.tmpdir(), 'marvin-teste-vazio-'));
@@ -2213,6 +2213,41 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   check('US-59: com os três detectados, a execução seguinte não roda nenhum exec', r3.status === 0 && calls().length === n0, JSON.stringify(calls().slice(n0)) + r3.stdout.slice(-400));
   fs.rmSync(fake, { recursive: true, force: true });
   cleanup(a);
+
+  // US-71: old `sim` record + plugin absent. Without --install nothing is installed (only the hint); with it, both steps run.
+  {
+    const u = arena('us71-sim');
+    run(u, '--no-git', '--no-questions', '--use=ponytail');   // the record gets `sim` on request
+    const fk2 = fs.mkdtempSync(path.join(os.tmpdir(), 'marvin-teste-claude-'));
+    const lg = path.join(fk2, 'chamadas.log');
+    fs.writeFileSync(path.join(fk2, 'claude'), '#!/bin/sh\necho "claude $@" >> "' + lg + '"\n', { mode: 0o755 });
+    fs.writeFileSync(path.join(fk2, 'claude.cmd'), '@echo claude %* >> "' + lg + '"\r\n');
+    fs.writeFileSync(path.join(fk2, 'uv'), '#!/bin/sh\necho "uv $@" >> "' + lg + '"\n', { mode: 0o755 });
+    fs.writeFileSync(path.join(fk2, 'uv.cmd'), '@echo uv %* >> "' + lg + '"\r\n');
+    const ct = () => fs.existsSync(lg) ? fs.readFileSync(lg, 'utf8').split(/\r?\n/).map(l => l.trim()).filter(Boolean) : [];
+    const go = (...fl) => spawnSync(process.execPath, [SCRIPT, '--no-git', '--no-questions', ...fl], {
+      cwd: u.proj, encoding: 'utf8', env: { ...process.env, HOME: u.lar, USERPROFILE: u.lar, ...pathWith(fk2 + path.delimiter + NO_GRAPHIFY) },
+    });
+    const g1 = go();
+    check('US-71: registro `sim` antigo + plugin ausente, sem --install: nenhum `claude plugin install ponytail` e a dica aparece',
+          g1.status === 0 && !ct().some(l => /ponytail/.test(l)) && /ponytail not found/.test(g1.stdout) && /claude plugin install ponytail/.test(g1.stdout), g1.stdout.slice(-500) + JSON.stringify(ct()));
+    const antes = ct().length;
+    const g2 = go('--install');
+    const novos = ct().slice(antes).filter(l => /ponytail/.test(l));
+    check('US-71: registro `sim` + plugin ausente, com --install: os dois passos (marketplace add e plugin install)',
+          g2.status === 0 && novos.length === 2 && /marketplace add DietrichGebert\/ponytail/.test(novos[0]) && /plugin install ponytail --scope project/.test(novos[1]), g2.stdout.slice(-500) + JSON.stringify(novos));
+    fs.rmSync(fk2, { recursive: true, force: true });
+    cleanup(u);
+
+    const v = arena('us71-nao');
+    const rv1 = run(v, '--no-git', '--no-questions');
+    const rv2 = run(v, '--no-git', '--no-questions');
+    check('US-71: registro `não` não imprime MANDATORY (nem na primeira rodada, nem na seguinte)',
+          /^\| ponytail \| não \|/m.test(fs.readFileSync(path.join(v.proj, '.marvin', 'ferramentas.md'), 'utf8'))
+          && !/MANDATORY/.test(rv1.stdout.split('\n').filter(l => /ponytail/i.test(l)).join('\n'))
+          && !/MANDATORY/.test(rv2.stdout.split('\n').filter(l => /ponytail/i.test(l)).join('\n')), rv1.stdout.slice(-400) + rv2.stdout.slice(-400));
+    cleanup(v);
+  }
 
   // The plugin CLI creates .claude/settings.json: the install must run AFTER marvin's SessionStart hook is written.
   const b = arena('us59-hook');
@@ -2539,8 +2574,8 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const o = arena('us55-outro');
   plant(o, entry('project', path.join(path.dirname(mine(o)), 'outro-projeto')));
   const ro = state(o);
-  check('US-55: só entrada de outro projeto = não instalado (registra `sim`, obrigatório, e ensina a instalar)',
-        /ponytail not found/.test(ro) && /^\| ponytail \| sim \|/m.test(fs.readFileSync(path.join(o.proj, '.marvin', 'ferramentas.md'), 'utf8')), ro.slice(-400));
+  check('US-55: só entrada de outro projeto = não instalado (registra `não`, opcional, e ensina a instalar)',
+        /ponytail not found/.test(ro) && /^\| ponytail \| não \|/m.test(fs.readFileSync(path.join(o.proj, '.marvin', 'ferramentas.md'), 'utf8')), ro.slice(-400));
   cleanup(o);
 
   const d = arena('us55-dry');

@@ -18,7 +18,7 @@ quem consegue ler o que a ferramenta produz — nem tudo é de todo agente.
 `versiona:` do cabeçalho deste arquivo e o `marvin` passa a ler dela. Linha que já está no
 `.gitignore` o `marvin` avisa, nunca remove.
 
-**Obrigatórias (custo):** graphify, ponytail e ecc entram como `sim` e o `marvin` instala o
+**Obrigatórias (custo):** graphify e ecc entram como `sim` e o `marvin` instala o
 que faltar na máquina, sem flag. Um `não` escrito aqui é respeitado, mas o `marvin` avisa que o
 padrão é obrigatório.
 

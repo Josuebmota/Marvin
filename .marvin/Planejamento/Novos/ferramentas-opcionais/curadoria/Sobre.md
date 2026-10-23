@@ -15,6 +15,7 @@ pai: ../Sobre.md
 - [US-61-coordenador-sonnet](US-61-coordenador-sonnet/Sobre.md)
 - [US-63-skill-citada-vem-do-ecc](US-63-skill-citada-vem-do-ecc/Sobre.md)
 - [US-69-ecc-na-matriz](US-69-ecc-na-matriz/Sobre.md)
+- [US-71-ponytail-sai-do-obrigatorio](US-71-ponytail-sai-do-obrigatorio/Sobre.md)
 
 ## Rumo
 - **15/10/2026** — aberta com a decisão do dono "o Marvin é o único plugin" ([decisoes-fechadas](../../../../Contexto/Arquitetura/decisoes-fechadas.md)).
