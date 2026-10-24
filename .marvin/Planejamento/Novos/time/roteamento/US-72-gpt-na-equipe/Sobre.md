@@ -1,0 +1,70 @@
+---
+tipo: us
+estado: refinada
+pai: ../Sobre.md
+name: US-72-gpt-na-equipe
+description: "O Marvin sabe que o usuário tem Claude e GPT: detecta o Codex, põe o GPT na matriz de papéis e permite mandar etapa para ele (codex exec). Refino de 23/10 com tl e po; a divisão em US e a ordem esperam o dono (divergência abaixo)."
+---
+# US-72 — o GPT na equipe: detectar, matriz e ponte
+
+**Por quê:** pedido do dono, 23/10: "o Marvin é um plugin de apoio ao desenvolvimento por LLM; eu tenho Claude e GPT, e graças a um plugin consigo me conectar ao GPT — o Marvin precisa mapear e saber disso"; "pode dividir as atividades com o GPT"; "junta o GPT na matriz de papéis (com Terra, se existir)". Regra do dono (decisoes-fechadas, 23/10): o que ajuda vira obrigatório; medido sem ganho, sai. Hoje:
+- **não detecta** — `marvin.mjs:2199` ("local declarations only, no credential discovery or calls", decisão da US-19/20); disponibilidade só por flag (L290-302) ou prompt (L2240-2256); `validAvailability` (L274-277) só aceita `tested: 'not-confirmed'`.
+- **matriz só Claude** — template do `Equipe.md` (`marvin.mjs:2878-2904`, coluna "Partida no Claude"); `IA.md:39` sem par do Haiku; `mapa-capacidades.md:42-45` tem Astra, Sol, Luna.
+- **sem ponte** — `delegacao.md:127-146` manda verificar o meio antes de prometer; subagente do Claude não roda GPT.
+- **sem custo do GPT** — `computeSpend` (L697) só lê `~/.claude/projects`; `PRICES` (L686-692) sem GPT.
+
+Fatos medidos em 23/10: `codex` CLI 0.160.1 no PATH, logado via ChatGPT, padrão `gpt-6-luna` · médio; catálogo local: `gpt-6-astra`, `gpt-6-sol`, `gpt-6.1-sol`, `gpt-6-luna` e **Terra só como `gpt-5.6-terra`** (geração anterior). O `codex exec -C <repo> -s read-only "<prompt>" < /dev/null` revisou a US-71 (~56k tokens) e pegou 2 pontos que o `qa` não pegou, sem mudar a decisão do `tl`; **sem `< /dev/null` trava em silêncio** esperando stdin.
+
+**Pronto quando** (proposta; a forma final depende do ❓ 1):
+1. **Detecção** — `--check`/`--status` mostram "detectado × declarado" para `claude` e `codex` (`codex` no PATH, `codex login status` com stdin fechado e timeout, chave `model` do `~/.codex/config.toml`); grava só quando o `disponibilidade.json` não existe, com `source: 'detected'` e `tested` continuando `not-confirmed` (invariante 3); esquema compatível com a 3.4.2 (hoje um Marvin antigo aborta com exit 1 diante de esquema desconhecido, L2216 — bloqueio do `tl` se entrar sem compatibilidade). Teste hermético com `codex` falso (`.cmd` e sh) e sem codex.
+2. **Matriz** — coluna paralela "Partida no GPT" no template do `Equipe.md` (não substitui a do Claude), `IA.md` com o par do Haiku e `mapa-capacidades.md` com fonte; texto "ponto de partida, não equivalência; confira o catálogo do executor"; marca nova em `UPDATES` (`desde`, `\s+`, `soCom: !OLD_LAYOUT`).
+3. **Ponte e custo** — o procedimento `codex exec` (stdin fechado, só leitura para revisão) no `delegacao.md`; custo do Codex no `--status` só com selo de confiança baixa (convenção de ferramenta não confirmada) ou fora.
+
+**Não entra:** ler `~/.codex/auth.json` ou qualquer token; chamar `codex exec` na detecção (gasta cota); roteamento automático; sobrescrever o `disponibilidade.json` existente (invariante 2); religar o plugin `codex@openai-codex` (ver ❓); implementação no GPT (`dev-back`) antes de um par.
+
+## Perguntas
+- ❓ **1. Divergência `tl` × `po` — o GPT entra na matriz agora ou só depois de medir?**
+  - `tl`: 3 US em ordem **detecção → matriz → ponte e custo**. A matriz entra já como "ponto de partida" paralelo (tl/po → Sol · médio; sessão/dev/qa → Luna · médio/baixo; scout → `gpt-5.6-terra` · baixo depois de conferir preço e fonte; Astra fora, como o Fable). A revisão independente pelo GPT já pode ir como etapa manual no *Time* (medida na US-71).
+  - `po`: 4 US em ordem **par medido → detecção → matriz** (+ custo do Codex condicional). Primeiro um par na mesma etapa — `qa` Claude sozinho × `qa` + `codex exec` no mesmo diff, aceite independente, ≥ 2 pares; se pagar, a revisão pelo GPT vira obrigatória com Codex disponível. A matriz entra **só com o papel medido**, os outros "não medido" — a coluna do Claude só virou regra depois de 4 pares (US-29), e coluna sem medição é palpite gerado em todo projeto.
+- ❓ 2. Terra (`gpt-5.6-terra`, geração anterior) entra como par do Haiku? `tl`: sim, se preço e fonte conferirem (recuperação não precisa da geração nova). `po`: não, a menos que você o use de fato; Luna em esforço baixo serve ao `scout`.
+- ❓ 3. A ponte é o `codex exec` (já testado) ou o plugin `openai-codex` religado? `tl` e `po`: o CLI.
+- ❓ 4. O GPT é assinatura — conta como $0 marginal? Se sim, a régua do par é achados e cota, não dólar, e a US do custo do Codex não abre.
+- ❓ 5. Dividir atividades = só revisão cruzada pelo GPT agora, ou também implementação no GPT? A segunda pede outro par.
+- ❓ 6. Papéis do GPT ainda não medidos: a matriz mostra "não medido" ou omite a linha?
+
+## Fluxos ligados
+- [delegacao.md](../../../../Contexto/Fluxos/delegacao.md) · [IA.md](../../../../Contexto/IA.md) · [mapa-capacidades.md](../../../../Contexto/mapa-capacidades.md)
+
+## Código tocado
+- `marvin.mjs` — `validAvailability`
+- `marvin.mjs` — `AI_EXECUTORS`
+- `marvin.mjs` — `computeSpend`
+- `marvin.mjs` — bloco 0a de disponibilidade (~L2199-2266)
+- `marvin.mjs` — template do `Equipe.md` (~L2878-2904)
+- `marvin.mjs` — `UPDATES`
+- `teste.mjs`
+
+## Time
+Triagem 23/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo). Por frente, partida do `tl` (o `po` acrescenta a etapa do par antes):
+
+| etapa | papel | modelo · esforço | motivo | estado |
+|---|---|---|---|---|
+| dividir em US e fechar os ❓ | po + tl | Opus · médio | decisão de escopo depois do dono | pendente |
+| par: revisão cruzada (se o dono seguir o `po`) | qa + GPT via `codex exec` | Sonnet · baixo + gpt-6-luna · médio | aceite independente, ≥ 2 pares | pendente |
+| detecção: implementar | dev-back | Sonnet · médio | spec fechada | pendente |
+| detecção: revisão independente | GPT via `codex exec -s read-only … < /dev/null` | gpt-6-luna · médio | medido na US-71 | pendente |
+| detecção: verificar | qa | Sonnet · baixo | teste hermético com codex falso | pendente |
+| matriz: pesquisa Terra | scout | Haiku · baixo | recuperação | pendente |
+| matriz: texto e `UPDATES` | dev-back | Sonnet · médio | template | pendente |
+| ler o diff (cada frente) | tl | Opus · médio | esquema v1/v2, invariante 3, `UPDATES` | pendente |
+
+Grafo (fresco, 23/10 15:57): `validAvailability` (L274) e `AI_EXECUTORS` (L271) com grau 1 e `affected` vazio — a extração não segue o uso no mesmo arquivo; usos reais por Grep (L297, L2215, L2242). `computeSpend` (L697): comunidade própria, grau 7. Bloco 0a e template sem nó — Grep.
+
+## Skills
+Nenhuma.
+
+## Rumo
+- **23/10/2026** — refinada da linha ⚪ do IA.md (pedido do dono). Divergência `tl` × `po` sobre medir antes da matriz, e 5 ❓ do dono. O próximo chat divide em US conforme a resposta.
+
+## Evidência
+<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
