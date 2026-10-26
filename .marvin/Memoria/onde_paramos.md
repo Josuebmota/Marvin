@@ -23,5 +23,5 @@ metadata:
 
 ## Em andamento
 
-- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — tag `v3.4.2`; US-73 concluída 26/10 (entra no próximo `--release`, 3.4.3); fila: US-79, US-74/75/80, US-78/81, US-76/77; US-72 espera o dono. Falta: desligar conectores da conta (~9,7k/sessão)
+- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — tag `v3.4.2`; US-73 e US-79 concluídas 26/10 (entram no próximo `--release`, 3.4.3); fila: US-74/75/80, US-78/81, US-76/77; US-72 espera o dono. Falta: desligar conectores da conta (~9,7k/sessão)
 

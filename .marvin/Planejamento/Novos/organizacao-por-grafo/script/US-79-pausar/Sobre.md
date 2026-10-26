@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-79-pausar
 description: "`marvin --us <caminho> --pausar \"<espera>\"` muda a US para `pausada` com `espera:` e `desde:` sem editar à mão, e escreve a linha no Rumo; o caminho de volta põe `ativa`. Issue #7, item 4."
@@ -22,7 +22,7 @@ description: "`marvin --us <caminho> --pausar \"<espera>\"` muda a US para `paus
 - [organizacao-por-grafo.md](../../../../../Contexto/Arquitetura/organizacao-por-grafo.md)
 
 ## Código tocado
-- `marvin.mjs` — bloco do `--us` (~L1741-1760)
+- `marvin.mjs` — bloco do `--us`, ramo `--pausar`/`--ativa` (~L1785-1825); `readNode` (~L602, `espera:` sem corte de " #"); ajuda (~L213-216); janela de custo da US-65 (~L751); template "Pausada não é ativa" (~L3208-3211); `UPDATES` (~L5050)
 - `teste.mjs`
 
 ## Time
@@ -30,9 +30,9 @@ Triagem 26/10/2026 (`/refinar`): o `tl` já tinha avisado que o comando reescrev
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| implementar | dev-back | Sonnet · médio | edição cirúrgica de frontmatter, idempotente | pendente |
-| verificar | qa | Sonnet · baixo | `node teste.mjs` | pendente |
-| ler o diff | tl | Opus · médio | escreve no `Sobre.md` de alguém (invariantes 1 e 2) | pendente |
+| implementar | dev-back | Sonnet · médio | edição cirúrgica de frontmatter, idempotente | feito — 3 rodadas (entrega, correção do " #", ajustes do tl) |
+| verificar | qa | Sonnet · baixo | `node teste.mjs` | feito — aprovou o prático; achou a quebra de idempotência com " #" |
+| ler o diff | tl | Opus · médio | escreve no `Sobre.md` de alguém (invariantes 1 e 2) | feito — aprovado com 2 ajustes, aplicados |
 
 Grafo: o bloco do `--us` é código de topo, sem nó — localizado por Grep (L1741-1760).
 
@@ -112,6 +112,10 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **26/10/2026** — refinada da issue #7 (item 4), com a resposta do dono. Depois da US-73.
+- **26/10/2026** — feita. Decisões: o ramo edita só o frontmatter e a linha no Rumo e sai, sem regerar Impacto nem pôr ponteiro na nota (tl: item 4 do contrato); `--pausar`/`--ativa` recusam US `concluida`/`cancelada` (tl: o `--ativa` reabria em silêncio); `espera:` é texto livre, sem corte de " #" no `readNode` (qa achou a idempotência quebrando com "issue #12"). O template ensina o comando → marca `desde: 3.4.3` no `UPDATES`; este repo nem tinha a regra "Pausada não é ativa" no `Planejamento/README.md` — acrescentada à mão. Não entra: cabeçalho `## Rumo` com sufixo cria um segundo Rumo (template não gera isso).
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: 566 passaram (eram 545; +21 do bloco US-79).
+- qa: prático numa base temporária — pausar, repetir (byte-idêntico), espera diferente, `--ativa`, `--dry-run`, CRLF, bloco Pausadas no `--status`.
+- tl: aprovado com ajustes (guarda de US fechada, template + `UPDATES`), aplicados.

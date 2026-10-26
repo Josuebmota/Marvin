@@ -210,6 +210,10 @@ Flags:
                     Sobre.md chain that is missing and adds the pointer to the note
      --refinada     the US is born \`estado: refinada\` — refined, in the queue, NOT in the
                     note; /refinar uses it. --status groups refined USs into ilhas by file
+     --pausar "<w>" on an existing US: estado: pausada + espera: <w> + desde: today in the
+                    frontmatter, and a line in the Rumo. Same espera = nothing written;
+                    another espera = only espera changes. Never creates the US
+     --ativa        the way back: estado: ativa, espera/desde removed, line in the Rumo
   --fechar          read-only: what changed in git (uncommitted + today's commits) and is
                     in NO active US's "Código tocado" — the map is incomplete or the work
                     leaked. /fechar runs it
@@ -595,7 +599,8 @@ const canonFile = (f) => {
 const readNode = (file) => {
   let txt; try { txt = fs.readFileSync(file, 'utf8'); } catch { return null; }
   const fm = txt.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  const field = (k) => { const m = fm && fm[1].match(new RegExp('^' + k + ':[ \\t]*(.+)$', 'm')); return m ? m[1].trim().replace(/\s+#.*$/, '') : null; };
+  // `espera:` is free text ("issue #12"): no trailing-comment cut, unlike the closed-vocabulary fields (US-79).
+  const field = (k) => { const m = fm && fm[1].match(new RegExp('^' + k + ':[ \\t]*(.+)$', 'm')); return m ? (k === 'espera' ? m[1].trim() : m[1].trim().replace(/\s+#.*$/, '')) : null; };
   const title = ((txt.match(/^#\s+(.+)$/m) || [])[1] || path.basename(path.dirname(file))).trim();
   const rumo = [...txt.matchAll(/^- \*\*(\d{2})\/(\d{2})\/(\d{4})[^*]*\*\*[ —-]*(.*)$/gm)]
     .map(m => ({ data: new Date(+m[3], +m[2] - 1, +m[1]), texto: m[4].trim() }));
@@ -743,7 +748,7 @@ const computeSpend = (nodes = []) => {
           if (!/^\s*(?:(?:do|then)\s+)?(?:\w+=\S*\s+)*(?:node\s+\S*marvin\.mjs|npx\s+marvin-kb|marvin)(?:\s|$)/.test(seg) || /--dry-run/.test(seg)) continue;
           const op = seg.match(/--us(?:=|\s+)["']?([^\s"']+)/);
           if (/--fechar\b/.test(seg)) cur = null;   // the closing turn still belongs to the window it closes
-          else if (op && !/--status|--refinada/.test(seg) && !failed.has(b.id) && /^US-\d+$/.test(usKeyOf(op[1]))) cur = turnUs = usKeyOf(op[1]);
+          else if (op && !/--status|--refinada|--pausar|--ativa\b/.test(seg) && !failed.has(b.id) && /^US-\d+$/.test(usKeyOf(op[1]))) cur = turnUs = usKeyOf(op[1]);
         }
       }
       const m = o.message; if (!m || !m.usage || o.type !== 'assistant') continue;
@@ -1777,6 +1782,47 @@ if (argUS || hasFlag('--us')) {
   if (OLD_LAYOUT) { err('old layout — run `marvin --migrar` first'); process.exit(1); }
   const parts = target.replace(/\\/g, '/').replace(/^\/|\/$/g, '').split('/');
   if (parts.length !== 4 || !['Novos', 'Manutencao'].includes(parts[0])) { err('expected 4 parts: Novos|Manutencao / <Epic> / <Feature> / <US>'); process.exit(2); }
+  // US-79: --pausar "<wait>" / --ativa edit the frontmatter of an EXISTING US and leave. Own branch: nothing
+  // below applies (no chain created, no pointer in the note, no Impacto regenerated — the rest of the file is the human's).
+  const pausarArg = process.argv.find(a => a === '--pausar' || a.startsWith('--pausar='));
+  const ATIVA = hasFlag('--ativa');
+  if (pausarArg || ATIVA) {
+    if (pausarArg && ATIVA) { err('--pausar and --ativa are opposites — pass one'); process.exit(2); }
+    const wait = pausarArg ? (pausarArg.startsWith('--pausar=') ? pausarArg.slice(9) : process.argv[process.argv.indexOf('--pausar') + 1] || '').replace(/\s+/g, ' ').trim() : '';
+    if (pausarArg && (!wait || wait.startsWith('--'))) { err('usage: marvin --us <caminho> --pausar "<what it is waiting for>"'); process.exit(2); }
+    const usFile = path.join(DOCS, 'Planejamento', ...parts, 'Sobre.md');
+    let txt; try { txt = fs.readFileSync(usFile, 'utf8'); } catch { err('US not found: ' + target + ' — --pausar/--ativa never create one'); process.exit(1); }
+    const fmM = txt.match(/^---(\r?\n)([\s\S]*?)\r?\n---/);
+    const node = readNode(usFile);
+    if (!fmM || !node || node.tipo !== 'us') { err(target + ' is not a US (frontmatter tipo: us) — only the US level can be paused'); process.exit(1); }
+    if (node.estado === 'concluida' || node.estado === 'cancelada') { err(target + ' is ' + node.estado + ' — --pausar/--ativa do not reopen a closed US'); process.exit(1); }
+    const today = (() => { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); })();
+    const eol = fmM[1];
+    const keep = fmM[2].split(/\r?\n/).filter(l => !/^(espera|desde):/.test(l));   // estado/espera/desde are rewritten below
+    const rawWait = (fmM[2].match(/^espera:[ \t]*(.+?)[ \t]*$/m) || [])[1];   // raw frontmatter value, not node.espera
+    const sameWait = pausarArg && node.estado === 'pausada' && rawWait === wait;
+    const estado = pausarArg ? 'pausada' : 'ativa';
+    const desde = pausarArg ? (node.estado === 'pausada' && node.desde ? node.desde : today) : null;   // changing only the wait keeps `desde`
+    const stateLines = ['estado: ' + estado, ...(pausarArg ? ['espera: ' + wait, 'desde: ' + desde] : [])];
+    const ix = keep.findIndex(l => /^estado:/.test(l));
+    if (ix >= 0) keep.splice(ix, 1, ...stateLines); else keep.push(...stateLines);
+    const rumoLine = pausarArg ? `- **${today}** — pausada: ${wait}` : `- **${today}** — volta a ativa`;
+    const noop = pausarArg ? sameWait && node.desde : node.estado === 'ativa' && !node.espera && !node.desde;
+    if (noop) { info(target + ' already ' + (pausarArg ? 'pausada with this espera' : 'ativa') + ' — nothing written'); process.exit(0); }
+    let out = txt.slice(0, fmM.index) + '---' + eol + keep.join(eol) + eol + '---' + txt.slice(fmM.index + fmM[0].length);
+    const rm = out.match(/^##[ \t]+Rumo[ \t]*\r?\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
+    if (rm) {
+      const body = rm[1].replace(/\s+$/, ''), tail = rm[1].slice(body.length);
+      out = out.slice(0, rm.index) + rm[0].slice(0, rm[0].length - rm[1].length) + body + (body ? eol : '') + rumoLine + (tail || eol) + out.slice(rm.index + rm[0].length);
+    } else {
+      const ev = out.match(/^##[ \t]+Evidência/m);
+      out = ev ? out.slice(0, ev.index) + '## Rumo' + eol + rumoLine + eol + eol + out.slice(ev.index) : out.replace(/\s*$/, '') + eol + eol + '## Rumo' + eol + rumoLine + eol;
+    }
+    fsw.writeFileSync(usFile, out);
+    ok(path.relative(ROOT, usFile).replace(/\\/g, '/') + ' — ' + (pausarArg ? 'pausada: ' + wait : 'estado: ativa (espera/desde removed)'));
+    if (ATIVA && node.estado === 'refinada') info('the US was refinada — run `marvin --us ' + target + '` (no flag) to put the pointer in the note');
+    process.exit(0);
+  }
   const REFINED = hasFlag('--refinada');   // born in the queue, not in the note (US-16)
   log('\x1b[1m--us\x1b[0m — ' + target + (REFINED ? '  (refinada)' : '') + '\n');
   const today = (() => { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); })();
@@ -3161,6 +3207,8 @@ Regras:
   a ilha é o que uma sessão ataca em sequência, uma por vez.
 - **Pausada não é ativa.** US parada que não acabou é \`estado: pausada\`, com \`espera:\` (o que ou
   quem destrava) e \`desde:\` no frontmatter; o \`--status\` a lista à parte, fora de "Em andamento".
+  Pausa-se com \`marvin --us <caminho> --pausar "<espera>"\` (a volta é \`--ativa\`), sem editar o
+  frontmatter à mão.
 - **Aresta é link.** Fluxo ligado, código tocado e pai são links/caminhos — é o que o
   grafo lê.
 
@@ -4996,6 +5044,10 @@ const UPDATES = [
   { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
     marca: /ativa\s+\|\s+pausada/, soCom: !OLD_LAYOUT, desde: '3.4.3',
     o_que: 'the `estado: pausada` in the state comment — a US not being worked on but not finished (`espera:` and `desde:` in the frontmatter); --status lists it apart from "Em andamento", and an invalid estado gets a warning' },
+  // US-79: the Pausada rule now says how to pause without hand-editing the frontmatter.
+  { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
+    marca: /--pausar\s+"/, soCom: !OLD_LAYOUT, desde: '3.4.3',
+    o_que: 'in the "Pausada não é ativa" rule, the command `marvin --us <caminho> --pausar "<espera>"` (back: `--ativa`) instead of editing the frontmatter by hand' },
   // A role with no agent file inherits the session model (Opus) unless the delegation passes `model`.
   { arquivo: path.relative(ROOT, path.join(DOCS, TEAM_GUIDE)).replace(/\\/g, '/'),
     marca: /Papel\s+sem\s+arquivo\s+de\s+agente/, desde: '3.2.0',

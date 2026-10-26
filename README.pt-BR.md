@@ -402,6 +402,10 @@ turno relê o contexto inteiro.
                   Sobre.md que falta e põe o ponteiro na nota
    --refinada     a US nasce `estado: refinada` — refinada, na fila, FORA da nota. O /refinar
                   usa; o --status agrupa as refinadas em ilhas por arquivo
+   --pausar "<e>" numa US existente: `estado: pausada`, `espera: <e>` e `desde: hoje` no
+                  frontmatter, mais uma linha no Rumo. Mesma espera = não escreve nada;
+                  outra espera = troca só o `espera:`. Nunca cria a US
+   --ativa        o caminho de volta: `estado: ativa`, sem espera/desde, linha no Rumo
 --fechar          só leitura: o que mudou no git (não commitado + commits de hoje) e NÃO
                   está no "Código tocado" de nenhuma US ativa — o mapa está incompleto ou o
                   trabalho vazou. O /fechar roda
@@ -744,7 +748,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-545 verificações, zero dependência. Cobre os invariantes que protegem o disco
+566 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

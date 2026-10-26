@@ -2990,6 +2990,80 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── US-79. --us <path> --pausar "<wait>" / --ativa: edits the frontmatter and the Rumo of an existing US, nothing else.
+{
+  const a = arena('us79');
+  run(a, '--no-git');
+  const key = 'Novos/E/F/US-1';
+  run(a, '--us', key);
+  const f = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E', 'F', 'US-1', 'Sobre.md');
+  const rd = () => fs.readFileSync(f, 'utf8');
+  const noteBefore = fs.readFileSync(path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md'), 'utf8');
+  const orig = rd();
+  const dry = run(a, '--us', key, '--pausar', 'o dono responder', '--dry-run');
+  check('US-79: --dry-run não escreve', dry.status === 0 && rd() === orig, dry.stdout.slice(-300));
+  const r1 = run(a, '--us', key, '--pausar', 'o dono responder');
+  const t1 = rd();
+  check('US-79: pausar grava estado, espera e desde no frontmatter', r1.status === 0 && /^estado: pausada$/m.test(t1) && /^espera: o dono responder$/m.test(t1) && /^desde: \d\d\/\d\d\/\d{4}$/m.test(t1) && (t1.match(/^---/gm) || []).length === 2, r1.stdout.slice(-300));
+  check('US-79: pausar acrescenta a linha no Rumo', /^- \*\*\d\d\/\d\d\/\d{4}\*\* — pausada: o dono responder$/m.test(t1));
+  check('US-79: o resto do arquivo fica intacto', t1.replace(/^estado:.*\nespera:.*\ndesde:.*\n/m, 'estado: ativa\n').replace(/^- \*\*[^\n]*pausada:[^\n]*\n/m, '') === orig, t1);
+  check('US-79: pausar não mexe na nota', fs.readFileSync(path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md'), 'utf8') === noteBefore);
+  run(a, '--us', key, '--pausar=o dono responder');
+  check('US-79: pausar de novo com a mesma espera deixa o arquivo byte-idêntico (forma --pausar=)', rd() === t1);
+  const desde1 = (t1.match(/^desde: (.*)$/m) || [])[1];
+  run(a, '--us', key, '--pausar', 'outra coisa');
+  const t2 = rd();
+  check('US-79: espera diferente troca só a espera, mantém o desde e soma uma linha no Rumo',
+        /^espera: outra coisa$/m.test(t2) && (t2.match(/^espera:/gm) || []).length === 1 && (t2.match(/^desde: (.*)$/m) || [])[1] === desde1 && (t2.match(/^- \*\*[^\n]*pausada:/gm) || []).length === 2, t2);
+  check('US-79: --pausar sem espera, ou junto de --ativa, é erro de uso e não escreve',
+        run(a, '--us', key, '--pausar').status === 2 && run(a, '--us', key, '--pausar', '').status === 2 && run(a, '--us', key, '--pausar', 'x', '--ativa').status === 2 && rd() === t2);
+  run(a, '--us', key, '--ativa', '--dry-run');
+  check('US-79: --ativa --dry-run não escreve', rd() === t2);
+  run(a, '--us', key, '--ativa');
+  const t3 = rd();
+  check('US-79: --ativa põe ativa, tira espera e desde e escreve no Rumo', /^estado: ativa$/m.test(t3) && !/^(espera|desde):/m.test(t3) && /^- \*\*\d\d\/\d\d\/\d{4}\*\* — volta a ativa$/m.test(t3), t3);
+  run(a, '--us', key, '--ativa');
+  check('US-79: --ativa de novo não escreve nada', rd() === t3);
+  // espera with " #": free text, not a comment — the same espera twice must stay byte-identical.
+  run(a, '--us', key, '--pausar', 'issue #12');
+  const t4 = rd();
+  run(a, '--us', key, '--pausar', 'issue #12');
+  check('US-79: espera com " #": pausar duas vezes é byte-idêntico', /^espera: issue #12$/m.test(t4) && rd() === t4 && (t4.match(/pausada: issue #12/g) || []).length === 1, t4);
+  check('US-79: --status mostra a espera inteira, com o " #"', /espera: issue #12/.test(run(a, '--status').stdout.replace(/\x1b\[[0-9;]*m/g, '')));
+  run(a, '--us', key, '--ativa');
+  // CRLF is preserved.
+  fs.writeFileSync(f, rd().replace(/\r?\n/g, '\r\n'));
+  run(a, '--us', key, '--pausar', 'crlf');
+  const t5 = rd();
+  check('US-79: CRLF preservado no --pausar', /^estado: pausada\r$/m.test(t5) && !/[^\r]\n/.test(t5.replace(/^\n/, '')), JSON.stringify(t5.slice(0, 120)));
+  run(a, '--us', key, '--ativa');
+  // concluida and non-US paths refuse without writing.
+  const conc = rd().replace(/^estado: ativa/m, 'estado: concluida');
+  fs.writeFileSync(f, conc);
+  const rc = run(a, '--us', key, '--pausar', 'x');
+  check('US-79: US concluida dá erro e não escreve', rc.status !== 0 && rd() === conc);
+  const ra = run(a, '--us', key, '--ativa');
+  check('US-79: --ativa em US concluida dá erro e o arquivo fica byte-idêntico', ra.status === 1 && rd() === conc);
+  const canc = conc.replace(/^estado: concluida/m, 'estado: cancelada');
+  fs.writeFileSync(f, canc);
+  check('US-79: cancelada recusa --pausar e --ativa sem escrever', run(a, '--us', key, '--pausar', 'x').status === 1 && run(a, '--us', key, '--ativa').status === 1 && rd() === canc);
+  // UPDATES: the template teaches the command; a base without it is flagged, a new one is not.
+  const pr79 = path.join(a.proj, '.marvin', 'Planejamento', 'README.md');
+  const pt = fs.readFileSync(pr79, 'utf8');
+  check('US-79: o template novo ensina o --pausar', /--pausar\s+"/.test(pt));
+  fs.writeFileSync(pr79, pt.replace(/\s*Pausa-se com[\s\S]*?à mão\./, ''));
+  const old79 = run(a, '--no-git', '--no-questions').stdout;
+  check('US-79: base sem o --pausar no template ganha o aviso do passo 10', /10\. Updates/.test(old79) && /--pausar/.test(old79), old79.slice(-600));
+  const feat = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E', 'F', 'US-2', 'Sobre.md');
+  fs.mkdirSync(path.dirname(feat), { recursive: true });
+  fs.writeFileSync(feat, '---\ntipo: feature\nestado: ativa\n---\n# x\n');
+  const rf = run(a, '--us', 'Novos/E/F/US-2', '--pausar', 'x');
+  check('US-79: caminho que não é US dá erro e não escreve', rf.status !== 0 && fs.readFileSync(feat, 'utf8') === '---\ntipo: feature\nestado: ativa\n---\n# x\n');
+  const lost = run(a, '--us', 'Novos/E/F/US-9', '--pausar', 'x');
+  check('US-79: US inexistente dá erro e não cria', lost.status !== 0 && !fs.existsSync(path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E', 'F', 'US-9')));
+  cleanup(a);
+}
+
 // ── LAST. The number of checks claimed in the READMEs matches the real one.
 //
 // It has drifted THREE times in this repository: 26 when there were 28, 48 when there

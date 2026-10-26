@@ -48,6 +48,10 @@ Regras:
   fica na fila, fora da nota; vira `ativa` quando alguém a pega (`marvin --us` de novo põe o
   ponteiro). O `--status` agrupa as refinadas em **ilhas** pelo arquivo do *Código tocado* —
   a ilha é o que uma sessão ataca em sequência, uma por vez.
+- **Pausada não é ativa.** US parada que não acabou é `estado: pausada`, com `espera:` (o que ou
+  quem destrava) e `desde:` no frontmatter; o `--status` a lista à parte, fora de "Em andamento".
+  Pausa-se com `marvin --us <caminho> --pausar "<espera>"` (a volta é `--ativa`), sem editar o
+  frontmatter à mão.
 - **Aresta é link.** Fluxo ligado, código tocado e pai são links/caminhos — é o que o
   grafo lê.
 
