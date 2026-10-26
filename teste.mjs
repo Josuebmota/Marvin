@@ -1288,6 +1288,29 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── 9w2. US-78: --status flags a document above the ceiling and a fragment nobody points to;
+//      a small linked one triggers neither; --curto stays silent about both.
+{
+  const a = arena('teto-doc');
+  run(a, '--no-git');
+  const ctx = path.join(a.proj, '.marvin', 'Contexto');
+  fs.mkdirSync(ctx, { recursive: true });
+  fs.writeFileSync(path.join(ctx, 'indice.md'), '# Índice\n\n- [ligado](ligado.md)\n- [grande](grande.md)\n');
+  fs.writeFileSync(path.join(ctx, 'ligado.md'), '# Ligado\n\npequeno e apontado.\n');
+  fs.writeFileSync(path.join(ctx, 'grande.md'), '# Grande\n\n' + 'linha de texto\n'.repeat(320));
+  fs.writeFileSync(path.join(ctx, 'solto.md'), '# Solto\n\nninguém aponta para mim.\n');
+  fs.writeFileSync(path.join(ctx, 'filho.md'), '---\npai: indice.md\n---\n# Filho\n\ntem pai declarado.\n');
+  const before = fs.readFileSync(path.join(ctx, 'solto.md'), 'utf8');
+  const s = run(a, '--status').stdout.replace(/\x1b\[[0-9;]*m/g, '');
+  check('--status acusa documento acima do teto, com o caminho e como quebrar', /Documentos grandes[\s\S]*Contexto\/grande\.md[\s\S]*índice curto/.test(s), s.slice(0, 600));
+  check('--status acusa fragmento órfão com o caminho', /Fragmentos órfãos[\s\S]*Contexto\/solto\.md/.test(s), s.slice(0, 600));
+  check('documento ligado e pequeno não dispara nenhum aviso', !/! \.marvin\/Contexto\/(ligado|filho|indice)\.md/.test(s), s.slice(0, 600));
+  check('o --status do teto não escreve nada', fs.readFileSync(path.join(ctx, 'solto.md'), 'utf8') === before);
+  const c = run(a, '--status', '--curto').stdout;
+  check('--curto não fala de documento grande nem de órfão', !/Documentos grandes|Fragmentos órfãos|grande\.md|solto\.md/.test(c), c.slice(0, 300));
+  cleanup(a);
+}
+
 // ── 9x. --status --html: the only form of --status that writes — and only in .marvin/.status/,
 //     git-ignored. One point per COMMIT (git date, not Date.now()): two runs on the same
 //     commit do not duplicate. Without --html the jsonl is not born. The HTML opens offline: inline JSON.

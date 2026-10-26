@@ -23,5 +23,6 @@ metadata:
 
 ## Em andamento
 
-- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — tag `v3.4.2`; US-73, 79, 74, 75 e 80 concluídas 26/10 (entram no próximo `--release`, 3.4.3); fila: US-78/81, US-76/77; US-72 espera o dono; anotação sem US: hook com `core.hooksPath` (husky) não roda e a saída diz que roda. Falta: desligar conectores da conta (~9,7k/sessão)
+
+- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — tag `v3.4.2`; US-73, 79, 74, 75, 80 e 78 concluídas 26/10 (entram no próximo `--release`, 3.4.3); fila: US-81, US-76/77; US-72 espera o dono; anotações sem US: hook com `core.hooksPath` (husky) não roda e a saída diz que roda; `--us` com o caminho do `Sobre.md` (como o `/retomar` ensina) falha com "expected 4 parts", só aceita o relativo ao `Planejamento/`; quebrar os 8 documentos grandes e ligar os 3 órfãos que o `--status` aponta. Falta: desligar conectores da conta (~9,7k/sessão)
 
