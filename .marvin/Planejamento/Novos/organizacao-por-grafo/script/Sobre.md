@@ -22,6 +22,12 @@ pai: ../Sobre.md
 - [US-18-simbolo-nao-derruba-o-arquivo](US-18-simbolo-nao-derruba-o-arquivo/Sobre.md)
 - [US-36-painel-perguntas-decisoes-roadmap](US-36-painel-perguntas-decisoes-roadmap/Sobre.md)
 - [US-52-anotada-no-status](US-52-anotada-no-status/Sobre.md)
+- [US-73-estado-pausada](US-73-estado-pausada/Sobre.md)
+- [US-75-impacto-com-teto](US-75-impacto-com-teto/Sobre.md)
+- [US-76-visao-do-dono](US-76-visao-do-dono/Sobre.md)
+- [US-77-visao-do-dono-epicos](US-77-visao-do-dono-epicos/Sobre.md)
+- [US-79-pausar](US-79-pausar/Sobre.md)
+- [US-81-anotacao-vira-us-anotada](US-81-anotacao-vira-us-anotada/Sobre.md)
 
 ## Rumo
 - **10/09/2026** — aberta.

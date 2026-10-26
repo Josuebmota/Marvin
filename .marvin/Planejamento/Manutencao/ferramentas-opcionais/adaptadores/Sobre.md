@@ -16,6 +16,7 @@ pai: ../Sobre.md
 - [US-66-graphify-preserva-origem-doc](US-66-graphify-preserva-origem-doc/Sobre.md)
 - [US-67-ponytail-enabledplugins](US-67-ponytail-enabledplugins/Sobre.md)
 - [US-70-hook-refaz-docs-do-grafo](US-70-hook-refaz-docs-do-grafo/Sobre.md)
+- [US-80-hook-do-grafo-por-padrao](US-80-hook-do-grafo-por-padrao/Sobre.md)
 
 ## Rumo
 - **14/10/2026** — aberta, com a primeira US.
