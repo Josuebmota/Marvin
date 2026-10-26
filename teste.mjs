@@ -2947,10 +2947,11 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   fs.mkdirSync(path.join(c.proj, '.git'), { recursive: true });
   plantHook(c, OLD_HOOK);
   plantGraph(c);
-  const w = run(c, '--no-git');
-  check('US-70: hook antigo do Marvin sem a flag: o passo 10 avisa e cita --graphify-git-hook',
+  // US-80: without the opt-out the default install would already rewrite it, so the warn needs `--no-graph-hook`.
+  const w = run(c, '--no-git', '--no-graph-hook');
+  check('US-70: hook antigo do Marvin com o opt-out: o passo 10 avisa e cita --graphify-git-hook',
         /post-commit — missing[^\n]*/.test(w.stdout) && /--graphify-git-hook/.test(w.stdout), w.stdout.slice(-600));
-  check('US-70: sem a flag o hook antigo não é reescrito', readHook(c) === OLD_HOOK);
+  check('US-70: com o opt-out o hook antigo não é reescrito', readHook(c) === OLD_HOOK);
   run(c, '--no-git', '--graphify', '--graphify-git-hook');
   const rewritten = readHook(c);
   check('US-70: hook antigo do Marvin é reescrito com --graphify-git-hook e passa a conter --graph-docs',
@@ -3146,6 +3147,80 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const lost = run(a, '--us', 'Novos/E/F/US-9', '--pausar', 'x');
   check('US-79: US inexistente dá erro e não cria', lost.status !== 0 && !fs.existsSync(path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E', 'F', 'US-9')));
   cleanup(a);
+}
+
+// ── US-80. The post-commit hook of the graph is installed by default (graphify in use + git directory);
+//     `--no-graph-hook` turns it off and records `hook do grafo: desligado` in ferramentas.md; `--graphify-git-hook` forces.
+//     No real graphify: `equipped` puts a fake one (exit 0) on PATH and a synthetic graph.json makes step 8b reach the hook.
+{
+  const hookOf = (x) => path.join(x.proj, '.git', 'hooks', 'post-commit');
+  const readHook = (x) => { try { return fs.readFileSync(hookOf(x), 'utf8'); } catch { return null; } };
+  const recOf = (x) => { try { return fs.readFileSync(path.join(x.proj, '.marvin', 'ferramentas.md'), 'utf8'); } catch { return ''; } };
+  const OFFLINE = /^hook do grafo: desligado/gm;
+  const SEMHOOK = /sem o hook de post-commit do Marvin/;
+  const mk = (name) => {
+    const x = equipped(arena(name));
+    fs.mkdirSync(path.join(x.proj, '.git'), { recursive: true });
+    fs.mkdirSync(path.join(x.proj, 'graphify-out'), { recursive: true });
+    fs.writeFileSync(path.join(x.proj, 'graphify-out', 'graph.json'), JSON.stringify({ directed: true, nodes: [], edges: [] }));
+    return x;
+  };
+
+  // 1. no flag: installed; a second run leaves it byte-identical
+  const a = mk('us80-padrao');
+  const r1 = run(a, '--no-git', '--no-questions');
+  const h1 = readHook(a);
+  check('US-80: sem flag, graphify em uso e .git: o post-commit é instalado', h1 !== null && /marvin\s+—\s+atualiza\s+o\s+grafo/.test(h1) && /--graph-docs/.test(h1), r1.stdout.slice(-500));
+  check('US-80: a instalação diz o que fez e como desligar', /graph refreshes itself after each commit/.test(r1.stdout) && /--no-graph-hook/.test(r1.stdout), r1.stdout.slice(-500));
+  run(a, '--no-git', '--no-questions');
+  check('US-80: duas rodadas não duplicam nem reescrevem o hook (byte-idêntico)', readHook(a) === h1);
+  check('US-80: o --status não acusa hook ausente quando o hook está lá', !SEMHOOK.test(run(a, '--status').stdout));
+  cleanup(a);
+
+  // 2. opt-out: not installed, recorded once, the next run without the flag does not re-enable it
+  const b = mk('us80-optout');
+  const ro = run(b, '--no-git', '--no-questions', '--no-graph-hook');
+  check('US-80: --no-graph-hook não instala o hook', readHook(b) === null && ro.status === 0, ro.stdout.slice(-400));
+  check('US-80: --no-graph-hook registra `hook do grafo: desligado` no ferramentas.md, uma vez', (recOf(b).match(OFFLINE) || []).length === 1, recOf(b).slice(-300));
+  run(b, '--no-git', '--no-questions');
+  check('US-80: a rodada seguinte sem flag não religa o hook', readHook(b) === null);
+  run(b, '--no-git', '--no-questions', '--no-graph-hook');
+  check('US-80: repetir --no-graph-hook não duplica a linha no ferramentas.md', (recOf(b).match(OFFLINE) || []).length === 1);
+  const st = run(b, '--status');
+  check('US-80: com o opt-out o --status não acusa hook ausente', !SEMHOOK.test(st.stdout), st.stdout.slice(-400));
+  // 3. --graphify-git-hook lifts the recorded opt-out
+  run(b, '--no-git', '--no-questions', '--graphify-git-hook');
+  check('US-80: --graphify-git-hook força: instala e tira a linha do opt-out', readHook(b) !== null && !/hook do grafo:\s*desligado/i.test(recOf(b)), recOf(b).slice(-300));
+  cleanup(b);
+
+  // 4. someone else's post-commit is untouched, by default and with the opt-out
+  const c = mk('us80-alheio');
+  const alheio = '#!/bin/sh\necho lint\n';
+  fs.mkdirSync(path.dirname(hookOf(c)), { recursive: true });
+  fs.writeFileSync(hookOf(c), alheio);
+  const rc = run(c, '--no-git', '--no-questions');
+  check('US-80: hook alheio fica intocado byte a byte, sem flag', readHook(c) === alheio);
+  check('US-80: hook alheio: avisa e mostra a linha para acrescentar à mão', /a post-commit hook already exists/.test(rc.stdout) && /--graph-docs/.test(rc.stdout), rc.stdout.slice(-500));
+  cleanup(c);
+
+  // 5. --dry-run writes neither the hook nor the opt-out line
+  const d = mk('us80-dry');
+  run(d, '--no-git', '--no-questions');   // the base exists, the hook too: remove it so the dry-run has something to (not) write
+  fs.rmSync(hookOf(d));
+  const recBefore = recOf(d);
+  run(d, '--no-git', '--no-questions', '--dry-run');
+  check('US-80: --dry-run não escreve o hook', readHook(d) === null);
+  run(d, '--no-git', '--no-questions', '--dry-run', '--no-graph-hook');
+  check('US-80: --dry-run --no-graph-hook não registra o opt-out', recOf(d) === recBefore && readHook(d) === null);
+  cleanup(d);
+
+  // 6. a git worktree (`.git` is a FILE): no crash, no hook
+  const e = mk('us80-worktree');
+  fs.rmSync(path.join(e.proj, '.git'), { recursive: true });
+  fs.writeFileSync(path.join(e.proj, '.git'), 'gitdir: ../elsewhere\n');
+  const rw = run(e, '--no-git', '--no-questions');
+  check('US-80: worktree (.git é arquivo): não quebra e avisa que pulou', rw.status === 0 && /post-commit hook skipped: this is a git worktree/.test(rw.stdout), rw.stdout.slice(-400) + rw.stderr.slice(-300));
+  cleanup(e);
 }
 
 // ── LAST. The number of checks claimed in the READMEs matches the real one.

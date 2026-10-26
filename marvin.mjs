@@ -80,7 +80,7 @@ const NO_GIT = hasFlag('--no-git', '--sem-git');
 // Shows everything it would do and writes nothing — no file, no junction, no git init.
 const DRY = hasFlag('--dry-run');
 // Optional and never required: builds graphify's code graph for structural queries.
-// Does NOT install a hook — see step 8b for why.
+// Does NOT use `graphify hook install` — see step 8b for why (the post-commit is Marvin's own, US-80).
 // `let`: without the flag, the decision comes from the `.marvin/ferramentas.md` record (block 0b).
 let GRAPHIFY = hasFlag('--graphify');
 // Ponytail (Claude Code plugin): has no flag of its own — only the record decides (block
@@ -103,8 +103,13 @@ const GRAPHIFY_REBUILD = hasFlag('--graphify-rebuild');
 // Writes `.git/hooks/post-commit` so the graph refreshes itself after the commit.
 // Does NOT use `graphify hook install`: that one rebuilds the repository ROOT, which in
 // a monorepo is precisely the path that drops the sub-repos from the graph — it would automate the bug.
-// Off by default because a hook lives in `.git/`, is not versioned and fires invisibly.
+// US-80: ON by default whenever graphify is in use and the project is a git repository, because a graph that
+// ages silently was measured in the field (11 days behind). The cost stays visible: a hook lives in `.git/`, is
+// not versioned and fires invisibly, so the install says so in a line and `--no-graph-hook` turns it off and
+// records the choice in ferramentas.md (the next run does not re-enable it). `--graphify-git-hook` is the
+// force: it also lifts a recorded opt-out. Someone else's post-commit is never touched (invariant 1).
 const GRAPHIFY_GIT_HOOK = hasFlag('--graphify-git-hook');
+const NO_GRAPH_HOOK = hasFlag('--no-graph-hook');
 // Only diagnoses the mount and exits non-zero if it is broken.
 // Writes nothing — neither in the repository nor in the profile.
 const CHECK = hasFlag('--check');
@@ -167,10 +172,15 @@ Flags:
   --graphify-label  name the graph communities using the \`claude\` CLI on PATH.
                     Off by default: one call at a time, so it costs minutes and quota
   --graphify-rebuild  rebuild an existing graph (the default never overwrites one)
-  --graphify-git-hook  write .git/hooks/post-commit so the graph refreshes itself.
+  --graphify-git-hook  force the post-commit hook (.git/hooks/post-commit) that refreshes the graph.
+                    It is already installed by default when graphify is in use and the
+                    project is a git repository; this flag also lifts a recorded opt-out.
                     Never overwrites a post-commit you already have, except an old one
                     Marvin wrote itself (signature "marvin — atualiza o grafo"), which
                     is rewritten to also run --graph-docs
+  --no-graph-hook   do not install the post-commit hook, and record the choice in
+                    .marvin/ferramentas.md (\`hook do grafo: desligado\`) so later runs do not
+                    re-enable it. To turn it back on:  marvin --graphify-git-hook
   --graph-docs      put the knowledge base back into graphify-out/graph.json and exit
                     (what the post-commit hook runs after \`graphify update .\`);
                     needs an existing graph, honors --dry-run
@@ -386,6 +396,11 @@ const stampOf = () => {
   const f = (k) => { const m = fm[1].match(new RegExp('^' + k + ':[ \\t]*(.+)$', 'm')); return m ? m[1].trim().replace(/^["']|["']$/g, '') : null; };
   return { montado: f('marvin_montado'), ultima: f('marvin') };
 };
+// US-80: the opt-out of the graph's post-commit hook is a loose line in ferramentas.md (`hook do grafo: desligado`),
+// written by `--no-graph-hook`. Tolerant like `ecc fora:`: backticks, list item or quote around it, `hook do grafo`
+// with spaces or hyphens, and `desligado`/`não`/`off` as the value. Read-only here; the write goes through fsw below.
+const HOOK_OPT_OUT_LINE = /^[ \t>*-]*`?hook[ \t-]+do[ \t-]+grafo`?:[ \t]*`?(?:desligado|n[aã]o|off)\b[^\n]*(?:\r?\n|(?![\s\S]))/mi;
+const hookOptedOut = () => { try { return HOOK_OPT_OUT_LINE.test(fs.readFileSync(RECORD_FILE, 'utf8')); } catch { return false; } };
 let STAMP_BEFORE = null;   // what the record said BEFORE this run rewrote it — step 10 reports the migration from it
 
 // ── What loads in EVERY session, unasked: the source (AGENTS.md), the adapter
@@ -1500,8 +1515,10 @@ const computeStatus = () => {
         const velho = Number.isFinite(commitSec) && Math.floor(mtime.getTime() / 1000) < commitSec;
         // Counts as a problem only without the Marvin hook. With it, a graph older than the commit is the hook's
         // background run still going (or about to), so it is shown but does not flip the exit code.
-        st.grafoAlerta = { velho, semHook: !hookOk };
-        if (!hookOk) st.problemas++;
+        // US-80: whoever turned the hook off on purpose (`hook do grafo: desligado` in ferramentas.md) is not a problem.
+        const semHook = !hookOk && !hookOptedOut();
+        st.grafoAlerta = { velho, semHook };
+        if (semHook) st.problemas++;
       }
     } catch {}
   }
@@ -2629,6 +2646,24 @@ padrão é obrigatório.
       const head = /^versiona:/m.test(m[1]) ? m[1].replace(/^versiona:[ \t]*.+$/m, () => 'versiona: ' + value) : m[1] + '\nversiona: ' + value;
       fsw.writeFileSync(RECORD, t.replace(m[0], () => '---\n' + head + '\n---'));
       ok(RECORD_REL + ': versiona: ' + value);
+    }
+  }
+  // Graph hook choice (US-80): only a flag writes it. `--no-graph-hook` appends the loose line `hook do grafo:
+  // desligado` (once); `--graphify-git-hook` removes it — the force also lifts a recorded opt-out. Both through fsw.
+  if (NO_GRAPH_HOOK || GRAPHIFY_GIT_HOOK) {
+    let t = ''; try { t = fs.readFileSync(RECORD, 'utf8'); } catch {}
+    if (NO_GRAPH_HOOK && GRAPHIFY_GIT_HOOK) warn('--no-graph-hook and --graphify-git-hook together: the opt-out wins');
+    if (NO_GRAPH_HOOK) {
+      if (!t) info(RECORD_REL + ': would record `hook do grafo: desligado`');   // dry-run: the template is not on disk yet
+      else if (!HOOK_OPT_OUT_LINE.test(t)) {
+        const nl = /\r\n/.test(t) ? '\r\n' : '\n';
+        const gap = /\n[ \t]*\r?\n$/.test(t) ? '' : t.endsWith('\n') ? nl : nl + nl;   // one blank line before it, never a growing stack
+        fsw.writeFileSync(RECORD, t + gap + 'hook do grafo: desligado — escolha do dono; para religar: marvin --graphify-git-hook' + nl);
+        ok(RECORD_REL + ': hook do grafo: desligado (the next run does not re-enable it)');
+      }
+    } else if (t && HOOK_OPT_OUT_LINE.test(t)) {
+      fsw.writeFileSync(RECORD, t.replace(new RegExp(HOOK_OPT_OUT_LINE.source, 'gmi'), () => ''));
+      ok(RECORD_REL + ': hook do grafo: opt-out removed');
     }
   }
 }
@@ -4776,11 +4811,15 @@ if (GRAPHIFY) {
       } else ok('graph is newer than all source — it is fresh');
     }
 
-    // ── post-commit: the graph refreshes itself after the commit (only with the flag).
+    // ── post-commit: the graph refreshes itself after the commit (US-80: by default; `--no-graph-hook`
+    // or the recorded `hook do grafo: desligado` turns it off; `--graphify-git-hook` forces it).
     // It is NOT `graphify hook install`. That one rebuilds the repository ROOT, and in a
     // monorepo the root is what does NOT have the code inside — it would automate, on
     // every commit, exactly the damage the step above exists to avoid.
-    if (GRAPHIFY_GIT_HOOK) {
+    const hookOff = NO_GRAPH_HOOK || (hookOptedOut() && !GRAPHIFY_GIT_HOOK);
+    if (hookOff) {
+      info('post-commit hook off (' + (NO_GRAPH_HOOK ? '--no-graph-hook' : '`hook do grafo: desligado` in ' + RECORD_REL) + ') — the graph will age; to turn it on:  marvin --graphify-git-hook');
+    } else {
       // Forward slash on Windows too: inside `sh` quotes the backslash only avoids
       // becoming an escape by luck, and node accepts both. Do not depend on luck.
       // Monorepo: the full cycle already merges the docs. Otherwise `graphify update .` drops
@@ -4794,7 +4833,7 @@ if (GRAPHIFY) {
       const script = `#!/bin/sh
 # marvin — atualiza o grafo de código depois do commit.
 # O grafo é DERIVADO: envelhece a cada commit e não avisa. Isto é o que fecha essa lacuna.
-# Instalado por: marvin --graphify --graphify-git-hook   ·   remover: apague este arquivo.
+# Instalado por: marvin   ·   remover: apague este arquivo e rode marvin --no-graph-hook.
 
 [ "\${MARVIN_SKIP_GRAPH_HOOK:-0}" = "1" ] && exit 0
 
@@ -4818,8 +4857,11 @@ echo "[marvin] atualizando o grafo em segundo plano (log: $LOG)"
 `;
       const hooksDir = path.join(ROOT, '.git', 'hooks');
       const target = path.join(hooksDir, 'post-commit');
-      if (!fs.existsSync(path.join(ROOT, '.git'))) {
-        warn('--graphify-git-hook skipped: this is not a git repository');
+      let gitDir = false; try { gitDir = fs.statSync(path.join(ROOT, '.git')).isDirectory(); } catch {}
+      if (!gitDir) {
+        // A worktree has a `.git` FILE (its hooks live in the main repository): mkdir under it would throw. Not an error by default.
+        const why = fs.existsSync(path.join(ROOT, '.git')) ? 'this is a git worktree (its hooks live in the main repository)' : 'this is not a git repository';
+        (GRAPHIFY_GIT_HOOK ? warn : info)('post-commit hook skipped: ' + why);
       } else if (fs.existsSync(target)) {
         let current = '';
         try { current = fs.readFileSync(target, 'utf8'); } catch {}
@@ -4827,6 +4869,8 @@ echo "[marvin] atualizando o grafo em segundo plano (log: $LOG)"
           // Ours. Up to date = already runs --graph-docs (or the monorepo full cycle).
           if (/--graph-docs|--graphify-rebuild/.test(current)) {
             info('.git/hooks/post-commit already runs the docs refresh — nothing to do');
+            // An older header says "delete this file to remove it" — now the next run reinstalls it.
+            if (!/--no-graph-hook/.test(current)) info('  turn it off for good: marvin --no-graph-hook');
           } else {
             fsw.writeFileSync(target, script);
             try { if (!DRY) fs.chmodSync(target, 0o755); } catch {}   // no-op on Windows
@@ -4847,13 +4891,13 @@ echo "[marvin] atualizando o grafo em segundo plano (log: $LOG)"
         ok('.git/hooks/post-commit — the graph refreshes itself after each commit');
         info('  it runs:  ' + command);
         info('  NOT versioned: it lives in .git/, so it does not reach the team');
-        info('  skip it once with:  MARVIN_SKIP_GRAPH_HOOK=1 git commit …');
+        info('  skip it once with:  MARVIN_SKIP_GRAPH_HOOK=1 git commit …   ·   turn it off for good:  marvin --no-graph-hook');
       }
     }
 
     log('');
     info('How to use it — and what was NOT installed:');
-    info('  · no hook, and graphify made no change to CLAUDE.md.');
+    info('  · no `graphify hook install`, and graphify made no change to CLAUDE.md.');
     info('    `graphify claude install` answers MANDATORY on every Read/Grep about a');
     info('    graph it does not guarantee is fresh. Do not run it.');
     info('  · graphify-out/graph.html is ready — open it in any browser, no server.');

@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-80-hook-do-grafo-por-padrao
 description: "Com o graphify presente, o marvin instala o hook de post-commit por padrão (opção de desligar), para o grafo não envelhecer. Inverte a decisão de marvin.mjs:106. Issue #9."
@@ -35,9 +35,9 @@ Triagem 26/10/2026 (`/refinar`): o `tl` marcou que ligar por padrão escreve em 
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| implementar | dev-back | Sonnet · médio | o instalador já existe; muda o gatilho e o opt-out | pendente |
-| verificar | qa | Sonnet · baixo | `node teste.mjs` + os dois READMEs | pendente |
-| ler o diff | tl | Opus · médio | escreve no `.git` do usuário por padrão; `UPDATES` | pendente |
+| implementar | dev-back | Sonnet · médio | o instalador já existe; muda o gatilho e o opt-out | feito |
+| verificar | qa | Sonnet · baixo | `node teste.mjs` + os dois READMEs | feito — aprovou, com prático numa base temporária |
+| ler o diff | tl | Opus · médio | escreve no `.git` do usuário por padrão; `UPDATES` | feito — aprovado com 1 ajuste opcional, aplicado |
 
 Grafo (fresco): `GRAPHIFY_GIT_HOOK` (L107) grau 1, só `contains` — uso real em L4675 por Grep; passo 8b é código de topo, sem nó.
 
@@ -118,6 +118,10 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **26/10/2026** — refinada da issue #9 com a resposta do dono ("liga sozinho"). Pode vir junto ou depois da US-74.
+- **26/10/2026** — feita. Opt-out = linha solta `hook do grafo: desligado — …` no fim do `ferramentas.md` (o hook não é ferramenta `sim/não`; segue o padrão do `ecc fora:`); `--graphify-git-hook` força e apaga a linha. Worktree (`.git` arquivo) e projeto sem git pulam com `info` — antes, com a flag, o `mkdir` sob `.git` arquivo dava ENOTDIR. Sem marca no `UPDATES` (tl): nenhum texto gerado muda; o aviso do projeto já montado é o `ok` do passo 8b. Hook antigo do Marvin sem `--graph-docs` é reescrito com `ok(... updated)`; o que já está em dia ganha a linha "turn it off for good" se o cabeçalho for o velho (ajuste do tl). Teste da US-70 item 5 passou a usar `--no-graph-hook` (o tl conferiu que não enfraquece). Fica para outra US (tl): projeto com `core.hooksPath` (husky) — o hook vai para `.git/hooks`, o git não roda, e a saída diz que roda (invariante 3).
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: 594 passaram (+15 do bloco US-80).
+- qa: prático numa base temporária — instala por padrão, segunda rodada sem mudança, `--no-graph-hook` registra e não religa, `--graphify-git-hook` religa, hook alheio byte-idêntico, `--dry-run` sem escrita; READMEs EN/PT dizem o mesmo.
+- tl: aprovado (invariantes 1 e 2 no `ferramentas.md`, worktree, sem marca no `UPDATES`).

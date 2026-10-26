@@ -429,9 +429,13 @@ usually ~⅔ of it: every turn re-reads the whole context.
 --graphify-label  names the graph communities with the `claude` CLI on PATH.
                   Off by default: one call at a time, so it costs minutes and quota
 --graphify-rebuild  rebuilds an existing graph (the default never overwrites one)
---graphify-git-hook  writes .git/hooks/post-commit so the graph refreshes itself.
-                  Never overwrites a post-commit you already have, except an old one
-                  Marvin wrote itself, which is rewritten to also run --graph-docs
+--graphify-git-hook  forces the .git/hooks/post-commit that refreshes the graph. It is already
+                  installed by default when graphify is in use and the project is a git
+                  repository; the flag also lifts a recorded opt-out. Never overwrites a
+                  post-commit you already have, except an old one Marvin wrote itself,
+                  which is rewritten to also run --graph-docs
+--no-graph-hook   skips that hook and records `hook do grafo: desligado` in
+                  .marvin/ferramentas.md, so later runs do not re-enable it
 --graph-docs      puts the knowledge base back into graphify-out/graph.json and exits
                   (what the hook runs after `graphify update .`); honors --dry-run
 --use=<tool>      records `sim` for an optional tool without asking (alias: --usar=)
@@ -637,9 +641,10 @@ warns you to remove it, but never edits the file for you.
 
 ### Refreshing it automatically
 
-The graph ages with every commit and never says so. `--graphify-git-hook` closes that gap by
-writing a `post-commit` that refreshes it in the background, so `git commit` returns
-immediately.
+The graph ages with every commit and never says so. When graphify is in use and the project is a
+git repository, a plain `marvin` closes that gap by writing a `post-commit` that refreshes it in
+the background, so `git commit` returns immediately. It is on by default (a graph 11 days behind
+was measured in the field); a project mounted earlier gets it on the next `marvin`, in one line.
 
 It is **not** `graphify hook install`. That one rebuilds the *root* of the repository it's
 installed in — which in a monorepo is exactly the path that drops the sub-repos from the
@@ -649,14 +654,18 @@ nodes; `--graph-docs` puts them back), the full cycle in a monorepo. If Marvin w
 npx cache, the hook calls `npx --no-install marvin-kb`, which only works with the package
 installed; otherwise it fails in the log, silently.
 
-Three things worth knowing before you turn it on:
+Three things worth knowing:
 
-- **It is never installed by default**, and it **never overwrites a `post-commit` you already
-  have** — that file often holds someone's lint, changelog or CI. If one exists, Marvin prints
-  the line to add by hand and touches nothing.
+- **It never overwrites a `post-commit` you already have** — that file often holds someone's
+  lint, changelog or CI. If one exists, Marvin prints the line to add by hand and touches
+  nothing. In a git worktree (`.git` is a file) it skips the hook.
 - **It is not versioned.** Hooks live in `.git/`, so it is per-clone and does not reach your
-  team. Everyone who wants it runs the flag.
-- `MARVIN_SKIP_GRAPH_HOOK=1 git commit …` skips it once. Deleting the file uninstalls it.
+  team; each clone gets it on its own `marvin` run.
+- **Turning it off:** `marvin --no-graph-hook` does not install it and writes the line
+  `hook do grafo: desligado` in `.marvin/ferramentas.md`; the next `marvin` reads it and does not
+  re-enable the hook (and `--status` stops flagging the missing hook). To turn it back on:
+  `marvin --graphify-git-hook`, which removes that line. `MARVIN_SKIP_GRAPH_HOOK=1 git commit …`
+  skips it once; deleting the file alone just makes the next `marvin` write it again.
 
 The same moment is the right trigger for the other derived thing that goes stale — the
 memory. The generated `CLAUDE.md` says to update `onde_paramos.md` **at the commit**, and only
@@ -760,7 +769,7 @@ rather than final text.
 node teste.mjs
 ```
 
-579 checks, no dependencies. It covers the invariants that protect other
+594 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.
