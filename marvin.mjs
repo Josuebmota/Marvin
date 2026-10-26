@@ -1368,6 +1368,9 @@ ${networkHtml}
 
 // Computation separate from printing: the text, the hook's `--curto` and `--html` read the
 // same structure. Nothing here writes.
+// The line every post-commit hook written by Marvin carries (and nobody else's does).
+// Declared above computeStatus: --status exits before the later blocks of the file run.
+const HOOK_SIGNATURE = /#\s+marvin\s+—\s+atualiza\s+o\s+grafo/;
 const computeStatus = () => {
   const nodes = planningNodes();
   const byFile = new Map(nodes.map(n => [path.resolve(n.arq), n]));
@@ -1485,6 +1488,22 @@ const computeStatus = () => {
     let n = 0, d = 0, me = 0; try { const g = JSON.parse(fs.readFileSync(GRAPH_ST, 'utf8')); n = (g.nodes || []).length; d = (g.nodes || []).filter(x => x._origin === 'marvin').length; me = (g.edges || g.links || []).filter(x => x._origin === 'marvin').length; } catch {}
     const mtime = fs.statSync(GRAPH_ST).mtime;
     st.grafo = { nos: n, docs: d, mtime: mtime.toISOString(), idade: days(mtime), orfao: d === 0 && me > 0 };
+    // US-74: read only, and silent without a real `.git` directory (a worktree has a `.git` FILE and its hooks live
+    // elsewhere; a project without git has no "last commit"). A graph.json is what says the project uses graphify.
+    // The age comes from the mtime: the docs append restores it (utimesSync), so it is still the EXTRACTION time.
+    // A failed restore only makes the mtime newer, which hides the alert and never invents one.
+    let hookOk = false, commitSec = null;
+    try {
+      if (fs.statSync(path.join(ROOT, '.git')).isDirectory()) {
+        try { hookOk = HOOK_SIGNATURE.test(fs.readFileSync(path.join(ROOT, '.git', 'hooks', 'post-commit'), 'utf8')); } catch {}
+        try { commitSec = parseInt(execSync('git log -1 --format=%ct', { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(), 10); } catch {}
+        const velho = Number.isFinite(commitSec) && Math.floor(mtime.getTime() / 1000) < commitSec;
+        // Counts as a problem only without the Marvin hook. With it, a graph older than the commit is the hook's
+        // background run still going (or about to), so it is shown but does not flip the exit code.
+        st.grafoAlerta = { velho, semHook: !hookOk };
+        if (!hookOk) st.problemas++;
+      }
+    } catch {}
   }
   return st;
 };
@@ -1534,6 +1553,14 @@ const printStatus = (st, short) => {
   }
   if (st.semModelo.length) info(short ? st.semModelo.length + ' US sem modelo por etapa no Time — /refinar'
     : `${st.semModelo.length} US sem modelo por etapa no Time — /refinar antes de executar: ${st.semModelo.join(', ')}`);
+  // US-74: graph older than the last commit, and graphify without Marvin's post-commit hook. --curto sums both in one line.
+  const ga = st.grafoAlerta;
+  if (ga && (ga.velho || ga.semHook)) {
+    const velhoTxt = 'o grafo é mais velho que o último commit — refaça com: marvin --graphify --graphify-rebuild';
+    const hookTxt = 'sem o hook de post-commit do Marvin — o grafo envelhece a cada commit: marvin --graphify --graphify-git-hook';
+    if (short) warn('grafo: ' + [ga.velho && 'mais velho que o último commit', ga.semHook && 'sem o hook de post-commit'].filter(Boolean).join(' e ') + ' — marvin --status');
+    else { if (ga.velho) warn(velhoTxt); if (ga.semHook) warn(hookTxt); }
+  }
   if (short) return;
   if (st.epics.length) {
     log('\n\x1b[1mEpics\x1b[0m');
@@ -2015,8 +2042,6 @@ function mergeDocs(GRAPH, subRepos) {
   info('  try:  graphify affected "<function>"   — which US and which code depend on it');
 }
 
-// The line every post-commit hook written by Marvin carries (and nobody else's does).
-const HOOK_SIGNATURE = /#\s+marvin\s+—\s+atualiza\s+o\s+grafo/;
 
 // ── --graph-docs. Only the docs side of an existing graph.json: what the post-commit hook runs
 // after `graphify update .`, which rewrites the graph and drops these nodes. No scaffold.

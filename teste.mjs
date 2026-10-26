@@ -2990,6 +2990,61 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── US-74. --status: graph older than the last commit, and graphify without Marvin's post-commit hook, are `!`.
+{
+  const hasGit = spawnSync('git', ['--version'], { encoding: 'utf8' }).status === 0;
+  if (!hasGit) console.log('  (git ausente — US-74 pulado)');
+  else {
+    const a = arena('us74');
+    run(a, '--no-git', '--no-questions');
+    const git = (...args) => spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: a.proj, encoding: 'utf8',
+      env: { ...process.env, GIT_COMMITTER_DATE: '2025-06-01T12:00:00Z', GIT_AUTHOR_DATE: '2025-06-01T12:00:00Z' } });
+    git('init', '-q', '.'); git('add', '-A'); git('commit', '-q', '-m', 'x');
+    const gp = path.join(a.proj, 'graphify-out', 'graph.json');
+    fs.mkdirSync(path.dirname(gp), { recursive: true });
+    fs.writeFileSync(gp, JSON.stringify({ directed: true, nodes: [], edges: [] }));
+    const setAge = (iso) => { const t = new Date(iso); fs.utimesSync(gp, t, t); };
+    const hookP = path.join(a.proj, '.git', 'hooks', 'post-commit');
+    const putHook = (txt) => { fs.mkdirSync(path.dirname(hookP), { recursive: true }); fs.writeFileSync(hookP, txt); };
+    const OURS = '#!/bin/sh\n# marvin — atualiza o grafo de código depois do commit.\ngraphify update .\n';
+    const VELHO = /grafo é mais velho que o último commit — refaça com: marvin --graphify --graphify-rebuild/;
+    const SEMHOOK = /sem o hook de post-commit do Marvin.*marvin --graphify --graphify-git-hook/;
+    putHook(OURS);
+    setAge('2025-01-01T00:00:00Z');
+    let r = run(a, '--status');
+    check('US-74: grafo mais velho que o último commit vira ! com o comando de conserto', VELHO.test(r.stdout), r.stdout.slice(-500));
+    check('US-74: com o hook do Marvin, o grafo velho avisa mas não muda o exit code (o hook está refazendo)', r.status === 0 && !SEMHOOK.test(r.stdout), String(r.status));
+    // The docs append restores the mtime (utimesSync): the extraction time, still older than the commit.
+    const before = fs.statSync(gp).mtimeMs;
+    run(a, '--graph-docs');
+    check('US-74: o mtime restaurado pelo anexo de docs não engana (grafo velho segue velho)', Math.abs(fs.statSync(gp).mtimeMs - before) < 2000 && VELHO.test(run(a, '--status').stdout));
+    setAge('2025-12-01T00:00:00Z');
+    r = run(a, '--status');
+    check('US-74: grafo mais novo que o último commit, com hook do Marvin: nenhum aviso de grafo', !VELHO.test(r.stdout) && !SEMHOOK.test(r.stdout) && r.status === 0, r.stdout.slice(-400));
+    fs.rmSync(hookP);
+    r = run(a, '--status');
+    check('US-74: graphify sem hook vira ! com marvin --graphify-git-hook e muda o exit code', SEMHOOK.test(r.stdout) && r.status === 1 && !VELHO.test(r.stdout), r.stdout.slice(-400));
+    putHook('#!/bin/sh\necho do-outro\n');
+    check('US-74: hook de outra pessoa (sem a marca) também avisa', SEMHOOK.test(run(a, '--status').stdout));
+    setAge('2025-01-01T00:00:00Z');
+    const curto = run(a, '--status', '--curto').stdout.split('\n').filter(l => /grafo:/.test(l));
+    check('US-74: --curto soma os dois numa linha só', curto.length === 1 && /mais velho que o último commit e sem o hook/.test(curto[0]), curto.join('|'));
+    putHook(OURS); setAge('2025-12-01T00:00:00Z');
+    check('US-74: --curto não diz nada quando nenhum dispara', !/grafo:/.test(run(a, '--status', '--curto').stdout));
+    fs.rmSync(gp);
+    fs.rmSync(hookP);
+    check('US-74: sem graph.json (sem graphify) nenhum aviso', !VELHO.test(run(a, '--status').stdout) && !SEMHOOK.test(run(a, '--status').stdout));
+    cleanup(a);
+    const b = arena('us74b');
+    run(b, '--no-git', '--no-questions');
+    fs.mkdirSync(path.join(b.proj, 'graphify-out'), { recursive: true });
+    fs.writeFileSync(path.join(b.proj, 'graphify-out', 'graph.json'), JSON.stringify({ nodes: [], edges: [] }));
+    const sb = run(b, '--status').stdout;
+    check('US-74: sem .git nenhum aviso de grafo', !VELHO.test(sb) && !SEMHOOK.test(sb), sb.slice(-300));
+    cleanup(b);
+  }
+}
+
 // ── US-79. --us <path> --pausar "<wait>" / --ativa: edits the frontmatter and the Rumo of an existing US, nothing else.
 {
   const a = arena('us79');

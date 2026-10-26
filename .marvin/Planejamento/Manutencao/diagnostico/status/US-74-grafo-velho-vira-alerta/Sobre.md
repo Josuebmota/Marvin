@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-74-grafo-velho-vira-alerta
 description: "Grafo mais velho que o último commit vira `!` com o comando de conserto; projeto com graphify e sem o hook de post-commit também. Parte medida da issue #9."
@@ -34,8 +34,8 @@ Triagem 26/10/2026 (`/refinar`, `tl` e `po` no Opus · médio). Os dois concorda
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| implementar | dev-back | Sonnet · médio | só leitura do `.git` e do mtime; cuidado com o `utimesSync` | pendente |
-| verificar | qa | Sonnet · baixo | `node teste.mjs` com grafo velho e sem hook | pendente |
+| implementar | dev-back | Sonnet · médio | só leitura do `.git` e do mtime; cuidado com o `utimesSync` | feito |
+| verificar | qa | Sonnet · baixo | `node teste.mjs` com grafo velho e sem hook | feito — aprovou, com prático numa base temporária |
 
 Sem `tl` no diff: não escreve no disco de ninguém nem toca `UPDATES`.
 
@@ -113,6 +113,9 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **26/10/2026** — refinada da issue #9 (parte medida: grafo velho e hook ausente). Pode correr ao lado da US-75 (blocos diferentes).
+- **26/10/2026** — feita. Decisões do dev-back: idade = mtime do `graph.json` (o anexo de docs restaura o mtime da extração; se a restauração falhar, o mtime fica mais novo e só esconde alerta, nunca cria falso); "tem graphify" = existe `graphify-out/graph.json`; só a falta do hook conta em `problemas` (exit 1 do `--status` completo) — com hook, grafo velho é a janela do refresh em segundo plano e só avisa; worktree e repo sem `.git` não avisam; `core.hooksPath` não tratado (o script não trata em lugar nenhum). `HOOK_SIGNATURE` subiu para antes do `computeStatus` (TDZ: o `--status` sai antes). Fica: sem hook, quem constrói o grafo e commita vê "mais velho" sem mudança de código — o conserto de fundo é a US-80.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: 576 passaram (+10 do bloco US-74).
+- qa: prático numa base temporária — sem hook (2 avisos, `--curto` uma linha, exit 1), com hook (só grafo velho, exit 0), hook alheio, worktree sem aviso; este repo sem aviso novo.
