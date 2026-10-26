@@ -2941,6 +2941,55 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(d);
 }
 
+// ── US-73. `estado: pausada` (with `espera:` and `desde:`) is listed apart from "Em andamento";
+// an invalid estado is a warning with a suggestion; the "Pausadas" note section is not a report.
+{
+  const a = arena('us73');
+  run(a, '--no-git', '--no-questions');
+  run(a, '--us', 'Novos/P/F/US-01-pausa-x');
+  const sb = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'P', 'F', 'US-01-pausa-x', 'Sobre.md');
+  const note = path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md');
+  const orig = fs.readFileSync(sb, 'utf8');
+  const setEstado = (fm) => fs.writeFileSync(sb, orig.replace('estado: ativa', fm));
+  fs.writeFileSync(note, '# Onde paramos\n\n## Pausadas\n- [US-01](../Planejamento/Novos/P/F/US-01-pausa-x/Sobre.md) — esperando o dono\n');
+  setEstado('estado: pausada\nespera: aprovação do dono\ndesde: 01/01/2026');
+  const full = run(a, '--status').stdout;
+  const emAnd = full.split('Pausadas')[0];
+  check('US-73: a pausada aparece num bloco "Pausadas" com o espera e a idade', /Pausadas[\s\S]*US-01[\s\S]*espera: aprovação do dono · há \d+d/.test(full), full.slice(0, 700));
+  check('US-73: a pausada não entra em "Em andamento", mesmo apontada pela nota', /Em andamento/.test(emAnd) && !/US-01/.test(emAnd), emAnd);
+  check('US-73: a seção "Pausadas" da nota não é acusada como relato, e pausada com espera não gera aviso', !/look like a report/.test(full) && !/pausada without/.test(full) && !/not valid/.test(full), full);
+  const curto = run(a, '--status', '--curto').stdout;
+  check('US-73: no --curto só o número de pausadas, sem o nome da US', /1 pausada\(s\)/.test(curto) && !/pausa-x|aprovação/.test(curto), curto);
+  run(a, '--status', '--html');
+  const html = fs.readFileSync(path.join(a.proj, '.marvin', '.status', 'index.html'), 'utf8');
+  check('US-73: o painel tem o grupo Pausadas com link para a US', /<h3>Pausadas<\/h3><ul><li><a href="[^"]*US-01-pausa-x\/Sobre\.md"/.test(html));
+  setEstado('estado: pausada');
+  const semEspera = run(a, '--status').stdout;
+  check('US-73: pausada sem espera: gera aviso', /US-01-pausa-x: pausada without "espera:"/.test(semEspera), semEspera);
+  setEstado('estado: feita');
+  const feita = run(a, '--status').stdout;
+  check('US-73: estado "feita" avisa e sugere concluida', /estado "feita" is not valid — use "concluida"/.test(feita), feita);
+  setEstado('estado: em andamento');
+  check('US-73: estado "em andamento" avisa e sugere ativa', /estado "em andamento" is not valid — use "ativa"/.test(run(a, '--status').stdout));
+  setEstado('estado: qualquer-coisa');
+  check('US-73: estado desconhecido lista os válidos', /not valid — valid: anotada \| refinada \| ativa \| pausada \| concluida \| cancelada/.test(run(a, '--status').stdout));
+  // epic and feature get the same warning
+  const ep = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'P', 'Sobre.md');
+  const epOrig = fs.readFileSync(ep, 'utf8');
+  setEstado('estado: ativa');
+  fs.writeFileSync(ep, epOrig.replace(/^estado: \w+$/m, 'estado: feita'));
+  check('US-73: epic com estado inválido também avisa', /not valid — use "concluida"/.test(run(a, '--status').stdout));
+  fs.writeFileSync(ep, epOrig);
+  check('US-73: estado válido não gera aviso de estado', !/not valid/.test(run(a, '--status').stdout));
+  // UPDATES: a base whose state comment predates `pausada` is flagged; a new base is not.
+  const pr = path.join(a.proj, '.marvin', 'Planejamento', 'README.md');
+  check('US-73: o template novo lista pausada no comentário de estados', /ativa\s+\|\s+pausada/.test(fs.readFileSync(pr, 'utf8')));
+  fs.writeFileSync(pr, fs.readFileSync(pr, 'utf8').replace(/ativa\s+\|\s+pausada\s+\|/, 'ativa |'));
+  const old = run(a, '--no-git', '--no-questions').stdout;
+  check('US-73: base sem pausada no comentário de estados ganha o aviso do passo 10', /10\. Updates/.test(old) && /estado: pausada/.test(old), old.slice(-600));
+  cleanup(a);
+}
+
 // ── LAST. The number of checks claimed in the READMEs matches the real one.
 //
 // It has drifted THREE times in this repository: 26 when there were 28, 48 when there

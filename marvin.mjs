@@ -620,9 +620,14 @@ const readNode = (file) => {
   // US-64: roles named in the table's "papel" column (2nd cell), for the "sem medição" line in --status.
   // A human row (3rd cell "humano", or role "dono") is not an LLM role and has no turn to measure.
   const papeis = [...new Set(rows.filter(c => !/^humano\b/i.test(c[2] || '') && !/^dono$/i.test((c[1] || '').trim())).flatMap(c => (c[1] || '').split('·')[0].split(/[\/,+&]|\s+e\s+/).map(s => s.replace(/`/g, '').trim().toLowerCase()).filter(s => /^[a-z][\w-]*$/.test(s))))];
-  return { arq: file, tipo: field('tipo'), estado: field('estado'), pai: field('pai'), titulo: title, rumo, papeis,
+  return { arq: file, tipo: field('tipo'), estado: field('estado'), espera: field('espera'), desde: field('desde'), pai: field('pai'), titulo: title, rumo, papeis,
            evidencia: cleanEvidence, comEvidencia: /\S/.test(cleanEvidence), tocados, perguntas, time, comModelo };
 };
+// US-73: the one list of valid `estado:` values. stateMark, roadmap, epics, the history and the
+// state warning read it; the template comment in the Planejamento README must list the same.
+const US_STATES = ['anotada', 'refinada', 'ativa', 'pausada', 'concluida', 'cancelada'];
+// Suggestions for the wrong values seen in the field (issue #7); anything else gets the full list.
+const STATE_FIX = { feita: 'concluida', feito: 'concluida', done: 'concluida', 'em andamento': 'ativa', andamento: 'ativa', 'em progresso': 'ativa', parada: 'pausada', travada: 'pausada', bloqueada: 'pausada' };
 // Role vocabulary = base + optional of suggestTeam() (below); a constant because suggestTeam
 // reads `stacks`, which --status never builds. Keep the two in sync.
 const TEAM_ROLES = ['tl', 'po', 'dev', 'dev-front', 'dev-back', 'qa', 'scout', 'design', 'dba', 'sec', 'infra'];
@@ -1295,7 +1300,7 @@ h1{font-size:var(--f3);margin:0;letter-spacing:-.0125em}h1 .dim{font-weight:400}
 #rede.foco .no{opacity:.12}#rede.foco .no.viz{opacity:1}#rede.foco .aresta{opacity:.04}#rede.foco .aresta.viz{opacity:1;stroke:var(--acc)}#rede .no.alvo circle{stroke:var(--acc);stroke-width:4}
 .tendencia>input{position:absolute;opacity:0;pointer-events:none}.tendencia .abas{display:flex;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;width:max-content;margin:var(--s3) 0 0}.tendencia .abas label{padding:var(--s1) var(--s3);background:var(--bg2);color:var(--dim);cursor:pointer;font-family:var(--mono);font-size:var(--f0);font-weight:600;text-transform:uppercase;letter-spacing:.01em}.tendencia .abas label:hover{color:var(--fg)}
 .tendencia>div[class^=f]{display:none}#tend0:checked~.f0,#tend1:checked~.f1,#tend2:checked~.f2,#tend3:checked~.f3{display:block}#tend0:checked~.abas label[for=tend0],#tend1:checked~.abas label[for=tend1],#tend2:checked~.abas label[for=tend2],#tend3:checked~.abas label[for=tend3]{background:var(--bg3);color:var(--acc)}.tendencia figure{margin-top:var(--s2)}
-.badge{display:inline-block;padding:0 var(--s2);border-radius:var(--r);border:1px solid var(--line);color:var(--dim);line-height:1.7}.badge.ativa{color:var(--ok);border-color:var(--ok)}.badge.concluida{color:var(--s0);border-color:var(--s0)}.badge.cancelada{color:var(--err);border-color:var(--err)}
+.badge{display:inline-block;padding:0 var(--s2);border-radius:var(--r);border:1px solid var(--line);color:var(--dim);line-height:1.7}.badge.ativa{color:var(--ok);border-color:var(--ok)}.badge.pausada{color:var(--warn);border-color:var(--warn)}.badge.concluida{color:var(--s0);border-color:var(--s0)}.badge.cancelada{color:var(--err);border-color:var(--err)}
 details.rede>summary{cursor:pointer;font-size:var(--f2);font-weight:600;margin:var(--s7) 0 var(--s3);border-bottom:1px solid var(--line);padding-bottom:var(--s2)}details.rede>summary .dim{font-weight:600}
 .dim{color:var(--dim)}.warn{color:var(--warn)}.err{color:var(--err)}.ok{color:var(--ok)}
 table{border-collapse:collapse;width:100%;font-size:var(--f1)}td,th{padding:var(--s2) var(--s3);vertical-align:top;border-bottom:1px solid var(--line);text-align:left}th{color:var(--dim);font-weight:600}td:first-child{width:1.5em}td:nth-child(n+3):not(:has(span)){font-variant-numeric:tabular-nums}
@@ -1308,7 +1313,7 @@ polyline.s0,polyline.s1,polyline.s2{fill:none}.lg{font-size:12px;padding-left:10
 .c-epic{color:var(--c-epic)}.c-feature{color:var(--c-feature)}.c-us{color:var(--c-us)}.c-fluxo{color:var(--c-fluxo)}.c-arquitetura{color:var(--c-arq)}.c-raiz{color:var(--fg)}.c-release{color:var(--c-release)}.c-nota{color:var(--dim)}.c-doc{color:var(--dim)}.c-arquivo{color:var(--fg2)}.c-funcao{color:var(--dim)}
 #rede{background:var(--bg2);background-image:linear-gradient(var(--grade) 1px,transparent 1px),linear-gradient(90deg,var(--grade) 1px,transparent 1px);background-size:.5rem .5rem;border:1px solid var(--line);border-radius:var(--r)}#rede .no circle{fill:currentColor;stroke:var(--bg);stroke-width:1.5;cursor:grab;filter:drop-shadow(0 0 4px currentColor)}#rede .no.c-arquivo circle,#rede .no.c-funcao circle{filter:none;opacity:.7}
 #rede .no.e-ativa circle{animation:respira 2.4s ease-in-out infinite}@keyframes respira{0%,100%{filter:drop-shadow(0 0 3px var(--ok))}50%{filter:drop-shadow(0 0 12px var(--ok))}}
-#rede .aresta{stroke-linecap:round}#rede .aresta.touches{stroke-dasharray:4 10;animation:sinapse 1.6s linear infinite}@keyframes sinapse{to{stroke-dashoffset:-14}}@media(prefers-reduced-motion:reduce){#rede *{animation:none!important}}#rede .no.e-ativa circle{stroke:var(--ok);stroke-width:3}#rede .no.e-concluida circle{stroke:var(--s0);stroke-width:3}#rede .no.e-cancelada circle{stroke:var(--err);stroke-width:3}
+#rede .aresta{stroke-linecap:round}#rede .aresta.touches{stroke-dasharray:4 10;animation:sinapse 1.6s linear infinite}@keyframes sinapse{to{stroke-dashoffset:-14}}@media(prefers-reduced-motion:reduce){#rede *{animation:none!important}}#rede .no.e-ativa circle{stroke:var(--ok);stroke-width:3}#rede .no.e-pausada circle{stroke:var(--warn);stroke-width:3}#rede .no.e-concluida circle{stroke:var(--s0);stroke-width:3}#rede .no.e-cancelada circle{stroke:var(--err);stroke-width:3}
 #rede .no text{font-size:9px;fill:var(--fg);pointer-events:none;opacity:.85}#rede .no.c-arquivo text,#rede .no.c-funcao text{opacity:.55;font-size:8px}
 #rede .aresta{stroke:var(--line);stroke-width:1.2}#rede .aresta.touches{stroke:#c2571a;opacity:.5}#rede .aresta.child_of{stroke:#7c3aed;opacity:.5}#rede .aresta.references{stroke:var(--dim);opacity:.45}
 </style>
@@ -1341,7 +1346,7 @@ ${st.herdam.length ? `<p class="dim">Agente sem <code>model:</code> (herda o mod
 <p class="dim">Tokens são medidos nas transcrições; o valor é o que os mesmos tokens <strong>custariam na API</strong>, pela tabela de ${PRICES_DATE} (input · output · cache write ≈ 1,25× · cache read ≈ 0,1×) — confira os preços vigentes. Num plano fixo (Max) o gasto real é a mensalidade — este número diz o quanto ele rende.${fixedShare != null ? ` Cada turno relê ~${kTk(g.contextoMedio)} tk de contexto; o contexto fixo (${st.contexto.total} tk) é <strong>~${fixedShare}%</strong> disso — o resto é a conversa. Sessão longa custa mais que arquivo grande.` : ''}</p>
 <h2 id="roadmap">Roadmap <span class="dim">— derivado de estado e ilhas; nada escrito à mão</span></h2>
 ${(() => { const li = (r) => r.length ? `<ul>${r.map(i => `<li><a href="${esc(path.relative(dir, i.arq).replace(/\\/g, '/'))}" target="_blank">${esc(i.titulo)}</a> <span class="dim">${esc(i.cadeia.join(' › '))}</span></li>`).join('')}</ul>` : '<p class="dim">nenhuma</p>';
-  return `<h3>Em andamento</h3>${li(st.roadmap.ativa)}<h3>Na fila</h3>${li(st.roadmap.refinada)}<h3>Anotadas</h3>${li(st.roadmap.anotada)}<details><summary>Concluídas (${st.roadmap.concluida.length})</summary>${li(st.roadmap.concluida)}</details>`; })()}
+  return `<h3>Em andamento</h3>${li(st.roadmap.ativa)}<h3>Na fila</h3>${li(st.roadmap.refinada)}<h3>Pausadas</h3>${li(st.roadmap.pausada)}<h3>Anotadas</h3>${li(st.roadmap.anotada)}<details><summary>Concluídas (${st.roadmap.concluida.length})</summary>${li(st.roadmap.concluida)}</details>`; })()}
 <h2 id="epics">Planejamento <span class="dim">— ${st.epics.length} epic(s) · clique para abrir · ◎ foca na rede</span></h2>
 ${treeHtml}
 <h2 id="decisoes">Decisões <span class="dim">— Contexto/Arquitetura</span></h2>
@@ -1373,6 +1378,8 @@ const computeStatus = () => {
     if (!n) { st.avisos.push({ nivel: 'err', texto: label + ' → ' + href + '  (file not found)' }); st.problemas++; continue; }
     // A pointer to a file that is not a planning node (Contexto/, an ADR) is not a US: no ✗, no problem.
     if (!['us', 'epic', 'feature'].includes(n.tipo)) { st.contextoPonteiros.push(path.basename(abs, '.md')); continue; }
+    // US-73: a paused US pointed from the note ("Pausadas" section) is not work in progress.
+    if (n.estado === 'pausada') continue;
     const last = n.rumo.length ? n.rumo[n.rumo.length - 1] : null;
     const item = { titulo: n.titulo, arq: abs, cadeia: chain(n), estado: n.estado, proximo: (rest || '').trim(),
                    rumo: last ? last.texto : null, rumoData: last ? last.data : null, idade: last ? days(last.data) : null, avisos: [], time: n.time };
@@ -1383,7 +1390,7 @@ const computeStatus = () => {
   }
   if (!pointers.length) st.avisos.push({ nivel: 'info', texto: 'the note has no "- [US](path)" lines' });
   const sections = [...note.matchAll(/^##\s+(.+)$/gm)].map(m => m[1].trim());
-  const odd = sections.filter(s => !/^(Em andamento|Travado|Estado|Próxima|Depende|Primeira frase|Anotaç|Refin|Contexto)/i.test(s));
+  const odd = sections.filter(s => !/^(Em andamento|Travado|Estado|Próxima|Depende|Primeira frase|Anotaç|Refin|Pausad|Contexto)/i.test(s));
   if (odd.length) { st.avisos.push({ nivel: 'warn', texto: `the note has ${odd.length} section(s) that look like a report: ${odd.slice(0, 3).map(s => '"' + s + '"').join(', ')}${odd.length > 3 ? '…' : ''} → Rumo of the US` }); st.problemas++; }
   // Every link counts, not only the first of a line: one line may group USs waiting on the same thing.
   const linkedInNote = new Set([...note.matchAll(/\]\(([^)\s#]+)/g)].map(m => path.resolve(DEST, m[1])));
@@ -1413,6 +1420,22 @@ const computeStatus = () => {
       if (imp.comunidades.length >= 4) st.avisos.push({ nivel: 'info', texto: `${name(t)} spans ${imp.comunidades.length} communities of the graph — wide scope for one US; worth slicing?` });
     }
   }
+  // US-73: state warnings (read only). `desde:` is dd/mm/yyyy or yyyy-mm-dd; the age is display only, like days().
+  const parseDesde = (s) => { const m = (s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/) || (s || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? (m[1].length === 4 ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(+m[3], +m[2] - 1, +m[1])) : null; };
+  st.pausadas = [];
+  for (const n of nodes.filter(x => ['us', 'epic', 'feature'].includes(x.tipo) && x.estado)) {
+    const id = n.titulo.split(' — ')[0];
+    if (!US_STATES.includes(n.estado)) {
+      const fix = STATE_FIX[n.estado.toLowerCase()];
+      st.avisos.push({ nivel: 'warn', texto: `${id}: estado "${n.estado}" is not valid — ${fix ? 'use "' + fix + '"' : 'valid: ' + US_STATES.join(' | ')}` }); st.problemas++;
+    }
+    if (n.tipo === 'us' && n.estado === 'pausada') {
+      if (!n.espera) { st.avisos.push({ nivel: 'warn', texto: `${id}: pausada without "espera:" — say in the frontmatter what it is waiting for` }); st.problemas++; }
+      const d = parseDesde(n.desde);
+      st.pausadas.push({ titulo: n.titulo, arq: n.arq, espera: n.espera, idade: d ? days(d) : null });
+    }
+  }
+  st.pausadas.sort((a, b) => a.titulo.split(' — ')[0].localeCompare(b.titulo.split(' — ')[0]));
   st.arvore = nodes.map(n => ({ arq: n.arq, tipo: n.tipo, estado: n.estado, titulo: n.titulo, pai: parentOf(n) ? parentOf(n).arq : null,
                                rumo: n.rumo.length ? { texto: n.rumo[n.rumo.length - 1].texto, idade: days(n.rumo[n.rumo.length - 1].data) } : null, comEvidencia: n.comEvidencia }));
   st.perguntas = nodes.filter(n => n.tipo === 'us' && (n.estado === 'ativa' || n.estado === 'refinada'))
@@ -1426,8 +1449,9 @@ const computeStatus = () => {
   const rm = (estado) => nodes.filter(n => n.tipo === 'us' && n.estado === estado).map(n => ({ titulo: n.titulo, arq: n.arq, estado: n.estado, cadeia: chain(n) }));
   const byOpen = (a, b) => { const pa = ilhaPos.get(path.resolve(a.arq)), pb = ilhaPos.get(path.resolve(b.arq));
     return (pa === undefined ? Infinity : pa) === (pb === undefined ? Infinity : pb) ? idOf(a).localeCompare(idOf(b)) : (pa === undefined ? 1 : pb === undefined ? -1 : pa - pb); };
-  st.roadmap = { ativa: rm('ativa').sort(byOpen), refinada: rm('refinada').sort(byOpen), anotada: rm('anotada').sort(byOpen),
-                 concluida: rm('concluida').sort((a, b) => a.cadeia.join(' › ').localeCompare(b.cadeia.join(' › ')) || idOf(a).localeCompare(idOf(b))) };
+  // US-73: one key per valid state (US_STATES); only concluida is ordered by chain instead of ilha.
+  st.roadmap = Object.fromEntries(US_STATES.map(s => [s, rm(s).sort(s === 'concluida'
+    ? (a, b) => a.cadeia.join(' › ').localeCompare(b.cadeia.join(' › ')) || idOf(a).localeCompare(idOf(b)) : byOpen)]));
   const arqDir = path.join(DOCS, 'Contexto', 'Arquitetura');
   let decisoes = []; try { decisoes = fs.readdirSync(arqDir).filter(f => f.endsWith('.md') && f !== 'README.md').sort(); } catch {}
   st.decisoes = decisoes.map(f => ({ arq: path.join(arqDir, f), titulo: ((fs.readFileSync(path.join(arqDir, f), 'utf8').match(/^#[ \t]+(.+)$/m) || [])[1] || f.replace(/\.md$/, '')).trim() }));
@@ -1436,7 +1460,7 @@ const computeStatus = () => {
     const us = desc.filter(n => n.tipo === 'us'), feats = desc.filter(n => n.tipo === 'feature');
     const count = us.length ? us : feats;
     const c = (s) => count.filter(n => n.estado === s).length;
-    st.epics.push({ titulo: e.titulo, estado: e.estado, rotulo: us.length ? 'US' : 'features', total: count.length, concluidas: c('concluida'), canceladas: c('cancelada'), ativas: c('ativa'), refinadas: c('refinada'), anotadas: c('anotada') });
+    st.epics.push({ titulo: e.titulo, estado: e.estado, rotulo: us.length ? 'US' : 'features', total: count.length, concluidas: c('concluida'), canceladas: c('cancelada'), ativas: c('ativa'), refinadas: c('refinada'), anotadas: c('anotada'), pausadas: c('pausada') });
   }
   const rel = path.join(DOCS, 'Releases');
   let releases = []; try { releases = fs.readdirSync(rel).filter(f => f.endsWith('.md') && f !== 'README.md').sort(); } catch {}
@@ -1460,7 +1484,9 @@ const computeStatus = () => {
   return st;
 };
 
-const stateMark = (e) => e === 'ativa' ? '\x1b[32m●\x1b[0m' : e === 'concluida' ? '\x1b[34m✓\x1b[0m' : e === 'refinada' ? '\x1b[2m○\x1b[0m' : e === 'anotada' ? '\x1b[2m·\x1b[0m' : '\x1b[31m✗\x1b[0m';
+// US-73: keyed by US_STATES; `cancelada` and any unknown value get the red ✗ (the unknown one also gets a warning).
+const STATE_MARK = { ativa: '\x1b[32m●\x1b[0m', concluida: '\x1b[34m✓\x1b[0m', refinada: '\x1b[2m○\x1b[0m', anotada: '\x1b[2m·\x1b[0m', pausada: '\x1b[33m‖\x1b[0m' };
+const stateMark = (e) => STATE_MARK[e] || '\x1b[31m✗\x1b[0m';
 // One line per ilha: what /retomar reads to offer "the ilha of the moment". In --curto it is
 // capped so the hook stays under its budget; the full list is in --status.
 const printIlhas = (il, short) => {
@@ -1495,15 +1521,21 @@ const printStatus = (st, short) => {
   printIlhas(st.ilhas, short);
   // US-52: anotada is outside the queue; the hook gets only the number, never the list.
   if (short && st.roadmap.anotada.length) info(st.roadmap.anotada.length + ' anotada(s) fora da fila — /refinar');
+  // US-73: pausada is not in progress. The hook gets only the number; the full status lists each with what it waits for.
+  if (short && st.pausadas.length) info(st.pausadas.length + ' pausada(s)');
+  if (!short && st.pausadas.length) {
+    log('\n\x1b[1mPausadas\x1b[0m  (' + st.pausadas.length + ' — fora de "Em andamento")');
+    for (const p of st.pausadas) log(`  ${stateMark('pausada')} ${p.titulo}  \x1b[2m${p.espera ? 'espera: ' + p.espera : 'sem espera:'}${p.idade !== null ? ' · há ' + p.idade + 'd' : ''}\x1b[0m`);
+  }
   if (st.semModelo.length) info(short ? st.semModelo.length + ' US sem modelo por etapa no Time — /refinar'
     : `${st.semModelo.length} US sem modelo por etapa no Time — /refinar antes de executar: ${st.semModelo.join(', ')}`);
   if (short) return;
   if (st.epics.length) {
     log('\n\x1b[1mEpics\x1b[0m');
     for (const e of st.epics) {
-      const m = { ativa: '●', concluida: '✓', refinada: '○', anotada: '·' }[e.estado] || '✗';   // ✗ only for an unknown state
+      const m = { ativa: '●', concluida: '✓', refinada: '○', anotada: '·', pausada: '‖' }[e.estado] || '✗';   // ✗ only for an unknown state
       if (!e.total) { log(`  ${m} ${e.titulo}  \x1b[2mno children yet\x1b[0m`); continue; }
-      log(`  ${m} ${e.titulo}  \x1b[2m${e.concluidas}/${e.total} ${e.rotulo} concluídas` + (e.canceladas ? ` · ${e.canceladas} cancelada(s)` : '') + (e.ativas ? ` · ${e.ativas} ativa(s)` : '') + (e.refinadas ? ` · ${e.refinadas} refinada(s)` : '') + (e.anotadas ? ` · ${e.anotadas} anotada(s)` : '') + '\x1b[0m');
+      log(`  ${m} ${e.titulo}  \x1b[2m${e.concluidas}/${e.total} ${e.rotulo} concluídas` + (e.canceladas ? ` · ${e.canceladas} cancelada(s)` : '') + (e.ativas ? ` · ${e.ativas} ativa(s)` : '') + (e.refinadas ? ` · ${e.refinadas} refinada(s)` : '') + (e.anotadas ? ` · ${e.anotadas} anotada(s)` : '') + (e.pausadas ? ` · ${e.pausadas} pausada(s)` : '') + '\x1b[0m');
     }
   }
   log('\n\x1b[1mReleases\x1b[0m');
@@ -3127,6 +3159,8 @@ Regras:
   fica na fila, fora da nota; vira \`ativa\` quando alguém a pega (\`marvin --us\` de novo põe o
   ponteiro). O \`--status\` agrupa as refinadas em **ilhas** pelo arquivo do *Código tocado* —
   a ilha é o que uma sessão ataca em sequência, uma por vez.
+- **Pausada não é ativa.** US parada que não acabou é \`estado: pausada\`, com \`espera:\` (o que ou
+  quem destrava) e \`desde:\` no frontmatter; o \`--status\` a lista à parte, fora de "Em andamento".
 - **Aresta é link.** Fluxo ligado, código tocado e pai são links/caminhos — é o que o
   grafo lê.
 
@@ -3135,7 +3169,7 @@ Regras:
 \`\`\`markdown
 ---
 tipo: us            # epic | feature | us
-estado: ativa       # anotada | refinada | ativa | concluida | cancelada
+estado: ativa       # anotada | refinada | ativa | pausada | concluida | cancelada
 pai: ../Sobre.md
 ---
 # US-12 — <título em uma frase>
@@ -4958,6 +4992,10 @@ const UPDATES = [
   { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
     marca: /anotada\s+\|\s+refinada/, soCom: !OLD_LAYOUT, desde: '3.0.0',
     o_que: 'the `estado: anotada` in the state comment — an annotated US outside the queue; --status counts it, --curto shows only the number' },
+  // US-73: `pausada` joins the state comment (with `espera:` and `desde:` in the frontmatter); --status lists it apart.
+  { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
+    marca: /ativa\s+\|\s+pausada/, soCom: !OLD_LAYOUT, desde: '3.4.3',
+    o_que: 'the `estado: pausada` in the state comment — a US not being worked on but not finished (`espera:` and `desde:` in the frontmatter); --status lists it apart from "Em andamento", and an invalid estado gets a warning' },
   // A role with no agent file inherits the session model (Opus) unless the delegation passes `model`.
   { arquivo: path.relative(ROOT, path.join(DOCS, TEAM_GUIDE)).replace(/\\/g, '/'),
     marca: /Papel\s+sem\s+arquivo\s+de\s+agente/, desde: '3.2.0',

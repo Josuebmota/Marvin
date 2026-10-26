@@ -19,11 +19,9 @@ metadata:
 > - Criar `onde_paramos_<data>.md` **ou uma seção de relato aqui dentro** é o mesmo erro:
 >   o histórico já está no `git log`, e o porquê já está no Rumo da US.
 
-**Atualizado:** 19/10/2026
+**Atualizado:** 26/10/2026
 
 ## Em andamento
 
-
-
-- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — 16/10: **3.4.1 no npm** (tag `v3.4.1`); fila: US-63 refinada. Falta: desligar conectores da conta (~9,7k/sessão) · US-29 concluída 19/10 (−58% com coordenador Sonnet)
+- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — tag `v3.4.2`; US-73 concluída 26/10 (entra no próximo `--release`, 3.4.3); fila: US-79, US-74/75/80, US-78/81, US-76/77; US-72 espera o dono. Falta: desligar conectores da conta (~9,7k/sessão)
 

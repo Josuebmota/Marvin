@@ -56,7 +56,7 @@ Regras:
 ```markdown
 ---
 tipo: us            # epic | feature | us
-estado: ativa       # anotada | refinada | ativa | concluida | cancelada
+estado: ativa       # anotada | refinada | ativa | pausada | concluida | cancelada
 pai: ../Sobre.md
 ---
 # US-12 — <título em uma frase>

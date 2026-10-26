@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-73-estado-pausada
 description: "Estado `pausada` (com `espera:` e `desde:`) para a US que não está sendo trabalhada mas não acabou; estado fora da lista vira aviso com sugestão. Issue #7."
@@ -44,9 +44,9 @@ Triagem 26/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo). Os 
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| implementar | dev-back | Sonnet · médio | escopo fechado; a lista de estados aparece em 5 lugares | pendente |
-| verificar | qa | Sonnet · baixo | `node teste.mjs` + base com ativas e pausadas | pendente |
-| ler o diff | tl | Opus · médio | marca em `UPDATES` (template guardado por `existsSync`) | pendente |
+| implementar | dev-back | Sonnet · médio | escopo fechado; a lista de estados aparece em 5 lugares | feito (+ ajustes do tl) |
+| verificar | qa | Sonnet · baixo | `node teste.mjs` + base com ativas e pausadas | aprovado 1-8, sem falso positivo neste repo |
+| ler o diff | tl | Opus · médio | marca em `UPDATES` (template guardado por `existsSync`) | aprovado com ajustes A-E, aplicados |
 
 Grafo (fresco, 23/10 23:15, mais novo que o último commit): `readNode` (L595) → affected `computeStatus` L1372 e `planningNodes` L671; `computeStatus` (L1361) grau 13, affected vazio (chamado do topo); `stateMark` (L1463) → affected `printStatus` L1482; `printStatus` (L1479) grau 10; `writeStatusHtml` (L1043) grau 13; `UPDATES` sem nó próprio (`pendingUpdates` L4822, grau 1) — usos por Grep.
 
@@ -57,7 +57,7 @@ Nenhuma.
 
 <!-- gerado por `marvin --us` a partir do grafo; regerado a cada run — não edite à mão -->
 
-Toca 7 nó(s) de código em 5 comunidade(s) — **escopo largo**: vale fatiar?.
+Toca 7 nó(s) de código em 4 comunidade(s) — **escopo largo**: vale fatiar?.
 
 **Quem depende do que ela toca** (1, até 2 níveis) — é o que o QA precisa cobrir:
 - `planningNodes()  marvin.mjs:L663`
@@ -127,6 +127,9 @@ Toca 7 nó(s) de código em 5 comunidade(s) — **escopo largo**: vale fatiar?.
 
 ## Rumo
 - **26/10/2026** — refinada da issue #7 (`tl` + `po`). Primeira da fila: pequena, medida, e a US-76 usa o chip `pausada`.
+- **26/10/2026** — concluída no mesmo dia. Decisões do `tl` no diff: marca do `UPDATES` com `desde: '3.4.3'` (o ciclo segue 3.4.x; se o lote US-73 a 81 sair como versão menor, todas as marcas do ciclo viram `3.5.0` juntas no `--release`); estado inválido conta em `problemas` como os outros avisos de dado inconsistente (só o `--status` completo muda de exit code — `--check` não chama `computeStatus` e o `--curto` sai 0); o aviso vale também para épico e feature; `STATE_FIX` só sugere, sem `pronta` (ambíguo); o bloco Pausadas vem dos nós, não da nota. Ficou de fora, não bloqueante: juntar os avisos de estado inválido numa linha só no `--curto`.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: 545 passaram, 0 falharam (eram 532; +13 checks no bloco "US-73").
+- `qa` numa base temporária: bloco "Pausadas" com `espera: … · há 25d`, aviso de pausada sem `espera:`, `feita` → `use "concluida"`, `--curto` só com o número; `--dry-run` sem escrita; `--status` deste repo sem aviso novo.
+- `tl`: aprovado com ajustes A-E (versão, README do Planejamento, teste de épico inválido, frase no template, `pronta` fora), aplicados.
