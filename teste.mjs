@@ -1532,6 +1532,35 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── 9z-c. US-75: the "Outras US no mesmo código" list is capped at 25, like the dependents.
+{
+  const a = arena('impacto-teto');
+  fs.mkdirSync(path.join(a.proj, 'src'), { recursive: true });
+  fs.writeFileSync(path.join(a.proj, 'src', 'pag.js'), 'export function cobrar(){}' + NLQ);
+  run(a);
+  const output = path.join(a.proj, 'graphify-out'); fs.mkdirSync(output, { recursive: true });
+  fs.writeFileSync(path.join(output, 'graph.json'), JSON.stringify({ directed: true, nodes: [
+    { id: 'src_pag', label: 'pag.js', file_type: 'code', source_file: 'src/pag.js', community: 0, _origin: 'ast' },
+    { id: 'src_pag_cobrar', label: 'cobrar()', file_type: 'code', source_file: 'src/pag.js', source_location: 'L1', community: 0, _origin: 'ast' }],
+    edges: [{ source: 'src_pag', target: 'src_pag_cobrar', relation: 'contains' }] }));
+  const sobres = [];
+  for (let i = 1; i <= 28; i++) {
+    const u = 'US-T' + String(i).padStart(2, '0');
+    run(a, '--us', 'Novos/E/F/' + u);
+    const p = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E', 'F', u, 'Sobre.md');
+    fs.writeFileSync(p, fs.readFileSync(p, 'utf8').replace(/_\(crase com o caminho[^\n]*\n/, '- `src/pag.js` — `cobrar`' + NLQ));
+    sobres.push(p);
+  }
+  run(a, '--us', 'Novos/E/F/US-T01');
+  const t1 = fs.readFileSync(sobres[0], 'utf8');
+  const bloco = t1.slice(t1.indexOf('**Outras US no mesmo código**'));
+  check('US-75: com 27 outras US, a lista para em 25', (bloco.match(/^- \[US-T/gm) || []).length === 25, bloco.slice(0, 300));
+  check('US-75: a lista fecha com "… e mais 2"', /^- … e mais 2$/m.test(bloco));
+  run(a, '--us', 'Novos/E/F/US-T01');
+  check('US-75: segundo --us deixa o Sobre.md byte-idêntico', fs.readFileSync(sobres[0], 'utf8') === t1);
+  cleanup(a);
+}
+
 // ── 9z-b. US-24: --fechar looks at every sub-repo, not only the root. A nested .git hides its
 //      files from the root's status, so with git at the root alone the drift passes silent.
 {

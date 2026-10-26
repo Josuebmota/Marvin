@@ -1949,7 +1949,8 @@ _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
         lines.push('');
         if (imp.outras.length) {
           lines.push('**Outras US no mesmo código** — combine antes, não no merge:');
-          for (const o of imp.outras) lines.push(`- [${o.us.label}](${path.relative(path.dirname(usFile), path.join(ROOT, o.us.source_file)).replace(/\\/g, '/')}) — ${o.comum.length} nó(s) em comum`);
+          for (const o of imp.outras.slice(0, 25)) lines.push(`- [${o.us.label}](${path.relative(path.dirname(usFile), path.join(ROOT, o.us.source_file)).replace(/\\/g, '/')}) — ${o.comum.length} nó(s) em comum`);
+          if (imp.outras.length > 25) lines.push(`- … e mais ${imp.outras.length - 25}`);
         } else lines.push('Nenhuma outra US passa por este código.');
         lines.push('');
         let txt = fs.readFileSync(usFile, 'utf8');

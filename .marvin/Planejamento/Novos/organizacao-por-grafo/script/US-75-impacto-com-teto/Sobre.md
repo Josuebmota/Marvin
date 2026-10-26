@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-75-impacto-com-teto
 description: "A lista 'Outras US no mesmo código' do Impacto ganha teto, como a dos dependentes. Parte medida da issue #9 (Sobre.md com 200+ linhas)."
@@ -27,8 +27,8 @@ Triagem 26/10/2026 (`/refinar`). O `po` quis US própria (uma linha de código);
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| implementar | dev-back | Sonnet · baixo | uma linha; o padrão já existe ao lado | pendente |
-| verificar | qa | Sonnet · baixo | `node teste.mjs` | pendente |
+| implementar | dev-back | Sonnet · baixo | uma linha; o padrão já existe ao lado | feito |
+| verificar | qa | Sonnet · baixo | `node teste.mjs` | feito — aprovou, com prático numa cópia da base |
 
 Grafo: o bloco do `--us` é código de topo, sem nó — localizado por Grep (L1837-1852).
 
@@ -108,6 +108,9 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **26/10/2026** — refinada da issue #9 (parte medida: *Impacto* sem teto). Reproduzido aqui no mesmo dia: o `--us` desta US e das US-73 a 78 gerou ~50 linhas de "Outras US" em cada uma, porque toda US que toca `marvin.mjs` entra.
+- **26/10/2026** — feita: `slice(0, 25)` e "… e mais N", o mesmo literal e texto dos dependentes (sem constante, para não mexer no bloco ao lado). A ordem segue a do grafo, não a de mais nós em comum — mudar o critério é outra US. O log do terminal e a colisão do `--status` continuam com a lista inteira. O *Impacto* das US já escritas encolhe no próximo `--us` de cada uma.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: 579 passaram (+3 do bloco 9z-c: 25 itens, "… e mais 2", segundo `--us` byte-idêntico).
+- qa: numa cópia desta base, o `--us` da US-79 saiu com 25 outras + "… e mais 36" (eram 61); a segunda rodada não mudou nada.
