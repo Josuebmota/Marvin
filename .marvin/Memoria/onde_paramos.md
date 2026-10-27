@@ -19,10 +19,10 @@ metadata:
 > - Criar `onde_paramos_<data>.md` **ou uma seção de relato aqui dentro** é o mesmo erro:
 >   o histórico já está no `git log`, e o porquê já está no Rumo da US.
 
-**Atualizado:** 26/10/2026
+**Atualizado:** 27/10/2026
 
 ## Em andamento
 
 
-- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — tag `v3.4.2`; US-73, 79, 74, 75, 80, 78, 81, 83, 84, 82, 76 e 77 concluídas 26/10 (entram no próximo `--release`, 3.4.3); fila: vazia (US-72 espera o dono); US-72 espera o dono; anotações refinadas 27/10 nas US-82 (hooksPath), 83 (`--us` com caminho do Sobre.md) e 84 (delegacao.md e órfãos); US-85 `anotada` (lista de anotadas no `--status` do terminal). Falta: desligar conectores da conta (~9,7k/sessão)
+- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — release `3.4.3` (27/10: US-73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84) — tag local, falta push e npm; fila vazia; US-72 espera o dono; US-85 `anotada` (lista de anotadas no `--status` do terminal); ❓ abertas: US-82 (escrever no `.husky/`?), US-84 (teto vale para US concluída? `Fontes/` vira raiz?). Falta: desligar conectores da conta (~9,7k/sessão)
 
