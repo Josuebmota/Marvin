@@ -22,6 +22,9 @@ agentes e os comandos são a orquestração. Detalhe e o que ainda falta:
 
 _(um fluxo entra aqui quando é analisado numa atividade — não antes)_
 
+- [delegacao](Fluxos/delegacao.md) — como uma tarefa sai da sessão principal e chega a um papel
+- [status-html](Fluxos/status-html.md) — `marvin --status --html`: a página derivada e o histórico por commit
+
 ## Arquitetura
 
 As restrições de desenho e o porquê de cada uma. Regime: acrescenta, nunca sobrescreve.

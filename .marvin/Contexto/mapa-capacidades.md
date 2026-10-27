@@ -20,7 +20,7 @@ testado nesta instalação. Consulta das fontes: **09/10/2026**.
 
 | Procedimento | Quando entra | Fonte local |
 |---|---|---|
-| Graphify | triagem `po` + `tl` neste repo; grafo ausente ou velho exige fallback registrado | [fluxo](Fluxos/delegacao.md#triagem--quem-decide-o-time-da-atividade-us-26-08102026) |
+| Graphify | triagem `po` + `tl` neste repo; grafo ausente ou velho exige fallback registrado | [fluxo](Fluxos/delegacao/triagem.md) |
 | Ponytail | implementação pelo `dev-back` ou `dev-front`, sem substituir revisão e testes | [time](../../.claude/agents/README.md#ponytail-em-que-papel-entra) |
 | `adaptador-de-ferramenta` | somente ao acrescentar adaptador | [skill](../../.agents/skills/adaptador-de-ferramenta/SKILL.md) |
 | `publicar-no-npm` | somente na publicação | [skill](../../.agents/skills/publicar-no-npm/SKILL.md) |

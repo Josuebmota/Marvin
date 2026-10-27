@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-84-quebrar-delegacao-e-ligar-orfaos
 description: "Só base, sem script: quebrar o delegacao.md (lido em toda triagem) em índice + um arquivo por assunto, encurtar a linha de tabela de 773 caracteres do ferramentas.md e ligar os 3 órfãos que o --status (US-78) aponta."
@@ -36,8 +36,8 @@ Triagem 27/10/2026 (`/refinar` na sessão, `tl` e `po` no Opus · médio). O `tl
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| quebrar e ligar | dev-back | Sonnet · médio | o corte exige separar regra viva de histórico; não é haiku | pendente |
-| verificar | qa | Sonnet · baixo | `--status` antes e depois + `node teste.mjs` | pendente |
+| quebrar e ligar | dev-back | Sonnet · médio | o corte exige separar regra viva de histórico; não é haiku | feito |
+| verificar | qa | Sonnet · baixo | `--status` antes e depois + `node teste.mjs` | feito |
 
 Sem `tl` no diff: só texto da base, sem invariante nem `UPDATES`.
 
@@ -46,8 +46,28 @@ Grafo: `docsGraph` L868 grau 8; `readNode` affected `computeStatus`, `planningNo
 ## Skills
 Nenhuma.
 
+## Impacto
+
+<!-- gerado por `marvin --us` a partir do grafo; regerado a cada run — não edite à mão -->
+
+Toca 5 nó(s) de código em 0 comunidade(s).
+
+Nada depende do que ela toca — folha do grafo.
+
+**Outras US no mesmo código** — combine antes, não no merge:
+- [US-25 — avaliar Superpowers e Claude Octopus contra o fluxo do Marvin](../../../../Novos/ferramentas-opcionais/adaptadores/US-25-avaliar-superpowers-e-octopus/Sobre.md) — 1 nó(s) em comum
+- [US-48 — Superpowers e ECC como ferramentas de execução da equipe](../../../../Novos/ferramentas-opcionais/adaptadores/US-48-superpowers-e-ecc/Sobre.md) — 1 nó(s) em comum
+- [US-68 — ponytail ligado e medido](../../../../Novos/ferramentas-opcionais/adaptadores/US-68-ponytail-medido/Sobre.md) — 1 nó(s) em comum
+- [US-50 — o Marvin instala as ferramentas por projeto](../../../../Novos/ferramentas-opcionais/curadoria/US-50-marvin-plugin-e-curador/Sobre.md) — 1 nó(s) em comum
+- [US-19 — a atividade escolhe papéis, skills, modelos e esforço conforme capacidades disponíveis](../../../../Novos/time/roteamento/US-19-papel-modelo-esforco/Sobre.md) — 1 nó(s) em comum
+- [US-28 — mapa de personas, skills e modelos (Claude e ChatGPT/Codex) e arranjos por disponibilidade](../../../../Novos/time/roteamento/US-28-modelos-por-papel-claude-e-chatgpt/Sobre.md) — 1 nó(s) em comum
+
 ## Rumo
 - **27/10/2026** — refinada da anotação da nota (o que o `--status` da US-78 achou aqui).
+- **27/10/2026** — feita. `delegacao.md` de 18 KB para 5,8 KB: ficaram a introdução, Passos, Regras que não podem quebrar, US que passaram por aqui e "Onde está o resto"; oito pedaços em `Contexto/Fluxos/delegacao/` (triagem, capacidades, disponibilidade, indisponibilidade, handoff, controles, templates, movido-do-agents), cada um com `pai:` e link de volta. Uma âncora mudou de arquivo (`mapa-capacidades.md` → `delegacao/triagem.md`). No `ferramentas.md`, tirar a linha de 773 caracteres revelaria outras três acima de 600 (ecc, ponytail, graft): as quatro encurtadas, detalhe em notas sob a tabela; nome, sim/não, datas e colunas intactos. Órfãos ligados: `Fontes/README.md` → `Externas.md` e `sessoes-de-03-08.md`; `Contexto/Sobre.md` → `status-html.md`. Ficam no `--status` as 5 US concluídas e o `equipe-barata.md` (❓1).
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `--status` antes/depois: `delegacao.md` e `ferramentas.md` fora de "Documentos grandes"; "Fragmentos órfãos" vazio; `all consistent`.
+- qa: cada linha não vazia do `delegacao.md` original existe no índice ou num pedaço (uma reflowada com link); todo link relativo e `pai:` de 31 arquivos resolve; sem caminho pessoal nem nome de cliente.
+- `node teste.mjs`: 632 passaram (rodado com a US-82 na mesma árvore).
