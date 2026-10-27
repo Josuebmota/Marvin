@@ -357,6 +357,12 @@ precisa:
    colapsada por padrão. Clique num nó: ele ganha um anel, os vizinhos ficam acesos, o resto
    apaga; clique no fundo para limpar. Duplo clique abre o arquivo em outra aba.
 
+Tudo acima é a primeira aba, **painel**. A segunda, **visão do dono**, é a mesma medida em
+palavras, sem código de US na tela (o código só aparece na dica ao passar o mouse): um
+resumo com barra por estado, o que está em andamento, a fila na ordem em que o `--status`
+imprime as ilhas, e **o que depende de você** — as ❓ abertas de cada US não concluída. O
+único recurso externo é a folha de estilo do Google Fonts; sem rede, vale a fonte do sistema.
+
 A página é *derivada*: lê os nós, nunca escreve neles. Para mudar um nó, edite o `Sobre.md`
 dele (o link faz isso) — o próximo `--status --html` reflete.
 
@@ -762,7 +768,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-632 verificações, zero dependência. Cobre os invariantes que protegem o disco
+640 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

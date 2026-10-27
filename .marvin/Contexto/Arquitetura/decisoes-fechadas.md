@@ -94,3 +94,9 @@
   personas e skills, **graphify** para economia e memória, **ponytail** para decisão. O ponytail foi
   medido no `dev-back` (US-68: +22%, n=1) e não pagou, então deixa de ser obrigatório (US-71); o uso
   dele em **decisão** (`tl`/`po`) nunca foi medido — é a condição para ele voltar.
+- **O painel `--status --html` aceita uma fonte externa: o Google Fonts, e só ele** (dono,
+  26/10/2026; registrada em 27/10/2026, US-76). A US-15 tinha fechado "nenhuma fonte externa"; a
+  exceção vale para a aba "Visão do dono", que pede tipografia de leitura. Fica o contrato de
+  antes: sem rede, a página continua legível (a pilha cai na fonte do sistema), abre em `file://`,
+  nenhum outro recurso externo, nenhum `<script src>`, `localStorage` só dentro de `try/catch`. A
+  aba atual (o painel de engenharia) não usa a fonte e segue como estava.

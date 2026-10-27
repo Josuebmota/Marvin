@@ -1305,8 +1305,32 @@ const writeStatusHtml = (st, quiet = false) => {
     const q = (rows, cls) => `<g class="${cls}">${rows.flatMap((r, y) => [...r].map((c, x) => c === '#' ? `<rect x="${x}" y="${y}" width="1" height="1"/>` : '')).join('')}</g>`;
     return `<svg viewBox="0 0 11 8" width="33" height="24" shape-rendering="crispEdges">${q(A, 'qa')}${q(B, 'qb')}</svg>`;
   })();
+  // ── "Visão do dono" tab (US-76): the same `st`, in words. No US code is ever visible here — the
+  // code only goes into `title=` (a tooltip). Each block is its own <section class="bloco">, so a
+  // new block is one more entry in `blocos` below. Queue order = the ilhas order of the text --status.
+  const plain = (s) => esc(String(s).replace(/\*\*|`/g, '')
+    .replace(/^US-\d+[a-z]?(?:\s*[—–-]\s*|\s+)/i, '').replace(/\bUS-\d+[a-z]?\b/gi, 'outra US'));
+  const codeOf = (titulo) => String(titulo).split(' — ')[0].trim();
+  const usLink = (r) => `<a href="${esc(path.relative(dir, r.arq).replace(/\\/g, '/'))}" target="_blank" title="${esc(codeOf(r.titulo))}">${plain(r.titulo)}</a>`;
+  const donoBlocks = (() => {
+    const rm = st.roadmap;
+    const LABEL = { ativa: 'em andamento', refinada: 'na fila', pausada: 'pausada', anotada: 'anotada', concluida: 'concluída', cancelada: 'cancelada' };
+    const count = Object.fromEntries(US_STATES.map(s => [s, rm[s].length]));
+    const doubts = ['ativa', 'refinada', 'pausada', 'anotada'].flatMap(s => rm[s].filter(r => r.perguntas.length));
+    const nQ = doubts.reduce((t, r) => t + r.perguntas.length, 0);
+    const res = (rot, val) => `<div class="res"><span class="rot">${esc(rot)}</span><span class="val">${val}</span></div>`;
+    const segs = US_STATES.filter(s => count[s]).map(s => `<span class="seg e-${s}" style="flex:${count[s]}" title="${count[s]} ${esc(LABEL[s])}"></span>`).join('');
+    const legend = US_STATES.filter(s => count[s]).map(s => `<span class="lgd"><i class="seg e-${s}"></i>${esc(LABEL[s])} ${count[s]}</span>`).join('');
+    const resumo = `<section class="bloco" id="dono-resumo"><h2>Resumo</h2><div class="resumo">${res('em andamento', count.ativa)}${res('na fila', count.refinada)}${res('concluídas', count.concluida)}${res('perguntas', nQ)}${res('total', st.nos.us)}</div>${segs ? `<div class="barra" role="img" aria-label="US por estado">${segs}</div><div class="legenda-barra">${legend}</div>` : ''}</section>`;
+    const andamento = `<section class="bloco" id="dono-andamento"><h2>Em andamento</h2>${rm.ativa.length ? `<ul class="lista">${rm.ativa.map(r => `<li><strong>${usLink(r)}</strong>${r.cadeia.length ? `<div class="dim">${plain(r.cadeia.join(' › '))}</div>` : ''}${r.rumo ? `<div>${plain(r.rumo.slice(0, 200))}</div>` : ''}</li>`).join('')}</ul>` : '<p class="dim">nada em andamento</p>'}</section>`;
+    const fila = `<section class="bloco" id="dono-fila"><h2>Na fila <span class="dim">— na ordem em que o Marvin vai pegar</span></h2>${rm.refinada.length ? `<ol class="lista">${rm.refinada.map(r => `<li>${usLink(r)}${r.cadeia.length ? ` <span class="dim">${plain(r.cadeia.join(' › '))}</span>` : ''}</li>`).join('')}</ol>` : '<p class="dim">fila vazia</p>'}</section>`;
+    const depende = `<section class="bloco" id="dono-depende"><h2>Depende de você <span class="dim">— ${nQ} pergunta(s) em aberto</span></h2>${doubts.length ? `<ul class="lista">${doubts.map(r => `<li><strong>${usLink(r)}</strong> <span class="chip">${esc(LABEL[r.estado])}</span><ul>${r.perguntas.map(q => `<li>${plain(q)}</li>`).join('')}</ul></li>`).join('')}</ul>` : '<p class="dim">nada depende de você agora</p>'}</section>`;
+    return [resumo, andamento, fila, depende];
+  })();
+
   const html = `<!doctype html>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@500;600&display=swap">
 <script>(function(){try{var t=localStorage.getItem('marvin-tema');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <title>${esc(path.basename(ROOT))} — marvin status</title>
 <style>
@@ -1347,11 +1371,21 @@ polyline.s0,polyline.s1,polyline.s2{fill:none}.lg{font-size:12px;padding-left:10
 #rede .aresta{stroke-linecap:round}#rede .aresta.touches{stroke-dasharray:4 10;animation:sinapse 1.6s linear infinite}@keyframes sinapse{to{stroke-dashoffset:-14}}@media(prefers-reduced-motion:reduce){#rede *{animation:none!important}}#rede .no.e-ativa circle{stroke:var(--ok);stroke-width:3}#rede .no.e-pausada circle{stroke:var(--warn);stroke-width:3}#rede .no.e-concluida circle{stroke:var(--s0);stroke-width:3}#rede .no.e-cancelada circle{stroke:var(--err);stroke-width:3}
 #rede .no text{font-size:9px;fill:var(--fg);pointer-events:none;opacity:.85}#rede .no.c-arquivo text,#rede .no.c-funcao text{opacity:.55;font-size:8px}
 #rede .aresta{stroke:var(--line);stroke-width:1.2}#rede .aresta.touches{stroke:#c2571a;opacity:.5}#rede .aresta.child_of{stroke:#7c3aed;opacity:.5}#rede .aresta.references{stroke:var(--dim);opacity:.45}
+.aba-in{position:absolute;opacity:0;pointer-events:none}.abas-nav{display:flex;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;width:max-content;max-width:100%;margin:var(--s4) 0 0}.abas-nav label{padding:var(--s2) var(--s4);background:var(--bg2);color:var(--dim);cursor:pointer;font-family:var(--mono);font-size:var(--f0);font-weight:600;text-transform:uppercase;letter-spacing:.01em}.abas-nav label:hover{color:var(--fg)}
+.painel{display:none}#aba0:checked~.p0,#aba1:checked~.p1{display:block}#aba0:checked~.abas-nav label[for=aba0],#aba1:checked~.abas-nav label[for=aba1]{background:var(--bg3);color:var(--acc)}#aba0:focus-visible~.abas-nav label[for=aba0],#aba1:focus-visible~.abas-nav label[for=aba1]{outline:2px solid var(--acc);outline-offset:-2px}
+.p1{font-family:Inter,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif}.p1 .rot,.p1 .chip,.p1 .legenda-barra{font-family:"JetBrains Mono",var(--mono)}
+.resumo{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}.res{padding:var(--s3) var(--s4);background:var(--bg2)}.res .rot{display:block;color:var(--dim);font-size:var(--f0);font-weight:600;text-transform:uppercase;letter-spacing:.01em}.res .val{display:block;font-family:"JetBrains Mono",var(--mono);font-size:var(--f5);font-weight:500;line-height:1.1;font-variant-numeric:tabular-nums}
+.barra{display:flex;height:10px;margin:var(--s3) 0 var(--s2);border-radius:var(--r);overflow:hidden;background:var(--bg3)}.seg{display:block;min-width:3px}i.seg{display:inline-block;width:8px;height:8px;min-width:0;border-radius:50%;margin-right:var(--s1)}.e-ativa{background:var(--ok)}.e-refinada{background:var(--c-epic)}.e-pausada{background:var(--warn)}.e-anotada{background:var(--dim)}.e-concluida{background:var(--s0)}.e-cancelada{background:var(--err)}
+.legenda-barra{display:flex;gap:var(--s4);flex-wrap:wrap;color:var(--dim);font-size:var(--f0)}.lgd{white-space:nowrap}
+.bloco{margin:0}.lista{margin:0;padding-left:var(--s5)}.lista li{margin:var(--s2) 0}.lista a{text-decoration:none}.lista a:hover{text-decoration:underline}.lista ul{margin:var(--s1) 0 0;padding-left:var(--s4);color:var(--fg2)}.chip{font-size:var(--f0);font-weight:600;color:var(--dim);border:1px solid var(--line);border-radius:var(--r);padding:0 var(--s2)}
 </style>
 <button class="tema" id="tema" title="tema: automático / claro / escuro">◐ tema</button>
 <div class="mao" aria-hidden="true">${handSvg}</div>
 <header><h1>${esc(path.basename(ROOT))} <span class="dim">— marvin status</span></h1>
 <div class="dim">${commit ? `commit ${esc(commit)} · ${esc((data || '').slice(0, 10))}` : 'sem git'}${prev ? ` · anterior ${esc(prev.commit)} (${esc((prev.data || '').slice(0, 10))})` : ''} · derivado, nunca versionado</div></header>
+<input class="aba-in" type="radio" name="aba" id="aba0" checked><input class="aba-in" type="radio" name="aba" id="aba1">
+<nav class="abas-nav"><label for="aba0">painel</label><label for="aba1">visão do dono</label></nav>
+<div class="painel p0">
 ${fixList}
 <div class="cards">
 ${card('contexto fixo', st.contexto.total + ' tk', delta(prev && prev.total, st.contexto.total, ' tk', false), '#contexto')}
@@ -1385,6 +1419,11 @@ ${st.decisoes.length ? `<ul>${st.decisoes.map(d => `<li><a href="${esc(path.rela
 <h2 id="contexto">Contexto fixo <span class="dim">— o que carrega em toda sessão</span></h2>
 <table>${st.contexto.linhas.map(l => `<tr><td></td><td>${esc(l.nome)}</td><td>${l.tk} tk</td></tr>`).join('')}<tr><td></td><td><strong>total</strong></td><td><strong>${st.contexto.total} tk</strong></td></tr></table>
 ${networkHtml}
+</div>
+<div class="painel p1" id="dono">
+${donoBlocks.join('\n')}
+</div>
+<script>(function(){try{var s=localStorage.getItem('marvin-aba');if(s==='1'||location.hash==='#dono')document.getElementById('aba1').checked=true;}catch(e){if(location.hash==='#dono')document.getElementById('aba1').checked=true;}[].forEach.call(document.querySelectorAll('input[name=aba]'),function(i){i.addEventListener('change',function(){try{localStorage.setItem('marvin-aba',i.id==='aba1'?'1':'0');}catch(e){}});});})();</script>
 <script>(function(){var b=document.getElementById('tema'),r=document.documentElement,ordem=['','light','dark'],rot={'':'◐ tema: auto',light:'☀ tema: claro',dark:'☾ tema: escuro'};function pinta(){b.textContent=rot[r.getAttribute('data-theme')||''];}b.addEventListener('click',function(){var t=ordem[(ordem.indexOf(r.getAttribute('data-theme')||'')+1)%3];if(t)r.setAttribute('data-theme',t);else r.removeAttribute('data-theme');try{t?localStorage.setItem('marvin-tema',t):localStorage.removeItem('marvin-tema');}catch(e){}pinta();});pinta();})();</script>
 <script type="application/json" id="historico">${JSON.stringify(pts)}</script>
 `;
@@ -1502,7 +1541,7 @@ const computeStatus = () => {
   // Roadmap: read-only view of estado + ilha order. Open USs outside any ilha come after, by short id.
   const idOf = (n) => n.titulo.split(' — ')[0];
   const ilhaPos = new Map(st.ilhas.ilhas.flatMap(i => i.us).map((u, k) => [path.resolve(u.arq), k]));
-  const rm = (estado) => nodes.filter(n => n.tipo === 'us' && n.estado === estado).map(n => ({ titulo: n.titulo, arq: n.arq, estado: n.estado, cadeia: chain(n) }));
+  const rm = (estado) => nodes.filter(n => n.tipo === 'us' && n.estado === estado).map(n => ({ titulo: n.titulo, arq: n.arq, estado: n.estado, cadeia: chain(n), perguntas: n.perguntas, rumo: n.rumo.length ? n.rumo[n.rumo.length - 1].texto : null }));
   const byOpen = (a, b) => { const pa = ilhaPos.get(path.resolve(a.arq)), pb = ilhaPos.get(path.resolve(b.arq));
     return (pa === undefined ? Infinity : pa) === (pb === undefined ? Infinity : pb) ? idOf(a).localeCompare(idOf(b)) : (pa === undefined ? 1 : pb === undefined ? -1 : pa - pb); };
   // US-73: one key per valid state (US_STATES); only concluida is ordered by chain instead of ilha.

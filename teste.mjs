@@ -1366,7 +1366,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const order = ['<div class="cards">', 'id="andamento"', 'id="tendencia"', 'id="tokens"', '<details class="rede"'].map(s => html.indexOf(s));
   check('HTML: Corrigir/ok antes dos cards, cards antes de tudo, rede colapsada por último', (html.indexOf('class="tudo-ok"') >= 0 || html.indexOf('class="corrigir"') >= 0) && Math.min(html.indexOf('class="tudo-ok"') < 0 ? Infinity : html.indexOf('class="tudo-ok"'), html.indexOf('class="corrigir"') < 0 ? Infinity : html.indexOf('class="corrigir"')) < order[0] && order.every((p, i) => p >= 0 && (i === 0 || p > order[i - 1])) && !/<details class="rede"[^>]*\sopen/.test(html));
   check('HTML: os cards trazem o delta desde o commit anterior', /class="delta (up|down|)/.test(html) && /desde o último commit/.test(html));
-  check('HTML: tema claro e escuro por prefers-color-scheme, sem asset externo', html.includes(':root{color-scheme:light dark') && html.includes('@media(prefers-color-scheme:dark){:root:not([data-theme=light]){') && html.includes(':root[data-theme=dark]{') && html.includes('id="tema"') && !/<link/.test(html) && !/@import/.test(html));
+  check('HTML: tema claro e escuro por prefers-color-scheme, sem asset externo', html.includes(':root{color-scheme:light dark') && html.includes('@media(prefers-color-scheme:dark){:root:not([data-theme=light]){') && html.includes(':root[data-theme=dark]{') && html.includes('id="tema"') && !/<link(?![^>]*fonts\.(googleapis|gstatic)\.com)/.test(html) && !/@import/.test(html));   // US-76: Google Fonts is the one allowed exception
   // and with a real problem: a concluded US still in the note → enters Corrigir, with a link relative to the page
   run(a, '--us', 'Novos/P/F/US-01-x');
   const usX = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'P', 'F', 'US-01-x', 'Sobre.md');
@@ -1412,6 +1412,44 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   check('--status --html não escreve nada fora de .marvin/.status/', snap() === before);
   check('--status (texto) igual com e sem um --status --html no meio', run(a, '--status').stdout === textBefore);
   check('o ponto do historico.jsonl mantém exatamente as chaves de antes', lastKeys === Object.keys(JSON.parse(lines()[lines().length - 1])).join(',') && /^commit,data,total,tk,us_ativas,/.test(lastKeys), lastKeys);
+  cleanup(a);
+}
+
+// ── US-76. --status --html: "Visão do dono" tab, in words, no US code visible (only in `title=`).
+//     Queue = the ilhas order of the text --status; "Depende de você" = open ❓ of the unfinished USs.
+{
+  const a = arena('dono');
+  run(a, '--no-git', '--no-questions');
+  const sobre = (id) => path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'P', 'F', id, 'Sobre.md');
+  const mk = (id, estado, titulo, extra = '', tocado = '') => {
+    run(a, '--us', 'Novos/P/F/' + id);
+    const s = sobre(id);
+    let t = fs.readFileSync(s, 'utf8').replace('estado: ativa', 'estado: ' + estado).replace(/^# .*$/m, () => '# ' + titulo);
+    if (tocado) t = t.replace(/^## Código tocado\n/m, () => '## Código tocado' + NLQ + '- `src/' + tocado + '.js`' + NLQ);
+    fs.writeFileSync(s, t + NLQ + extra + NLQ);
+  };
+  mk('US-01-alfa', 'ativa', 'US-01 — Alfa em curso', '- ❓ pergunta-da-ativa com a US-77 junto' + NLQ + '- ~~❓ pergunta-riscada~~');
+  mk('US-02-bravo', 'refinada', 'US-02 — Bravo na fila', '- ❓ pergunta-da-fila');
+  mk('US-03-charlie', 'refinada', 'US-03 — Charlie na fila', '', 'zz');
+  mk('US-04-delta', 'refinada', 'US-04 — Delta na fila', '', 'zz');
+  mk('US-05-eco', 'concluida', 'US-05 — Eco feita', '- ❓ pergunta-da-concluida');
+  const textBefore = run(a, '--status').stdout;
+  run(a, '--status', '--html');
+  const html = fs.readFileSync(path.join(a.proj, '.marvin', '.status', 'index.html'), 'utf8');
+  const i0 = html.indexOf('<div class="painel p1"'), tab = html.slice(i0, html.indexOf('<script>', i0));
+  const words = tab.replace(/<[^>]*>/g, ' ');
+  const res = (rot) => (tab.match(new RegExp('<span class="rot">' + rot + '</span><span class="val">(\\d+)</span>')) || [])[1];
+  check('US-76: a aba "Visão do dono" existe ao lado da atual, que segue no seu painel', i0 > 0 && /for="aba1">visão do dono</.test(html) && /<div class="painel p0">[\s\S]*id="andamento"[\s\S]*<details class="rede"/.test(html) && html.indexOf('class="painel p0"') < i0);
+  check('US-76: nenhum código de US visível na aba (só no title)', !/\bUS-\d+/.test(words) && /title="US-01"/.test(tab) && /Alfa em curso/.test(words), words.replace(/\s+/g, ' ').slice(0, 500));
+  check('US-76: resumo com as contagens (1 em andamento, 3 na fila, 1 concluída, 2 perguntas, 5 no total) e a barra por estado',
+        res('em andamento') === '1' && res('na fila') === '3' && res('concluídas') === '1' && res('perguntas') === '2' && res('total') === '5' && /class="barra"/.test(tab) && /class="seg e-refinada" style="flex:3"/.test(tab), tab.slice(0, 700));
+  const pos = (s) => words.indexOf(s);
+  check('US-76: a fila segue a ordem das ilhas (a ilha de duas primeiro, depois a US sem mapa)', pos('Charlie') > 0 && pos('Charlie') < pos('Delta') && pos('Delta') < pos('Bravo na fila'), words.replace(/\s+/g, ' '));
+  check('US-76: "Depende de você" tem a ❓ aberta de ativa e de refinada; a riscada e a da concluída não', words.includes('pergunta-da-ativa') && words.includes('pergunta-da-fila') && !words.includes('pergunta-riscada') && !words.includes('pergunta-da-concluida'));
+  check('US-76: código de US dentro do texto de uma ❓ vira palavra, não código', /pergunta-da-ativa com a outra US junto/.test(words));
+  check('US-76: abre em file:// — só o Google Fonts é externo, e localStorage da aba fica em try/catch',
+        [...html.matchAll(/(?:href|src)="(https?:[^"]+)"/g)].every(m => /^https:\/\/fonts\.(googleapis|gstatic)\.com/.test(m[1])) && !/<script src=/.test(html) && /try\{var s=localStorage\.getItem\('marvin-aba'\)/.test(html));
+  check('US-76: o --status em texto não muda com a aba', run(a, '--status').stdout === textBefore);
   cleanup(a);
 }
 
