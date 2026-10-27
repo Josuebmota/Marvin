@@ -402,6 +402,9 @@ turno relê o contexto inteiro.
                   Sobre.md que falta e põe o ponteiro na nota
    --refinada     a US nasce `estado: refinada` — refinada, na fila, FORA da nota. O /refinar
                   usa; o --status agrupa as refinadas em ilhas por arquivo
+   --anotada      a US nasce `estado: anotada` — um arquivo por anotação, FORA da nota e
+                  FORA da fila. O --status conta, o --html lista. Não combina com
+                  --refinada/--ativa/--pausar
    --pausar "<e>" numa US existente: `estado: pausada`, `espera: <e>` e `desde: hoje` no
                   frontmatter, mais uma linha no Rumo. Mesma espera = não escreve nada;
                   outra espera = troca só o `espera:`. Nunca cria a US
@@ -758,7 +761,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-599 verificações, zero dependência. Cobre os invariantes que protegem o disco
+607 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

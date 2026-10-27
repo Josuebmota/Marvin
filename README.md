@@ -405,6 +405,9 @@ usually ~⅔ of it: every turn re-reads the whole context.
                   Sobre.md chain that is missing and adds the pointer to the note
    --refinada     the US is born `estado: refinada` — refined, in the queue, NOT in the
                   note. /refinar uses it; --status groups refined USs into ilhas by file
+   --anotada      the US is born `estado: anotada` — one file per annotation, NOT in the
+                  note and NOT in the queue. --status counts it, --html lists it. Cannot
+                  go with --refinada/--ativa/--pausar
    --pausar "<w>" on an existing US: `estado: pausada`, `espera: <w>` and `desde: today` in
                   the frontmatter plus a line in the Rumo. Same espera = nothing written;
                   another espera = only `espera:` changes. Never creates the US
@@ -769,7 +772,7 @@ rather than final text.
 node teste.mjs
 ```
 
-599 checks, no dependencies. It covers the invariants that protect other
+607 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

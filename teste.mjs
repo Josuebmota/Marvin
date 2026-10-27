@@ -3172,6 +3172,40 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── US-81. --us <path> --anotada: born `anotada`, outside the note and the queue; /refinar text carries the mark.
+{
+  const a = arena('us81');
+  run(a, '--no-git');
+  const noteF = path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md');
+  const noteBefore = fs.readFileSync(noteF, 'utf8');
+  const key = 'Novos/E/F/US-7';
+  const f = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E', 'F', 'US-7', 'Sobre.md');
+  const strip = (s) => s.replace(/\x1b\[[0-9;]*m/g, '');
+  const r1 = run(a, '--us', key, '--anotada');
+  const t1 = fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : '';
+  check('US-81: --anotada cria a US com estado: anotada', r1.status === 0 && /^tipo: us\r?\nestado: anotada$/m.test(t1), r1.stdout.slice(-300));
+  check('US-81: --anotada não põe ponteiro na nota', fs.readFileSync(noteF, 'utf8') === noteBefore && !/US-7/.test(fs.readFileSync(noteF, 'utf8')));
+  const st = strip(run(a, '--status').stdout);
+  check('US-81: a anotada é contada e não entra na fila', /1 anotada\(s\)/.test(st) && !/refinada\(s\)/.test(st) && !/Ilhas/.test(st), st.slice(-400));
+  run(a, '--us', key, '--anotada');
+  check('US-81: rodar de novo deixa a US e a nota byte-idênticas', fs.readFileSync(f, 'utf8') === t1 && fs.readFileSync(noteF, 'utf8') === noteBefore);
+  const bad = ['--refinada', '--ativa'].map(x => run(a, '--us', 'Novos/E/F/US-8', '--anotada', x));
+  const badP = run(a, '--us', 'Novos/E/F/US-8', '--anotada', '--pausar', 'x');
+  check('US-81: --anotada com --refinada, --ativa ou --pausar recusa e não cria nada', bad.every(r => r.status === 2) && badP.status === 2 && !fs.existsSync(path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E', 'F', 'US-8')));
+  // Refining switches the state in the same file: it leaves the annotated count, nothing moves.
+  fs.writeFileSync(f, t1.replace(/^estado: anotada/m, 'estado: refinada'));
+  const st2 = strip(run(a, '--status').stdout);
+  check('US-81: a anotada que virou refinada sai da contagem das anotadas', !/anotada\(s\)/.test(st2) && fs.existsSync(f), st2.slice(-400));
+  // UPDATES: the generated /refinar teaches --anotada; a base without it is flagged.
+  const rf = path.join(a.proj, '.claude', 'commands', 'refinar.md');
+  const rt = fs.readFileSync(rf, 'utf8');
+  check('US-81: o /refinar gerado ensina o --anotada', /marvin\s+--us\s+<caminho>\s+--anotada/.test(rt));
+  fs.writeFileSync(rf, rt.replace(/marvin\s+--us\s+<caminho>\s+--anotada/g, 'marvin --us <caminho> --x'));
+  const old81 = run(a, '--no-git', '--no-questions').stdout;
+  check('US-81: refinar.md sem o --anotada ganha o aviso do passo 10', /10\. Updates/.test(old81) && /--anotada/.test(old81), old81.slice(-600));
+  cleanup(a);
+}
+
 // ── US-80. The post-commit hook of the graph is installed by default (graphify in use + git directory);
 //     `--no-graph-hook` turns it off and records `hook do grafo: desligado` in ferramentas.md; `--graphify-git-hook` forces.
 //     No real graphify: `equipped` puts a fake one (exit 0) on PATH and a synthetic graph.json makes step 8b reach the hook.

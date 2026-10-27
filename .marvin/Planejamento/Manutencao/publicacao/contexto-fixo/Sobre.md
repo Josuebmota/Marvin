@@ -10,6 +10,7 @@ pai: ../Sobre.md
 
 ## Filhos
 - [US-51-agents-md-enxuto](US-51-agents-md-enxuto/Sobre.md)
+- [US-84-quebrar-delegacao-e-ligar-orfaos](US-84-quebrar-delegacao-e-ligar-orfaos/Sobre.md)
 
 ## Rumo
 - **15/10/2026** — aberta, com a primeira US.

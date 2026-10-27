@@ -18,6 +18,9 @@ Para cada etapa, o refino escolhe o agente, a skill (se houver), o modelo e o es
 1. Leia a nota (as linhas ⚪ e as anotações sem US) e `marvin --status` (a fila e as ilhas que
    já existem). Se um chat de desenvolvimento estiver aberto, ele escreve só a linha da US
    dele na nota — você escreve só as suas. **Releia antes de salvar.**
+   **Anotação nova** (ainda sem refinar) não vai para um arquivo que cresce: vira uma US com
+   `marvin --us <caminho> --anotada` — um arquivo por anotação, fora da nota e fora da fila. O índice
+   das abertas é o bloco *Anotadas* do `marvin --status --html` (o `--status` mostra a contagem por Epic).
 
 2. Para cada anotação, o **crivo `tl` + `po` em paralelo**:
    - `tl`: causa com arquivo:linha (ler o código, não chutar) · risco (dado, invariante) ou zero ·
@@ -37,6 +40,9 @@ Para cada etapa, o refino escolhe o agente, a skill (se houver), o modelo e o es
    e preencha o `Sobre.md`: **Por quê** · **Pronto quando** · **Não entra** · **Código tocado**
    (o arquivo:linha do `tl` é isto — é o que define a ilha) · **Time**. Depois
    `marvin --us <caminho>` de novo: o *Impacto* sai do grafo, se houver.
+   **A anotação já é uma US `anotada`? Não crie outra:** troque `estado: anotada` por `refinada` no
+   **mesmo** `Sobre.md` (ela sai do bloco *Anotadas* e da contagem; nada é movido nem apagado). A linha ⚪
+   da nota que a originou **sai da nota**, e a origem (de onde veio a anotação) fica no *Rumo* da US.
    O *Time* é a tabela `| etapa | papel | modelo · esforço | motivo | estado |`, uma linha por etapa,
    preenchida pelo `tl` e pelo `po` a partir do glossário (`.marvin/Contexto/Equipe.md`): partida no
    degrau mais barato que serve; subir exige motivo; quem decide não é quem executa. É a economia

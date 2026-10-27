@@ -220,6 +220,9 @@ Flags:
                     Sobre.md chain that is missing and adds the pointer to the note
      --refinada     the US is born \`estado: refinada\` — refined, in the queue, NOT in the
                     note; /refinar uses it. --status groups refined USs into ilhas by file
+     --anotada      the US is born \`estado: anotada\` — one file per annotation, NOT in the
+                    note and NOT in the queue; --status counts it, --html lists it. Cannot
+                    go with --refinada/--ativa/--pausar
      --pausar "<w>" on an existing US: estado: pausada + espera: <w> + desde: today in the
                     frontmatter, and a line in the Rumo. Same espera = nothing written;
                     another espera = only espera changes. Never creates the US
@@ -1869,6 +1872,8 @@ if (argUS || hasFlag('--us')) {
   // below applies (no chain created, no pointer in the note, no Impacto regenerated — the rest of the file is the human's).
   const pausarArg = process.argv.find(a => a === '--pausar' || a.startsWith('--pausar='));
   const ATIVA = hasFlag('--ativa');
+  const ANNOTATED = hasFlag('--anotada');   // US-81: born annotated — one file per annotation, outside the note and the queue
+  if (ANNOTATED && (hasFlag('--refinada') || ATIVA || pausarArg)) { err('--anotada is the birth state of a new US — it cannot go with --refinada, --ativa or --pausar'); process.exit(2); }
   if (pausarArg || ATIVA) {
     if (pausarArg && ATIVA) { err('--pausar and --ativa are opposites — pass one'); process.exit(2); }
     const wait = pausarArg ? (pausarArg.startsWith('--pausar=') ? pausarArg.slice(9) : process.argv[process.argv.indexOf('--pausar') + 1] || '').replace(/\s+/g, ' ').trim() : '';
@@ -1907,7 +1912,7 @@ if (argUS || hasFlag('--us')) {
     process.exit(0);
   }
   const REFINED = hasFlag('--refinada');   // born in the queue, not in the note (US-16)
-  log('\x1b[1m--us\x1b[0m — ' + target + (REFINED ? '  (refinada)' : '') + '\n');
+  log('\x1b[1m--us\x1b[0m — ' + target + (REFINED ? '  (refinada)' : ANNOTATED ? '  (anotada)' : '') + '\n');
   const today = (() => { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); })();
   const types = ['epic', 'feature', 'us'];
   for (let i = 1; i <= 3; i++) {
@@ -1916,7 +1921,7 @@ if (argUS || hasFlag('--us')) {
     const type = types[i - 1], name = parts[i];
     if (fs.existsSync(sobre)) { info(type + ': ' + parts.slice(0, i + 1).join('/') + ' already exists'); continue; }
     fsw.mkdirSync(dir, { recursive: true });
-    const header = `---\ntipo: ${type}\nestado: ${type === 'us' && REFINED ? 'refinada' : 'ativa'}\npai: ${i === 1 ? '../../README.md' : '../Sobre.md'}\n---\n# ${name}\n\n**Por quê:** _(uma linha)_\n**Pronto quando:** _(critério verificável)_\n`;
+    const header = `---\ntipo: ${type}\nestado: ${type === 'us' && REFINED ? 'refinada' : type === 'us' && ANNOTATED ? 'anotada' : 'ativa'}\npai: ${i === 1 ? '../../README.md' : '../Sobre.md'}\n---\n# ${name}\n\n**Por quê:** _(uma linha)_\n**Pronto quando:** _(critério verificável)_\n`;
     const body = type === 'us' ? `
 ## Fluxos ligados
 _(link para ${path.relative(dir, path.join(DOCS, 'Contexto', 'Fluxos')).replace(/\\/g, '/')}/<fluxo>.md — fluxo sem nota ganha uma agora)_
@@ -1963,9 +1968,10 @@ _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
   const NOTE_US = path.join(DEST, 'onde_paramos.md');
   const relSobre = path.relative(DEST, path.join(DOCS, 'Planejamento', ...parts, 'Sobre.md')).replace(/\\/g, '/');
   let note = ''; try { note = fs.readFileSync(NOTE_US, 'utf8'); } catch {}
-  const usState = (readNode(path.join(DOCS, 'Planejamento', ...parts, 'Sobre.md')) || {}).estado;
+  // In --dry-run the Sobre.md was not written: fall back to the state this run would give it.
+  const usState = (readNode(path.join(DOCS, 'Planejamento', ...parts, 'Sobre.md')) || {}).estado || (ANNOTATED ? 'anotada' : REFINED ? 'refinada' : undefined);
   if (!note) warn('onde_paramos.md not found — run marvin first');
-  else if (usState && usState !== 'ativa') info('onde_paramos.md — not pointed to: the US is ' + usState + (usState === 'refinada' ? ' (in the queue; when work starts, set estado: ativa and run --us again for the pointer)' : ''));
+  else if (usState && usState !== 'ativa') info('onde_paramos.md — not pointed to: the US is ' + usState + (usState === 'refinada' ? ' (in the queue; when work starts, set estado: ativa and run --us again for the pointer)' : usState === 'anotada' ? ' (annotated, listed by --status; /refinar turns it into refinada in the same file)' : ''));
   else if (note.includes('](' + relSobre + ')')) info('onde_paramos.md already points to it');
   else {
     const line = `- [${parts[3]}](${relSobre}) — aberta ${today}; próximo passo: _(uma frase)_`;
@@ -3995,6 +4001,9 @@ confira com \`marvin --status\` que elas saíram da contagem.
 1. Leia a nota (as linhas ⚪ e as anotações sem US) e \`marvin --status\` (a fila e as ilhas que
    já existem). Se um chat de desenvolvimento estiver aberto, ele escreve só a linha da US
    dele na nota — você escreve só as suas. **Releia antes de salvar.**
+   **Anotação nova** (ainda sem refinar) não vai para um arquivo que cresce: vira uma US com
+   \`marvin --us <caminho> --anotada\` — um arquivo por anotação, fora da nota e fora da fila. O índice
+   das abertas é o bloco *Anotadas* do \`marvin --status --html\` (o \`--status\` mostra a contagem por Epic).
 
 2. Para cada anotação, o **crivo \`tl\` + \`po\` em paralelo**:
    - \`tl\`: causa com arquivo:linha (ler o código, não chutar) · risco (dado, invariante) ou zero ·
@@ -4007,6 +4016,9 @@ confira com \`marvin --status\` que elas saíram da contagem.
    e preencha o \`Sobre.md\`: **Por quê** · **Pronto quando** · **Não entra** · **Código tocado**
    (o arquivo:linha do \`tl\` é isto — é o que define a ilha) · **Time**. Depois
    \`marvin --us <caminho>\` de novo: o *Impacto* sai do grafo, se houver.
+   **A anotação já é uma US \`anotada\`? Não crie outra:** troque \`estado: anotada\` por \`refinada\` no
+   **mesmo** \`Sobre.md\` (ela sai do bloco *Anotadas* e da contagem; nada é movido nem apagado). A linha ⚪
+   da nota que a originou **sai da nota**, e a origem (de onde veio a anotação) fica no *Rumo* da US.
    O *Time* é a tabela \`| etapa | papel | modelo · esforço | motivo | estado |\`, uma linha por etapa,
    preenchida pelo \`tl\` e pelo \`po\` a partir do glossário (\`${relDocs}/${TEAM_GUIDE}\`): partida no
    degrau mais barato que serve; subir exige motivo; quem decide não é quem executa. Para cada etapa, o refino
@@ -5157,6 +5169,9 @@ const UPDATES = [
   { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
     marca: /--pausar\s+"/, soCom: !OLD_LAYOUT, desde: '3.4.3',
     o_que: 'in the "Pausada não é ativa" rule, the command `marvin --us <caminho> --pausar "<espera>"` (back: `--ativa`) instead of editing the frontmatter by hand' },
+  // US-81: an annotation is a US `anotada` (one file each); /refinar switches the state in the same file.
+  { arquivo: '.claude/commands/refinar.md', marca: /marvin\s+--us\s+<caminho>\s+--anotada/, soCom: !OLD_LAYOUT, desde: '3.4.3',
+    o_que: 'the /refinar rule that a new annotation becomes `marvin --us <caminho> --anotada` (never a growing aggregate file) and, when refined, the state changes in the same file and the note line leaves' },
   // A role with no agent file inherits the session model (Opus) unless the delegation passes `model`.
   { arquivo: path.relative(ROOT, path.join(DOCS, TEAM_GUIDE)).replace(/\\/g, '/'),
     marca: /Papel\s+sem\s+arquivo\s+de\s+agente/, desde: '3.2.0',

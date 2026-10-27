@@ -28,6 +28,8 @@ pai: ../Sobre.md
 - [US-77-visao-do-dono-epicos](US-77-visao-do-dono-epicos/Sobre.md)
 - [US-79-pausar](US-79-pausar/Sobre.md)
 - [US-81-anotacao-vira-us-anotada](US-81-anotacao-vira-us-anotada/Sobre.md)
+- [US-83-us-aceita-caminho-do-sobre](US-83-us-aceita-caminho-do-sobre/Sobre.md)
+- [US-85-anotadas-no-status-do-terminal](US-85-anotadas-no-status-do-terminal/Sobre.md)
 
 ## Rumo
 - **10/09/2026** — aberta.

@@ -17,6 +17,7 @@ pai: ../Sobre.md
 - [US-67-ponytail-enabledplugins](US-67-ponytail-enabledplugins/Sobre.md)
 - [US-70-hook-refaz-docs-do-grafo](US-70-hook-refaz-docs-do-grafo/Sobre.md)
 - [US-80-hook-do-grafo-por-padrao](US-80-hook-do-grafo-por-padrao/Sobre.md)
+- [US-82-hook-do-grafo-com-hookspath](US-82-hook-do-grafo-com-hookspath/Sobre.md)
 
 ## Rumo
 - **14/10/2026** — aberta, com a primeira US.
