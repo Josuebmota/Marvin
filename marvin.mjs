@@ -1397,6 +1397,28 @@ ${networkHtml}
 // The line every post-commit hook written by Marvin carries (and nobody else's does).
 // Declared above computeStatus: --status exits before the later blocks of the file run.
 const HOOK_SIGNATURE = /#\s+marvin\s+—\s+atualiza\s+o\s+grafo/;
+// US-82: `core.hooksPath` (husky and friends) makes git ignore .git/hooks. Returns the configured value when it
+// resolves somewhere else, otherwise null (unset, unreadable, or pointing at .git/hooks). Read only, fine in --dry-run.
+const divertedHooksPath = () => {
+  let v = '';
+  try { v = execSync('git config --path --get core.hooksPath', { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch {}
+  if (!v) return null;
+  const norm = p => process.platform === 'win32' ? p.toLowerCase() : p;
+  return norm(path.resolve(ROOT, v)) === norm(path.join(ROOT, '.git', 'hooks')) ? null : v;
+};
+// The line Marvin tells the user to paste has no HOOK_SIGNATURE: recognise it by what it runs.
+// husky 9 sets core.hooksPath to the generated `.husky/_` (it has the script `h`, which runs the versioned
+// `.husky/post-commit`): the file the user edits is one level up.
+const userPostCommit = (v) => {
+  const dir = path.resolve(ROOT, v);
+  const file = path.basename(dir) === '_' && fs.existsSync(path.join(dir, 'h')) ? path.join(path.dirname(dir), 'post-commit') : path.join(dir, 'post-commit');
+  const rel = path.relative(ROOT, file);
+  return { file, rel: (rel && !rel.startsWith('..') && !path.isAbsolute(rel) ? rel : file).replace(/\\/g, '/') };
+};
+// Only an uncommented line counts: a commented-out paste still leaves the graph ageing.
+const hooksPathRunsRefresh = (v) => {
+  try { return /^[ \t]*[^#\s][^\n]*(--graph-docs|--graphify-rebuild)/m.test(fs.readFileSync(userPostCommit(v).file, 'utf8')); } catch { return false; }
+};
 const computeStatus = () => {
   const nodes = planningNodes();
   const byFile = new Map(nodes.map(n => [path.resolve(n.arq), n]));
@@ -1543,14 +1565,16 @@ const computeStatus = () => {
     let hookOk = false, commitSec = null;
     try {
       if (fs.statSync(path.join(ROOT, '.git')).isDirectory()) {
-        try { hookOk = HOOK_SIGNATURE.test(fs.readFileSync(path.join(ROOT, '.git', 'hooks', 'post-commit'), 'utf8')); } catch {}
+        const desvio = divertedHooksPath();   // US-82: git does not run .git/hooks, so a hook there is dead
+        if (desvio) hookOk = hooksPathRunsRefresh(desvio);
+        else try { hookOk = HOOK_SIGNATURE.test(fs.readFileSync(path.join(ROOT, '.git', 'hooks', 'post-commit'), 'utf8')); } catch {}
         try { commitSec = parseInt(execSync('git log -1 --format=%ct', { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(), 10); } catch {}
         const velho = Number.isFinite(commitSec) && Math.floor(mtime.getTime() / 1000) < commitSec;
         // Counts as a problem only without the Marvin hook. With it, a graph older than the commit is the hook's
         // background run still going (or about to), so it is shown but does not flip the exit code.
         // US-80: whoever turned the hook off on purpose (`hook do grafo: desligado` in ferramentas.md) is not a problem.
         const semHook = !hookOk && !hookOptedOut();
-        st.grafoAlerta = { velho, semHook };
+        st.grafoAlerta = { velho, semHook, desvio: semHook ? desvio : null, alvo: semHook && desvio ? userPostCommit(desvio).rel : null };
         if (semHook) st.problemas++;
       }
     } catch {}
@@ -1607,8 +1631,10 @@ const printStatus = (st, short) => {
   const ga = st.grafoAlerta;
   if (ga && (ga.velho || ga.semHook)) {
     const velhoTxt = 'o grafo é mais velho que o último commit — refaça com: marvin --graphify --graphify-rebuild';
-    const hookTxt = 'sem o hook de post-commit do Marvin — o grafo envelhece a cada commit: marvin --graphify --graphify-git-hook';
-    if (short) warn('grafo: ' + [ga.velho && 'mais velho que o último commit', ga.semHook && 'sem o hook de post-commit'].filter(Boolean).join(' e ') + ' — marvin --status');
+    const hookTxt = ga.desvio
+      ? `core.hooksPath=${ga.desvio}: o git não roda .git/hooks, então o grafo envelhece a cada commit — cole a linha do marvin --graphify em ${ga.alvo}`
+      : 'sem o hook de post-commit do Marvin — o grafo envelhece a cada commit: marvin --graphify --graphify-git-hook';
+    if (short) warn('grafo: ' + [ga.velho && 'mais velho que o último commit', ga.semHook && (ga.desvio ? 'core.hooksPath desvia o post-commit' : 'sem o hook de post-commit')].filter(Boolean).join(' e ') + ' — marvin --status');
     else { if (ga.velho) warn(velhoTxt); if (ga.semHook) warn(hookTxt); }
   }
   if (short) return;
@@ -4912,10 +4938,25 @@ echo "[marvin] atualizando o grafo em segundo plano (log: $LOG)"
       const hooksDir = path.join(ROOT, '.git', 'hooks');
       const target = path.join(hooksDir, 'post-commit');
       let gitDir = false; try { gitDir = fs.statSync(path.join(ROOT, '.git')).isDirectory(); } catch {}
+      const hp = gitDir ? divertedHooksPath() : null;
       if (!gitDir) {
         // A worktree has a `.git` FILE (its hooks live in the main repository): mkdir under it would throw. Not an error by default.
         const why = fs.existsSync(path.join(ROOT, '.git')) ? 'this is a git worktree (its hooks live in the main repository)' : 'this is not a git repository';
         (GRAPHIFY_GIT_HOOK ? warn : info)('post-commit hook skipped: ' + why);
+      } else if (hp) {
+        // US-82: git runs the hooks of core.hooksPath, never .git/hooks. Writing there would be a dead hook plus a
+        // false `ok`. Nothing is written (.husky/ is the team's versioned folder) and a dead Marvin hook is not deleted.
+        if (hooksPathRunsRefresh(hp)) {
+          info(`${userPostCommit(hp).rel} already runs the refresh — nothing to do`);
+        } else {
+          warn(`core.hooksPath=${hp} — git does not run .git/hooks, so the post-commit hook was NOT installed`);
+          info(`  to get the refresh, add this line to ${userPostCommit(hp).rel} by hand:`);
+          info('    ' + command);
+          info('  or silence this for good:  marvin --no-graph-hook');
+        }
+        // The dead-hook warning stays in both cases: a Marvin hook in .git/hooks is dead weight either way.
+        let dead = ''; try { dead = fs.readFileSync(target, 'utf8'); } catch {}
+        if (HOOK_SIGNATURE.test(dead)) warn('.git/hooks/post-commit (Marvin) is dead with this core.hooksPath — left untouched; delete it by hand if you want');
       } else if (fs.existsSync(target)) {
         let current = '';
         try { current = fs.readFileSync(target, 'utf8'); } catch {}

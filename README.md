@@ -436,7 +436,8 @@ usually ~⅔ of it: every turn re-reads the whole context.
                   installed by default when graphify is in use and the project is a git
                   repository; the flag also lifts a recorded opt-out. Never overwrites a
                   post-commit you already have, except an old one Marvin wrote itself,
-                  which is rewritten to also run --graph-docs
+                  which is rewritten to also run --graph-docs. With `core.hooksPath` (husky)
+                  git ignores .git/hooks: marvin writes nothing there, warns, and prints the line to paste
 --no-graph-hook   skips that hook and records `hook do grafo: desligado` in
                   .marvin/ferramentas.md, so later runs do not re-enable it
 --graph-docs      puts the knowledge base back into graphify-out/graph.json and exits
@@ -772,7 +773,7 @@ rather than final text.
 node teste.mjs
 ```
 
-615 checks, no dependencies. It covers the invariants that protect other
+632 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

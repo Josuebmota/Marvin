@@ -433,7 +433,8 @@ turno relê o contexto inteiro.
                   padrão quando o graphify está em uso e o projeto é um repositório git; a
                   flag também desfaz um opt-out registrado. Nunca sobrescreve um post-commit
                   que já existe, salvo um antigo que o próprio Marvin escreveu, reescrito
-                  para rodar também o --graph-docs
+                  para rodar também o --graph-docs. Com `core.hooksPath` (husky) o git ignora
+                  .git/hooks: o marvin não escreve lá, avisa e imprime a linha para colar
 --no-graph-hook   não instala esse hook e registra `hook do grafo: desligado` no
                   .marvin/ferramentas.md, para as rodadas seguintes não religarem
 --graph-docs      devolve a base de conhecimento ao graphify-out/graph.json e sai
@@ -761,7 +762,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-615 verificações, zero dependência. Cobre os invariantes que protegem o disco
+632 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:

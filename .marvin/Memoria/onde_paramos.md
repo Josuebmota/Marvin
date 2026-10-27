@@ -23,7 +23,6 @@ metadata:
 
 ## Em andamento
 
-- [US-82-hook-do-grafo-com-hookspath](../Planejamento/Manutencao/ferramentas-opcionais/adaptadores/US-82-hook-do-grafo-com-hookspath/Sobre.md) — aberta 27/10/2026; próximo passo: dev-back implementa o aviso de core.hooksPath no passo 8b e no --status, depois qa e tl
 
-- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — tag `v3.4.2`; US-73, 79, 74, 75, 80, 78, 81, 83 e 84 concluídas 26/10 (entram no próximo `--release`, 3.4.3); fila: US-82, US-76/77; US-72 espera o dono; anotações refinadas 27/10 nas US-82 (hooksPath), 83 (`--us` com caminho do Sobre.md) e 84 (delegacao.md e órfãos); US-85 `anotada` (lista de anotadas no `--status` do terminal). Falta: desligar conectores da conta (~9,7k/sessão)
+- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — tag `v3.4.2`; US-73, 79, 74, 75, 80, 78, 81, 83, 84 e 82 concluídas 26/10 (entram no próximo `--release`, 3.4.3); fila: US-76/77; US-72 espera o dono; anotações refinadas 27/10 nas US-82 (hooksPath), 83 (`--us` com caminho do Sobre.md) e 84 (delegacao.md e órfãos); US-85 `anotada` (lista de anotadas no `--status` do terminal). Falta: desligar conectores da conta (~9,7k/sessão)
 

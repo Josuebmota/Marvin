@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-82-hook-do-grafo-com-hookspath
 description: "Com `core.hooksPath` (husky), o marvin não instala o hook do grafo em `.git/hooks` (onde o git não o roda) e não diz que instalou: avisa e dá a linha para colar. O --status deixa de dizer que o hook está ok. Invariante 3."
@@ -29,6 +29,10 @@ description: "Com `core.hooksPath` (husky), o marvin não instala o hook do graf
 - `marvin.mjs` — `computeStatus`
 - `marvin.mjs` — `hookOptedOut`
 - `marvin.mjs` — `HOOK_SIGNATURE`
+- `marvin.mjs` — `printStatus`
+- `marvin.mjs` — `divertedHooksPath`
+- `marvin.mjs` — `userPostCommit`
+- `marvin.mjs` — `hooksPathRunsRefresh`
 - `teste.mjs`
 
 ## Time
@@ -36,9 +40,9 @@ Triagem 27/10/2026 (`/refinar` na sessão, `tl` e `po` no Opus · médio, em par
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| implementar | dev-back | Sonnet · médio | escopo fechado pelo `tl` | pendente |
-| verificar | qa | Sonnet · baixo | `node teste.mjs` + repo com hooksPath + `--dry-run` | pendente |
-| ler o diff | tl | Opus · médio | invariante 3 e escrita no disco de alguém (`.git/hooks`) | pendente |
+| implementar | dev-back | Sonnet · médio | escopo fechado pelo `tl` | feito |
+| verificar | qa | Sonnet · baixo | `node teste.mjs` + repo com hooksPath + `--dry-run` | feito |
+| ler o diff | tl | Opus · médio | invariante 3 e escrita no disco de alguém (`.git/hooks`) | feito |
 
 Grafo (fresco, 26/10 17:40 > 8ea5ca7):
 - `HOOK_SIGNATURE` — sem nó (const); Grep L1396, L1543, L4913, L5231
@@ -87,6 +91,10 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **27/10/2026** — refinada da anotação da nota (lacuna da US-80): `tl` e `po` de acordo no mínimo (só avisar); o `tl` achou a segunda mentira no `--status`.
+- **27/10/2026** — feita, em três leituras do `tl`. `divertedHooksPath()` lê `git config --path --get core.hooksPath` (só leitura; `~` expandido; só com `.git` diretório). Desviado: o passo 8b não escreve nem diz `ok`, dá `warn` com a linha para colar e `--no-graph-hook`; hook do Marvin morto em `.git/hooks` é avisado, nunca apagado; `--graphify-git-hook` cai na mesma regra; o `--status` conta `semHook` com texto próprio (sai com 1, como a US-74). Ajustes do `tl`: (A) a linha colada é reconhecida (`hooksPathRunsRefresh`, só linha não comentada), senão o alerta seria eterno; (B) `--path`; (C) uma chamada só; (D) `hermeticEnv()` no teste (`GIT_CONFIG_NOSYSTEM`, sem `XDG_CONFIG_HOME`/`GIT_CONFIG_GLOBAL`); husky 9 (`core.hooksPath=.husky/_`, pasta gerada): `userPostCommit` aponta para `.husky/post-commit`. ❓1 segue aberta; esta US só avisa.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: 632 passaram (+17: hooksPath `.husky`, `.husky/_` com `h`, linha colada, linha comentada, hook morto, `--dry-run`, segunda rodada, `--graphify-git-hook`, `--no-graph-hook`, hooksPath = `.git/hooks`).
+- qa: repo temporário com `core.hooksPath .husky` — árvore idêntica em duas rodadas e no `--dry-run`; a linha colada no `.husky/post-commit` disparou o refresh num commit real; sem hooksPath instala como a US-80.
+- tl: aprovado na terceira leitura.

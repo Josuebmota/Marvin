@@ -103,13 +103,15 @@ for (const bin of ['claude', 'uv']) {
 }
 process.on('exit', () => { for (const d of [NO_GRAPHIFY, NO_INSTALL]) try { fs.rmSync(d, { recursive: true, force: true }); } catch {} });
 const pathWith = (dir) => ({ [PATH_KEY]: dir + path.delimiter + process.env[PATH_KEY] });
+// Git config from outside the arena (system, XDG, global override) must not change a test's core.hooksPath.
+const hermeticEnv = () => { const e = { ...process.env, GIT_CONFIG_NOSYSTEM: '1' }; delete e.XDG_CONFIG_HOME; delete e.GIT_CONFIG_GLOBAL; return e; };
 
 /** Runs marvin with HOME/USERPROFILE redirected. */
 function run({ proj: proj, lar: home, real, bin }, ...flags) {
   return spawnSync(process.execPath, [SCRIPT, ...flags], {
     cwd: proj,
     encoding: 'utf8',
-    env: { ...process.env, HOME: home, USERPROFILE: home, ...pathWith(bin || (real ? NO_INSTALL : NO_GRAPHIFY)) },
+    env: { ...hermeticEnv(), HOME: home, USERPROFILE: home, ...pathWith(bin || (real ? NO_INSTALL : NO_GRAPHIFY)) },
   });
 }
 
@@ -136,7 +138,7 @@ function runInteractive({ proj, lar }, answers, ...flags) {
     const driver = 'process.argv.splice(1, 0, ' + JSON.stringify(SCRIPT) + '); process.stdin.isTTY = true; await import('
       + JSON.stringify(pathToFileURL(SCRIPT).href) + ');';
     const child = spawn(process.execPath, ['--input-type=module', '--eval', driver, '--', ...flags], {
-      cwd: proj, env: { ...process.env, HOME: lar, USERPROFILE: lar, ...pathWith(NO_GRAPHIFY) },
+      cwd: proj, env: { ...hermeticEnv(), HOME: lar, USERPROFILE: lar, ...pathWith(NO_GRAPHIFY) },
     });
     let stdout = '', stderr = '', pending = '', index = 0;
     const timer = setTimeout(() => child.kill(), 30000);
@@ -665,7 +667,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const bin = fakeGraphify(path.join(f.base, 'bin'), 0);
   const rf = spawnSync(process.execPath, [SCRIPT, '--no-git'], {
     cwd: f.proj, encoding: 'utf8',
-    env: { ...process.env, HOME: f.lar, USERPROFILE: f.lar, ...pathWith(bin) },
+    env: { ...hermeticEnv(), HOME: f.lar, USERPROFILE: f.lar, ...pathWith(bin) },
   });
   const recF = fs.readFileSync(recOf(f), 'utf8');
   check('US-38: graphify no PATH e sem TTY grava `sim` sem perguntar; ponytail instalado sem terminal grava `não` e avisa --use=ponytail (opcional)',
@@ -676,7 +678,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const noBefore = fs.readFileSync(recOf(f), 'utf8');
   spawnSync(process.execPath, [SCRIPT, '--no-git'], {
     cwd: f.proj, encoding: 'utf8',
-    env: { ...process.env, HOME: f.lar, USERPROFILE: f.lar, ...pathWith(bin) },
+    env: { ...hermeticEnv(), HOME: f.lar, USERPROFILE: f.lar, ...pathWith(bin) },
   });
   check('US-38: `não` gravado pelo humano não é sobrescrito com graphify no PATH', fs.readFileSync(recOf(f), 'utf8') === noBefore);
   cleanup(f);
@@ -2261,7 +2263,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   logging();
   const calls = () => fs.existsSync(logf) ? fs.readFileSync(logf, 'utf8').split(/\r?\n/).map(l => l.trim()).filter(Boolean) : [];
   const comFake = (...flags) => spawnSync(process.execPath, [SCRIPT, '--no-git', '--no-questions', ...flags], {
-    cwd: a.proj, encoding: 'utf8', env: { ...process.env, HOME: a.lar, USERPROFILE: a.lar, ...pathWith(fake + path.delimiter + NO_GRAPHIFY) },
+    cwd: a.proj, encoding: 'utf8', env: { ...hermeticEnv(), HOME: a.lar, USERPROFILE: a.lar, ...pathWith(fake + path.delimiter + NO_GRAPHIFY) },
   });
   const r1 = comFake();
   const c1 = calls();
@@ -2274,7 +2276,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   // Missing commands: PATH with an empty directory, so neither `claude` nor `uv` exist (the shell itself is found by absolute path).
   const vazio = fs.mkdtempSync(path.join(os.tmpdir(), 'marvin-teste-vazio-'));
   const semClaude = spawnSync(process.execPath, [SCRIPT, '--no-git', '--no-questions'], {
-    cwd: a.proj, encoding: 'utf8', env: { ...process.env, HOME: a.lar, USERPROFILE: a.lar, [PATH_KEY]: vazio },
+    cwd: a.proj, encoding: 'utf8', env: { ...hermeticEnv(), HOME: a.lar, USERPROFILE: a.lar, [PATH_KEY]: vazio },
   });
   check('US-59: `claude` e `uv` ausentes do PATH: sai 0, um aviso por install, não aborta',
         semClaude.status === 0 && /graphify: `uv tool install graphifyy` failed/.test(semClaude.stdout) && /ecc: `claude plugin marketplace add affaan-m\/ECC[^\n]*failed/.test(semClaude.stdout),
@@ -2306,7 +2308,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
     fs.writeFileSync(path.join(fk2, 'uv.cmd'), '@echo uv %* >> "' + lg + '"\r\n');
     const ct = () => fs.existsSync(lg) ? fs.readFileSync(lg, 'utf8').split(/\r?\n/).map(l => l.trim()).filter(Boolean) : [];
     const go = (...fl) => spawnSync(process.execPath, [SCRIPT, '--no-git', '--no-questions', ...fl], {
-      cwd: u.proj, encoding: 'utf8', env: { ...process.env, HOME: u.lar, USERPROFILE: u.lar, ...pathWith(fk2 + path.delimiter + NO_GRAPHIFY) },
+      cwd: u.proj, encoding: 'utf8', env: { ...hermeticEnv(), HOME: u.lar, USERPROFILE: u.lar, ...pathWith(fk2 + path.delimiter + NO_GRAPHIFY) },
     });
     const g1 = go();
     check('US-71: registro `sim` antigo + plugin ausente, sem --install: nenhum `claude plugin install ponytail` e a dica aparece',
@@ -2335,7 +2337,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   fs.writeFileSync(path.join(fk, 'claude'), '#!/bin/sh\n[ -f .claude/settings.json ] || { mkdir -p .claude; echo \'{"x":1}\' > .claude/settings.json; }\n', { mode: 0o755 });
   fs.writeFileSync(path.join(fk, 'claude.cmd'), '@if not exist .claude\\settings.json (mkdir .claude 2>nul & echo {"x":1}> .claude\\settings.json)\r\n');
   const rh = spawnSync(process.execPath, [SCRIPT, '--no-git', '--no-questions'], {
-    cwd: b.proj, encoding: 'utf8', env: { ...process.env, HOME: b.lar, USERPROFILE: b.lar, ...pathWith(fk + path.delimiter + NO_GRAPHIFY) },
+    cwd: b.proj, encoding: 'utf8', env: { ...hermeticEnv(), HOME: b.lar, USERPROFILE: b.lar, ...pathWith(fk + path.delimiter + NO_GRAPHIFY) },
   });
   let cfg = ''; try { cfg = fs.readFileSync(path.join(b.proj, '.claude', 'settings.json'), 'utf8'); } catch {}
   check('US-59: projeto novo: o settings.json final tem o hook SessionStart do marvin (o install do plugin não o atropela)',
@@ -2773,7 +2775,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   fs.writeFileSync(path.join(fk, 'graphify'), '#!/bin/sh\nexec "' + process.execPath + '" "' + path.join(fk, 'fake.mjs') + '" "$@"\n', { mode: 0o755 });
   fs.writeFileSync(path.join(fk, 'graphify.cmd'), '@"' + process.execPath + '" "' + path.join(fk, 'fake.mjs') + '" %*\r\n');
   const rg = spawnSync(process.execPath, [SCRIPT, '--no-git', '--no-questions', '--graphify'], {
-    cwd: a.proj, encoding: 'utf8', env: { ...process.env, HOME: a.lar, USERPROFILE: a.lar, ...pathWith(fk + path.delimiter + NO_GRAPHIFY) },
+    cwd: a.proj, encoding: 'utf8', env: { ...hermeticEnv(), HOME: a.lar, USERPROFILE: a.lar, ...pathWith(fk + path.delimiter + NO_GRAPHIFY) },
   });
   const seen = fs.existsSync(logf) ? fs.readFileSync(logf, 'utf8').trim() : '(cluster-only não foi chamado)';
   let finalNodes = 0; try { finalNodes = JSON.parse(fs.readFileSync(path.join(a.proj, 'graphify-out', 'graph.json'), 'utf8')).nodes.length; } catch {}
@@ -3306,6 +3308,97 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const rw = run(e, '--no-git', '--no-questions');
   check('US-80: worktree (.git é arquivo): não quebra e avisa que pulou', rw.status === 0 && /post-commit hook skipped: this is a git worktree/.test(rw.stdout), rw.stdout.slice(-400) + rw.stderr.slice(-300));
   cleanup(e);
+}
+
+// ── US-82. With `core.hooksPath` (husky) git never runs .git/hooks: the Marvin does not install the graph hook
+//     there, does not say `ok`, writes nothing in the hooksPath, and `--status` stops saying the hook is fine.
+{
+  const hookOf = (x) => path.join(x.proj, '.git', 'hooks', 'post-commit');
+  const treeHash = (dir) => {   // names + contents of every file under dir
+    const out = [];
+    const walk = (d) => { for (const n of fs.readdirSync(d).sort()) { const p = path.join(d, n); const s = fs.statSync(p);
+      if (s.isDirectory()) { out.push('D ' + path.relative(dir, p)); walk(p); } else out.push('F ' + path.relative(dir, p) + ' ' + fs.readFileSync(p, 'latin1').length + ' ' + fs.readFileSync(p, 'latin1')); } };
+    walk(dir); return out.join('\n');
+  };
+  const mk = (name, hooksPath) => {
+    const x = equipped(arena(name));
+    spawnSync('git', ['init', '-q'], { cwd: x.proj });
+    if (hooksPath !== undefined) spawnSync('git', ['config', 'core.hooksPath', hooksPath], { cwd: x.proj });
+    fs.mkdirSync(path.join(x.proj, 'graphify-out'), { recursive: true });
+    fs.writeFileSync(path.join(x.proj, 'graphify-out', 'graph.json'), JSON.stringify({ directed: true, nodes: [], edges: [] }));
+    return x;
+  };
+  const exists = (x, ...p) => fs.existsSync(path.join(x.proj, ...p));
+  const DESVIO = /core\.hooksPath=\.husky/;
+
+  const a = mk('us82-husky', '.husky');
+  const r1 = run(a, '--no-git', '--no-questions');
+  check('US-82: core.hooksPath=.husky: nada em .git/hooks nem em .husky/', !exists(a, '.git', 'hooks', 'post-commit') && !exists(a, '.husky'), r1.stdout.slice(-500));
+  check('US-82: avisa citando core.hooksPath, com a linha para colar e o --no-graph-hook, e sem o ok', DESVIO.test(r1.stdout) && /graphify update \./.test(r1.stdout) && /--no-graph-hook/.test(r1.stdout) && !/graph refreshes itself/.test(r1.stdout), r1.stdout.slice(-600));
+  const s1 = run(a, '--status'), s2 = run(a, '--status', '--curto');
+  check('US-82: --status completo alerta o desvio do core.hooksPath', DESVIO.test(s1.stdout) && !/sem o hook de post-commit do Marvin/.test(s1.stdout) && s1.status === 1, s1.stdout.slice(-500));
+  check('US-82: --status --curto alerta o desvio do core.hooksPath', /core\.hooksPath desvia/.test(s2.stdout), s2.stdout.slice(-300));
+  const t1 = treeHash(a.proj);
+  run(a, '--no-git', '--no-questions');
+  check('US-82: segunda rodada não escreve nada (árvore idêntica)', treeHash(a.proj) === t1);
+  run(a, '--no-git', '--no-questions', '--dry-run');
+  check('US-82: --dry-run não escreve nada', treeHash(a.proj) === t1);
+  const rf = run(a, '--no-git', '--no-questions', '--graphify-git-hook');
+  check('US-82: --graphify-git-hook com core.hooksPath também não escreve o hook', !exists(a, '.git', 'hooks', 'post-commit') && !exists(a, '.husky') && DESVIO.test(rf.stdout) && !/graph refreshes itself/.test(rf.stdout), rf.stdout.slice(-500));
+  // the opt-out still silences everything
+  const ro = run(a, '--no-git', '--no-questions', '--no-graph-hook');
+  check('US-82: --no-graph-hook silencia o aviso e o --status', !DESVIO.test(ro.stdout) && !DESVIO.test(run(a, '--status').stdout), ro.stdout.slice(-300));
+  cleanup(a);
+
+  // a dead Marvin hook already in .git/hooks: warned about, not deleted
+  const b = mk('us82-morto', '.husky');
+  const morto = '#!/bin/sh\n# marvin — atualiza o grafo de código depois do commit.\ngraphify update . && node marvin.mjs --graph-docs\n';
+  fs.mkdirSync(path.dirname(hookOf(b)), { recursive: true });
+  fs.writeFileSync(hookOf(b), morto);
+  const rb = run(b, '--no-git', '--no-questions');
+  check('US-82: hook do Marvin morto em .git/hooks é avisado e não é apagado nem reescrito', fs.readFileSync(hookOf(b), 'utf8') === morto && /dead with this core\.hooksPath/.test(rb.stdout) && DESVIO.test(rb.stdout), rb.stdout.slice(-600));
+  check('US-82: hook morto não engana o --status', DESVIO.test(run(b, '--status').stdout));
+  cleanup(b);
+
+  // the line Marvin tells the user to paste is recognised: no warn, --status does not alert, nothing written
+  const p = mk('us82-colada', '.husky');
+  fs.mkdirSync(path.join(p.proj, '.husky'));
+  const colada = '#!/bin/sh\n{ graphify update . && node "/x/marvin.mjs" --graph-docs ; } &\n';
+  fs.writeFileSync(path.join(p.proj, '.husky', 'post-commit'), colada);
+  const rp = run(p, '--no-git', '--no-questions');
+  check('US-82: linha colada no post-commit do hooksPath: sem warn do desvio, diz que nada há a fazer', !DESVIO.test(rp.stdout) && /already runs the refresh/.test(rp.stdout) && fs.readFileSync(path.join(p.proj, '.husky', 'post-commit'), 'utf8') === colada, rp.stdout.slice(-500));
+  const sp = run(p, '--status');
+  check('US-82: linha colada no post-commit do hooksPath: o --status não alerta', !DESVIO.test(sp.stdout) && !/sem o hook de post-commit do Marvin/.test(sp.stdout), sp.stdout.slice(-400));
+  cleanup(p);
+
+  // a commented-out paste does not count: the alert stays
+  const q = mk('us82-comentada', '.husky');
+  fs.mkdirSync(path.join(q.proj, '.husky'));
+  fs.writeFileSync(path.join(q.proj, '.husky', 'post-commit'), '#!/bin/sh\n# { graphify update . && node "/x/marvin.mjs" --graph-docs ; } &\n');
+  const rq = run(q, '--no-git', '--no-questions'), sq = run(q, '--status');
+  check('US-82: linha colada mas comentada não conta: o warn e o alerta continuam', DESVIO.test(rq.stdout) && !/already runs the refresh/.test(rq.stdout) && DESVIO.test(sq.stdout), rq.stdout.slice(-400));
+  cleanup(q);
+
+  // husky 9: core.hooksPath=.husky/_ (generated, has the script `h`); the user's file is .husky/post-commit
+  const h9 = mk('us82-husky9', '.husky/_');
+  fs.mkdirSync(path.join(h9.proj, '.husky', '_'), { recursive: true });
+  fs.writeFileSync(path.join(h9.proj, '.husky', '_', 'h'), '#!/bin/sh\n');
+  const r9 = run(h9, '--no-git', '--no-questions'), s9 = run(h9, '--status');
+  check('US-82: husky 9 (.husky/_): sem a linha, o aviso cita .husky/post-commit', /core\.hooksPath=\.husky\/_/.test(r9.stdout) && /add this line to \.husky\/post-commit/.test(r9.stdout) && /em \.husky\/post-commit/.test(s9.stdout), r9.stdout.slice(-500) + s9.stdout.slice(-300));
+  fs.writeFileSync(path.join(h9.proj, '.husky', 'post-commit'), colada);
+  const r9b = run(h9, '--no-git', '--no-questions'), s9b = run(h9, '--status');
+  check('US-82: husky 9: com a linha em .husky/post-commit, sem warn e sem alerta', !/core\.hooksPath=/.test(r9b.stdout) && /\.husky\/post-commit already runs/.test(r9b.stdout) && !/core\.hooksPath=/.test(s9b.stdout), r9b.stdout.slice(-400) + s9b.stdout.slice(-300));
+  cleanup(h9);
+
+  // hooksPath pointing at .git/hooks itself, and no hooksPath at all: the US-80 behaviour
+  const c = mk('us82-aponta-git-hooks', '.git/hooks');
+  run(c, '--no-git', '--no-questions');
+  check('US-82: core.hooksPath=.git/hooks instala o hook como antes', exists(c, '.git', 'hooks', 'post-commit'));
+  cleanup(c);
+  const d = mk('us82-sem-hookspath');
+  const rd = run(d, '--no-git', '--no-questions');
+  check('US-82: sem core.hooksPath o hook é instalado e o ok aparece', exists(d, '.git', 'hooks', 'post-commit') && /graph refreshes itself/.test(rd.stdout) && !/core\.hooksPath/.test(rd.stdout), rd.stdout.slice(-400));
+  cleanup(d);
 }
 
 // ── LAST. The number of checks claimed in the READMEs matches the real one.
