@@ -635,6 +635,8 @@ const readNode = (file) => {
   // the team is the roles named in "## Time", template placeholders "_( … )_" stripped first.
   const bare = txt.replace(/<!--[\s\S]*?-->/g, '').replace(/```[\s\S]*?```/g, '');
   const perguntas = [...bare.matchAll(/^[ \t]*[-*][ \t]*❓[ \t]*(.+)$/gm)].map(m => m[1].trim());
+  // US-77: the "Pronto quando" text (until the next bold label, heading or end), one line; the template placeholder is not text.
+  const pronto = (((bare.match(/\*\*Pronto quando:\*\*([\s\S]*?)(?=^\*\*[^*\n]+:\*\*|^##\s|(?![\s\S]))/m) || [])[1] || '').replace(/_\([^)]*\)_/g, '').replace(/\s+/g, ' ').trim());
   const timeSec = (bare.match(/^##\s+Time\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m) || [])[1] || '';
   const timeTxt = timeSec.replace(/_\([^)]*\)_/g, '');
   const time = TEAM_ROLES.filter(r => new RegExp('(?<![\\w-])' + r + '(?![\\w-])', 'i').test(timeTxt));
@@ -649,7 +651,7 @@ const readNode = (file) => {
   // A human row (3rd cell "humano", or role "dono") is not an LLM role and has no turn to measure.
   const papeis = [...new Set(rows.filter(c => !/^humano\b/i.test(c[2] || '') && !/^dono$/i.test((c[1] || '').trim())).flatMap(c => (c[1] || '').split('·')[0].split(/[\/,+&]|\s+e\s+/).map(s => s.replace(/`/g, '').trim().toLowerCase()).filter(s => /^[a-z][\w-]*$/.test(s))))];
   return { arq: file, tipo: field('tipo'), estado: field('estado'), espera: field('espera'), desde: field('desde'), pai: field('pai'), titulo: title, rumo, papeis,
-           evidencia: cleanEvidence, comEvidencia: /\S/.test(cleanEvidence), tocados, perguntas, time, comModelo };
+           evidencia: cleanEvidence, comEvidencia: /\S/.test(cleanEvidence), tocados, perguntas, pronto, time, comModelo };
 };
 // US-73: the one list of valid `estado:` values. stateMark, roadmap, epics, the history and the
 // state warning read it; the template comment in the Planejamento README must list the same.
@@ -1325,7 +1327,46 @@ const writeStatusHtml = (st, quiet = false) => {
     const andamento = `<section class="bloco" id="dono-andamento"><h2>Em andamento</h2>${rm.ativa.length ? `<ul class="lista">${rm.ativa.map(r => `<li><strong>${usLink(r)}</strong>${r.cadeia.length ? `<div class="dim">${plain(r.cadeia.join(' › '))}</div>` : ''}${r.rumo ? `<div>${plain(r.rumo.slice(0, 200))}</div>` : ''}</li>`).join('')}</ul>` : '<p class="dim">nada em andamento</p>'}</section>`;
     const fila = `<section class="bloco" id="dono-fila"><h2>Na fila <span class="dim">— na ordem em que o Marvin vai pegar</span></h2>${rm.refinada.length ? `<ol class="lista">${rm.refinada.map(r => `<li>${usLink(r)}${r.cadeia.length ? ` <span class="dim">${plain(r.cadeia.join(' › '))}</span>` : ''}</li>`).join('')}</ol>` : '<p class="dim">fila vazia</p>'}</section>`;
     const depende = `<section class="bloco" id="dono-depende"><h2>Depende de você <span class="dim">— ${nQ} pergunta(s) em aberto</span></h2>${doubts.length ? `<ul class="lista">${doubts.map(r => `<li><strong>${usLink(r)}</strong> <span class="chip">${esc(LABEL[r.estado])}</span><ul>${r.perguntas.map(q => `<li>${plain(q)}</li>`).join('')}</ul></li>`).join('')}</ul>` : '<p class="dim">nada depende de você agora</p>'}</section>`;
-    return [resumo, andamento, fila, depende];
+    // US-77: one block per epic (bar + open USs per feature; the done ones only counted). The USs come from
+    // `rm` (queue order inside each state); the epic and feature names are the `cadeia` the text --status uses.
+    const OPEN = ['ativa', 'pausada', 'refinada', 'anotada'];
+    const byEpic = new Map();
+    for (const s of [...OPEN, 'concluida', 'cancelada']) for (const r of rm[s]) {
+      const ep = r.cadeia[0] || 'Sem épico', ft = r.cadeia.slice(1).join(' › ');
+      if (!byEpic.has(ep)) byEpic.set(ep, new Map());
+      if (!byEpic.get(ep).has(ft)) byEpic.get(ep).set(ft, []);
+      byEpic.get(ep).get(ft).push(r);
+    }
+    const epicOrder = [...byEpic.keys()].sort((a, b) => { const ia = st.epics.findIndex(e => e.titulo === a), ib = st.epics.findIndex(e => e.titulo === b); return (ia < 0 ? 1e9 : ia) - (ib < 0 ? 1e9 : ib); });
+    const usItem = (r) => {
+      const tip = `${codeOf(r.titulo)}${r.pronto ? ' — Pronto quando: ' + r.pronto.replace(/\*\*|`/g, '') : ''}`;
+      const txt = `${r.titulo} ${r.cadeia.join(' ')}`.replace(/\*\*|`/g, '').toLowerCase();
+      return `<li class="us-item" data-estado="${esc(r.estado)}" data-txt="${esc(txt)}"><span class="chip">${esc(LABEL[r.estado])}</span> <a href="${esc(path.relative(dir, r.arq).replace(/\\/g, '/'))}" target="_blank" title="${esc(tip)}">${plain(r.titulo)}</a>${r.perguntas.length ? ` <span class="duvida" title="${esc(r.perguntas.map(q => q.replace(/\*\*|`/g, '')).join(' | '))}">❓ ${r.perguntas.length}</span>` : ''}</li>`;
+    };
+    const epicos = epicOrder.map((ep, i) => {
+      const feats = byEpic.get(ep), all = [...feats.values()].flat();
+      const n = (s) => all.filter(r => r.estado === s).length;
+      const live = all.length - n('cancelada'), done = n('concluida');
+      const pct = live ? Math.round(100 * done / live) : 0;
+      const eSegs = US_STATES.filter(s => n(s)).map(s => `<span class="seg e-${s}" style="flex:${n(s)}" title="${n(s)} ${esc(LABEL[s])}"></span>`).join('');
+      const body = [...feats.entries()].map(([ft, us]) => {
+        const open = us.filter(r => OPEN.includes(r.estado)), nDone = us.filter(r => r.estado === 'concluida').length, nCanc = us.filter(r => r.estado === 'cancelada').length;
+        return `<div class="feature">${ft ? `<h3>${plain(ft)}</h3>` : ''}${open.length ? `<ul class="lista">${open.map(usItem).join('')}</ul>` : ''}${nDone || nCanc ? `<div class="dim feitas">${nDone ? `✓ ${nDone} concluída${nDone > 1 ? 's' : ''}` : ''}${nDone && nCanc ? ' · ' : ''}${nCanc ? `${nCanc} cancelada${nCanc > 1 ? 's' : ''}` : ''}</div>` : ''}</div>`;
+      }).join('');
+      return `<section class="bloco epico" id="dono-epico-${i}"><h2>${plain(ep)} <span class="dim">— ${done} de ${live} concluídas · ${pct}%</span></h2><div class="barra" role="img" aria-label="${pct}% concluído">${eSegs}</div>${body}</section>`;
+    });
+    const filtro = epicos.length ? `<section class="bloco" id="dono-filtro"><h2>Por épico <span class="dim">— só o que está aberto</span></h2><div class="filtro"><label>estado <select id="f-estado"><option value="">todas as abertas</option>${OPEN.filter(s => count[s]).map(s => `<option value="${s}">${esc(LABEL[s])}</option>`).join('')}</select></label> <input type="search" id="f-busca" placeholder="buscar no texto" aria-label="buscar"> <span class="dim" id="f-conta"></span></div></section>` : '';
+    // US-77: repositories under the root (`repoDirs`), read only. `.git` as a file is a worktree: skipped. The base
+    // is `main` (else `master`, else the current branch); the other local branches come after it. No repo, no block.
+    const gitOut = (cwd, args) => { try { return execSync('git ' + args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return ''; } };
+    const repos = repoDirs().filter(r => { try { return fs.statSync(path.join(ROOT, r, '.git')).isDirectory(); } catch { return false; } }).map(r => {
+      const cwd = path.join(ROOT, r), cur = gitOut(cwd, 'branch --show-current');
+      const names = gitOut(cwd, 'branch --format=%(refname:short)').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      const base = ['main', 'master'].find(b => names.includes(b)) || cur || names[0] || '';
+      return { nome: r, base, atual: cur, outras: names.filter(b => b !== base) };
+    });
+    const repoBlock = repos.length ? `<section class="bloco" id="dono-repos"><h2>Repositórios <span class="dim">— ${repos.length}</span></h2><ul class="lista">${repos.map(r => `<li><strong>${esc(r.nome)}</strong> <span class="chip">${esc(r.base || 'sem commit')}</span>${r.atual && r.atual !== r.base ? ` <span class="dim">atual: ${esc(r.atual)}</span>` : ''}${r.outras.length ? `<div class="dim">fora dela: ${r.outras.map(esc).join(', ')}</div>` : ''}</li>`).join('')}</ul></section>` : '';
+    return [resumo, andamento, fila, depende, filtro, ...epicos, repoBlock].filter(Boolean);
   })();
 
   const html = `<!doctype html>
@@ -1376,6 +1417,7 @@ polyline.s0,polyline.s1,polyline.s2{fill:none}.lg{font-size:12px;padding-left:10
 .p1{font-family:Inter,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif}.p1 .rot,.p1 .chip,.p1 .legenda-barra{font-family:"JetBrains Mono",var(--mono)}
 .resumo{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}.res{padding:var(--s3) var(--s4);background:var(--bg2)}.res .rot{display:block;color:var(--dim);font-size:var(--f0);font-weight:600;text-transform:uppercase;letter-spacing:.01em}.res .val{display:block;font-family:"JetBrains Mono",var(--mono);font-size:var(--f5);font-weight:500;line-height:1.1;font-variant-numeric:tabular-nums}
 .barra{display:flex;height:10px;margin:var(--s3) 0 var(--s2);border-radius:var(--r);overflow:hidden;background:var(--bg3)}.seg{display:block;min-width:3px}i.seg{display:inline-block;width:8px;height:8px;min-width:0;border-radius:50%;margin-right:var(--s1)}.e-ativa{background:var(--ok)}.e-refinada{background:var(--c-epic)}.e-pausada{background:var(--warn)}.e-anotada{background:var(--dim)}.e-concluida{background:var(--s0)}.e-cancelada{background:var(--err)}
+[hidden]{display:none!important}.epico h3{font-size:var(--f1);margin:var(--s4) 0 var(--s1)}.filtro{display:flex;gap:var(--s3);flex-wrap:wrap;align-items:center}.filtro select,.filtro input{font:inherit;padding:var(--s1) var(--s2);border:1px solid var(--line);border-radius:var(--r);background:var(--bg2);color:var(--fg)}.feitas{font-size:var(--f1);margin-top:var(--s1)}.duvida{font-size:var(--f1)}
 .legenda-barra{display:flex;gap:var(--s4);flex-wrap:wrap;color:var(--dim);font-size:var(--f0)}.lgd{white-space:nowrap}
 .bloco{margin:0}.lista{margin:0;padding-left:var(--s5)}.lista li{margin:var(--s2) 0}.lista a{text-decoration:none}.lista a:hover{text-decoration:underline}.lista ul{margin:var(--s1) 0 0;padding-left:var(--s4);color:var(--fg2)}.chip{font-size:var(--f0);font-weight:600;color:var(--dim);border:1px solid var(--line);border-radius:var(--r);padding:0 var(--s2)}
 </style>
@@ -1424,6 +1466,7 @@ ${networkHtml}
 ${donoBlocks.join('\n')}
 </div>
 <script>(function(){try{var s=localStorage.getItem('marvin-aba');if(s==='1'||location.hash==='#dono')document.getElementById('aba1').checked=true;}catch(e){if(location.hash==='#dono')document.getElementById('aba1').checked=true;}[].forEach.call(document.querySelectorAll('input[name=aba]'),function(i){i.addEventListener('change',function(){try{localStorage.setItem('marvin-aba',i.id==='aba1'?'1':'0');}catch(e){}});});})();</script>
+<script>(function(){var se=document.getElementById('f-estado'),sb=document.getElementById('f-busca'),sc=document.getElementById('f-conta');if(!se||!sb)return;function q(s){return [].slice.call(document.querySelectorAll(s));}function ap(){var e=se.value,t=sb.value.trim().toLowerCase(),on=!!(e||t),n=0;q('#dono .us-item').forEach(function(li){var ok=(!e||li.getAttribute('data-estado')===e)&&(!t||li.getAttribute('data-txt').indexOf(t)>-1);li.hidden=!ok;if(ok)n++;});q('#dono .feature').forEach(function(f){f.hidden=on&&!f.querySelector('.us-item:not([hidden])');});q('#dono .epico').forEach(function(s){s.hidden=on&&!s.querySelector('.us-item:not([hidden])');});sc.textContent=on?n+' encontrada(s)':'';}se.addEventListener('change',ap);sb.addEventListener('input',ap);})();</script>
 <script>(function(){var b=document.getElementById('tema'),r=document.documentElement,ordem=['','light','dark'],rot={'':'◐ tema: auto',light:'☀ tema: claro',dark:'☾ tema: escuro'};function pinta(){b.textContent=rot[r.getAttribute('data-theme')||''];}b.addEventListener('click',function(){var t=ordem[(ordem.indexOf(r.getAttribute('data-theme')||'')+1)%3];if(t)r.setAttribute('data-theme',t);else r.removeAttribute('data-theme');try{t?localStorage.setItem('marvin-tema',t):localStorage.removeItem('marvin-tema');}catch(e){}pinta();});pinta();})();</script>
 <script type="application/json" id="historico">${JSON.stringify(pts)}</script>
 `;
@@ -1541,7 +1584,7 @@ const computeStatus = () => {
   // Roadmap: read-only view of estado + ilha order. Open USs outside any ilha come after, by short id.
   const idOf = (n) => n.titulo.split(' — ')[0];
   const ilhaPos = new Map(st.ilhas.ilhas.flatMap(i => i.us).map((u, k) => [path.resolve(u.arq), k]));
-  const rm = (estado) => nodes.filter(n => n.tipo === 'us' && n.estado === estado).map(n => ({ titulo: n.titulo, arq: n.arq, estado: n.estado, cadeia: chain(n), perguntas: n.perguntas, rumo: n.rumo.length ? n.rumo[n.rumo.length - 1].texto : null }));
+  const rm = (estado) => nodes.filter(n => n.tipo === 'us' && n.estado === estado).map(n => ({ titulo: n.titulo, arq: n.arq, estado: n.estado, cadeia: chain(n), perguntas: n.perguntas, pronto: n.pronto, rumo: n.rumo.length ? n.rumo[n.rumo.length - 1].texto : null }));
   const byOpen = (a, b) => { const pa = ilhaPos.get(path.resolve(a.arq)), pb = ilhaPos.get(path.resolve(b.arq));
     return (pa === undefined ? Infinity : pa) === (pb === undefined ? Infinity : pb) ? idOf(a).localeCompare(idOf(b)) : (pa === undefined ? 1 : pb === undefined ? -1 : pa - pb); };
   // US-73: one key per valid state (US_STATES); only concluida is ordered by chain instead of ilha.

@@ -362,8 +362,10 @@ order you need it:
 Everything above is the first tab, **painel**. The second, **visão do dono**, is the same
 measurement in words, with no US code on screen (the code is only in the hover tooltip):
 a summary with a bar per state, what is in progress, the queue in the order `--status`
-prints the ilhas, and **what depends on you** — the open ❓ of every unfinished US. The
-only external resource is the Google Fonts stylesheet; offline, the system font takes over.
+prints the ilhas, **what depends on you** — the open ❓ of every unfinished US — and one
+block per epic with a progress bar, only the open USs per feature (the done ones just counted;
+the hover tooltip carries the "Pronto quando"), a filter by state plus a text search, and, when
+there is a `repos/`, each repo's `main` and its other local branches. The only external resource is the Google Fonts stylesheet; offline, the system font takes over.
 
 The page is *derived*: it reads the nodes, it never writes them. To change a node, edit its
 `Sobre.md` (the link does that) — the next `--status --html` reflects it.
@@ -779,7 +781,7 @@ rather than final text.
 node teste.mjs
 ```
 
-640 checks, no dependencies. It covers the invariants that protect other
+648 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

@@ -1421,15 +1421,16 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const a = arena('dono');
   run(a, '--no-git', '--no-questions');
   const sobre = (id) => path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'P', 'F', id, 'Sobre.md');
-  const mk = (id, estado, titulo, extra = '', tocado = '') => {
+  const mk = (id, estado, titulo, extra = '', tocado = '', pronto = '') => {
     run(a, '--us', 'Novos/P/F/' + id);
     const s = sobre(id);
     let t = fs.readFileSync(s, 'utf8').replace('estado: ativa', 'estado: ' + estado).replace(/^# .*$/m, () => '# ' + titulo);
+    if (pronto) t = t.replace('_(critério verificável)_', () => pronto);
     if (tocado) t = t.replace(/^## Código tocado\n/m, () => '## Código tocado' + NLQ + '- `src/' + tocado + '.js`' + NLQ);
     fs.writeFileSync(s, t + NLQ + extra + NLQ);
   };
   mk('US-01-alfa', 'ativa', 'US-01 — Alfa em curso', '- ❓ pergunta-da-ativa com a US-77 junto' + NLQ + '- ~~❓ pergunta-riscada~~');
-  mk('US-02-bravo', 'refinada', 'US-02 — Bravo na fila', '- ❓ pergunta-da-fila');
+  mk('US-02-bravo', 'refinada', 'US-02 — Bravo na fila', '- ❓ pergunta-da-fila', '', 'o bravo responde 200 (ver US-99)');
   mk('US-03-charlie', 'refinada', 'US-03 — Charlie na fila', '', 'zz');
   mk('US-04-delta', 'refinada', 'US-04 — Delta na fila', '', 'zz');
   mk('US-05-eco', 'concluida', 'US-05 — Eco feita', '- ❓ pergunta-da-concluida');
@@ -1450,6 +1451,31 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   check('US-76: abre em file:// — só o Google Fonts é externo, e localStorage da aba fica em try/catch',
         [...html.matchAll(/(?:href|src)="(https?:[^"]+)"/g)].every(m => /^https:\/\/fonts\.(googleapis|gstatic)\.com/.test(m[1])) && !/<script src=/.test(html) && /try\{var s=localStorage\.getItem\('marvin-aba'\)/.test(html));
   check('US-76: o --status em texto não muda com a aba', run(a, '--status').stdout === textBefore);
+  // US-77: epic block (bar + counts), only the open USs listed, the done ones summarised, ❓ and "Pronto quando" per US
+  const epico = (tab.match(/<section class="bloco epico"[\s\S]*?<\/section>/) || [''])[0];
+  const epWords = epico.replace(/<[^>]*>/g, ' ');
+  check('US-77: bloco do épico com barra e a contagem (1 de 5 concluídas, 20%)', /id="dono-epico-0"/.test(epico) && /class="barra"/.test(epico) && /1 de 5 concluídas · 20%/.test(epWords), epico.slice(0, 600));
+  check('US-77: só as abertas listadas, com chip de estado; a concluída não aparece e vira "✓ 1 concluída"',
+        (epico.match(/class="us-item"/g) || []).length === 4 && /class="chip">em andamento</.test(epico) && /class="chip">na fila</.test(epico) && !epWords.includes('Eco') && /✓ 1 concluída/.test(epWords), epico);
+  check('US-77: ❓ só em US não concluída (2 marcas, nenhuma da concluída)', (epico.match(/❓/g) || []).length === 2 && !tab.includes('pergunta-da-concluida'));
+  check('US-77: "Pronto quando" vai no title (e o texto dele não aparece solto)', /title="US-02 — Pronto quando: o bravo responde 200 \(ver US-99\)"/.test(epico) && !epWords.includes('o bravo responde'));
+  check('US-77: filtro por estado e busca em JS inline, sem rede', /id="f-estado"/.test(tab) && /id="f-busca"/.test(tab) && /data-estado="refinada"/.test(tab) && /getElementById\('f-estado'\)/.test(html) && !/<script src=/.test(html));
+  check('US-77: sem repos/ não há bloco de repositórios', !/id="dono-repos"/.test(html));
+  check('US-77: nenhuma origem externa nova (só o Google Fonts)', [...html.matchAll(/(?:href|src)="(https?:[^"]+)"/g)].every(m => /^https:\/\/fonts\.(googleapis|gstatic)\.com/.test(m[1])));
+  const hasGit = spawnSync('git', ['--version'], { encoding: 'utf8' }).status === 0;
+  if (!hasGit) { console.log('  - US-77 repos pulado: git ausente (1 check)'); skipped += 1; } else {
+    const rp =(...args) => spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: path.join(a.proj, 'repos', 'app') });
+    fs.mkdirSync(path.join(a.proj, 'repos', 'app'), { recursive: true });
+    spawnSync('git', ['init', '-q', '-b', 'main', '.'], { cwd: path.join(a.proj, 'repos', 'app') });
+    rp('commit', '-q', '--allow-empty', '-m', 'x'); rp('branch', 'feat-solta');
+    fs.mkdirSync(path.join(a.proj, 'repos', 'wt'), { recursive: true });
+    fs.writeFileSync(path.join(a.proj, 'repos', 'wt', '.git'), 'gitdir: ../app/.git/worktrees/wt\n');   // a worktree: `.git` is a file
+    run(a, '--status', '--html');
+    const h2 = fs.readFileSync(path.join(a.proj, '.marvin', '.status', 'index.html'), 'utf8');
+    const rb = (h2.match(/<section class="bloco" id="dono-repos">[\s\S]*?<\/section>/) || [''])[0];
+    check('US-77: com repos/ o bloco mostra a main e as branches fora dela; worktree (.git arquivo) ignorada',
+          /repos\/app/.test(rb) && /class="chip">main</.test(rb) && /fora dela: feat-solta/.test(rb) && !/repos\/wt/.test(rb), rb);
+  }
   cleanup(a);
 }
 
