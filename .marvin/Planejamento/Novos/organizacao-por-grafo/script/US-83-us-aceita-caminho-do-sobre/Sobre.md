@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-83-us-aceita-caminho-do-sobre
 description: "`marvin --us` e `--gasto --us` aceitam o caminho que a nota e o --status mostram (`.marvin/Planejamento/.../Sobre.md`, absoluto, com barra invertida), não só `Novos|Manutencao/<Epic>/<Feature>/<US>`."
@@ -31,9 +31,9 @@ Triagem 27/10/2026 (`/refinar` na sessão, `tl` e `po` no Opus · médio). Diver
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| implementar | dev-back | Sonnet · baixo | escopo pequeno e fechado | pendente |
-| verificar | qa | Sonnet · baixo | caminho absoluto Windows, `\`, prefixo `.marvin/` | pendente |
-| ler o diff | tl | Opus · baixo | o `--us` cria pastas no repo de alguém; normalização mal feita cria a cadeia no lugar errado | pendente |
+| implementar | dev-back | Sonnet · baixo | escopo pequeno e fechado | feito |
+| verificar | qa | Sonnet · baixo | caminho absoluto Windows, `\`, prefixo `.marvin/` | feito |
+| ler o diff | tl | Opus · baixo | o `--us` cria pastas no repo de alguém; normalização mal feita cria a cadeia no lugar errado | feito |
 
 Grafo (fresco):
 - `usKeyOf` — affected `computeSpend` L771, `printSpend` L849, `computeStatus` L1399, `printStatus` L1633; grau 3
@@ -83,6 +83,10 @@ Toca 4 nó(s) de código em 4 comunidade(s) — **escopo largo**: vale fatiar?.
 
 ## Rumo
 - **27/10/2026** — refinada da anotação da nota (o tropeço de 26/10 ao ativar a US-78); o `tl` achou o mesmo defeito no `usKeyOf`.
+- **27/10/2026** — feita. `normUsPath` (corta até o último `Planejamento/`, troca `\`, tira `/Sobre.md` e `/` final) usada no bloco do `--us` e no `usKeyOf`; a checagem de 4 partes ficou idêntica e a mensagem de erro ganhou exemplo. `--refinada` vale no nascimento: o teste cria pelo caminho (o Pronto quando 3 citava refinar uma existente). `tl` aprovou: Epic/Feature chamada `Planejamento` sobra com menos de 4 partes e recusa sem escrever. Lacuna: `--pausar`/`--ativa` pela forma de caminho não têm teste automático (o `qa` conferiu à mão).
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: 615 passaram (+8: seis formas → mesma US, `--us=`, sem cadeia no lugar errado, `--anotada`/`--refinada` pelo caminho, três recusas, `--status --us` com o caminho completo).
+- qa: repo temporário — absoluto Windows com `\`, `--dry-run` sem escrita, `--pausar` e `--ativa` pelo caminho completo; árvore só com as US certas.
+- tl: aprovado.

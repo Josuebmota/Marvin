@@ -24,5 +24,5 @@ metadata:
 ## Em andamento
 
 
-- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — tag `v3.4.2`; US-73, 79, 74, 75, 80, 78 e 81 concluídas 26/10 (entram no próximo `--release`, 3.4.3); fila: US-83, US-82, US-84, US-76/77; US-72 espera o dono; anotações refinadas 27/10 nas US-82 (hooksPath), 83 (`--us` com caminho do Sobre.md) e 84 (delegacao.md e órfãos); US-85 `anotada` (lista de anotadas no `--status` do terminal). Falta: desligar conectores da conta (~9,7k/sessão)
+- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — tag `v3.4.2`; US-73, 79, 74, 75, 80, 78, 81 e 83 concluídas 26/10 (entram no próximo `--release`, 3.4.3); fila: US-82, US-84, US-76/77; US-72 espera o dono; anotações refinadas 27/10 nas US-82 (hooksPath), 83 (`--us` com caminho do Sobre.md) e 84 (delegacao.md e órfãos); US-85 `anotada` (lista de anotadas no `--status` do terminal). Falta: desligar conectores da conta (~9,7k/sessão)
 

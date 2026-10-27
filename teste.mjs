@@ -1157,6 +1157,32 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   check('--us duas vezes não duplica o ponteiro', before === after && (after.match(/^- \[US-02-total\]/gm) || []).length === 1);
   check('--us com caminho errado sai != 0 e não cria nada', run(a, '--us', 'Errado/x').status !== 0 && !fs.existsSync(path.join(a.proj, '.marvin', 'Planejamento', 'Errado')));
 
+  { const a = arena('us83'); run(a, '--no-git');
+  // US-83: the path the note and --status show works too. `../Planejamento/…` is the note's own form (relative to
+  // .marvin/Memoria/); the script cuts up to `Planejamento/`, so the cwd does not matter and the test does not need one.
+  const PL = path.join(a.proj, '.marvin', 'Planejamento');
+  const tree = (d) => { const o = []; (function w(x) { for (const e of fs.readdirSync(x, { withFileTypes: true })) { const p = path.join(x, e.name); o.push(path.relative(d, p)); if (e.isDirectory()) w(p); } })(d); return o.sort().join('|'); };
+  const ref = 'Novos/E83/F83/US-83x';
+  const forms = [ref, '.marvin/Planejamento/' + ref + '/Sobre.md', path.join(PL, ...ref.split('/'), 'Sobre.md'), '../Planejamento/' + ref + '/Sobre.md',
+                 '.marvin\\Planejamento\\' + ref.replace(/\//g, '\\') + '\\Sobre.md', path.join(PL, ...ref.split('/')) + path.sep];
+  run(a, '--us', ref);
+  const treeRef = tree(a.proj), noteRef = fs.readFileSync(path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md'), 'utf8');
+  check('US-83: a US de referência nasceu no lugar certo', fs.existsSync(path.join(PL, 'Novos', 'E83', 'F83', 'US-83x', 'Sobre.md')));
+  check('US-83: as formas do caminho (curta, .marvin/, absoluta, ../, com \\ e com / final) resolvem para a mesma US, sem pasta extra e sem ponteiro duplicado',
+        forms.every(f => { const rr = run(a, '--us', f); return rr.status === 0 && tree(a.proj) === treeRef; }) && fs.readFileSync(path.join(a.proj, '.marvin', 'Memoria', 'onde_paramos.md'), 'utf8') === noteRef);
+  check('US-83: a forma --us=<caminho> também', run(a, '--us=.marvin/Planejamento/' + ref + '/Sobre.md').status === 0 && tree(a.proj) === treeRef);
+  // a path form creates a NEW US in the right place (not under a duplicated chain)
+  const rn = run(a, '--us', '.marvin/Planejamento/Novos/E83/F83/US-83n/Sobre.md');
+  check('US-83: caminho com Sobre.md cria a US nova só no lugar certo', rn.status === 0 && fs.existsSync(path.join(PL, 'Novos', 'E83', 'F83', 'US-83n', 'Sobre.md')) && !fs.existsSync(path.join(PL, '.marvin')) && !fs.existsSync(path.join(PL, 'Planejamento')) && !fs.existsSync(path.join(a.proj, '.marvin', '.marvin')));
+  const ra = run(a, '--us', '.marvin/Planejamento/Novos/E83/F83/US-83a/Sobre.md', '--anotada');
+  check('US-83: com --anotada o caminho do Sobre.md cria a US anotada no lugar certo', ra.status === 0 && /estado: anotada/.test(fs.readFileSync(path.join(PL, 'Novos', 'E83', 'F83', 'US-83a', 'Sobre.md'), 'utf8')) && !fs.existsSync(path.join(PL, 'Planejamento')));
+  const rr = run(a, '--us', '../Planejamento/Novos/E83/F83/US-83r/Sobre.md', '--refinada');
+  check('US-83: com --refinada o caminho do Sobre.md cria a US refinada no lugar certo', rr.status === 0 && /estado: refinada/.test(fs.readFileSync(path.join(PL, 'Novos', 'E83', 'F83', 'US-83r', 'Sobre.md'), 'utf8')) && !fs.existsSync(path.join(PL, 'Planejamento')), rr.stdout.slice(-300) + rr.stderr.slice(-300));
+  const t0 = tree(a.proj);
+  const bad = [run(a, '--us', '/tmp/x/Novos/E/F/US-1/Sobre.md'), run(a, '--us', '.marvin/Memoria/Planejamento-x/Novos/E/F/US-1'), run(a, '--us', 'Outro/Planejamento/E/F/US-1/Sobre.md')];
+  check('US-83: caminho fora de Planejamento/ recusa com código 2, mostra um exemplo e não cria nada', bad.every(b => b.status === 2 && /e\.g\. Novos\//.test(b.stdout + b.stderr)) && tree(a.proj) === t0);
+  cleanup(a); }
+
   // ── 9s. --status: reads the nodes, checks against the note, and the exit code is the message.
   const s1 = run(a, '--status');
   check('--status sai 0 quando nota e nós concordam', s1.status === 0, s1.stdout.slice(-400));
@@ -1493,6 +1519,8 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   check('US-65: Agent depois do --fechar, id órfão, comando com erro e --status caem em "sem US"', /sem US\s+9 turns \(2 by subagents\)/.test(r.stdout), r.stdout.slice(-900));
   check('US-65: loop com $u, git commit com --us, --refinada e --fechar --dry-run não criam nem fecham janela', !/US-(0[7-9]|10)\s/.test(r.stdout) && !r.stdout.includes('$u'), r.stdout.slice(-900));
   check('US-65: a soma das US mais "sem US" é o total', /17 model turns/.test(r.stdout), r.stdout.slice(-900));
+  const full = run(a, '--status', '--us', '.marvin\\Planejamento\\Manutencao\\E\\F\\US-01-x\\Sobre.md');
+  check('US-83: --status --us com o caminho completo dá a mesma conta que o curto', full.status === r.status && /US-01\s+3 turns \(1 by subagents\)/.test(full.stdout) && /US-02\s+5 turns/.test(run(a, '--status', '--us=../Planejamento/Manutencao/E/F/US-02-y/Sobre.md').stdout), full.stdout.slice(-600));
   const sem = run(a, '--status');
   check('US-65: --status sem --us lista uma linha por US e "sem US"', /US-01\s+3 turns/.test(sem.stdout) && /US-02\s+5 turns/.test(sem.stdout) && /sem US\s+9 turns/.test(sem.stdout));
   cleanup(a);

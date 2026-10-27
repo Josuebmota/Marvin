@@ -726,7 +726,10 @@ const PRICES = [
 const priceOf = (model) => (PRICES.find(([re]) => re.test(model)) || PRICES[1])[1];
 const costOf = (t, model) => { const p = priceOf(model); return (t.in * p.in + t.out * p.out + t.cw * p.cw + t.cr * p.cr) / 1e6; };
 // US-65: `Manutencao/…/US-65-custo-por-us` or `US-65` → `US-65` (the US-<n> prefix is the key; no number → the segment).
-const usKeyOf = (p) => { const s = String(p).replace(/\\/g, '/').replace(/\/+$/, '').split('/').pop(); const m = s.match(/^US-\d+/i); return m ? m[0].toUpperCase() : s; };
+// US-83: accepts what the note and --status show (absolute, `.marvin/Planejamento/…`, `../Planejamento/…`, `\`, trailing
+// `Sobre.md` or `/`) and returns the bare `Novos|Manutencao/<Epic>/<Feature>/<US>`; anything else passes through untouched.
+const normUsPath = (p) => String(p).replace(/\\/g, '/').replace(/^(?:.*\/)?Planejamento\//, '').replace(/\/Sobre\.md$/, '').replace(/\/+$/, '');
+const usKeyOf = (p) => { const s = normUsPath(p).split('/').pop(); const m = s.match(/^US-\d+/i); return m ? m[0].toUpperCase() : s; };
 const computeSpend = (nodes = []) => {
   const dir = path.dirname(MEM);   // ~/.claude/projects/<slug>/
   let files = []; try { files = fs.readdirSync(dir).filter(f => f.endsWith('.jsonl')); } catch {}
@@ -1866,8 +1869,8 @@ if (argUS || hasFlag('--us')) {
   const target = argUS ? argUS.slice(5) : process.argv[process.argv.indexOf('--us') + 1];
   if (!target || target.startsWith('--')) { err('usage: marvin --us Novos/<Epic>/<Feature>/<US-nome>   (or Manutencao/…)'); process.exit(2); }
   if (OLD_LAYOUT) { err('old layout — run `marvin --migrar` first'); process.exit(1); }
-  const parts = target.replace(/\\/g, '/').replace(/^\/|\/$/g, '').split('/');
-  if (parts.length !== 4 || !['Novos', 'Manutencao'].includes(parts[0])) { err('expected 4 parts: Novos|Manutencao / <Epic> / <Feature> / <US>'); process.exit(2); }
+  const parts = normUsPath(target).replace(/^\/+/, '').split('/');
+  if (parts.length !== 4 || !['Novos', 'Manutencao'].includes(parts[0])) { err('expected 4 parts: Novos|Manutencao / <Epic> / <Feature> / <US>, e.g. Novos/Pagamentos/Estorno/US-01-parcial (the path of its Sobre.md under Planejamento/ also works)'); process.exit(2); }
   // US-79: --pausar "<wait>" / --ativa edit the frontmatter of an EXISTING US and leave. Own branch: nothing
   // below applies (no chain created, no pointer in the note, no Impacto regenerated — the rest of the file is the human's).
   const pausarArg = process.argv.find(a => a === '--pausar' || a.startsWith('--pausar='));
