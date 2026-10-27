@@ -24,5 +24,5 @@ metadata:
 ## Em andamento
 
 
-- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — release `3.4.3` (27/10: US-73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84) — tag local, falta push e npm; fila vazia; US-72 espera o dono; US-85 `anotada` (lista de anotadas no `--status` do terminal); ❓ abertas: US-82 (escrever no `.husky/`?), US-84 (teto vale para US concluída? `Fontes/` vira raiz?). Falta: desligar conectores da conta (~9,7k/sessão)
+- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — release `3.4.3` (27/10: US-73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84) — tag no GitHub, falta o `npm publish` (login expirou); fila vazia; US-72 espera o dono; US-85 `anotada` (lista de anotadas no `--status` do terminal); US-86 `anotada` (plugin fino sobre o npm, reabre a US-53); ❓ abertas: US-82 (escrever no `.husky/`?), US-84 (teto vale para US concluída? `Fontes/` vira raiz?). Falta: desligar conectores da conta (~9,7k/sessão)
 

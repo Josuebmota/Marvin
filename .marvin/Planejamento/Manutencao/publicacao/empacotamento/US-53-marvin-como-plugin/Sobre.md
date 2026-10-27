@@ -47,6 +47,7 @@ Nada depende do que ela toca — folha do grafo.
 ## Rumo
 - **15/10/2026** — aberta no `/refinar` (logo tudo), a partir do item 4 da US-50.
 - **15/10/2026** — **cancelada** pelo dono, pela régua "mesmo resultado gastando menos" (o `po` a classificou como especulação): nenhum problema de adoção visto com o `npx marvin-kb`; reabre com um.
+- **27/10/2026** — a pergunta voltou como [US-86](../US-86-plugin-fino-sobre-o-npm/Sobre.md) (`anotada`): plugin fino sobre o npm, com dois problemas medidos — templates que não se atualizam e conselho que não vira trava. Esta segue cancelada.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
