@@ -1389,6 +1389,46 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── 9w5. US-90: an ativa outside the note is flagged when stalled (> 14 days) and when it looks done (Evidência filled);
+//     both are warnings only (exit code untouched); the template teaches the `--pausar "qa"` example (UPDATES mark).
+{
+  const a = arena('estado-envelhece');
+  run(a, '--no-git');
+  const m = path.join(a.proj, '.marvin');
+  const fmt = (d) => String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+  const mk = (nome, rumo, evidencia) => {
+    const d = path.join(m, 'Planejamento', 'Novos', nome);
+    fs.mkdirSync(d, { recursive: true });
+    fs.writeFileSync(path.join(d, 'Sobre.md'), '---\ntipo: us\nestado: ativa\npai: ../Sobre.md\n---\n# ' + nome + ' — x\n\n## Rumo\n\n- **' + rumo + '** — andou\n\n## Evidência\n\n' + evidencia + '\n');
+  };
+  const strip = (r) => r.stdout.replace(/\x1b\[[0-9;]*m/g, '');
+  mk('US-901-velha', '01/01/2020', '');
+  mk('US-902-nova', fmt(new Date()), '');
+  const s1 = strip(run(a, '--status'));
+  check('US-90: ativa fora da nota com Rumo de mais de 14 dias gera o aviso de parada', /no Rumo for more than 14 days[^\n]*US-901/.test(s1), s1.slice(0, 900));
+  check('US-90: ativa fora da nota com Rumo recente não é citada como parada', !/no Rumo for more than 14 days[^\n]*US-902/.test(s1), s1.slice(0, 900));
+  check('US-90: ativa sem Evidência não gera "looks done"', !/looks done/.test(s1), s1.slice(0, 900));
+  const ex1 = run(a, '--status').status;
+  mk('US-903-feita', fmt(new Date()), 'Rodei o teste e passou.');
+  const s2 = strip(run(a, '--status'));
+  check('US-90: ativa com Evidência gera "looks done" e cita só ela', /looks done[^\n]*US-903/.test(s2) && !/looks done[^\n]*US-90[12]/.test(s2), s2.slice(0, 900));
+  check('US-90: os avisos novos não mudam o exit code do --status', run(a, '--status').status === ex1, String(ex1));
+  fs.appendFileSync(path.join(m, 'Memoria', 'onde_paramos.md'), '\n- [US-903](../Planejamento/Novos/US-903-feita/Sobre.md) — em teste\n');
+  const s2n = strip(run(a, '--status'));
+  check('US-90: ativa NA nota com Evidência ganha "ativa with Evidência filled" no item', /US-903[\s\S]*?ativa with Evidência filled/.test(s2n), s2n.slice(0, 900));
+  check('US-90: o --curto não ganha as linhas novas (fora do escopo)', !/fora da nota (sem Rumo|parece)/.test(strip(run(a, '--status', '--curto'))));
+  for (let n = 10; n < 22; n++) mk('US-91' + n + '-velha', '01/01/2020', '');
+  const s3 = strip(run(a, '--status'));
+  check('US-90: a lista de paradas fora da nota tem teto de 10 e "… e mais N"', /… e mais 3\b/.test(s3), s3.slice(0, 1200));
+  const pr = path.join(m, 'Planejamento', 'README.md');
+  const tpl = fs.readFileSync(pr, 'utf8');
+  check('US-90: o template do Planejamento ensina o --pausar "qa"', /Codada\s+e\s+falta\s+só\s+conferir/.test(tpl) && /--pausar\s+"qa"/.test(tpl));
+  fs.writeFileSync(pr, tpl.replace(/\s*Codada\s+e\s+falta[\s\S]*?destrava\)\./, ''));
+  const old = run(a, '--no-git', '--no-questions').stdout;
+  check('US-90: base sem o exemplo no template ganha o aviso do passo 10', /10\. Updates/.test(old) && /--pausar "qa"/.test(old), old.slice(-600));
+  cleanup(a);
+}
+
 // ── 9x. --status --html: the only form of --status that writes — and only in .marvin/.status/,
 //     git-ignored. One point per COMMIT (git date, not Date.now()): two runs on the same
 //     commit do not duplicate. Without --html the jsonl is not born. The HTML opens offline: inline JSON.
@@ -3303,7 +3343,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const pr79 = path.join(a.proj, '.marvin', 'Planejamento', 'README.md');
   const pt = fs.readFileSync(pr79, 'utf8');
   check('US-79: o template novo ensina o --pausar', /--pausar\s+"/.test(pt));
-  fs.writeFileSync(pr79, pt.replace(/\s*Pausa-se com[\s\S]*?à mão\./, ''));
+  fs.writeFileSync(pr79, pt.replace(/\s*Pausa-se com[\s\S]*?destrava\)\./, ''));
   const old79 = run(a, '--no-git', '--no-questions').stdout;
   check('US-79: base sem o --pausar no template ganha o aviso do passo 10', /10\. Updates/.test(old79) && /--pausar/.test(old79), old79.slice(-600));
   const feat = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E', 'F', 'US-2', 'Sobre.md');

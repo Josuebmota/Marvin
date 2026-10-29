@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-90-estado-que-nao-envelhece
 description: "Issue #10: o --status acusa toda ativa parada (não só as da nota) e a ativa com Evidência preenchida (parece concluída), e separa 'em trabalho' de 'falta verificar'. Sem historico/, sem estado novo, sem mudar o aceite."
@@ -51,10 +51,10 @@ Triagem 29/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo). Os 
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| passo 0: `--status` no Parci (❓4) | scout | Haiku · baixo | só ler e contar | pendente |
-| implementar | dev-back | Sonnet · médio | partida; três avisos em `computeStatus`/`printStatus` | pendente |
-| verificar | qa | Sonnet · baixo | `node teste.mjs` e `--status` real sem aviso falso | pendente |
-| ler o diff | tl | Opus · médio | template gerado e marca em `UPDATES` (❓1 = caminho do `po`) | pendente |
+| passo 0: `--status` no Parci (❓4) | scout | Haiku · baixo | só ler e contar | feito |
+| implementar | dev-back | Sonnet · médio | partida; três avisos em `computeStatus`/`printStatus` | feito |
+| verificar | qa | Sonnet · baixo | `node teste.mjs` e `--status` real sem aviso falso | feito |
+| ler o diff | tl | Opus · médio | template gerado e marca em `UPDATES` (❓1 = caminho do `po`) | feito |
 
 Grafo (fresco, 29/10 11:58:50, depois do último commit):
 - `computeStatus` (L1518): affected devolve nada. É falha do grafo: `printStatus` e o HTML o leem (L1122, 1300 e 1448, achados por Grep).
@@ -69,38 +69,37 @@ Nenhuma.
 
 <!-- gerado por `marvin --us` a partir do grafo; regerado a cada run — não edite à mão -->
 
-Toca 6 nó(s) de código em 3 comunidade(s).
+Toca 6 nó(s) de código em 4 comunidade(s) — **escopo largo**: vale fatiar?.
 
-**Quem depende do que ela toca** (1, até 2 níveis) — é o que o QA precisa cobrir:
-- `planningNodes()  marvin.mjs:L712`
+Nada depende do que ela toca — folha do grafo.
 
 **Outras US no mesmo código** — combine antes, não no merge:
-- [US-14-codigo-em-ingles](../../../codigo/ingles/US-14-codigo-em-ingles/Sobre.md) — 1 nó(s) em comum
-- [US-17 — o `marvin` crava a versão com que montou a base](../../atualizacoes/US-17-carimbo-de-versao/Sobre.md) — 1 nó(s) em comum
-- [US-30 — base mais nova não é rebaixada por um `marvin` mais velho](../../atualizacoes/US-30-base-a-frente-nao-rebaixa/Sobre.md) — 2 nó(s) em comum
-- [US-35 — o alvo do Makefile casa errado (`tests:` vira `make test`)](../../comandos/US-35-makefile-regex/Sobre.md) — 1 nó(s) em comum
+- [US-14-codigo-em-ingles](../../../codigo/ingles/US-14-codigo-em-ingles/Sobre.md) — 2 nó(s) em comum
+- [US-17 — o `marvin` crava a versão com que montou a base](../../atualizacoes/US-17-carimbo-de-versao/Sobre.md) — 2 nó(s) em comum
+- [US-30 — base mais nova não é rebaixada por um `marvin` mais velho](../../atualizacoes/US-30-base-a-frente-nao-rebaixa/Sobre.md) — 3 nó(s) em comum
+- [US-35 — o alvo do Makefile casa errado (`tests:` vira `make test`)](../../comandos/US-35-makefile-regex/Sobre.md) — 2 nó(s) em comum
 - [US-41 — o `--status` conta o custo dos subagentes, por papel](../../custo/US-41-custo-dos-subagentes/Sobre.md) — 1 nó(s) em comum
-- [US-64 — desvio de papel no `--status`](../../custo/US-64-desvio-de-papel-no-status/Sobre.md) — 2 nó(s) em comum
+- [US-64 — desvio de papel no `--status`](../../custo/US-64-desvio-de-papel-no-status/Sobre.md) — 1 nó(s) em comum
 - [US-65 — custo por US](../../custo/US-65-custo-por-us/Sobre.md) — 1 nó(s) em comum
-- [US-04 — O passo 3 confunde backup com lixo de shell](../../passo-3/US-04-backup-nao-e-lixo/Sobre.md) — 1 nó(s) em comum
+- [US-04 — O passo 3 confunde backup com lixo de shell](../../passo-3/US-04-backup-nao-e-lixo/Sobre.md) — 2 nó(s) em comum
 - [US-54 — ilha sem nome quando o arquivo começa com ponto](../US-54-ilha-sem-nome/Sobre.md) — 1 nó(s) em comum
 - [US-56 — o contexto fixo é vigiado na abertura de cada sessão](../US-56-contexto-vigiado-na-abertura/Sobre.md) — 2 nó(s) em comum
 - [US-74 — grafo velho e hook ausente viram alerta](../US-74-grafo-velho-vira-alerta/Sobre.md) — 3 nó(s) em comum
-- [US-78 — teto por documento e fragmento órfão](../US-78-teto-por-documento/Sobre.md) — 3 nó(s) em comum
+- [US-78 — teto por documento e fragmento órfão](../US-78-teto-por-documento/Sobre.md) — 4 nó(s) em comum
 - [US-87 — o teto isenta US concluída e `Fontes/` vira raiz](../US-87-teto-isenta-concluida-e-fontes-raiz/Sobre.md) — 4 nó(s) em comum
-- [US-38 — graphify obrigatório nos projetos gerados](../../../ferramentas-opcionais/adaptadores/US-38-graphify-obrigatorio/Sobre.md) — 1 nó(s) em comum
-- [US-40-linha-fora-da-tabela](../../../ferramentas-opcionais/adaptadores/US-40-linha-fora-da-tabela/Sobre.md) — 2 nó(s) em comum
+- [US-38 — graphify obrigatório nos projetos gerados](../../../ferramentas-opcionais/adaptadores/US-38-graphify-obrigatorio/Sobre.md) — 2 nó(s) em comum
+- [US-40-linha-fora-da-tabela](../../../ferramentas-opcionais/adaptadores/US-40-linha-fora-da-tabela/Sobre.md) — 3 nó(s) em comum
+- [US-43 — o grafo como rota de busca, só depois da medição](../../../ferramentas-opcionais/adaptadores/US-43-grafo-rota-de-busca/Sobre.md) — 1 nó(s) em comum
 - [US-55 — o ponytail instalado em outro projeto não conta como instalado aqui](../../../ferramentas-opcionais/adaptadores/US-55-ponytail-escopo/Sobre.md) — 1 nó(s) em comum
-- [US-66 — o refresh do graphify não apaga nem duplica os nós da base](../../../ferramentas-opcionais/adaptadores/US-66-graphify-preserva-origem-doc/Sobre.md) — 2 nó(s) em comum
+- [US-66 — o refresh do graphify não apaga nem duplica os nós da base](../../../ferramentas-opcionais/adaptadores/US-66-graphify-preserva-origem-doc/Sobre.md) — 3 nó(s) em comum
 - [US-67 — ponytail desligado aparece como desligado](../../../ferramentas-opcionais/adaptadores/US-67-ponytail-enabledplugins/Sobre.md) — 1 nó(s) em comum
-- [US-70 — o hook pós-commit refaz o lado dos docs do grafo](../../../ferramentas-opcionais/adaptadores/US-70-hook-refaz-docs-do-grafo/Sobre.md) — 2 nó(s) em comum
-- [US-80 — o hook que atualiza o grafo vem ligado por padrão](../../../ferramentas-opcionais/adaptadores/US-80-hook-do-grafo-por-padrao/Sobre.md) — 3 nó(s) em comum
-- [US-82 — o hook do grafo com `core.hooksPath` (husky) não mente](../../../ferramentas-opcionais/adaptadores/US-82-hook-do-grafo-com-hookspath/Sobre.md) — 3 nó(s) em comum
-- [US-13 — Sessão numa git worktree escreve memória num diretório vazio, sem aviso](../../../memoria/junction/US-13-worktree/Sobre.md) — 1 nó(s) em comum
+- [US-70 — o hook pós-commit refaz o lado dos docs do grafo](../../../ferramentas-opcionais/adaptadores/US-70-hook-refaz-docs-do-grafo/Sobre.md) — 3 nó(s) em comum
+- [US-80 — o hook que atualiza o grafo vem ligado por padrão](../../../ferramentas-opcionais/adaptadores/US-80-hook-do-grafo-por-padrao/Sobre.md) — 4 nó(s) em comum
+- [US-82 — o hook do grafo com `core.hooksPath` (husky) não mente](../../../ferramentas-opcionais/adaptadores/US-82-hook-do-grafo-com-hookspath/Sobre.md) — 4 nó(s) em comum
+- [US-13 — Sessão numa git worktree escreve memória num diretório vazio, sem aviso](../../../memoria/junction/US-13-worktree/Sobre.md) — 2 nó(s) em comum
 - [US-49 — identidade pública: equipe barata](../../../publicacao/identidade/US-49-identidade-equipe-barata/Sobre.md) — 2 nó(s) em comum
-- [US-11 — ferramentas opcionais: detectar, perguntar, registrar (graphify e ponytail)](../../../../Novos/ferramentas-opcionais/adaptadores/US-11-ferramentas-opcionais/Sobre.md) — 2 nó(s) em comum
-- [US-11a — o registro `ferramentas.md`, com o graphify como primeiro adaptador](../../../../Novos/ferramentas-opcionais/adaptadores/US-11a-registro-e-graphify/Sobre.md) — 2 nó(s) em comum
-- … e mais 40
+- [US-11 — ferramentas opcionais: detectar, perguntar, registrar (graphify e ponytail)](../../../../Novos/ferramentas-opcionais/adaptadores/US-11-ferramentas-opcionais/Sobre.md) — 3 nó(s) em comum
+- … e mais 44
 
 ## Rumo
 - **29/10/2026** — anotada a partir da [issue #10](https://github.com/Josuebmota/Marvin/issues/10). O teto dos documentos que carregam sozinhos, citado na issue, é da #9, já entregue (US-78 e US-87).
@@ -113,6 +112,15 @@ Toca 6 nó(s) de código em 3 comunidade(s).
   - **"Falta verificar" pela coluna `estado` do *Time*** (toda etapa fora de `qa`/`tl` feita, `qa`/`tl` pendente): **16**, por heurística de palavra (`feit|ok|done|✓|conclu`).
   - **Leitura:** a massa das 84 é recente e espera conferência, não está abandonada. Os itens 1 e 2 juntos acusam 10. O que separa a massa é o item 3 (`pausada` com `espera: qa`), que depende de o projeto usar o `--pausar` — hoje o Parci não tem nenhuma pausada. Os 9 estados inventados são o problema da issue #7 aparecendo de novo; vale conferir se a versão instalada no Parci já os aponta (US-73).
 - **29/10/2026** — o dono manteve os 3 itens depois do passo 0. A US segue `refinada`, na fila depois da US-72.
+- **29/10/2026** — volta a ativa
+- **29/10/2026** — **concluída.** O `dev-back` (Sonnet · médio) implementou os 3 itens. A verificação foi o **primeiro par da US-72**, com os dois revisores sem ver um ao outro: o `qa` (Sonnet · baixo) e o `codex exec -s read-only` (`gpt-6-luna`, ~67k tokens).
+  - O `codex` achou 1 ponto que o `qa` não viu: o teto de 10 vale por lista, então o `--status` pode nomear até 20 US. O `tl` aceitou, porque é o padrão da US-85.
+  - O `qa` achou 4 pontos menores que o `codex` não viu: o `desde: '3.4.4'`, o `--html` sem os avisos novos, o idioma misto e o teste acoplado ao texto "destrava).". Nenhum bloqueava.
+  - **Nenhum dos dois** tratou como erro de escopo as linhas novas no `--curto`, que o "Não entra" exclui. O `qa` as achou dentro do escopo; o `codex` só disse que o teste não as cobre. Quem apontou foi a sessão principal.
+  - O `tl` (Opus · médio) aprovou com 2 correções obrigatórias, aplicadas: o `--curto` ficou como estava, e entrou a trava do aviso de Evidência dentro da nota. A trava do `--curto` também entrou.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: **667 passaram**, 0 falhas (bloco 9w5, 10 verificações novas). Os dois READMEs dizem 667.
+- `node marvin.mjs --status` deste repositório: "all consistent", nenhum aviso novo falso.
+- `marvin.mjs`: `STALE_DAYS` (L423); `computeStatus` (aviso de parada para toda ativa, "looks done" dentro e fora da nota, sem contar em `problemas`); `printStatus` (listas com teto, só no `--status` completo); o exemplo `--pausar "qa"` no template; marca em `UPDATES` com `desde: '3.4.4'`.

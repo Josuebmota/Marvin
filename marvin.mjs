@@ -419,7 +419,8 @@ const FIXED_TK_CEILING = 6000;       // the three combined; above this the sessi
 // counts, `## Impacto` included: it is what the LLM reads. Either limit trips the notice; no config file.
 const DOC_BYTES_CEILING = 15 * 1024;
 const DOC_LINES_CEILING = 300;
-const ANNOTATED_LIST_CEILING = 10;   // US-85: annotations named in the full --status; the rest is "… e mais N"
+const STALE_DAYS = 14;              // US-90: an ativa whose last Rumo is older than this is flagged as stalled, in the note or not
+const ANNOTATED_LIST_CEILING = 10;  // US-85: annotations named in the full --status; the rest is "… e mais N"
 const TABLE_LINE_CEILING = 600;     // one table row above this chars is a paragraph in disguise
 // Every href inside Releases/*.md, resolved: the USs that already shipped. `onUnparsed(file)` is called for a
 // release that names USs but has no "- [US](path)" line (--release warns; --status stays silent).
@@ -1537,7 +1538,8 @@ const computeStatus = () => {
                    rumo: last ? last.texto : null, rumoData: last ? last.data : null, idade: last ? days(last.data) : null, avisos: [], time: n.time };
     if (n.estado === 'concluida') { item.avisos.push('concluida but still in the note — it belongs in Releases/<versao>.md, and out of here'); st.problemas++; }
     if (n.estado === 'concluida' && !n.comEvidencia) { item.avisos.push('concluida without Evidência'); st.problemas++; }
-    if (item.idade !== null && item.idade > 14 && n.estado === 'ativa') item.avisos.push(item.idade + ' days without a Rumo entry — stalled, or done and not recorded?');
+    if (item.idade !== null && item.idade > STALE_DAYS && n.estado === 'ativa') item.avisos.push(item.idade + ' days without a Rumo entry — stalled, or done and not recorded?');
+    if (n.estado === 'ativa' && n.comEvidencia) item.avisos.push('ativa with Evidência filled — looks done: close it or clear the Evidência');
     st.ativas.push(item);
   }
   if (!pointers.length) st.avisos.push({ nivel: 'info', texto: 'the note has no "- [US](path)" lines' });
@@ -1548,6 +1550,10 @@ const computeStatus = () => {
   const linkedInNote = new Set([...note.matchAll(/\]\(([^)\s#]+)/g)].map(m => path.resolve(DEST, m[1])));
   const notInNote = nodes.filter(n => n.tipo === 'us' && n.estado === 'ativa' && !linkedInNote.has(path.resolve(n.arq)));
   if (notInNote.length) st.avisos.push({ nivel: 'warn', texto: `${notInNote.length} US marked ativa but not in the note: ${notInNote.map(n => n.titulo.split(' — ')[0]).join(', ')}` });
+  // US-90: stalled / looks-done also hold for an ativa outside the note. Warnings only: not counted in st.problemas.
+  const idadeRumo = (n) => n.rumo.length ? days(n.rumo[n.rumo.length - 1].data) : null;
+  st.foraParadas = notInNote.filter(n => idadeRumo(n) !== null && idadeRumo(n) > STALE_DAYS).map(n => ({ titulo: n.titulo.split(' — ')[0], idade: idadeRumo(n) }));
+  st.foraConcluidas = notInNote.filter(n => n.comEvidencia).map(n => n.titulo.split(' — ')[0]);
   // ── The graph in the status: collision and dispersion. Two active USs on the same function
   // is the conflict two parallel sessions discover at the merge — here it shows up before.
   // A US spread across many communities is too wide a scope for one US.
@@ -1711,6 +1717,11 @@ const printStatus = (st, short) => {
     a.avisos.forEach(w => warn('  ' + w));
   }
   for (const w of st.avisos) (w.nivel === 'err' ? err : w.nivel === 'warn' ? warn : info)(w.texto);
+  // US-90: an ativa outside the note, stalled or with Evidência filled. The full status names them (capped, like the annotations);
+  // the hook (--curto) stays as it was — the US left it out of scope.
+  const capped = (arr, fmt) => arr.slice(0, ANNOTATED_LIST_CEILING).map(fmt).join(', ') + (arr.length > ANNOTATED_LIST_CEILING ? ' … e mais ' + (arr.length - ANNOTATED_LIST_CEILING) : '');
+  if (!short && st.foraParadas && st.foraParadas.length) warn(`${st.foraParadas.length} ativa outside the note with no Rumo for more than ${STALE_DAYS} days — stalled, or done and not recorded?: ${capped(st.foraParadas, p => p.titulo + ' (' + p.idade + 'd)')}`);
+  if (!short && st.foraConcluidas && st.foraConcluidas.length) warn(`${st.foraConcluidas.length} ativa outside the note with Evidência filled — looks done: close it or clear the Evidência: ${capped(st.foraConcluidas, t => t)}`);
   if (!short && st.contextoPonteiros.length) info(`${st.contextoPonteiros.length} ponteiro(s) para contexto (não US) na nota: ${st.contextoPonteiros.join(', ')}`);
   // The hook runs only --curto, so the ceilings (same constants as printFixedContext) must speak here, one line each.
   if (short) {
@@ -3444,7 +3455,8 @@ Regras:
 - **Pausada não é ativa.** US parada que não acabou é \`estado: pausada\`, com \`espera:\` (o que ou
   quem destrava) e \`desde:\` no frontmatter; o \`--status\` a lista à parte, fora de "Em andamento".
   Pausa-se com \`marvin --us <caminho> --pausar "<espera>"\` (a volta é \`--ativa\`), sem editar o
-  frontmatter à mão.
+  frontmatter à mão. Codada e falta só conferir: \`marvin --us <caminho> --pausar "qa"\` (o \`qa\`
+  em lote destrava).
 - **Aresta é link.** Fluxo ligado, código tocado e pai são links/caminhos — é o que o
   grafo lê.
 
@@ -5314,6 +5326,10 @@ const UPDATES = [
   { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
     marca: /--pausar\s+"/, soCom: !OLD_LAYOUT, desde: '3.4.3',
     o_que: 'in the "Pausada não é ativa" rule, the command `marvin --us <caminho> --pausar "<espera>"` (back: `--ativa`) instead of editing the frontmatter by hand' },
+  // US-90: the Pausada rule gives the "coded, only needs checking" example (`--pausar "qa"`).
+  { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
+    marca: /Codada\s+e\s+falta\s+só\s+conferir/, soCom: !OLD_LAYOUT, desde: '3.4.4',
+    o_que: 'in the "Pausada não é ativa" rule, the example for a US that is coded and only needs checking: `marvin --us <caminho> --pausar "qa"` (the batch `qa` unlocks it)' },
   // US-81: an annotation is a US `anotada` (one file each); /refinar switches the state in the same file.
   { arquivo: '.claude/commands/refinar.md', marca: /marvin\s+--us\s+<caminho>\s+--anotada/, soCom: !OLD_LAYOUT, desde: '3.4.3',
     o_que: 'the /refinar rule that a new annotation becomes `marvin --us <caminho> --anotada` (never a growing aggregate file) and, when refined, the state changes in the same file and the note line leaves' },
