@@ -106,6 +106,12 @@ Toca 6 nó(s) de código em 3 comunidade(s).
 - **29/10/2026** — anotada a partir da [issue #10](https://github.com/Josuebmota/Marvin/issues/10). O teto dos documentos que carregam sozinhos, citado na issue, é da #9, já entregue (US-78 e US-87).
 - **29/10/2026** — refinada (`/refinar`, `tl` e `po` no Opus · médio, em paralelo).
 - **29/10/2026** — respostas do dono às ❓1-4: `pausada` com `espera: qa` para "falta verificar" (sem estado novo nem leitura do *Time*); 14 dias; passo 0 no Parci antes de codar.
+- **29/10/2026** — **passo 0 medido no Parci** (só leitura, script no scratchpad com as regex do `readNode`; data de referência 29/10). 230 US: 88 `concluida`, **84 `ativa`**, 45 `refinada`, 4 `anotada` e **9 com estado fora da lista** (`superada` 5, `congelada` 3, `estacionada` 1); nenhuma `pausada`.
+  - Das 84 ativas, 21 estão na nota e 63 fora.
+  - **Idade do último Rumo:** 29 com até 7 dias, 48 com 8 a 14, 7 com 15 a 30, nenhuma acima de 30 nem sem Rumo. O aviso de 14 dias pega hoje **2** (as da nota) e pegaria **mais 5** com o item 1. As ativas do Parci não estão paradas: o Rumo anda.
+  - **Evidência preenchida em ativa: 5** (item 2).
+  - **"Falta verificar" pela coluna `estado` do *Time*** (toda etapa fora de `qa`/`tl` feita, `qa`/`tl` pendente): **16**, por heurística de palavra (`feit|ok|done|✓|conclu`).
+  - **Leitura:** a massa das 84 é recente e espera conferência, não está abandonada. Os itens 1 e 2 juntos acusam 10. O que separa a massa é o item 3 (`pausada` com `espera: qa`), que depende de o projeto usar o `--pausar` — hoje o Parci não tem nenhuma pausada. Os 9 estados inventados são o problema da issue #7 aparecendo de novo; vale conferir se a versão instalada no Parci já os aponta (US-73).
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
