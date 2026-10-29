@@ -50,7 +50,7 @@ Triagem 23/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo). Por
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
 | dividir em US e fechar os ❓ | po + tl | Opus · médio | decisão de escopo depois do dono | ❓ fechados 29/10 pelo dono; dividir em US depois do par |
-| par: revisão cruzada (primeiro, ≥ 2 pares) | qa + GPT via `codex exec` | Sonnet · baixo + gpt-6-luna · médio | aceite independente, ≥ 2 pares | pendente |
+| par: revisão cruzada (primeiro, ≥ 2 pares) | qa + GPT via `codex exec` | Sonnet · baixo + gpt-6-luna · médio | aceite independente, ≥ 2 pares | feito 29/10 (2 pares, Rumo) |
 | detecção: implementar | dev-back | Sonnet · médio | spec fechada | pendente |
 | detecção: revisão independente | GPT via `codex exec -s read-only … < /dev/null` | gpt-6-luna · médio | medido na US-71 | pendente |
 | detecção: verificar | qa | Sonnet · baixo | teste hermético com codex falso | pendente |
@@ -65,6 +65,19 @@ Nenhuma.
 ## Rumo
 - **23/10/2026** — refinada da linha ⚪ do IA.md (pedido do dono). Divergência `tl` × `po` sobre medir antes da matriz, e 5 ❓ do dono. O próximo chat divide em US conforme a resposta.
 - **29/10/2026** — respostas do dono às ❓1-6, todas pela recomendação: mede antes (o par primeiro, a matriz só com papel medido e "não medido" nos outros); GPT conta como $0 marginal, então a US do custo do Codex não abre e o item 3 do *Pronto quando* fica só com a ponte; agora só revisão cruzada; Terra fora; ponte pelo `codex exec`. Ordem: **par → detecção → matriz**. Se o par pagar, detecção e matriz viram US próprias.
+- **29/10/2026** — **os 2 pares medidos** (`qa` Sonnet · baixo × `codex exec -s read-only`, mesmo pedido, nenhum vê o outro).
+  - **Par 1, diff da US-90 (ainda não revisado):**
+    - `codex` (~67k tokens) achou 1 ponto que o `qa` não viu: o teto de 10 vale por lista, então até 20 nomes. O `tl` aceitou, porque é o padrão da US-85.
+    - `qa` achou 4 pontos menores que o `codex` não viu.
+    - **Nenhum dos dois** apontou o erro de escopo real (linhas novas no `--curto`, que o "Não entra" exclui). Quem pegou foi a sessão principal, e o `tl` confirmou.
+  - **Par 2, diff da US-87 (`948f921`, já aprovado; o `tl` tinha deixado um ponto menor):**
+    - Os dois reencontraram o ponto do `tl`: release ilegível apaga em silêncio o bloco de documentos. O `codex` (~40k tokens) conferiu o `catch`, mas disse que leu o Rumo, que o pedido mandava ignorar, então o achado dele está contaminado. O `qa` o levantou como hipótese, sem conferir.
+    - O `qa` achou ainda uma lacuna que o `codex` não viu: o teste não cobre epic ou feature fechada (decisão 3 do dono na US-87).
+  - **Saldo:**
+    - Nos 2 pares, o `codex` trouxe 1 achado único, não bloqueante; o `qa` trouxe 5.
+    - Nenhum dos dois substituiu o `tl` no erro de escopo.
+    - Custo marginal $0, mas uns 40 a 70 mil tokens da cota por revisão.
+  - **Pela régua do `po`** ("se pagar, a revisão pelo GPT vira obrigatória com Codex disponível"), **não pagou como obrigatória**. A detecção e a matriz não abrem com base nisso. Decisão final do dono.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
