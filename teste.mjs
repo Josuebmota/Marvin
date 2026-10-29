@@ -1367,6 +1367,28 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── 9w4. US-85: the full --status names each annotation (cap 10, then "… e mais N"); --curto keeps only the number.
+{
+  const a = arena('anotadas');
+  run(a, '--no-git');
+  const m = path.join(a.proj, '.marvin');
+  const mk = (n) => {
+    const d = path.join(m, 'Planejamento', 'Novos', 'US-' + n + '-nota');
+    fs.mkdirSync(d, { recursive: true });
+    fs.writeFileSync(path.join(d, 'Sobre.md'), '---\ntipo: us\nestado: anotada\npai: ../Sobre.md\n---\n# US-' + n + ' — nota\n');
+  };
+  mk(1);
+  const strip = (r) => r.stdout.replace(/\x1b\[[0-9;]*m/g, '');
+  const s1 = strip(run(a, '--status'));
+  check('US-85: com 1 anotada o --status mostra o caminho do Sobre.md', /Anotadas[\s\S]*\.marvin\/Planejamento\/Novos\/US-1-nota\/Sobre\.md/.test(s1) && !/e mais/.test(s1), s1.slice(0, 500));
+  for (let n = 2; n <= 11; n++) mk(n);
+  const s11 = strip(run(a, '--status'));
+  check('US-85: com 11 anotadas aparecem 10 caminhos e "… e mais 1"', (s11.match(/Novos\/US-\d+-nota\/Sobre\.md/g) || []).length === 10 && /… e mais 1\b/.test(s11), s11.slice(0, 900));
+  const c = run(a, '--status', '--curto').stdout;
+  check('US-85: o --curto não lista caminho de anotada, só o número', /11 anotada\(s\)/.test(c) && !/US-\d+-nota/.test(c), c.slice(0, 300));
+  cleanup(a);
+}
+
 // ── 9x. --status --html: the only form of --status that writes — and only in .marvin/.status/,
 //     git-ignored. One point per COMMIT (git date, not Date.now()): two runs on the same
 //     commit do not duplicate. Without --html the jsonl is not born. The HTML opens offline: inline JSON.

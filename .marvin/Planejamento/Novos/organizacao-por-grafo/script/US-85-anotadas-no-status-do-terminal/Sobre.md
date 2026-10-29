@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-85-anotadas-no-status-do-terminal
 description: "Lista nominal das US anotadas no --status do terminal, com teto, para o /refinar não pagar a leitura do --html."
@@ -34,8 +34,8 @@ Triagem 29/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo). Div
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| implementar | dev-back | Sonnet · baixo | só exibição, os dados já existem | pendente |
-| verificar | qa | Sonnet · baixo | `node teste.mjs` + saída real do `--status` | pendente |
+| implementar | dev-back | Sonnet · baixo | só exibição, os dados já existem | feito |
+| verificar | qa | Sonnet · baixo | `node teste.mjs` + saída real do `--status` | feito |
 
 Sem `tl` no diff (com a ❓2 = não): só exibição, sem template nem `UPDATES`.
 
@@ -85,6 +85,11 @@ Nada depende do que ela toca — folha do grafo.
 ## Rumo
 - **27/10/2026** — aberta.
 - **29/10/2026** — refinada (`/refinar`, `tl` e `po` no Opus · médio, em paralelo).
+- **29/10/2026** — volta a ativa
+- **29/10/2026** — feita. `ANNOTATED_LIST_CEILING = 10` ao lado dos outros tetos; no `--status` completo, depois do `if (short) return;`, o bloco "Anotadas (N — fora da fila, /refinar)" com o caminho de cada `Sobre.md` (barra `/`), na ordem de `st.roadmap.anotada` (ilha, id), e "… e mais N" pelo mesmo `info()` do aviso de grafo velho. Sem anotadas, sem bloco. `--curto`, `--html`, template e `UPDATES` intactos. Sem `tl`, como o Time previa (só exibição). Observações do `qa`, não falha: o "… e mais N" sai mais fundo que os itens (o `info()` indenta, igual ao ponto que serviu de padrão); a ordem é por caminho, não numérica (US-10 antes de US-2), a mesma de toda lista do `--status`.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: 657 passaram (+3 do bloco 9w4: 1 anotada, 11 com "… e mais 1", `--curto` sem caminho).
+- qa (repo temporário, HOME redirecionado): 0 anotadas sem bloco; exatamente 10 sem "e mais"; 12 com "… e mais 2"; barras `/` no Windows; `--curto` byte a byte igual ao HEAD; diff do `--status` completo só com o bloco novo; exit 0; nenhuma escrita nova no diff.
+- `--status` nesta base: "Anotadas (1)" com só a US-86.

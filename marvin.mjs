@@ -419,7 +419,8 @@ const FIXED_TK_CEILING = 6000;       // the three combined; above this the sessi
 // counts, `## Impacto` included: it is what the LLM reads. Either limit trips the notice; no config file.
 const DOC_BYTES_CEILING = 15 * 1024;
 const DOC_LINES_CEILING = 300;
-const TABLE_LINE_CEILING = 600;      // one table row above this chars is a paragraph in disguise
+const ANNOTATED_LIST_CEILING = 10;   // US-85: annotations named in the full --status; the rest is "… e mais N"
+const TABLE_LINE_CEILING = 600;     // one table row above this chars is a paragraph in disguise
 // Every href inside Releases/*.md, resolved: the USs that already shipped. `onUnparsed(file)` is called for a
 // release that names USs but has no "- [US](path)" line (--release warns; --status stays silent).
 function shippedHrefs(relDir, onUnparsed) {
@@ -1739,6 +1740,12 @@ const printStatus = (st, short) => {
     else { if (ga.velho) warn(velhoTxt); if (ga.semHook) warn(hookTxt); }
   }
   if (short) return;
+  // US-85: the full status names each annotation (the hook keeps only the number), capped like the other lists.
+  if (st.roadmap.anotada.length) {
+    log('\n\x1b[1mAnotadas\x1b[0m  (' + st.roadmap.anotada.length + ' — fora da fila, /refinar)');
+    for (const u of st.roadmap.anotada.slice(0, ANNOTATED_LIST_CEILING)) log(`  ${stateMark('anotada')} ${path.relative(ROOT, u.arq).replace(/\\/g, '/')}`);
+    if (st.roadmap.anotada.length > ANNOTATED_LIST_CEILING) info('  … e mais ' + (st.roadmap.anotada.length - ANNOTATED_LIST_CEILING));
+  }
   // US-78: only the full status; the hook (--curto) keeps talking just about what loads by itself.
   const dc = st.documentos;
   if (dc.grandes.length) {
