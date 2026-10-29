@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-87-teto-isenta-concluida-e-fontes-raiz
 description: "O --status não aplica o teto por documento (US-78) a US concluída, e Fontes/ vira raiz por regra como Releases/ (sem aviso de órfão). Respostas do dono às ❓ da US-84."
@@ -10,17 +10,17 @@ description: "O --status não aplica o teto por documento (US-78) a US concluíd
 **Por quê:** respostas do dono (29/10/2026) às ❓ da [US-84](../../../publicacao/contexto-fixo/US-84-quebrar-delegacao-e-ligar-orfaos/Sobre.md). O teto da [US-78](../US-78-teto-por-documento/Sobre.md) (`marvin.mjs:1630`) vale para todo nó do `docsGraph` sem olhar o `estado:`: hoje o `--status` lista 6 documentos grandes, 5 deles US concluídas (19, 29, 36, 44, 69) que ninguém vai quebrar. Aviso que nunca some ensina a ignorar o bloco — inclusive o `equipe-barata.md`, que é real. `Fontes/` é histórico como `Releases/` (raízes por regra na L1632); hoje não há órfão lá (a US-84 ligou à mão), então a regra é preventiva.
 
 **Pronto quando:**
-1. Em `computeStatus`, um nó com `estado: concluida` no frontmatter (já lido na L1631 para o `hasPai`) sai de `st.documentos.grandes` — conforme a ❓2, só quando citado num `Releases/*.md`.
+1. Em `computeStatus`, sai de `st.documentos.grandes` o nó (US, feature ou epic) com `estado: cancelada`, ou com `estado: concluida` **e** citado num `Releases/*.md` (o mesmo critério de href do `--release`, L2328). O frontmatter já é lido na L1631 para o `hasPai`. Concluída fora de release continua avisando.
 2. A regra de raiz da L1632 inclui `relDocs + 'Fontes/'` (`.marvin/Fontes/`); o comentário das L1619-1623 diz as duas regras.
-3. `teste.mjs`, no bloco 9w2: US concluída grande não avisa; US ativa grande avisa; arquivo sem link e sem `pai:` em `Fontes/` não é órfão, e o mesmo fora de `Fontes/` é. A contagem nos dois READMEs acompanha.
+3. `teste.mjs`, no bloco 9w2: US concluída grande e em release não avisa; concluída grande fora de release avisa; cancelada grande não avisa; US ativa grande avisa; arquivo sem link e sem `pai:` em `Fontes/` não é órfão, e o mesmo fora de `Fontes/` é. A contagem nos dois READMEs acompanha.
 4. Nesta base, o `--status` lista só o `equipe-barata.md` em "Documentos grandes"; "Fragmentos órfãos" segue vazio; `--curto` e `--html` não mudam.
 
 **Não entra:** quebrar as concluídas; mudar os números do teto; desfazer os links do `Fontes/README.md`; `UPDATES` (nenhum template muda); layout antigo (`00_Fontes_Externas.md` na raiz já é linkado — segue igual).
 
 ## Perguntas
-- ❓ 1. `cancelada` também fica isenta? `tl` e `po` recomendam sim (histórico, ninguém lê); cancelada não entra em release, então seria "cancelada → isenta sempre".
-- ❓ 2. Isentar qualquer `estado: concluida` (a letra da resposta do dono) ou só a concluída que está num `Releases/*.md`? O `po` aponta a brecha: marcar `concluida` uma US ativa grande faria o aviso sumir; o critério de release já existe no `--release` (L2328) e as 5 de hoje passam. O `tl` propôs só o estado. Recomendação: só a que está em release.
-- ❓ 3. Vale só para `tipo: us` ou também para epic/feature fechada? O `tl` recomenda qualquer nó com estado fechado.
+- ~~❓ 1. `cancelada` também fica isenta? `tl` e `po` recomendam sim (histórico, ninguém lê); cancelada não entra em release, então seria "cancelada → isenta sempre".~~ → sim, `cancelada` isenta sempre (dono, 29/10/2026).
+- ~~❓ 2. Isentar qualquer `estado: concluida` (a letra da resposta do dono) ou só a concluída que está num `Releases/*.md`? O `po` aponta a brecha: marcar `concluida` uma US ativa grande faria o aviso sumir; o critério de release já existe no `--release` (L2328) e as 5 de hoje passam. O `tl` propôs só o estado. Recomendação: só a que está em release.~~ → só a concluída citada num `Releases/*.md` (dono, 29/10/2026).
+- ~~❓ 3. Vale só para `tipo: us` ou também para epic/feature fechada? O `tl` recomenda qualquer nó com estado fechado.~~ → qualquer nó com estado fechado, não só `tipo: us` (dono, 29/10/2026).
 
 ## Fluxos ligados
 - [status-html.md](../../../../../Contexto/Fluxos/status-html.md)
@@ -36,10 +36,14 @@ Triagem 29/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo).
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| implementar | dev-back | Sonnet · baixo | duas condições numa função só de leitura | pendente |
-| verificar | qa | Sonnet · baixo | `node teste.mjs` + `--status` real: sobra só o `equipe-barata.md` | pendente |
+| implementar | dev-back | Sonnet · baixo | duas condições numa função só de leitura | feito |
+| verificar | qa | Sonnet · baixo | `node teste.mjs` + `--status` real: sobra só o `equipe-barata.md` | feito |
 
-Sem `tl` no diff: só leitura, aviso sem mudar o código de saída, sem `UPDATES` nem disco de ninguém.
+| ler o diff | tl | Opus · médio | entrou na execução: a extração de `shippedHrefs` mexeu no bloco do `--release` | feito |
+
+O Time previa sem `tl`; ele entrou porque o diff tocou o `--release` (regra do AGENTS.md).
+
+Grafo no fechamento: `shippedHrefs` — sem nó (código não commitado), fallback diff + Grep · `computeStatus` — explain ok, grau 24.
 
 Grafo (fresco, 29/10 09:01 = último commit):
 - `computeStatus` — L1504, grau 24; affected: nada
@@ -87,6 +91,12 @@ Nada depende do que ela toca — folha do grafo.
 ## Rumo
 - **29/10/2026** — anotada a partir das respostas do dono às ❓1 e ❓2 da US-84.
 - **29/10/2026** — refinada (`/refinar`, `tl` e `po` no Opus · médio, em paralelo).
+- **29/10/2026** — volta a ativa
+- **29/10/2026** — feita. `shippedHrefs()` extraída do `--release` (mesmo laço, regex, filtro e `path.resolve`; o aviso de release fora do formato virou callback): o `--status` calcula o conjunto uma vez e isenta do teto o nó `cancelada` ou `concluida` citado num `Releases/*.md`, de qualquer tipo; concluída fora de release segue avisando. `Fontes/` entrou nas raízes do órfão. Frontmatter lido uma vez por nó (`estado` e `hasPai`). O `tl` entrou no diff, fora do Time previsto, porque a extração mexeu no bloco do `--release`; aprovou. Ponto menor registrado, sem bloquear: uma release ilegível (ex.: diretório `x.md` em `Releases/`) derruba o `try` e o bloco de documentos some em silêncio — só exibição, e o `--release` já se comportava assim.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- `node teste.mjs`: 654 passaram (+6 do bloco 9w3).
+- qa (repo temporário, HOME redirecionado): `--release` com o mesmo aviso e a mesma recusa de US já em release; `--dry-run` sem escrita (md5 igual); concluída fora de release avisa e sai depois do `--release`; epic cancelada grande não avisa; `Fontes/solto.md` não é órfão e `Contexto/solto2.md` é; `--curto`/`--html` não leem `st.documentos` (leitura de código).
+- `--status` nesta base: "Documentos grandes" só com `equipe-barata.md` (16 KB · 231 linhas); sem órfãos; exit 0.
+- tl: aprovado.

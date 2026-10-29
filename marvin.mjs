@@ -420,6 +420,19 @@ const FIXED_TK_CEILING = 6000;       // the three combined; above this the sessi
 const DOC_BYTES_CEILING = 15 * 1024;
 const DOC_LINES_CEILING = 300;
 const TABLE_LINE_CEILING = 600;      // one table row above this chars is a paragraph in disguise
+// Every href inside Releases/*.md, resolved: the USs that already shipped. `onUnparsed(file)` is called for a
+// release that names USs but has no "- [US](path)" line (--release warns; --status stays silent).
+function shippedHrefs(relDir, onUnparsed) {
+  const shipped = new Set();
+  let relFiles = []; try { relFiles = fs.readdirSync(relDir).filter(f => f.endsWith('.md') && f !== 'README.md'); } catch {}
+  for (const f of relFiles) {
+    const txt = fs.readFileSync(path.join(relDir, f), 'utf8');
+    const hrefs = [...txt.matchAll(/^- \[[^\]]*\]\(([^)\s#]+)/gm)].map(m => m[1]);
+    if (!hrefs.length && onUnparsed && /\bUS-\d+/.test(txt)) onUnparsed(f);
+    for (const h of hrefs) shipped.add(path.resolve(relDir, h));
+  }
+  return shipped;
+}
 // Five sources, not three — the second measurement (11/09) found two the first one ignored:
 // MEMORY.md (the memory index, which Claude Code loads whole through the junction) and the
 // GLOBAL level (~/.claude/CLAUDE.md + rules/**/*.md), which enters EVERY project. In a
@@ -1616,10 +1629,13 @@ const computeStatus = () => {
   // US-78: oversized documents and orphan fragments (read only; notices, never a problem/exit code).
   // docsGraph with no code ids gives the doc↔doc edges. A doc is connected when something points to it
   // (link, [[wikilink]] or another doc's `pai:`) or it declares its own `pai:`. Roots by rule: README.md and
-  // onde_paramos.md, anything in Memoria/ (the junction) and Releases/ (closed history, nobody links it).
+  // onde_paramos.md, anything in Memoria/ (the junction), Releases/ (closed history, nobody links it) and Fontes/
+  // (raw sources, same as Releases/). Ceiling exemption (US-87): a node with `estado: cancelada`, or `concluida`
+  // and linked from a Releases/*.md, is closed history and does not count as oversized.
   st.documentos = { grandes: [], orfaos: [] };
   try {
     const dg = docsGraph(new Set());
+    const shipped = shippedHrefs(path.join(DOCS, 'Releases'));
     const inbound = new Set(dg.novasArestas.filter(e => e.source !== e.target).map(e => e.target));
     const memRel = path.relative(ROOT, DEST).replace(/\\/g, '/') + '/', relDocs = path.relative(ROOT, DOCS).replace(/\\/g, '/') + '/';
     for (const nd of dg.novosNos) {
@@ -1627,9 +1643,12 @@ const computeStatus = () => {
       let txt; try { txt = fs.readFileSync(path.join(ROOT, rel), 'utf8'); } catch { continue; }
       const bytes = Buffer.byteLength(txt), lines = txt.split('\n').length;
       const tabela = Math.max(0, ...txt.split('\n').filter(l => l.trimStart().startsWith('|')).map(l => l.length));
-      if (bytes > DOC_BYTES_CEILING || lines > DOC_LINES_CEILING || tabela > TABLE_LINE_CEILING) st.documentos.grandes.push({ rel, bytes, lines, tabela });
-      const hasPai = /^pai:[ \t]*\S/m.test((txt.match(/^---\r?\n([\s\S]*?)\r?\n---/) || [])[1] || '');
-      const root = base === 'README.md' || base === 'onde_paramos.md' || rel.startsWith(memRel) || rel.startsWith(relDocs + 'Releases/');
+      const fm = (txt.match(/^---\r?\n([\s\S]*?)\r?\n---/) || [])[1] || '';
+      const estado = (fm.match(/^estado:[ \t]*["']?([^\s"']+)/m) || [])[1];
+      const closed = estado === 'cancelada' || (estado === 'concluida' && shipped.has(path.resolve(ROOT, rel)));
+      if (!closed && (bytes > DOC_BYTES_CEILING || lines > DOC_LINES_CEILING || tabela > TABLE_LINE_CEILING)) st.documentos.grandes.push({ rel, bytes, lines, tabela });
+      const hasPai = /^pai:[ \t]*\S/m.test(fm);
+      const root = base === 'README.md' || base === 'onde_paramos.md' || rel.startsWith(memRel) || rel.startsWith(relDocs + 'Releases/') || rel.startsWith(relDocs + 'Fontes/');
       if (!root && !hasPai && !inbound.has(nd.id)) st.documentos.orfaos.push(rel);
     }
     st.documentos.grandes.sort((a, b) => a.rel.localeCompare(b.rel));
@@ -2326,15 +2345,8 @@ if (argRelease || hasFlag('--release')) {
   if (fs.existsSync(target)) { err('Releases/' + version + '.md already exists — nothing touched (a release is written once)'); process.exit(1); }
 
   // USs that already shipped: every href inside Releases/*.md, resolved.
-  const shipped = new Set();
-  let relFiles = []; try { relFiles = fs.readdirSync(relDir).filter(f => f.endsWith('.md') && f !== 'README.md'); } catch {}
-  for (const f of relFiles) {
-    const txt = fs.readFileSync(path.join(relDir, f), 'utf8');
-    const hrefs = [...txt.matchAll(/^- \[[^\]]*\]\(([^)\s#]+)/gm)].map(m => m[1]);
-    // A release from before USs existed (no "US-<n>" at all) has nothing to protect — warn only when it names USs in another format.
-    if (!hrefs.length && /\bUS-\d+/.test(txt)) warn('Releases/' + f + ' names USs but has no "- [US](path)" line — not in the expected format, so it protects nothing');
-    for (const h of hrefs) shipped.add(path.resolve(relDir, h));
-  }
+  // A release from before USs existed (no "US-<n>" at all) has nothing to protect — warn only when it names USs in another format.
+  const shipped = shippedHrefs(relDir, f => warn('Releases/' + f + ' names USs but has no "- [US](path)" line — not in the expected format, so it protects nothing'));
   const nodes = planningNodes();
   let noFrontmatter = 0;
   (function walk(d, depth = 0) {

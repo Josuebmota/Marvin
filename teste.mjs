@@ -1339,6 +1339,34 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── 9w3. US-87: the ceiling skips a cancelled node and a concluded one cited in a release; Fontes/ is a root.
+{
+  const a = arena('teto-isenta');
+  run(a, '--no-git');
+  const m = path.join(a.proj, '.marvin');
+  const big = '# Grande\n\n' + 'linha de texto\n'.repeat(320);
+  const mk = (rel, estado) => {
+    const d = path.join(m, 'Planejamento', 'Novos', rel);
+    fs.mkdirSync(d, { recursive: true });
+    fs.writeFileSync(path.join(d, 'Sobre.md'), '---\ntipo: us\nestado: ' + estado + '\npai: ../Sobre.md\n---\n' + big);
+  };
+  mk('US-1-noRelease', 'concluida'); mk('US-2-foraRelease', 'concluida'); mk('US-3-cancelada', 'cancelada'); mk('US-4-ativa', 'ativa');
+  fs.mkdirSync(path.join(m, 'Releases'), { recursive: true });
+  fs.writeFileSync(path.join(m, 'Releases', 'v1.md'), '# v1\n\n- [US-1](../Planejamento/Novos/US-1-noRelease/Sobre.md)\n');
+  fs.mkdirSync(path.join(m, 'Fontes'), { recursive: true });
+  fs.writeFileSync(path.join(m, 'Fontes', 'cru.md'), '# Cru\n\nsem link e sem pai.\n');
+  fs.mkdirSync(path.join(m, 'Contexto'), { recursive: true });
+  fs.writeFileSync(path.join(m, 'Contexto', 'cru.md'), '# Cru\n\nsem link e sem pai.\n');
+  const s = run(a, '--status').stdout.replace(/\x1b\[[0-9;]*m/g, '');
+  check('US concluída grande citada em release não avisa', !/US-1-noRelease/.test(s), s.slice(0, 800));
+  check('US concluída grande fora de release avisa', /US-2-foraRelease/.test(s), s.slice(0, 800));
+  check('US cancelada grande não avisa', !/US-3-cancelada/.test(s), s.slice(0, 800));
+  check('US ativa grande avisa', /US-4-ativa/.test(s), s.slice(0, 800));
+  check('arquivo sem link e sem pai em Fontes/ não é órfão', !/Fontes\/cru\.md/.test(s), s.slice(0, 800));
+  check('o mesmo arquivo fora de Fontes/ é órfão', /Contexto\/cru\.md/.test(s), s.slice(0, 800));
+  cleanup(a);
+}
+
 // ── 9x. --status --html: the only form of --status that writes — and only in .marvin/.status/,
 //     git-ignored. One point per COMMIT (git date, not Date.now()): two runs on the same
 //     commit do not duplicate. Without --html the jsonl is not born. The HTML opens offline: inline JSON.

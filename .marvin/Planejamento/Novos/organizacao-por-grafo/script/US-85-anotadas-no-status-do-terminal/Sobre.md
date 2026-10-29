@@ -17,8 +17,8 @@ description: "Lista nominal das US anotadas no --status do terminal, com teto, p
 **Não entra:** `--html` (já tem, US-76); flag nova; listar refinadas por nome; mudar o texto do `/refinar` (template gerado exigiria marca em `UPDATES` — o `po` propôs o ponteiro, o `tl` deixou fora; ❓2).
 
 ## Perguntas
-- ❓ 1. Qual o teto da lista? Sugestão do `tl`: 10.
-- ❓ 2. O template do `/refinar` passa a apontar `marvin --status` como fonte da lista (o `po` quer; custa marca em `UPDATES` e passa pelo `tl`) ou fica para depois?
+- ~~❓ 1. Qual o teto da lista? Sugestão do `tl`: 10.~~ → 10 (dono, 29/10/2026).
+- ~~❓ 2. O template do `/refinar` passa a apontar `marvin --status` como fonte da lista (o `po` quer; custa marca em `UPDATES` e passa pelo `tl`) ou fica para depois?~~ → fica para depois; o template não muda nesta US (dono, 29/10/2026).
 
 ## Fluxos ligados
 - [status-html.md](../../../../../Contexto/Fluxos/status-html.md)

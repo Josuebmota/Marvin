@@ -19,9 +19,9 @@ description: "Rituais do Marvin que hoje são só conselho (teste antes do commi
 **Não entra:** o script escrever a trava nos projetos (passo 2: hookBlock, `UPDATES`, merge sem duplicar — US própria, com `tl`); a trava do "`tl` depois da última edição" e o `Stop` (beiram o invariante 4); plugin (US-86); travar o humano (hook só dispara em tool call da LLM); `sh x.sh` com commit dentro e `--no-verify` (brecha aceita e registrada).
 
 ## Perguntas
-- ❓ 1. Como o hook sabe que o teste passou depois da última edição? `tl`: marca com hash do estado de trabalho (`git diff HEAD` + não rastreados) escrita pelo `teste.mjs` ao passar — determinística, pega edição fora da sessão. `po`: marca escrita por um `PostToolUse` quando o comando canônico sai com 0, comparada com o mtime do stage — não toca o teste, mas depende de o `tool_response` trazer o código de saída (não verificado). Transcrição: descartada pelos dois (formato não é contrato).
+- ~~❓ 1. Como o hook sabe que o teste passou depois da última edição? `tl`: marca com hash do estado de trabalho (`git diff HEAD` + não rastreados) escrita pelo `teste.mjs` ao passar — determinística, pega edição fora da sessão. `po`: marca escrita por um `PostToolUse` quando o comando canônico sai com 0, comparada com o mtime do stage — não toca o teste, mas depende de o `tool_response` trazer o código de saída (não verificado). Transcrição: descartada pelos dois (formato não é contrato).~~ → a do `tl`: marca com hash do estado de trabalho escrita pelo `teste.mjs` ao passar (dono, 29/10/2026).
 - ❓ 2. Onde fica a marca? Arquivo novo no `.gitignore` gerado vira marca em `UPDATES` no passo 2.
-- ❓ 3. Se a medição der 1 caso: espera a segunda vez, como manda a régua, ou a trava entra mesmo assim (é pergunta de confiança, não de token)?
+- ~~❓ 3. Se a medição der 1 caso: espera a segunda vez, como manda a régua, ou a trava entra mesmo assim (é pergunta de confiança, não de token)?~~ → espera a segunda vez, como manda a régua (dono, 29/10/2026).
 - ❓ 4. Aceita subir o node em todo Bash da LLM, se o matcher não filtrar por comando?
 
 ## Fluxos ligados
