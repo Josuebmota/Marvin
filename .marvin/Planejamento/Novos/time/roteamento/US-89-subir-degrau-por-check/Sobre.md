@@ -27,16 +27,16 @@ O *Time* é lido em `readNode` (L655-667), mas só saem `comModelo` e `papeis`; 
 **Não entra:** roteador por chamada de LLM (o script não chama LLM; o IA.md L3153 já diz "não há router"); mudar a matriz de esforço; ratear o custo "sem US".
 
 ## Perguntas
-- ❓ 1. **Refinar agora ou medir antes** (divergência):
+- ~~❓ 1. **Refinar agora ou medir antes** (divergência):
   - **`tl`:** refinar já. Cabe em 1 chat (ou duas fatias: método com `UPDATES`, depois leitura e `--status`), e a taxa medida é o que vai responder se começar barato compensa.
   - **`po`:** voltar para `anotada` com um passo 0. Contar, nos Rumo e *Time* do Parci e do heim-development, as etapas com check reprovado e o que se fez (subiu, corrigiu o contexto, repetiu no mesmo degrau). Reabrir só com pelo menos 3 subidas reais. Se a regra existe e ninguém sobe, o problema é a regra não disparar, não faltar métrica. Mesma régua que fez a US-88 voltar.
-  - A US está parada em `anotada` até você responder.
+  - A US está parada em `anotada` até você responder.~~ → medir antes (dono, 29/10/2026). Medido: 2 subidas reais, abaixo do limiar de 3 — segue `anotada` (Rumo).
 - ❓ 2. **Onde registrar a subida:**
   - **`tl`:** numa linha nova do *Time* (`reprovado` e `sobe:`). Muda o comentário do template e exige marca em `UPDATES`.
   - **`po`:** numa linha de formato fixo no Rumo, onde o `delegacao.md` já manda registrar. Não muda o template.
 - ❓ 3. O teto é de 2 subidas por etapa, com o esforço contando junto? E, ao bater no teto, a US vira `pausada` com `espera: dono`?
 - ❓ 4. Esforço baixo como padrão: os dois dizem que não por ora. A matriz já diz "parte da tabela, nunca acima", e quem decide é a taxa medida.
-- ❓ 5. Se for medir antes: posso ler os `.marvin/` do Parci e do heim-development (só leitura, contagem por grep)?
+- ~~❓ 5. Se for medir antes: posso ler os `.marvin/` do Parci e do heim-development (só leitura, contagem por grep)?~~ → sim (dono, 29/10/2026).
 
 ## Fluxos ligados
 - [delegacao.md](../../../../../Contexto/Fluxos/delegacao.md)
@@ -63,8 +63,8 @@ Triagem 29/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo). Div
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| passo 0: contar subidas nas bases do dono | scout | Haiku · baixo | só contagem por grep | pendente |
-| julgar se reabre | po | Opus · médio | escopo | pendente |
+| passo 0: contar subidas nas bases do dono | scout | Haiku · baixo | só contagem por grep | feito 29/10 (as 2 subidas conferidas à mão na sessão) |
+| julgar se reabre | po | Opus · médio | escopo | feito 29/10 pelo critério que o próprio `po` declarou (≥3 subidas), sem nova chamada |
 
 Grafo (fresco, 29/10 11:58:50):
 - `readNode` (L636): affected devolve `computeStatus` e `planningNodes`. US vizinhas: 73 e 64.
@@ -78,6 +78,13 @@ Nenhuma.
 ## Rumo
 - **29/10/2026** — anotada a partir da [issue #11](https://github.com/Josuebmota/Marvin/issues/11).
 - **29/10/2026** — passou pelo `/refinar` (`tl` e `po` no Opus · médio, em paralelo). Segue `anotada`: os dois divergem entre refinar já e medir antes (❓1).
+- **29/10/2026** — **passo 0 medido** (dono escolheu medir antes). Parci: 230 US; heim-development: 33.
+  - **Subiu de modelo por check reprovado: 2**, os dois no Parci e em lógica de dinheiro: US-CT-32 e US-CT-34, `gpt-6-luna` → `gpt-6.1-sol` depois de **2 rodadas reprovadas** (o `tl` bloqueou / o teste quebrou). Registrados em texto livre na coluna `motivo` do *Time* ("subiu de luna em 23/10: luna falhou 2 rodadas").
+  - **Subiu esforço: 0.** Devolveu ao dono: 0.
+  - **Repetiu no mesmo degrau, o executor corrigiu o que o `tl` reprovou: 7** (Parci 5: US-TX-31, TX-32, CT-33, CT-34, DS-M11; heim 2: US-144, US-147). Corrigiu o contexto: 1 (Parci, INV-E9a). Sem registro do que se fez: 3.
+  - "subiu de baixo" no Parci (US-DS-M11, US-TWA-8) é degrau escolhido na triagem, não subida por falha — descartado.
+  - O `Equipe.md` do heim tem a Regra do sênior ("sobe só se falhar", L29-30).
+  - **Leitura:** abaixo do limiar de 3 do `po`, a US segue `anotada`. O padrão dominante é repetir no mesmo degrau com o erro do `tl`, e funciona; a subida de modelo apareceu exatamente no teto de 2 tentativas do `/continuar`, e o registro em texto livre no *Time* bastou para achá-la. A contagem do Parci é parcial: busca por palavra-chave, não leitura de todas as 230 US. Reabre com o terceiro caso, ou se uma subida faltar e custar retrabalho.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
