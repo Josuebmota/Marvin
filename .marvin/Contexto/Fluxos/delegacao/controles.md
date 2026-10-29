@@ -17,5 +17,13 @@ pai: ../delegacao.md
   antes. Conferir a precedência e a compatibilidade efetivas.
   Nesta sessão, o esquema `collaboration.spawn_agent` com `fork_turns: all` herda
   modelo/esforço e não aceita overrides nessa forma; é limite desta chamada.
+- **Revisão pelo GPT, opcional** (dono, 29/10/2026, depois dos 2 pares da
+  [US-72](../../../Planejamento/Novos/time/roteamento/US-72-gpt-na-equipe/Sobre.md)): segunda leitura
+  de um diff, quando o Codex estiver disponível e a cota sobrar. Não substitui o `qa` nem o `tl`:
+  nos 2 pares, trouxe 1 achado único, não bloqueante, e nenhum dos dois revisores pegou o erro de escopo.
+  `codex exec -C <repo> -s read-only "<pedido>" < /dev/null > <arquivo>` — só leitura, stdin
+  fechado (sem ele o comando espera), em segundo plano, com 40 a 70 mil tokens da cota por diff.
+  O pedido é o mesmo do `qa`: diff, *Pronto quando*, *Não entra* e AGENTS.md. Diga para ignorar
+  Rumo e Evidência; mesmo assim, no par 2 ele leu o Rumo. O achado vai para o `tl` junto com os do `qa`.
 - Outros fornecedores: conferir sob demanda a combinação efetivamente escolhida.
   Uma fonte oficial prova suporte documentado; aplicação exige evidência da execução.

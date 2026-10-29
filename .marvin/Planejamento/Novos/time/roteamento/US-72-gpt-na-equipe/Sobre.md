@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-72-gpt-na-equipe
 description: "O Marvin sabe que o usuário tem Claude e GPT: detecta o Codex, põe o GPT na matriz de papéis e permite mandar etapa para ele (codex exec). Refino de 23/10 com tl e po; a divisão em US e a ordem esperam o dono (divergência abaixo)."
@@ -49,13 +49,13 @@ Triagem 23/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo). Por
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| dividir em US e fechar os ❓ | po + tl | Opus · médio | decisão de escopo depois do dono | ❓ fechados 29/10 pelo dono; dividir em US depois do par |
+| dividir em US e fechar os ❓ | po + tl | Opus · médio | decisão de escopo depois do dono | feito 29/10: sem divisão, o par não pagou |
 | par: revisão cruzada (primeiro, ≥ 2 pares) | qa + GPT via `codex exec` | Sonnet · baixo + gpt-6-luna · médio | aceite independente, ≥ 2 pares | feito 29/10 (2 pares, Rumo) |
-| detecção: implementar | dev-back | Sonnet · médio | spec fechada | pendente |
-| detecção: revisão independente | GPT via `codex exec -s read-only … < /dev/null` | gpt-6-luna · médio | medido na US-71 | pendente |
-| detecção: verificar | qa | Sonnet · baixo | teste hermético com codex falso | pendente |
-| matriz: texto e `UPDATES` | dev-back | Sonnet · médio | template | pendente |
-| ler o diff (cada frente) | tl | Opus · médio | esquema v1/v2, invariante 3, `UPDATES` | pendente |
+| detecção: implementar | dev-back | Sonnet · médio | spec fechada | fora: o par não pagou (dono, 29/10) |
+| detecção: revisão independente | GPT via `codex exec -s read-only … < /dev/null` | gpt-6-luna · médio | medido na US-71 | fora: o par não pagou (dono, 29/10) |
+| detecção: verificar | qa | Sonnet · baixo | teste hermético com codex falso | fora: o par não pagou (dono, 29/10) |
+| matriz: texto e `UPDATES` | dev-back | Sonnet · médio | template | fora: o par não pagou (dono, 29/10) |
+| ler o diff (cada frente) | tl | Opus · médio | esquema v1/v2, invariante 3, `UPDATES` | fora: sem frente de código |
 
 Grafo (fresco, 23/10 15:57): `validAvailability` (L274) e `AI_EXECUTORS` (L271) com grau 1 e `affected` vazio — a extração não segue o uso no mesmo arquivo; usos reais por Grep (L297, L2215, L2242). `computeSpend` (L697): comunidade própria, grau 7. Bloco 0a e template sem nó — Grep.
 
@@ -78,6 +78,9 @@ Nenhuma.
     - Nenhum dos dois substituiu o `tl` no erro de escopo.
     - Custo marginal $0, mas uns 40 a 70 mil tokens da cota por revisão.
   - **Pela régua do `po`** ("se pagar, a revisão pelo GPT vira obrigatória com Codex disponível"), **não pagou como obrigatória**. A detecção e a matriz não abrem com base nisso. Decisão final do dono.
+- **29/10/2026** — **concluída.** Decisão do dono depois dos pares: a revisão pelo GPT fica **opcional**. O procedimento do `codex exec` foi para [controles.md](../../../../Contexto/Fluxos/delegacao/controles.md), com o custo de cota e o limite medido. Detecção, matriz e custo do Codex não abrem. Reabre se a revisão pelo GPT pegar algo que o `qa` e o `tl` deixarem passar.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+- Os 2 pares estão no Rumo de 29/10: US-90, ainda não revisado, e US-87 (`948f921`). Saídas do `codex` em ~67k e ~40k tokens.
+- O procedimento opcional está em `.marvin/Contexto/Fluxos/delegacao/controles.md`.
