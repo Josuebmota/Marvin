@@ -19,7 +19,7 @@ description: "Com `core.hooksPath` (husky), o marvin não instala o hook do graf
 **Não entra:** escrever no `post-commit` do hooksPath (`.husky/` é pasta versionada da equipe — ❓1); lefthook, pre-commit e afins por nome; marca em `UPDATES` (nenhum texto gerado muda; o `warn` roda a cada `marvin`, como na US-80).
 
 ## Perguntas
-- ❓ 1. Com `core.hooksPath`, o Marvin só avisa (o mínimo acima) ou também escreve no `post-commit` do hooksPath? `tl` e `po` recomendam só avisar. Esta US não depende da resposta.
+- ~~❓ 1. Com `core.hooksPath`, o Marvin só avisa (o mínimo acima) ou também escreve no `post-commit` do hooksPath? `tl` e `po` recomendam só avisar. Esta US não depende da resposta.~~ → só avisa (dono, 29/10/2026): `.husky/` é pasta versionada da equipe.
 
 ## Fluxos ligados
 - [ferramentas.md](../../../../../ferramentas.md)

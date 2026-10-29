@@ -10,6 +10,7 @@ pai: ../Sobre.md
 
 ## Filhos
 - [US-45-porta-unica](US-45-porta-unica/Sobre.md)
+- [US-88-travas-por-hook](US-88-travas-por-hook/Sobre.md)
 
 ## Rumo
 - **15/10/2026** — aberta com a arquitetura [equipe-barata](../../../../Contexto/Arquitetura/equipe-barata.md).

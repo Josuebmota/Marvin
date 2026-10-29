@@ -18,8 +18,8 @@ description: "Só base, sem script: quebrar o delegacao.md (lido em toda triagem
 **Não entra:** as US concluídas grandes (US-19, 29, 36, 44, 69) e o `equipe-barata.md` (1 KB acima, lido só por quem segue a ⚪) — ❓1; mudança no script.
 
 ## Perguntas
-- ❓ 1. O teto da US-78 vale para US concluída (histórico, quase nunca lido)? Se não, uma US de script isenta concluída no `--status`; se sim, os 5 avisos ficam ou elas são quebradas (o `tl` deixou a regra para quebrar o `Sobre.md` sem perder estado, Rumo, Time, Evidência nem ❓).
-- ❓ 2. Os dois de `Fontes/` são histórico: ligar a quem os cita, ou viram raiz por regra como `Releases/` (mudança no script)? Esta US liga; a regra fica com o dono.
+- ~~❓ 1. O teto da US-78 vale para US concluída (histórico, quase nunca lido)? Se não, uma US de script isenta concluída no `--status`; se sim, os 5 avisos ficam ou elas são quebradas (o `tl` deixou a regra para quebrar o `Sobre.md` sem perder estado, Rumo, Time, Evidência nem ❓).~~ → não vale (dono, 29/10/2026): o `--status` isenta US concluída — [US-87](../../../diagnostico/status/US-87-teto-isenta-concluida-e-fontes-raiz/Sobre.md).
+- ~~❓ 2. Os dois de `Fontes/` são histórico: ligar a quem os cita, ou viram raiz por regra como `Releases/` (mudança no script)? Esta US liga; a regra fica com o dono.~~ → `Fontes/` vira raiz por regra, como `Releases/` (dono, 29/10/2026) — mesma US-87.
 
 ## Fluxos ligados
 - [delegacao.md](../../../../../Contexto/Fluxos/delegacao.md)

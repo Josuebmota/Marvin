@@ -18,7 +18,7 @@ description: "Anotação: plugin fino do Claude Code por cima do npm (comandos g
 **Não entra (provisório):** trocar o npm pelo plugin; dependência do ECC inteiro; instalar graphify sem flag.
 
 ## Perguntas
-- ❓ 1. Antes de medir as marcas pendentes nos projetos reais, vale abrir a parte das travas por hook (que não precisa de plugin — o script já escreve hooks no `.claude/settings.json`) como US própria?
+- ~~❓ 1. Antes de medir as marcas pendentes nos projetos reais, vale abrir a parte das travas por hook (que não precisa de plugin — o script já escreve hooks no `.claude/settings.json`) como US própria?~~ → sim (dono, 29/10/2026): [US-88](../../../../Novos/time/orquestracao/US-88-travas-por-hook/Sobre.md). Esta fica só com o empacotamento.
 
 ## Fluxos ligados
 - [decisoes-fechadas.md](../../../../../Contexto/Arquitetura/decisoes-fechadas.md) — "O Marvin é o único plugin do Claude e o curador das ferramentas, por projeto" (15/10/2026)
