@@ -22,6 +22,7 @@ pelas capacidades disponíveis, com conhecimento curado sob demanda.
 - [US-58-regenerar](US-58-regenerar/Sobre.md)
 - [US-62-retomar-sincroniza](US-62-retomar-sincroniza/Sobre.md)
 - [US-72-gpt-na-equipe](US-72-gpt-na-equipe/Sobre.md)
+- [US-89-subir-degrau-por-check](US-89-subir-degrau-por-check/Sobre.md)
 
 ## Rumo
 - **09/10/2026** — Josué propôs avaliar a abertura automática de uma nova conversa quando uma atividade ou conjunto de atividades terminar, ou quando o contexto acumulado indicar que continuar ficou caro; tarefas pequenas devem permanecer no chat atual. Objetivo: sustentar trabalho por horas com o estado sempre registrado e atualizado. Triagem do `po`: manter como candidata de baixa prioridade, sem abrir US ou alterar a US-20 concluída. `/retomar` e `/fechar` já sugerem nova conversa quando o assunto mudou, a sessão está longa e o estado foi salvo. Reavaliar após um caso real em que contexto acumulado cause custo, retrabalho ou risco observável, e confirmar capacidade oficial de criar/retomar chats; qualquer proposta deve persistir o estado antes da troca e excluir tarefas pequenas. A triagem usou links e `rg` como fallback; Graphify está desatualizado.

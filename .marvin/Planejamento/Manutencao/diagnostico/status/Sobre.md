@@ -14,6 +14,7 @@ pai: ../Sobre.md
 - [US-74-grafo-velho-vira-alerta](US-74-grafo-velho-vira-alerta/Sobre.md)
 - [US-78-teto-por-documento](US-78-teto-por-documento/Sobre.md)
 - [US-87-teto-isenta-concluida-e-fontes-raiz](US-87-teto-isenta-concluida-e-fontes-raiz/Sobre.md)
+- [US-90-estado-que-nao-envelhece](US-90-estado-que-nao-envelhece/Sobre.md)
 
 ## Rumo
 - **15/10/2026** — aberta, com a primeira US.
