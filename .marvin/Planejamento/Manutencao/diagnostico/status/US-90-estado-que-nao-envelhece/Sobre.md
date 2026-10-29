@@ -15,7 +15,7 @@ description: "Issue #10: o --status acusa toda ativa parada (não só as da nota
 **Pronto quando:**
 1. Toda US `ativa` da árvore, não só as da nota, com o último Rumo há mais de 14 dias recebe o aviso de parada. O 14 vira constante. As fora da nota são listadas até 10, fechando com "… e mais N" (o padrão da US-85).
 2. Uma `ativa` com *Evidência* preenchida recebe `!` "parece concluída".
-3. O `--status` separa "em trabalho" de "falta verificar", pelo caminho que a ❓1 escolher.
+3. "Falta verificar" é `pausada` com `espera: qa` (❓1 e ❓2). O texto do template sobre `pausada` (`marvin.mjs:3444`) ganha o exemplo "codada, falta conferir → `--pausar \"qa\"`", com marca em `UPDATES` (`desde:` a próxima versão), e uma base da versão anterior recebe o aviso. O `--status` não ganha leitura nova: a pausada já sai da contagem de ativas e aparece com o que espera.
 4. Nenhum dos avisos muda o código de saída. A idade vem do `days()`, que é só exibida (a exceção do AGENTS.md), e a data é a do último Rumo, não o mtime nem o git.
 5. `teste.mjs` tem uma trava para cada aviso, e o `--status` deste repositório não ganha aviso falso. A contagem nos dois READMEs acompanha.
 
@@ -26,21 +26,22 @@ description: "Issue #10: o --status acusa toda ativa parada (não só as da nota
 - O `--curto` do hook.
 
 ## Perguntas
-- ❓ 1. **Como separar "falta verificar"** (divergência entre o `tl` e o `po`):
+- ~~❓ 1. **Como separar "falta verificar"** (divergência entre o `tl` e o `po`):
   - **`tl`:** ler a coluna `estado` do *Time*. A US em que toda etapa fora do `qa` e do `tl` está `feito` e há uma de `qa` ou `tl` pendente conta como "falta verificar". Só leitura, sem template nem `UPDATES`. Mas não pega nada se o projeto não mantém a coluna atualizada.
   - **`po`:** "falta verificar" é `pausada` com `espera: qa`, que custa zero de código. O que entra é o exemplo "codada, falta conferir → `espera: qa`" no texto do template sobre `pausada` (L3444), com marca em `UPDATES`, e aí o `tl` lê o diff.
-  - Dá para fazer os dois.
-- ❓ 2. Para você, `pausada` quer dizer só "parou por bloqueio", ou "esperando `qa`" também cabe? Se for só bloqueio, o caminho do `po` na ❓1 não serve.
-- ❓ 3. Os 14 dias servem para o Parci?
-- ❓ 4. Passo 0 (sugestão do `po`): rodar o `--status` no Parci e contar quantas das 86 ativas estão na nota, quantas já recebem o aviso de 14 dias e quantas têm *Evidência*. Isso mede o ganho antes de codar. Faço antes da implementação?
+  - Dá para fazer os dois.~~ → o caminho do `po`: `pausada` com `espera: qa` (dono, 29/10/2026).
+- ~~❓ 2. Para você, `pausada` quer dizer só "parou por bloqueio", ou "esperando `qa`" também cabe? Se for só bloqueio, o caminho do `po` na ❓1 não serve.~~ → cabe: `pausada` é qualquer espera fora do executor — dono, operação ou `qa` em lote (dono, 29/10/2026).
+- ~~❓ 3. Os 14 dias servem para o Parci?~~ → 14 dias, como constante (dono, 29/10/2026).
+- ~~❓ 4. Passo 0 (sugestão do `po`): rodar o `--status` no Parci e contar quantas das 86 ativas estão na nota, quantas já recebem o aviso de 14 dias e quantas têm *Evidência*. Isso mede o ganho antes de codar. Faço antes da implementação?~~ → mede antes (dono, 29/10/2026).
 
 ## Fluxos ligados
 - [status-html.md](../../../../../Contexto/Fluxos/status-html.md)
 
 ## Código tocado
-- `marvin.mjs` — `readNode` (L636: estado por linha do *Time*, se a ❓1 for a do `tl`)
 - `marvin.mjs` — `computeStatus` (L1538, L1577-1590)
 - `marvin.mjs` — `printStatus` (L1705)
+- `marvin.mjs` — texto do template sobre `pausada` (L3444)
+- `marvin.mjs` — `UPDATES` (L5171)
 - `teste.mjs`
 - `README.md`
 - `README.pt-BR.md`
@@ -53,7 +54,7 @@ Triagem 29/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo). Os 
 | passo 0: `--status` no Parci (❓4) | scout | Haiku · baixo | só ler e contar | pendente |
 | implementar | dev-back | Sonnet · médio | partida; três avisos em `computeStatus`/`printStatus` | pendente |
 | verificar | qa | Sonnet · baixo | `node teste.mjs` e `--status` real sem aviso falso | pendente |
-| ler o diff | tl | Opus · baixo | núcleo do `--status`; sobe para médio se a ❓1 trouxer template e `UPDATES` | pendente |
+| ler o diff | tl | Opus · médio | template gerado e marca em `UPDATES` (❓1 = caminho do `po`) | pendente |
 
 Grafo (fresco, 29/10 11:58:50, depois do último commit):
 - `computeStatus` (L1518): affected devolve nada. É falha do grafo: `printStatus` e o HTML o leem (L1122, 1300 e 1448, achados por Grep).
@@ -104,6 +105,7 @@ Toca 6 nó(s) de código em 3 comunidade(s).
 ## Rumo
 - **29/10/2026** — anotada a partir da [issue #10](https://github.com/Josuebmota/Marvin/issues/10). O teto dos documentos que carregam sozinhos, citado na issue, é da #9, já entregue (US-78 e US-87).
 - **29/10/2026** — refinada (`/refinar`, `tl` e `po` no Opus · médio, em paralelo).
+- **29/10/2026** — respostas do dono às ❓1-4: `pausada` com `espera: qa` para "falta verificar" (sem estado novo nem leitura do *Time*); 14 dias; passo 0 no Parci antes de codar.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
