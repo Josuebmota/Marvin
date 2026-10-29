@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: anotada
 pai: ../Sobre.md
 name: US-88-travas-por-hook
 description: "Rituais do Marvin que hoje são só conselho (teste antes do commit, tl depois da última edição) viram trava por hook do Claude Code (PreToolUse/Stop), escritos pelo script no .claude/settings.json. Separada da US-86: não precisa de plugin."
@@ -36,8 +36,8 @@ Triagem 29/10/2026 (`/refinar`, `tl` e `po` no Opus · médio, em paralelo). Div
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| medir | scout | Haiku · baixo | recuperação delimitada nas transcrições; não decide | pendente |
-| ler o número | po | Sonnet · baixo | decide se a trava se paga (❓3) | pendente |
+| medir | scout | Haiku · baixo | recuperação delimitada nas transcrições; não decide | feito |
+| ler o número | sessão principal | Opus · médio | conferiu à mão os 3 casos de código; a decisão já estava na ❓3 do dono | feito |
 | conferir formato e implementar | dev-back | Sonnet · médio | hook com stdin e liberação em erro; documentação antes (invariante 3) | pendente |
 | verificar | qa | Sonnet · baixo | bloquear e liberar de verdade numa sessão | pendente |
 | ler o diff | tl | Opus · médio | trava com bug bloqueia todo commit | pendente |
@@ -86,6 +86,9 @@ Nada depende do que ela toca — folha do grafo.
 ## Rumo
 - **29/10/2026** — anotada: separada da US-86 por resposta do dono à ❓1 dela.
 - **29/10/2026** — refinada (`/refinar`, `tl` e `po` no Opus · médio, em paralelo).
+- **29/10/2026** — volta a ativa
+- **29/10/2026** — passo 0 (medir). 43 transcripts, 03/08 a 29/10/2026, 178 commits: 41 com teste depois da última edição, 90 sem edição desde o commit anterior, 47 marcados "sem teste". Dos 47, só 3 tocavam `marvin.mjs`/`teste.mjs`, e conferidos à mão os 3 são falso positivo: o `node teste.mjs` rodou no mesmo comando do commit (09-11 11:37 e 20:35, 10-15 19:12). **Commit de código sem teste: 0.** Os outros 44 são commits só de base (`.md`, `onde_paramos.md`, `Sobre.md`) ou com edição só no scratchpad; vários também têm o teste no mesmo comando (o contador não separa). O caso de 29/10 (nota sem teste) é desse tipo — o `teste.mjs` quase não cobre o texto da base. Pela ❓3 (dono: com 1 caso, espera a segunda vez), a US volta a `anotada`.
+- **Achado da medição, outro problema:** nos casos de setembro o commit vinha encadeado com `;` depois do teste (`node teste.mjs | tail -1; git add -A; git commit`) — teria commitado com o teste falhando. Se a trava voltar, ela exige teste **que passou**, não teste que rodou. Script da contagem: `analise_commits.mjs` (scratchpad da sessão, não versionado).
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
