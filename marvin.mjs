@@ -3872,6 +3872,18 @@ concreto ("\`conta.saldo\` é a abertura, não o saldo exibido") evita bug.
 
 Escreva os agentes **depois** de conhecer o projeto, nunca antes.
 
+## Devolução — coloque isto em TODO agente que executa
+
+O subagente não lê este README nem o fluxo de delegação: a regra tem que estar no \`.md\` dele.
+
+\`\`\`
+Seu esforço vem fixado na chamada e você não o muda. Se, no meio, a etapa bater num sinal
+alto que o Time não listou (spec ambígua, toca invariante fora do combinado, escopo maior
+que o pedido), pare e devolva a quem chamou: "etapa mais difícil que o Time previu: <sinal>",
+com o \`git diff --stat\` do que já mexeu ou "não alterei nada". Não tente resolver; quem
+chamou leva ao \`tl\`, que decide a subida.
+\`\`\`
+
 ## Higiene — coloque isto em TODO agente que escreve arquivo
 
 \`\`\`
@@ -5330,6 +5342,9 @@ const UPDATES = [
   { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
     marca: /Codada\s+e\s+falta\s+só\s+conferir/, soCom: !OLD_LAYOUT, desde: '3.4.4',
     o_que: 'in the "Pausada não é ativa" rule, the example for a US that is coded and only needs checking: `marvin --us <caminho> --pausar "qa"` (the batch `qa` unlocks it)' },
+  // US-92: the agents README teaches the return rule (effort is fixed per call; a harder-than-planned signal goes back to the caller).
+  { arquivo: '.claude/agents/README.md', marca: /Devolução\s+—\s+coloque\s+isto\s+em\s+TODO\s+agente\s+que\s+executa/, desde: '3.4.4',
+    o_que: 'the "Devolução" section: a subagent whose effort is fixed by the call stops and hands back "etapa mais difícil que o Time previu: <sinal>" (with the `git diff --stat`) instead of resolving it, so the `tl` decides the escalation' },
   // US-81: an annotation is a US `anotada` (one file each); /refinar switches the state in the same file.
   { arquivo: '.claude/commands/refinar.md', marca: /marvin\s+--us\s+<caminho>\s+--anotada/, soCom: !OLD_LAYOUT, desde: '3.4.3',
     o_que: 'the /refinar rule that a new annotation becomes `marvin --us <caminho> --anotada` (never a growing aggregate file) and, when refined, the state changes in the same file and the note line leaves' },

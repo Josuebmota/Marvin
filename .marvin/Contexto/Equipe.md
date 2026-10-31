@@ -24,7 +24,7 @@ com uma armadilha concreta do código; skill, na segunda execução.
 a sessão principal coordena no Sonnet (ela relê o contexto inteiro a cada turno, então o
 modelo dela pesa mais que o de qualquer papel); quem executa começa no degrau abaixo
 (`dev-back` no Sonnet, esforço médio), e quem só
-localiza vai no Haiku. Spec clara faz o pensamento antes: o esforço parte do que a tabela diz, nunca acima.
+localiza vai no Haiku. Spec clara faz o pensamento antes: o esforço parte do que a tabela diz, nunca acima — salvo sinal alto da etapa, com motivo no *Time* ([régua](Fluxos/delegacao.md)).
 
 **Regra do sênior:** começa no degrau mais barato que serve (Haiku para tarefa mecânica
 bem especificada); a verificação (`qa`, teste) confere; **sobe só se falhar** — esforço

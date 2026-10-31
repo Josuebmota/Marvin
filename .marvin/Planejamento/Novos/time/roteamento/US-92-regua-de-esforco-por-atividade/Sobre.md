@@ -6,26 +6,33 @@ pai: ../Sobre.md
 # US-92 — Régua escrita de modelo e esforço por atividade, aplicada pelo tl e pelo po (e pelo subagente ao devolver)
 
 **Por quê:** o `tl` e o `po` escolhem modelo e esforço por julgamento solto, e o dono quer o mesmo resultado pelo menor custo; o effortless (github.com/HeyCubit/effortless) mostra a ideia de decidir esforço pela dificuldade do pedido, mas como plugin com juiz LLM por prompt, o que o Marvin não adota (sem dependência, uma ferramenta só, ganho medido em 4 tarefas).
-**Pronto quando:** (1) a régua (sinais da etapa → esforço mínimo) está escrita no passo 2 de `delegacao.md` e em `delegacao/triagem.md`, com critérios validados pela pesquisa de outros repos (fonte e limite registrados no *Rumo*); (2) a regra "etapa mais difícil que o Time previu → devolve e o `tl` sobe pelo passo 5" está nos agentes; (3) a régua foi aplicada na triagem de 1 US real, com esforço escolhido, motivo, resultado e custo registrados; (4) `npm run test` verde e `git diff --check` limpo.
+**Pronto quando:** (1) a régua (sinais da etapa → esforço) mora num lugar só, `delegacao.md`, com `triagem.md` apontando para lá e o `Equipe.md` ressalvando "nunca acima" (fonte e limite da pesquisa registrados no *Rumo*; hipótese até 3–4 US); (2) a regra "etapa mais difícil que o Time previu → devolve a quem chamou, que leva ao `tl`" está no `.md` de cada papel (o subagente não lê o README) e no template do `.claude/agents/README.md` gerado pelo `marvin.mjs`, com marca em `UPDATES` e `npm run test` verde; (3) a régua foi aplicada na triagem de 1 US real, com a escolha da régua, a escolha que o julgamento solto teria feito, o resultado e o custo registrados; se a régua não mudar nenhuma escolha, sai; (4) `tl` leu o diff do `marvin.mjs` e `git diff --check` limpo.
 
 ## Fluxos ligados
 - [delegacao](../../../../../Contexto/Fluxos/delegacao.md)
 - [triagem](../../../../../Contexto/Fluxos/delegacao/triagem.md)
 
 ## Código tocado
-Só documentação; o grafo (atualizado em 31/10 com `graphify update .`) tem nó de documento, não de função.
-- `.marvin/Contexto/Fluxos/delegacao.md` — passo 2 (Escolher a menor configuração adequada) e passo 5 (Entender a reprovação)
-- `.marvin/Contexto/Fluxos/delegacao/triagem.md` — Triagem
-- `.marvin/Contexto/Equipe.md` — Regra do sênior
-- `.claude/agents/README.md` — regra de devolução do subagente
+O grafo (atualizado em 31/10 com `graphify update .`) tem nó de documento; o trecho do template do `marvin.mjs` (passo 7) e a tabela `UPDATES` (passo 10) são código de script, sem símbolo de função.
+- `.marvin/Contexto/Fluxos/delegacao.md` — seção "Régua de esforço por etapa" (antes de "Regras que não podem quebrar")
+- `.marvin/Contexto/Fluxos/delegacao/triagem.md` — Triagem (aponta para a régua)
+- `.marvin/Contexto/Equipe.md` — Regra do sênior ("nunca acima" com a ressalva)
+- `.claude/agents/{dev-back,qa,scout,tl,po}.md` — bloco "Devolução"
+- `.claude/agents/README.md` — bloco "Devolução" (cópia local do template)
+- `marvin.mjs` — passo 7 (template do README dos agentes) e passo 10 (`UPDATES`, entrada `desde` da próxima versão)
+- `teste.mjs` — verificação do bloco novo e da marca em `UPDATES`
 
 ## Time
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
 | decidir os critérios da régua | po + tl | Opus · médio | decide o que entra como sinal e o que é especulação; é julgamento de rumo | pendente |
 | pesquisar outros repos de roteamento | general-purpose | Sonnet · médio | leitura e síntese de fontes externas, sem editar; já rodando em segundo plano (31/10) | em andamento |
-| escrever a régua e a regra de devolução | sessão principal | Sonnet · médio | texto em 4 arquivos de documentação; sem código nem invariante | pendente |
-| conferir o texto | qa | Sonnet · baixo | `git diff --check` e coerência entre os 4 arquivos; não edita | pendente |
+| revisar o rascunho | po + tl | Opus · médio | po cortou o que repete regra existente; tl achou conflito com Equipe.md, passo 5 e o README gerado | feito 31/10 |
+| escrever a régua e a devolução nos docs e nos 5 papéis | sessão principal | Sonnet · médio | texto de documentação, sem código | feito 31/10 |
+| template do README dos agentes + `UPDATES` + teste | dev-back | Sonnet · médio | toca `marvin.mjs` (template gerado e `UPDATES`): sinal alto pela régua, mas com spec fechada e o `tl` no diff, então mantém o degrau médio e o motivo fica aqui | feito 31/10: +15 em `marvin.mjs`, +14 em `teste.mjs`, 669 verificações |
+| ler o diff do `marvin.mjs` | tl | Opus · médio | mudança em `UPDATES` pede o `tl` por risco (AGENTS.md) | feito 31/10: pode fechar, sem conflito com invariante |
+| conferir o texto | qa | Sonnet · baixo | `git diff --check` e coerência entre os arquivos; não edita | feito 31/10: 669 passaram, links ok |
+| aplicar a régua em 1 US real e medir | tl + sessão principal | Opus · médio | critério (3) do Pronto: escolha da régua × escolha do julgamento solto, resultado e custo | pendente (candidata: a triagem da próxima US) |
 | aplicar a régua em 1 US real e medir | tl + sessão principal | Opus · médio | o `tl` lê a decisão de esforço contra o resultado; custo medido como na US-68 | pendente |
 
 Grafo (estrutura): `triagem.md` é lido por `delegacao.md`, `mapa-capacidades.md`, `IA.md` e a US-91; `delegacao.md` é referenciado por `AGENTS.md`, `CLAUDE.md`, `/continuar`, `/refinar`, `agents/README.md` e os filhos de `delegacao/`; `Equipe.md` pela US-91, `Planejamento/README.md` e `controles.md`. Sem nó de função: nenhum código do `marvin.mjs` muda, então não entra `UPDATES` nem `--release`.
@@ -50,6 +57,9 @@ Nada depende do que ela toca — folha do grafo.
 ## Rumo
 - **31/10/2026** — aberta a partir do link do dono (effortless). Decisões: sem plugin, sem juiz LLM por prompt, sem dependência; o que se traz é a metodologia (sinais da etapa → esforço) como critério escrito do `tl` e do `po`; o subagente não muda o próprio esforço (vem fixado na chamada), só devolve a etapa mais difícil que o previsto e o `tl` sobe pelo passo 5.
 - **31/10/2026** — pesquisa de 9 fontes (relato do subagente, não conferido por mim fonte a fonte): RouteLLM, alexei-led/claude-router, Ares (arXiv 2603.07915), vLLM Semantic Router, AutoMix, RouterBench, docs da Anthropic sobre esforço, Aider architect/editor (0xrdan/claude-router não pôde ser lido). **Limite:** nenhuma mede economia em código agêntico com modelos Claude; as medições reais são de chat, QA e agentes web, então a transferência para o Marvin é inferência. Sinais que se repetem: (1) tipo e horizonte da tarefa; (2) papel da etapa, pensar × executar; (3) ponto crítico do fluxo; (4) falha ou dúvida como gatilho de subida; (5) descer só com qualidade medida; (6) custo de trocar de modelo no meio (cache); (7) modelo e esforço como eixos separados. Candidatos a regra escrita: tabela por atividade com padrão barato; subida por evidência (teste vermelho, diff recusado, risco listado); esforço por etapa e não por US; descer só comparando uma saída real; trocar na fronteira de etapa; registrar modelo, esforço e resultado na US.
+- **31/10/2026** — revisão do rascunho pelo `po` e pelo `tl` (Opus · médio): cortes do passo 3, 5, 6, 7 (repetem `Equipe.md` e `delegacao.md`), passo 4 restrito a baixar a partida, régua num lugar só, sinais "alto" com a lista de invariantes. Conflitos do `tl`: "nunca acima" do `Equipe.md`, passo 5 do fluxo, rótulos ≠ valores de `effort`, e a regra de devolução não funciona no `.claude/agents/README.md` (o subagente não o lê; o README é gerado por `marvin.mjs`). **Decisão do dono, 31/10:** a devolução entra também no template, o que tira a US do "sem código" (marca em `UPDATES`, `tl` no diff).
+- **31/10/2026** — escrita feita: régua em `delegacao.md`, "nunca acima" ressalvado no `Equipe.md`, apontamento no `triagem.md`, bloco "Devolução" nos 5 papéis e no README local e gerado. `npm run test`: 669 passaram; `tl` e `qa` sem conflito. Itens (1), (2) e (4) do Pronto cumpridos; **(3) pendente**: aplicar em 1 US real. Antes do release, conferir se a 3.4.4 já saiu (a entrada em `UPDATES` usa `desde: '3.4.4'`, como a da US-90). Âncora: `triagem.md` e `Equipe.md` linkam o arquivo, não a seção.
+- **31/10/2026** — achado em aberto: `dev-back.md` e `.claude/agents/README.md` ainda dizem que o ponytail "não paga e não é carregado em nenhum papel", mas `ferramentas.md` agora o mantém `sim` até a US-93. Acertar quando a US-93 decidir.
 - **31/10/2026** — pendente de conferir: se o effortless age nos subagentes com `model`/`effort` explícitos e se o Handoff/Compact dele colidem com `/fechar` e `/retomar` (não bloqueia a régua).
 - **31/10/2026** — fora desta US, achado na conversa: `AGENTS.md` (invariante 4, 16/10) diz que ponytail é obrigatório, mas `ferramentas.md` o tem como `não` desde a US-68 (+22%, n=1). Decisão do dono pendente.
 

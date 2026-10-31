@@ -3390,6 +3390,20 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   cleanup(a);
 }
 
+// ── US-92. The generated agents README teaches the return rule; a README without it is flagged by UPDATES.
+{
+  const a = arena('us92');
+  run(a, '--no-git', '--no-questions');
+  const rf = path.join(a.proj, '.claude', 'agents', 'README.md');
+  const rt = fs.readFileSync(rf, 'utf8');
+  check('US-92: o agents/README gerado traz a seção Devolução, antes da Higiene',
+    /## Devolução[^\n]*\n[\s\S]*etapa mais difícil que o Time previu[\s\S]*## Higiene/.test(rt));
+  fs.writeFileSync(rf, rt.replace(/## Devolução[\s\S]*?(?=## Higiene)/, ''));
+  const old92 = run(a, '--no-git', '--no-questions').stdout;
+  check('US-92: agents/README sem a Devolução ganha o aviso do passo 10', /10\. Updates/.test(old92) && /Devolução/.test(old92), old92.slice(-600));
+  cleanup(a);
+}
+
 // ── US-80. The post-commit hook of the graph is installed by default (graphify in use + git directory);
 //     `--no-graph-hook` turns it off and records `hook do grafo: desligado` in ferramentas.md; `--graphify-git-hook` forces.
 //     No real graphify: `equipped` puts a fake one (exit 0) on PATH and a synthetic graph.json makes step 8b reach the hook.

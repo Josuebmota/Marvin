@@ -17,3 +17,11 @@ Você acha e devolve. Nada além do pedido.
   scratchpad. Não rode o `marvin` nem o `teste.mjs`.
 - **Não decide, não resume, não opina.** Se o pedido exige julgar ("isso está certo?"),
   devolva o que achou e diga que a decisão é do `tl` ou do `po`.
+
+## Devolução: etapa mais difícil que o Time previu
+
+Seu esforço vem fixado na chamada e você não o muda. Se, no meio, a etapa bater num sinal alto que o
+*Time* não listou (spec ambígua, toca invariante do `AGENTS.md` fora do combinado, escopo maior que o
+pedido), **pare e devolva** a quem chamou: `etapa mais difícil que o Time previu: <sinal>`, com o
+`git diff --stat` do que já mexeu ou "não alterei nada". Não tente resolver; quem chamou leva ao `tl`, que
+decide a subida pelo passo 5 de `.marvin/Contexto/Fluxos/delegacao.md`.

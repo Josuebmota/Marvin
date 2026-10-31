@@ -46,6 +46,37 @@ não presumir que todas as opções geram texto, código ou vídeo.
    destino, motivo e check com resultado. Se já estiver no topo disponível, escalar
    ao humano e manter a tarefa pendente; não inventar outro degrau.
 
+## Régua de esforço por etapa (US-92, 31/10/2026) — hipótese até 3–4 US registradas
+
+Critérios tirados de 9 fontes (RouteLLM, Ares, AutoMix, a documentação de esforço da Anthropic e
+outras; fonte e limite no *Rumo* da [US-92](../../Planejamento/Novos/time/roteamento/US-92-regua-de-esforco-por-atividade/Sobre.md)).
+Nenhuma mede economia em código agêntico com Claude: vale como hipótese a calibrar, não como
+economia validada. Não há juiz LLM por prompt nem dependência; é critério escrito do `tl` e do `po`.
+
+A partida é a tabela do [glossário da equipe](../Equipe.md). A régua diz quando uma etapa justifica
+sair dela, com o motivo no *Time*. Classifique **a etapa** (não a US) pelo sinal mais alto que ela bate:
+
+- **baixo:** recuperação ou leitura delimitada, conferível por comando, sem julgamento.
+- **médio:** implementação com spec fechada, revisão de diff, texto de documentação; poucos arquivos, reversível.
+- **alto:** decide rumo; **toca** (não só decide) invariante do `AGENTS.md` (destruir dado sem conferir a
+  contagem, bloco de escrita sem `fs.existsSync`, escrita fora de `fsw`/`exec`, adaptador que não carrega,
+  `Date.now()`/`Math.random()` em conteúdo escrito, `UPDATES` ou `--release`); escreve no disco de alguém;
+  spec ambígua; defeito sem causa conhecida.
+
+Como usar:
+
+- **Sinal alto é motivo registrado para começar um degrau acima da partida**; sem sinal alto, vale a
+  partida. Baixo, médio e alto são rótulos da régua, não valores de `effort`: o *Time* grava o valor que a
+  ferramenta aceita, ou "herdado (origem)", ou "não aplicável", e a etapa sem esforço declarado não roda.
+- **Subir** segue o passo 5. **Descer abaixo da partida** do glossário só depois de comparar uma saída real
+  no degrau novo com a do antigo, numa US, e registrar no *Rumo*.
+- **Devolução do subagente:** o esforço vem fixado na chamada e ele não o muda. Se a etapa bater num sinal
+  alto que o *Time* não listou, ele para e devolve `etapa mais difícil que o Time previu: <sinal>` a quem
+  chamou, que leva ao `tl`. O bloco vai no `.md` de cada papel; o agente não lê este arquivo.
+- **Registrar ao lado:** na primeira US em que a régua for aplicada, anote também a escolha que o julgamento
+  solto teria feito. Se a régua não mudar nenhuma escolha, ela é texto morto e sai.
+- **Hipótese não medida no Marvin:** trocar modelo ou esforço só na fronteira entre etapas, por causa do cache.
+
 ## Regras que não podem quebrar
 
 - Passar ao subagente o contexto necessário e os invariantes; não presumir memória

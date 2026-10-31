@@ -23,6 +23,8 @@ passo 2 do `/us`, agora com dono explícito; não é uma etapa nova.
   **Ao delegar, o esforço vai explícito:** `model` e `effort` da linha do *Time* na chamada, e
   a etapa sem esforço declarado não roda. A ferramenta só aceita `effort` com autorização escrita
   do dono no `CLAUDE.md` (US-29, critério 4).
+- **Esforço por etapa:** aplique a [régua do fluxo](../delegacao.md) (sinal baixo/médio/alto) e registre o
+  motivo na linha do *Time*. A régua mora lá; aqui só aponta.
 - **Grafo na triagem — obrigatório neste repo (dono, 08/10/2026; nos projetos que o Marvin
   monta continua opcional):** o `tl` e o `po` **sempre** partem do
   grafo: a seção *Impacto* e as ilhas da US dizem quem depende do que ela toca e qual o
