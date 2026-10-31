@@ -78,4 +78,6 @@ Seu esforço vem fixado na chamada e você não o muda. Se, no meio, a etapa bat
 *Time* não listou (spec ambígua, toca invariante do `AGENTS.md` fora do combinado, escopo maior que o
 pedido), **pare e devolva** a quem chamou: `etapa mais difícil que o Time previu: <sinal>`, com o
 `git diff --stat` do que já mexeu ou "não alterei nada". Não tente resolver; quem chamou leva ao `tl`, que
-decide a subida pelo passo 5 de `.marvin/Contexto/Fluxos/delegacao.md`.
+decide a subida pelo passo 5 de `.marvin/Contexto/Fluxos/delegacao.md`. **Se você é o `tl`**, não há
+outro a quem levar: devolva a quem chamou e diga que a decisão de subida é dele (ou do dono, no topo
+disponível).

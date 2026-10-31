@@ -3397,7 +3397,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const rf = path.join(a.proj, '.claude', 'agents', 'README.md');
   const rt = fs.readFileSync(rf, 'utf8');
   check('US-92: o agents/README gerado traz a seção Devolução, antes da Higiene',
-    /## Devolução[^\n]*\n[\s\S]*etapa mais difícil que o Time previu[\s\S]*## Higiene/.test(rt));
+    /## Devolução[^\n]*\n(?:(?!## )[\s\S])*etapa mais difícil que o Time previu(?:(?!## )[\s\S])*## Higiene/.test(rt));
   fs.writeFileSync(rf, rt.replace(/## Devolução[\s\S]*?(?=## Higiene)/, ''));
   const old92 = run(a, '--no-git', '--no-questions').stdout;
   check('US-92: agents/README sem a Devolução ganha o aviso do passo 10', /10\. Updates/.test(old92) && /Devolução/.test(old92), old92.slice(-600));

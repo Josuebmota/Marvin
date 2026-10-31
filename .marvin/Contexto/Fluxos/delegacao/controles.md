@@ -26,7 +26,7 @@ pai: ../delegacao.md
   O pedido é o mesmo do `qa`: diff, *Pronto quando*, *Não entra* e AGENTS.md. Diga para ignorar
   Rumo e Evidência; mesmo assim, no par 2 ele leu o Rumo. O achado vai para o `tl` junto com os do `qa`.
 - **Revisão pelo Gemini, opcional** ([US-91](../../../Planejamento/Novos/time/roteamento/US-91-gemini-na-equipe/Sobre.md),
-  dono, 31/10/2026; **1 de 2 pares medido**): segunda leitura de um diff, quando o `agy`
+  dono, 31/10/2026; **2 pares medidos, não pagou como obrigatória; fica opcional**): segunda leitura de um diff, quando o `agy`
   estiver logado. Não substitui o `qa` nem o `tl`. Em segundo plano, a partir da raiz do repositório
   (comando da chamada de 31/10 que funcionou; **sem `-p`**, com o pedido canalizado, o `agy` rodou
   sem abrir interface; a saída vai para arquivo, como no `codex`):
@@ -45,7 +45,7 @@ pai: ../delegacao.md
   não só a pasta); o hash do diff rastreado, `git diff --binary > $env:TEMP\antes.diff` e
   `git hash-object $env:TEMP\antes.diff` (por arquivo, não pelo pipeline, que no PowerShell 5.1
   converte a saída por `$OutputEncoding` e perde troca só de acento); e o hash de cada arquivo
-  não rastreado, `git -c core.quotePath=false ls-files -o --exclude-standard | git hash-object --stdin-paths` (sem o `quotePath=false`, caminho com acento sai entre aspas e o `hash-object` aborta em silêncio). Só o
+  não rastreado, `git -c core.quotePath=false ls-files -o --exclude-standard | git hash-object --stdin-paths` (sem o `quotePath=false`, caminho com acento sai entre aspas e o `hash-object` aborta em silêncio; **sem nenhum arquivo não rastreado ele aborta com código 128** no PowerShell 5.1, que entra com uma linha de BOM: guarde a lista em variável e só rode o `hash-object` se ela não estiver vazia — par 2 de 31/10). **Cole o diff completo do commit no pedido**: arquivo que mudou e ficou fora do texto vira "bloqueia" falso (par 2). Só o
   status não basta: um arquivo ` M` continua ` M` depois de editado, e um `??` não aparece no
   `git diff`. Se algo mudou, **não use `git restore` nem `git checkout`** (apagariam
   trabalho não commitado do dono). Se o arquivo tocado já tinha mudança do dono, **avise o

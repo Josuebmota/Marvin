@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: ativa
+estado: concluida
 pai: ../Sobre.md
 ---
 # US-91 — o Gemini na equipe: documentar, medir o par e só então mexer na matriz
@@ -56,7 +56,7 @@ Proposto em 31/10/2026; configuração aplicada: não confirmada até a execuç�
 | fechar as ❓ e o escopo | po + tl | Opus · médio | decisão de escopo; segue a US-72 | feito 31/10 (❓1-3 respondidas; ❓4 fora por padrão conservador, pendente do dono) |
 | documentar: mapa, controles, IA | dev-back | Sonnet · médio | spec fechada, só texto; o risco é de rótulo (observado × testado), não de ambiguidade | feito 31/10 na sessão principal; aplicado: não confirmado |
 | verificar links e diff | qa | Sonnet · baixo | `git diff --check`, links relativos | feito 31/10 (sem erros; refeito depois das correções do par 1) |
-| par ≥ 2: revisão cruzada | qa + Gemini via `agy` (stdin) | Sonnet · baixo + `gemini-3.8-flash` · médio (proposto; aplicado: não confirmado) | aceite independente | par 1 de 2 feito 31/10 (Rumo); falta o par 2 |
+| par ≥ 2: revisão cruzada | qa + Gemini via `agy` (stdin) | Sonnet · baixo + `gemini-3.8-flash` · médio (proposto; aplicado: não confirmado) | aceite independente | par 1 e par 2 feitos 31/10 (Rumo); não pagou |
 | ler o diff da documentação | tl | Opus · médio | muda o que a triagem lê; invariante 3 | feito 31/10 (3 leituras; aprovado na 3ª) |
 | coluna "Partida no Gemini" no template | dev-back | Sonnet · médio | template e `UPDATES` | condicional ao par |
 | ler o diff do script | tl | Opus · médio | invariantes 2 e 4, `UPDATES` | condicional ao par |
@@ -120,5 +120,12 @@ Nada depende do que ela toca — folha do grafo.
 
 - **31/10/2026** — **`tl` (Opus · médio), 3ª leitura: APROVADO a etapa 1.** B1, M1, M2 e M3 resolvidos; procedimento executável, sem risco para trabalho do dono e sem mexer em permissão do `agy`; nenhuma frase passa da evidência. Com o `po` (aprovado antes), o **item 1 de "Pronto quando" está cumprido**. Cinco menores do `tl` aplicados: `core.quotePath=false` no `ls-files` (caminho com acento abortava em silêncio), arquivo novo do Gemini pode ser apagado, diff de depois em `depois.diff`, risco de arquivo ignorado ou fora do repo declarado, e o par 1 passa a dizer que a chamada que valeu foi a 4ª, por stdin. `git diff --check` limpo, e o arquivo novo conferido com `git diff --no-index --check`. **Falta o item 2:** par 2 em outro diff real, com aceite de quem **não** autorou o diff (no par 1 a triagem foi da sessão autora), tamanho do pedido e tempo por chamada. O item 3 só abre se o par pagar.
 
+- **31/10/2026** — **par 2 medido e item 2 cumprido.** Diff real: o commit `96ef126` (US-92: `marvin.mjs`, `teste.mjs`, `delegacao.md`, `Equipe.md`, `triagem.md`), revisto por `qa` Sonnet · baixo (leu o repo, ~24 s) × `agy` `gemini-3.8-flash-medium` por stdin, na **cópia descartável do repo** (`git clone` + checkout do commit), pedido de 11.946 bytes, **117 s**, cota não medida. Aceite por quem **não** autorou o diff: `tl` (Opus · médio), que conferiu cada recusa no repo.
+  - **qa:** 0 bloqueios, 2 menores aceitos (frase para o `tl` não ser circular; regex do teste gulosa). Nada achado pelo Gemini que o `qa` não tenha achado ou que fosse real.
+  - **Gemini:** 1 "bloqueia" **falso por entrada** (os 5 `.md` de papel não estavam no pedido; a sessão principal os deixou fora do recorte) e 3 menores recusados (link que existe, `desde: '3.4.4'` na convenção da US-90, teste do template). Achados únicos aceitos: **0**.
+  - **O `tl` achou o que nenhum dos dois achou:** `tdd-guide.md` (ECC, executa com Write/Edit) ficou sem o bloco de Devolução. Corrigido; os agentes do ECC copiados pelo script saem sem o bloco (decisão pendente do `tl`/`po` na US-92).
+  - **Falha de método:** `git ls-files -o … | git hash-object --stdin-paths` aborta com código 128 quando não há arquivo não rastreado; a conferência de não rastreados ficou sem prova real neste par. O recorte do diff foi desigual (Gemini viu o diff cortado; o `qa` leu o repo). Procedimento do `controles.md` corrigido: guarda para lista vazia e "cole o diff completo".
+  - **Saldo dos 2 pares (n=2, mesma família de diff: texto e `UPDATES` do Marvin):** achados únicos aceitos `qa` 3 + 2 = 5 × Gemini 0; recusados do Gemini 1 + 4; 1 achado em comum (par 1). **Pela régua do `po` na US-72, não paga como obrigatória: a revisão pelo Gemini fica opcional**, como a do GPT. Limites: amostra pequena, recorte desigual, cota não medida, só o Flash · médio testado (o `gemini-4-argon` não entrou). Item 3 (coluna "Partida no Gemini" no `Equipe.md`) **não abre**.
+
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+Pares 1 e 2 e leituras de `po` e `tl` no *Rumo*. Documentação: `mapa-capacidades.md`, `controles.md` ("Revisão pelo Gemini, opcional"), `IA.md`. Commits: `63fbdd9` (etapa 1) e o que fecha esta US (`git log --grep "US-91 concluída"`).
