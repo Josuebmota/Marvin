@@ -53,7 +53,7 @@ código, escrito pelo `tl` e pelo `po` na primeira rodada com a LLM depois de in
 **propõe**, só para fronteira detectada) ou na US que o pede; skill, na segunda execução. O
 corpo de agentes, de skills e do `AGENTS.md` nunca sai do `marvin.mjs` — exceto a cópia literal do catálogo ECC (adendo abaixo). O script pode **mostrar** o que o diagnóstico sugere; quem decide e escreve é quem conhece o
 projeto. (08/10/2026: o sujeito passou a ser a atividade; 15/10/2026: a instalação traz o glossário;
-16/10/2026, decisão do dono: graphify, ponytail e ECC são obrigatórios para baratear o custo, e o script
+16/10/2026, decisão do dono: graphify, ponytail e ECC são obrigatórios para baratear o custo (ponytail: 31/10, dono mantém obrigatório enquanto a US-93 mede o 2º par, pois a US-68 deu +22% com n=1 — [ferramentas.md](.marvin/ferramentas.md)), e o script
 passa a **instalar** agentes e skills do ECC — copiados do catálogo, só os que o projeto usa, com
 `model`/`effort` pela matriz do glossário; o `AGENTS.md` e o corpo escrito à mão continuam fora do script.)
 
