@@ -67,3 +67,33 @@ por invocação de subagente; sessão principal rodando `claude-opus-5-5` em esf
 nesse nível, não cota, nem desempenho por etapa. Sonnet, Haiku e Fable seguem só
 documentados: o `model` do frontmatter dos agentes é configuração de partida, não prova
 de acesso. Codex continua sem confirmação de modelo e esforço aplicados.
+
+## Gemini — Antigravity CLI (`agy`) — US-91
+
+Observado em **30/10/2026** (Windows, `agy` 1.4.11, login da assinatura do dono). A
+descrição de capacidade pelo fornecedor **não foi consultada**; não há benchmark nem
+equivalência com Claude ou GPT. Esta seção não herda o "Estado local" acima, que vale
+só para Claude e Codex. Fonte dos slugs: `agy models`. Fonte do modo sem interface:
+[headless](https://antigravity.google/docs/cli/headless), 30/10/2026.
+
+| Ferramenta | Modelo concreto (slug) | Esforço | Estado em 30/10/2026 |
+|---|---|---|---|
+| `agy` | `gemini-4-argon-{low,medium,high}` | variante no slug; segundo a documentação, o CLI também aceita `--effort low` a `max` (não testado), relação entre os dois não conferida | listado; **não medido** |
+| `agy` | `gemini-3.8-flash-{low,medium,high}` | idem | listado; **não medido** |
+
+**Observado:** `agy -p "<pedido>"` respondeu com o login salvo e editou um arquivo
+com `--sandbox`; essa chamada usou o modelo padrão do cliente, **não conferido qual**.
+Em 31/10 o CLI aceitou `--model gemini-3.8-flash-medium` e respondeu; qual modelo
+respondeu também não foi conferido. Em modo sem interface o `agy` **negou sozinho** as
+ferramentas de comando e de leitura de arquivo (erro `permission ... headless mode cannot
+prompt`), o que impede o Gemini de rodar `git diff` ou abrir arquivos: veja o
+procedimento em [controles](Fluxos/delegacao/controles.md). Cota e desempenho por etapa
+não foram medidos.
+
+**Documentado (sem teste próprio):** o modo `-p` usa o login em cache e exige um `agy`
+interativo antes para gravá-lo ([headless](https://antigravity.google/docs/cli/headless)).
+
+O mesmo `agy models` lista `claude-opus-5-5-*`, `claude-sonnet-5-5-*` e `gpt-oss-120b-medium`:
+os dois primeiros são Claude, a mesma família do executor, e não dão segunda opinião
+independente. O Gemini CLI antigo não serve contas pessoais desde 18/06/2026
+([aviso](https://developers.google.com/gemini-code-assist/docs/deprecations/code-assist-individuals)).

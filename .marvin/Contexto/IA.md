@@ -41,5 +41,9 @@ relativa na lista. Os pares não afirmam equivalência de capacidade, desempenho
 custo ou esforço. Para escolher, use a atividade, as capacidades documentadas no
 [mapa](mapa-capacidades.md) e a disponibilidade confirmada.
 
+**Gemini (Antigravity CLI, US-91):** modelos e controles observados em 30/10/2026 no
+[mapa](mapa-capacidades.md); **não medido**, sem par de posição com Claude ou GPT. A
+ponte opcional (`agy` com o pedido por stdin, só revisão) está em [controles](Fluxos/delegacao/controles.md).
+
 Jev é estudado para decisões estruturadas, sem geração de texto. MiniMax exige
 conferência de modelo e acesso próprios para vídeo; conexão ao chat não os comprova.
