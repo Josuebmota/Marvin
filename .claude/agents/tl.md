@@ -81,3 +81,7 @@ pedido), **pare e devolva** a quem chamou: `etapa mais difícil que o Time previ
 decide a subida pelo passo 5 de `.marvin/Contexto/Fluxos/delegacao.md`. **Se você é o `tl`**, não há
 outro a quem levar: devolva a quem chamou e diga que a decisão de subida é dele (ou do dono, no topo
 disponível).
+
+## Escopo mínimo
+
+Bloqueio só com cenário que quebra; não reescreva o diff por gosto. Mudança que poderia ser menor e continua correta é sugestão, não bloqueio.

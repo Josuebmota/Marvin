@@ -25,3 +25,7 @@ Seu esforço vem fixado na chamada e você não o muda. Se, no meio, a etapa bat
 pedido), **pare e devolva** a quem chamou: `etapa mais difícil que o Time previu: <sinal>`, com o
 `git diff --stat` do que já mexeu ou "não alterei nada". Não tente resolver; quem chamou leva ao `tl`, que
 decide a subida pelo passo 5 de `.marvin/Contexto/Fluxos/delegacao.md`.
+
+## Escopo mínimo
+
+Ache e pare: não conclua, não decida, não edite.

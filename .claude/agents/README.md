@@ -40,7 +40,7 @@ Detectado aqui: **Node/JS**.
 ### Ponytail: em que papel entra
 
 Este projeto mediu o ponytail (`.marvin/ferramentas.md`, [US-68](../../.marvin/Planejamento/Novos/ferramentas-opcionais/adaptadores/US-68-ponytail-medido/Sobre.md))
-e **não** o carrega em nenhum papel: n=1, +22% de custo com o mesmo resultado. A escada vale,
+e **não** o carrega em nenhum papel: 2 pares (US-68, [US-93](../../.marvin/Planejamento/Novos/ferramentas-opcionais/adaptadores/US-93-ponytail-segundo-par/Sobre.md)), custo +22% e −9% sem direção demonstrável, aceite igual ou pior. A atitude virou o bloco "Escopo mínimo" de cada papel. A escada vale,
 em tese, para quem **implementa** sem convenção escrita; reabre com um par que mostre ganho.
 Sugestão, não regra; o corpo de cada agente é seu.
 

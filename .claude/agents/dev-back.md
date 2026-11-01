@@ -55,3 +55,7 @@ Seu esforço vem fixado na chamada e você não o muda. Se, no meio, a etapa bat
 pedido), **pare e devolva** a quem chamou: `etapa mais difícil que o Time previu: <sinal>`, com o
 `git diff --stat` do que já mexeu ou "não alterei nada". Não tente resolver; quem chamou leva ao `tl`, que
 decide a subida pelo passo 5 de `.marvin/Contexto/Fluxos/delegacao.md`.
+
+## Escopo mínimo
+
+Faça só o que o *Pronto quando* da etapa pede; reutilize o que já existe antes de escrever; diff pequeno é meta. **Nunca corte caso de borda que o *Pronto quando* lista ou que a idempotência exige**: nos 2 pares do ponytail o diff menor veio com a borda perdida (`ecc fora:` no `--check`; espera com ` #` no `--pausar`). Antes de dar por pronto, releia o *Pronto quando* item a item.

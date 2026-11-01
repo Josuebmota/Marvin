@@ -32,6 +32,12 @@ antes de modelo —, com o motivo no *Time* da US. Tarefa trivial vai direto, se
 A última coluna é ponto de partida no Claude, não regra fixa: com outro fornecedor,
 consulte o guia de IA em [`IA.md`](IA.md).
 
+**Escopo mínimo (US-93, 31/10/2026; hipótese até 3–4 US registradas):** cada papel faz só o que o
+*Pronto quando* da etapa pede — reutiliza antes de criar, diff pequeno — e **nunca à custa de caso de
+borda que o *Pronto quando* ou o aceite cobram**. Vem do ponytail, medido em 2 pares sem o plugin:
+diff menor 2 de 2, custo sem direção (+22% e −9%) e aceite igual ou pior nos dois, por borda cortada.
+A forma de cada papel está no `.md` dele.
+
 **Papel sem arquivo de agente:** ao delegar, passe na chamada o modelo da tabela (o parâmetro `model` do subagente); sem isso ele herda o modelo da sessão — e a execução sai no Opus. Ao criar o arquivo do papel, declare `model:` e `effort:`.
 
 **A sessão principal abre no Sonnet** (`.claude/settings.json`); troque com `/model` quando a
