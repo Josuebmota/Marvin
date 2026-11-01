@@ -1,16 +1,51 @@
 ---
 tipo: us
-estado: anotada
+estado: refinada
 pai: ../Sobre.md
 name: US-101-especificacao-do-agente
-description: "Anotação: especificação do que um agente precisa ter (frontmatter com effort, blocos obrigatórios, o que não faz) e um --check que confere."
+description: "Declarar o effort no frontmatter dos 5 agentes locais conforme a tabela do Equipe.md; a especificação completa e o --check esperam uma segunda falha."
 ---
-# US-101-especificacao-do-agente
+# US-101 — `effort:` nos agentes locais
 
-**Por quê:** o esforço dos agentes locais não está codificado: 5 dos 6 arquivos em `.claude/agents/` só declaram o modelo (só o `tdd-guide`, do ECC, tem `effort:`). Os blocos obrigatórios (Higiene, Devolução, Escopo mínimo) são copiados à mão em cada arquivo, porque o subagente só lê o próprio `.md`, e já falharam duas vezes (o `tdd-guide` ficou sem; texto do ponytail desencontrado). O 'o que não faz' mora só no glossário. Generaliza o item 2 da US-97, que avisa só o ECC.
-**Pronto quando:** _(a refinar)_ — esboço: uma especificação curta (campos obrigatórios do frontmatter incluindo `effort`, blocos obrigatórios no corpo, 'o que não faz') e o `--check` acusando o agente que não a cumpre, sem reescrever o arquivo.
+**Por quê:** 5 dos 6 arquivos em `.claude/agents/` (`tl`, `po`, `dev-back`, `qa`, `scout`) só declaram o modelo; só o `tdd-guide`, do ECC, tem `effort:`. Com isso o esforço da tabela do `Equipe.md` só vale se quem delega o passar na chamada. O custo de não ter o campo não foi medido (o *Time* passa o `effort` de qualquer jeito); o número que paga é 5 de 6.
+**Pronto quando:**
+1. Os 5 agentes ganham `effort:` conforme o glossário: `tl` e `po` `medium`, `dev-back` `medium`, `qa` e `scout` `low`. O formato é o do `tdd-guide` (`effort: medium`) e a fonte é a documentação já citada em `triagem.md` (a chamada do Agent prevalece sobre o frontmatter).
+2. A fonte (link) fica registrada no *Rumo*; `git diff --check` limpo.
 
-**Não entra:** criar agente sem armadilha concreta; reescrever agente do humano.
+**Não entra:** a especificação completa do agente e o `--check` que a confere; criar ou reescrever agente de outro projeto. O `--check` genérico espera uma **segunda falha em agente local** (a do `tdd-guide` já foi coberta pelas US-96 e 97; o texto do ponytail desencontrado é n=1). Se voltar, o `warn` (não `fail`: o código de saída do `--check` é da junction) generaliza o laço de `pendingUpdates` (`marvin.mjs:5440-5452`) em vez de duplicá-lo.
+
+## Perguntas
+- ❓ Quando o `--check` voltar, deve rodar em agente **escrito pelo humano** em projeto de terceiro? Acusar ali o bloco "Higiene" do Marvin é impor convenção (a US-97 decidiu que agente à mão é do humano). Mora no `--check` ou no passo 10?
+
+## Fluxos ligados
+- [Equipe](../../../../../Contexto/Equipe.md) · [triagem](../../../../../Contexto/Fluxos/delegacao/triagem.md)
+
+## Código tocado
+- `.claude/agents/tl.md`, `po.md`, `dev-back.md`, `qa.md`, `scout.md` — frontmatter
+
+## Time
+Triagem 01/11/2026 (`tl` e `po` em Opus · médio; régua: edição de configuração, reversível → médio).
+
+| etapa | papel | modelo · esforço | motivo | estado |
+|---|---|---|---|---|
+| acrescentar `effort:` nos 5 | sessão principal | Sonnet · médio | 5 linhas de frontmatter; sem código | pendente |
+| conferir | qa | Sonnet · baixo | os 5 arquivos, valores iguais ao `Equipe.md` | pendente |
+
+Grafo (01/11): arquivos de agente não têm nó de código; o `--check` (`marvin.mjs:549`) fica sem nó e fora desta versão.
+
+## Skills
+Nenhuma.
+
+## Impacto
+
+<!-- gerado por `marvin --us` a partir do grafo; regerado a cada run — não edite à mão -->
+
+Toca 1 nó(s) de código em 1 comunidade(s).
+
+Nada depende do que ela toca — folha do grafo.
+
+**Outras US no mesmo código** — combine antes, não no merge:
+- [US-19 — a atividade escolhe papéis, skills, modelos e esforço conforme capacidades disponíveis](../../roteamento/US-19-papel-modelo-esforco/Sobre.md) — 1 nó(s) em comum
 
 ## Rumo
-- **01/11/2026** — anotada na conversa de 01/11 sobre o desenho do fluxo do Marvin. A evidência vem de 31/10 e 01/11; falta o refino (`/refinar`) com `tl` e `po`.
+- **01/11/2026** — anotada na conversa de 01/11 (especificação + `--check`); o crivo reduziu ao recorte barato. `po` e `tl` concordam que o `--check` genérico espera a segunda falha; o `tl` ainda notou o invariante 3 (supor que o Claude Code lê `effort:` do frontmatter): a documentação já citada em `triagem.md` cobre, e o `tdd-guide` já usa o campo. Depende da US-100 só para o valor do degrau acima, não para estes 5 valores.
