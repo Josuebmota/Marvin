@@ -2577,7 +2577,8 @@ const ignoreAvailability = () => {
 // everything else Sonnet · medium. Applied to every agent THIS run installs, never to one that already existed.
 const eccCost = (id) => /^(planner|architect|code-architect)$/.test(id) ? ['opus', 'medium']
   : /^(code-explorer|docs-lookup)$/.test(id) ? ['haiku', 'low'] : ['sonnet', 'medium'];
-// Rewrites the frontmatter of an ECC agent: model/effort from the matrix, and the phrases that make it call itself dropped.
+// Rewrites the frontmatter of an ECC agent (model/effort from the matrix, the phrases that make it call itself dropped)
+// and appends the hand-back and minimal-scope blocks to the end of the body.
 const eccAgent = (txt, id) => {
   const m = txt.match(/^(---\r?\n)([\s\S]*?)(\r?\n---)/);
   if (!m) return txt;
@@ -2597,7 +2598,18 @@ const eccAgent = (txt, id) => {
   });
   // MIT asks for attribution: the copy says where it came from (a YAML comment, ignored by the loader).
   if (!/^# origem: ECC/m.test(head)) head += nl + '# origem: ECC (MIT) — https://github.com/affaan-m/ECC — model/effort pela matriz do Marvin';
-  return txt.slice(0, m.index) + m[1] + head + m[3] + txt.slice(m.index + m[0].length);
+  let out = txt.slice(0, m.index) + m[1] + head + m[3] + txt.slice(m.index + m[0].length);
+  // The copy also carries the hand-back and minimal-scope rules every executing agent follows (the ECC
+  // original has neither). Each block is appended once: a text that already has it is left alone.
+  const blocks = [];
+  if (!txt.includes('etapa mais difícil que o Time previu')) blocks.push([
+    '## Devolução: etapa mais difícil que o Time previu', '',
+    'Seu esforço vem fixado na chamada e você não o muda. Se, no meio, a etapa bater num sinal alto que o *Time* não listou (spec ambígua, toca invariante fora do combinado, escopo maior que o pedido), **pare e devolva** a quem chamou: `etapa mais difícil que o Time previu: <sinal>`, com o `git diff --stat` do que já mexeu ou "não alterei nada". Não tente resolver; quem chamou leva ao `tl`, que decide a subida.'].join(nl));
+  if (!txt.includes('## Escopo mínimo')) blocks.push([
+    '## Escopo mínimo', '',
+    'Faça só o que o *Pronto quando* da etapa pede; reutilize o que já existe antes de escrever; diff pequeno é meta. **Nunca corte caso de borda que o *Pronto quando* lista.** Antes de dar por pronto, releia o *Pronto quando* item a item.'].join(nl));
+  if (blocks.length) out += (out.endsWith('\n') ? '' : nl) + nl + blocks.join(nl + nl) + nl;
+  return out;
 };
 
 // ── 0b. Optional tools: the `.marvin/ferramentas.md` record.

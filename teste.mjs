@@ -2553,7 +2553,25 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const t1 = treeAgents();
   run(a, '--no-git', '--no-questions');
   check('US-60: rodar de novo não duplica nem reescreve nada', treeAgents() === t1);
+  const count = (s, re) => (s.match(re) || []).length;
+  check('US-96: o agente novo do ECC traz a Devolução e o Escopo mínimo, uma vez cada, no fim do corpo',
+        [tdd, cr].every(s => count(s, /^## Devolução: etapa mais difícil que o Time previu$/gm) === 1 && count(s, /^## Escopo mínimo$/gm) === 1
+          && s.indexOf('\n# ') < s.indexOf('## Devolução') && s.indexOf('## Devolução') < s.indexOf('## Escopo mínimo')
+          && s.endsWith('Antes de dar por pronto, releia o *Pronto quando* item a item.\n') && !/ecc fora:|--pausar|Marvin/.test(s.slice(s.indexOf('## Devolução')))), tdd);
+  const tdd2 = rd(a, '.claude', 'agents', 'tdd-guide.md');
+  check('US-96: segunda rodada não repete os blocos (mesma contagem, arquivo idêntico)',
+        tdd2 === tdd && count(tdd2, /etapa mais difícil que o Time previu/g) === 2 && count(tdd2, /## Escopo mínimo/g) === 1, tdd2);
   cleanup(a);
+
+  // US-96: the end of line of the catalog file is kept, and a text that already carries a block does not get it again
+  const e = arena('us96-crlf');
+  fs.writeFileSync(path.join(e.proj, 'tsconfig.json'), '{}\n');
+  equipped(e, { 'agents/tdd-guide.md': agent('tdd-guide', 'opus', 'TDD.').replace(/\n/g, '\r\n') + '\r\n## Escopo mínimo\r\n\r\nO do autor.\r\n' });
+  run(e, '--no-git', '--no-questions');
+  const crlf = rd(e, '.claude', 'agents', 'tdd-guide.md');
+  check('US-96: o fim de linha CRLF fica, e o bloco que o agente já trazia não é duplicado',
+        !/(^|[^\r])\n/.test(crlf) && count(crlf, /^## Escopo mínimo\r$/gm) === 1 && /O do autor\./.test(crlf) && count(crlf, /^## Devolução: etapa mais difícil/gm) === 1, JSON.stringify(crlf.slice(-500)));
+  cleanup(e);
 
   // an agent that already existed is the human's
   const d = arena('us60-existente');
@@ -2565,6 +2583,7 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   const rdx = run(d, '--no-git', '--no-questions');
   check('US-60: agente que já existia não é tocado (continua opus e com a frase dele)',
         rd(d, '.claude', 'agents', 'tdd-guide.md') === mine && /tdd-guide\.md already exists/.test(rdx.stdout), rdx.stdout.slice(-500));
+  check('US-96: o agente que já existia também não ganha a Devolução nem o Escopo mínimo', !/Devolução|Escopo mínimo/.test(rd(d, '.claude', 'agents', 'tdd-guide.md')));
   cleanup(d);
 
   // skills are copied whole (the folder), and only the ones the stack asks for
