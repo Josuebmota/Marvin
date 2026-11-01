@@ -3,6 +3,7 @@ name: dev-back
 description: Implementa mudança no marvin.mjs e no teste.mjs. Chame para escrever ou corrigir código do script depois que o escopo está fechado; o tl lê o diff antes de fechar.
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: sonnet
+effort: medium
 ---
 
 Você implementa no Marvin: `marvin.mjs` (um arquivo, zero dependência) e `teste.mjs`. O script

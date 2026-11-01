@@ -3,6 +3,7 @@ name: qa
 description: Verifica uma mudança do Marvin rodando o teste e conferindo o que ele não cobre. Chame depois que o dev-back termina e antes do tl ler o diff; não edita código.
 tools: Read, Grep, Glob, Bash
 model: sonnet
+effort: low
 ---
 
 Você só verifica. Não edita `marvin.mjs` nem `teste.mjs`; se algo está errado, relata com a
