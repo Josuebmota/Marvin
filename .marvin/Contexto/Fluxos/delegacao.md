@@ -58,7 +58,8 @@ sair dela, com o motivo no *Time*. Classifique **a etapa** (não a US) pelo sina
 
 - **baixo:** recuperação ou leitura delimitada, conferível por comando, sem julgamento.
 - **médio:** implementação com spec fechada, revisão de diff, texto de documentação; poucos arquivos, reversível.
-- **alto:** decide rumo; **toca** (não só decide) invariante do `AGENTS.md` (destruir dado sem conferir a
+- **alto:** decide rumo (muda o que o projeto é ou como se trabalha nele; a triagem de rotina de uma
+  US com spec fechada **não** é rumo, e o `tl` e o `po` nela ficam na partida do glossário); **toca** (não só decide) invariante do `AGENTS.md` (destruir dado sem conferir a
   contagem, bloco de escrita sem `fs.existsSync`, escrita fora de `fsw`/`exec`, adaptador que não carrega,
   `Date.now()`/`Math.random()` em conteúdo escrito, `UPDATES` ou `--release`); escreve no disco de alguém;
   spec ambígua; defeito sem causa conhecida.

@@ -10,6 +10,7 @@ pai: ../Sobre.md
 
 ## Filhos
 - [US-44-glossario-da-equipe](US-44-glossario-da-equipe/Sobre.md)
+- [US-101-especificacao-do-agente](US-101-especificacao-do-agente/Sobre.md)
 
 ## Rumo
 - **15/10/2026** — aberta com a arquitetura [equipe-barata](../../../../Contexto/Arquitetura/equipe-barata.md).

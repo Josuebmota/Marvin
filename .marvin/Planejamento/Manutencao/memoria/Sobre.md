@@ -10,6 +10,7 @@ pai: ../../README.md
 
 ## Filhos
 - [junction](junction/Sobre.md)
+- [migracao](migracao/Sobre.md)
 
 ## Rumo
 - **15/09/2026** — aberta.

@@ -2551,12 +2551,15 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
         outsiders.length === 0 && hookKeys.join() === 'SessionStart' && !fs.existsSync(marker), outsiders.join(', ') + ' ' + hookKeys);
   const treeAgents = () => JSON.stringify(fs.readdirSync(path.join(a.proj, '.claude', 'agents')).sort().map(f => [f, rd(a, '.claude', 'agents', f)]));
   const t1 = treeAgents();
-  run(a, '--no-git', '--no-questions');
+  const again = run(a, '--no-git', '--no-questions').stdout;
   check('US-60: rodar de novo não duplica nem reescreve nada', treeAgents() === t1);
+  check('US-97: o agente recém-instalado do ECC traz a Devolução, então o passo 10 não o avisa',
+        !/this ECC agent copy lacks it/.test(again), again.slice(-400));
   const count = (s, re) => (s.match(re) || []).length;
   check('US-96: o agente novo do ECC traz a Devolução e o Escopo mínimo, uma vez cada, no fim do corpo',
         [tdd, cr].every(s => count(s, /^## Devolução: etapa mais difícil que o Time previu$/gm) === 1 && count(s, /^## Escopo mínimo$/gm) === 1
           && s.indexOf('\n# ') < s.indexOf('## Devolução') && s.indexOf('## Devolução') < s.indexOf('## Escopo mínimo')
+          && s.includes('**Nunca corte caso de borda que o *Pronto quando* lista ou que a idempotência exige.**')
           && s.endsWith('Antes de dar por pronto, releia o *Pronto quando* item a item.\n') && !/ecc fora:|--pausar|Marvin/.test(s.slice(s.indexOf('## Devolução')))), tdd);
   const tdd2 = rd(a, '.claude', 'agents', 'tdd-guide.md');
   check('US-96: segunda rodada não repete os blocos (mesma contagem, arquivo idêntico)',
@@ -2585,6 +2588,26 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
         rd(d, '.claude', 'agents', 'tdd-guide.md') === mine && /tdd-guide\.md already exists/.test(rdx.stdout), rdx.stdout.slice(-500));
   check('US-96: o agente que já existia também não ganha a Devolução nem o Escopo mínimo', !/Devolução|Escopo mínimo/.test(rd(d, '.claude', 'agents', 'tdd-guide.md')));
   cleanup(d);
+
+  // US-97: step 10 warns about an ECC copy without the Devolução block (pure read); a hand-written agent is the human's
+  const u = arena('us97-aviso');
+  const ag = (name, extra, body) => '---\nname: ' + name + '\ndescription: x\nmodel: sonnet\n' + extra + '---\n\n# ' + name + '\n' + body;
+  const devol = '\n## Devolução: etapa mais difícil que o Time previu\n\nPare e devolva.\n';
+  fs.mkdirSync(path.join(u.proj, '.claude', 'agents'), { recursive: true });
+  const wr = (n, s) => fs.writeFileSync(path.join(u.proj, '.claude', 'agents', n + '.md'), s);
+  wr('ecc-sem', ag('ecc-sem', '# origem: ECC (MIT)\n', ''));
+  wr('ecc-com', ag('ecc-com', '# origem: ECC (MIT)\n', devol));
+  wr('mao-sem', ag('mao-sem', '', ''));
+  const snapU = () => JSON.stringify(['ecc-sem', 'ecc-com', 'mao-sem'].map(n => rd(u, '.claude', 'agents', n + '.md')));
+  const bu = snapU();
+  const ru = run(u, '--no-git', '--no-questions');
+  check('US-97: agente copiado do ECC sem a Devolução: o passo 10 cita o arquivo, com desde 3.4.4, e não o reescreve',
+        ru.status === 0 && /agents\/ecc-sem\.md — missing[^\n]*Devolução[^\n]*\(desde 3\.4\.4\)/.test(ru.stdout) && snapU() === bu, ru.stdout.slice(-700));
+  check('US-97: o mesmo agente com a Devolução não gera aviso',
+        !/agents\/ecc-com\.md — missing/.test(ru.stdout), ru.stdout.slice(-700));
+  check('US-97: agente escrito à mão (sem `# origem: ECC`) e sem a Devolução não gera aviso',
+        !/agents\/mao-sem\.md — missing/.test(ru.stdout), ru.stdout.slice(-700));
+  cleanup(u);
 
   // skills are copied whole (the folder), and only the ones the stack asks for
   const p = arena('us60-py');

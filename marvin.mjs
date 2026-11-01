@@ -2607,7 +2607,7 @@ const eccAgent = (txt, id) => {
     'Seu esforço vem fixado na chamada e você não o muda. Se, no meio, a etapa bater num sinal alto que o *Time* não listou (spec ambígua, toca invariante fora do combinado, escopo maior que o pedido), **pare e devolva** a quem chamou: `etapa mais difícil que o Time previu: <sinal>`, com o `git diff --stat` do que já mexeu ou "não alterei nada". Não tente resolver; quem chamou leva ao `tl`, que decide a subida.'].join(nl));
   if (!txt.includes('## Escopo mínimo')) blocks.push([
     '## Escopo mínimo', '',
-    'Faça só o que o *Pronto quando* da etapa pede; reutilize o que já existe antes de escrever; diff pequeno é meta. **Nunca corte caso de borda que o *Pronto quando* lista.** Antes de dar por pronto, releia o *Pronto quando* item a item.'].join(nl));
+    'Faça só o que o *Pronto quando* da etapa pede; reutilize o que já existe antes de escrever; diff pequeno é meta. **Nunca corte caso de borda que o *Pronto quando* lista ou que a idempotência exige.** Antes de dar por pronto, releia o *Pronto quando* item a item.'].join(nl));
   if (blocks.length) out += (out.endsWith('\n') ? '' : nl) + nl + blocks.join(nl + nl) + nl;
   return out;
 };
@@ -5431,12 +5431,27 @@ const UPDATES = [
     o_que: 'the docs refresh (`--graph-docs`): the graph loses the knowledge base at every commit — rewrite it with `marvin --graphify --graphify-git-hook`' },
 ];
 
-return UPDATES.filter(a => {
+const out = UPDATES.filter(a => {
   if (a.soCom === false) return false;
   const p = path.join(ROOT, a.arquivo);
   if (!fs.existsSync(p)) return false; // does not exist: the steps above already create it
   try { return !a.marca.test(fs.readFileSync(p, 'utf8')); } catch { return false; }
 });
+// US-97: an agent this script copied from the ECC (frontmatter says `# origem: ECC`) before 3.4.4 has no
+// "Devolução" block. Hand-written agents are the human's: no warning. Pure read, the file is not rewritten.
+try {
+  const dir = path.join(ROOT, '.claude', 'agents');
+  for (const f of fs.readdirSync(dir).sort()) {
+    if (!/\.md$/i.test(f) || f.toLowerCase() === 'readme.md') continue;
+    let txt;
+    try { txt = fs.readFileSync(path.join(dir, f), 'utf8'); } catch { continue; }   // one unreadable entry must not silence the rest
+    const fm = txt.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    if (!fm || !/^# origem: ECC/m.test(fm[1]) || txt.includes('etapa mais difícil que o Time previu')) continue;
+    out.push({ arquivo: '.claude/agents/' + f, desde: '3.4.4',
+      o_que: 'the "Devolução" block: this ECC agent copy lacks it, so a subagent with fixed effort cannot hand back "etapa mais difícil que o Time previu"' });
+  }
+} catch { /* no agents dir: nothing to check */ }
+return out;
 }
 const missing = pendingUpdates(GRAPHIFY, PONYTAIL, PLAYWRIGHT, COMMANDS);
 
