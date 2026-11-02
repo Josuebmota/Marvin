@@ -1462,6 +1462,38 @@ for (const [label, skip] of [['nota sem copiar', 'nota3.md'], ['subpasta sem .md
   cleanup(a);
 }
 
+// ── 9w6. US-99: a note pointing at a `cancelada` US, or keeping the `_(uma frase)_` placeholder, gets a warning
+//     in --status, --curto and --html; warning only (exit code equal to the clean note's).
+{
+  const a = arena('nota-velha');
+  run(a, '--no-git');
+  const m = path.join(a.proj, '.marvin');
+  const noteFile = path.join(m, 'Memoria', 'onde_paramos.md');
+  const strip = (r) => r.stdout.replace(/\x1b\[[0-9;]*m/g, '');
+  const mk = (nome, estado) => {
+    const d = path.join(m, 'Planejamento', 'Novos', nome);
+    fs.mkdirSync(d, { recursive: true });
+    fs.writeFileSync(path.join(d, 'Sobre.md'), '---\ntipo: us\nestado: ' + estado + '\npai: ../Sobre.md\n---\n# ' + nome + ' — x\n\n## Rumo\n\n- **01/01/2020** — andou\n');
+  };
+  mk('US-991-viva', 'ativa');
+  mk('US-992-morta', 'cancelada');
+  const base = fs.readFileSync(noteFile, 'utf8');
+  fs.writeFileSync(noteFile, base + '\n- [US-991](../Planejamento/Novos/US-991-viva/Sobre.md) — seguir com o teste\n');
+  const limpa = run(a, '--status');
+  check('US-99: nota limpa não gera os avisos novos', !/cancelada but still|_\(uma frase\)_/.test(strip(limpa)), strip(limpa).slice(0, 600));
+  fs.writeFileSync(noteFile, base + '\n- [US-992](../Planejamento/Novos/US-992-morta/Sobre.md) — seguir com o teste\n');
+  const canc = run(a, '--status');
+  check('US-99: nota que aponta US cancelada gera o aviso', /cancelada but still in the note/.test(strip(canc)), strip(canc).slice(0, 600));
+  check('US-99: o aviso de cancelada não muda o exit code do --status', canc.status === limpa.status, canc.status + ' vs ' + limpa.status);
+  check('US-99: o --curto e o --html também levam o aviso de cancelada e saem 0', /cancelada but still/.test(strip(run(a, '--status', '--curto'))) && run(a, '--status', '--curto').status === 0 && run(a, '--status', '--html').status === canc.status);
+  fs.writeFileSync(noteFile, base + '\n- [US-991](../Planejamento/Novos/US-991-viva/Sobre.md) — próximo passo: _(uma frase)_\n');
+  const ph = run(a, '--status');
+  check('US-99: ponteiro com o placeholder _(uma frase)_ gera o aviso', /still the placeholder/.test(strip(ph)), strip(ph).slice(0, 600));
+  check('US-99: o aviso do placeholder não muda o exit code do --status', ph.status === limpa.status, ph.status + ' vs ' + limpa.status);
+  check('US-99: o --curto leva o aviso do placeholder', /still the placeholder/.test(strip(run(a, '--status', '--curto'))));
+  cleanup(a);
+}
+
 // ── 9x. --status --html: the only form of --status that writes — and only in .marvin/.status/,
 //     git-ignored. One point per COMMIT (git date, not Date.now()): two runs on the same
 //     commit do not duplicate. Without --html the jsonl is not born. The HTML opens offline: inline JSON.

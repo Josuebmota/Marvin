@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-99-nota-velha-no-status
 description: "O --status passa a avisar a nota que aponta para US cancelada ou que traz o placeholder '_(uma frase)_', sem mudar o exit code."
@@ -32,9 +32,9 @@ Triagem 01/11/2026 (`tl` e `po` em Opus · médio; régua: só leitura, sem toca
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| aviso para `cancelada` e placeholder + testes | dev-back | Sonnet · médio | leitura pura; vira alto só se o código de saída mudar | pendente |
-| ler o diff | tl | Opus · médio | não obrigatório se o código de saída ficar igual; entra se mudar | condicional |
-| conferir | qa | Sonnet · baixo | teste, contagem, `git diff --check` | pendente |
+| aviso para `cancelada` e placeholder + testes | dev-back | Sonnet · médio | leitura pura; vira alto só se o código de saída mudar | feito 02/11: 693 testes, ~48,4k tokens, 14 chamadas, ~7,3 min |
+| ler o diff | tl | Opus · médio | não obrigatório se o código de saída ficar igual; entra se mudar | não acionado: código de saída igual; diff de 3 linhas lido na sessão principal |
+| conferir | qa | Sonnet · baixo | teste, contagem, `git diff --check` | feito 02/11: 693 passaram, cenário reproduzido fora do repo |
 
 Grafo (01/11): `computeStatus` (:1519) tem 10 US ligadas e nenhum dependente de código; `printStatus` idem. Blocos `--status` no topo do arquivo sem nó.
 
@@ -125,3 +125,8 @@ Nada depende do que ela toca — folha do grafo.
 ## Rumo
 - **01/11/2026** — anotada na conversa de 01/11; a anotação dizia "acusar a nota velha", mas o crivo mostrou que metade já existia. Reescrita. Divergência: o `po` quis cortar o campo "Atualizado" do template e o `tl` o deixou fora por não valer a comparação com o git; prevaleceu deixar fora. Ilha "status" com a US-102 (mesma região).
 - **01/11/2026** — ❓ respondidas pelo dono: só avisar (sem mudar o código de saída); causa do alarme ignorado = ninguém rodou o `--status`, o que gerou a [US-103](../US-103-fechar-tira-o-ponteiro-da-nota/Sobre.md). Pronta para executar.
+- **02/11/2026** — **feito.** `computeStatus` (`marvin.mjs:1542-1543`, +3 linhas): `cancelada` ainda na nota e ponteiro com `_(uma frase)_` viram aviso em `item.avisos`, a lista que `--status`, `--curto` e `--html` já imprimem; nenhum faz `st.problemas++`, então o código de saída (`marvin.mjs` ~L2004) não muda. 7 verificações novas (bloco `9w6`): nota limpa sem aviso, cada caso com aviso, código de saída igual ao da nota limpa, `--curto` e `--html`; 693 testes. `qa` reproduziu o cenário num projeto temporário fora do repo (os três saem 0). Custo do `dev-back` (Sonnet · médio): ~48,4k tokens, 14 chamadas, ~7,3 min.
+- **02/11/2026** — limites: a US `cancelada` na nota aparece com `✗` vermelho porque o `STATE_MARK` não tem `cancelada` (já era assim; uma linha, fora do escopo); o aviso do placeholder só vale para ponteiro de US, epic ou feature que existe e não está `pausada`; o `--html` tem o exit code testado, o visual não foi conferido à mão; `tl` não foi chamado porque o código de saída não mudou (previsto no *Time*).
+
+## Evidência
+Teste: 693 passaram. Commit: `git log --grep "US-99 concluída"`.

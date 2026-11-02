@@ -1538,6 +1538,9 @@ const computeStatus = () => {
                    rumo: last ? last.texto : null, rumoData: last ? last.data : null, idade: last ? days(last.data) : null, avisos: [], time: n.time };
     if (n.estado === 'concluida') { item.avisos.push('concluida but still in the note — it belongs in Releases/<versao>.md, and out of here'); st.problemas++; }
     if (n.estado === 'concluida' && !n.comEvidencia) { item.avisos.push('concluida without Evidência'); st.problemas++; }
+    // US-99: warnings only (not counted in st.problemas, so the exit code stays): a cancelada still in the note, and the placeholder `--us` writes.
+    if (n.estado === 'cancelada') item.avisos.push('cancelada but still in the note — out of here: it is not work in progress');
+    if (/_\(uma frase\)_/.test(rest || '')) item.avisos.push('next step is still the placeholder "_(uma frase)_" — write the next step, or take the line out of the note');
     if (item.idade !== null && item.idade > STALE_DAYS && n.estado === 'ativa') item.avisos.push(item.idade + ' days without a Rumo entry — stalled, or done and not recorded?');
     if (n.estado === 'ativa' && n.comEvidencia) item.avisos.push('ativa with Evidência filled — looks done: close it or clear the Evidência');
     st.ativas.push(item);
