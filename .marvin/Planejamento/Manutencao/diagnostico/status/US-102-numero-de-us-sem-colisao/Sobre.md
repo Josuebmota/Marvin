@@ -13,8 +13,9 @@ description: "Anotação estacionada: avisar quando o prefixo US-NN já existe e
 **Não entra:** renumerar, sugerir número, consultar o remoto por rede.
 
 ## Perguntas
-- ❓ A colisão foi você abrindo a US por fora sem commitar? Se foi, o conserto é de processo (anotar com `--anotada` e commitar na hora), não de script.
-- ❓ Cancela, ou fica estacionada esperando a segunda colisão? O `po` recomenda um dos dois; também notou que a Feature certa seria `Novos/organizacao-por-grafo/script`, ao lado das US-79 e 81, e não `diagnostico/status`.
+- ~~❓ A colisão foi você abrindo a US por fora sem commitar? Se foi, o conserto é de processo (anotar com `--anotada` e commitar na hora), não de script.~~ → **sim, aberta por fora** (dono, 01/11/2026): o conserto é de processo, anotar com `--anotada` e commitar na hora.
+- ~~❓ Cancela, ou fica estacionada esperando a segunda colisão? O `po` recomenda um dos dois; também notou que a Feature certa seria `Novos/organizacao-por-grafo/script`, ao lado das US-79 e 81, e não `diagnostico/status`.~~ → **estacionar** (dono, 01/11/2026); reabre se houver uma segunda colisão.
 
 ## Rumo
 - **01/11/2026** — anotada na conversa de 01/11. Crivo `tl` + `po`: **não refinada**. O `po` a quer cancelada ou estacionada (n=1, premissa errada); o `tl` descreve o menor escopo possível, mas pede que o `po` pese se vale com n=1. Fica `anotada` até o dono responder as ❓.
+- **01/11/2026** — ❓ respondidas pelo dono: a colisão foi US aberta por fora sem commit (conserto de processo) e a US fica estacionada.

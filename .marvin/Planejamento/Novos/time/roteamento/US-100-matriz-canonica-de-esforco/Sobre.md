@@ -15,9 +15,9 @@ description: "Definir em uma frase o 'degrau acima' da régua (esforço antes de
 **Não entra:** juiz LLM; ranking de fornecedores; equivalência de esforço entre modelos; mexer no `eccCost()` e no template do `Equipe.md` (isso exige `UPDATES` e escreve no disco de outros projetos).
 
 ## Perguntas
-- ❓ O degrau acima de Sonnet · médio é **Sonnet · alto** (esforço antes de modelo, como a US-96 e a US-97 fizeram) ou **Opus · médio**? Só o dono decide, e é o único pedaço que paga já.
-- ❓ Esta US vira uma linha dentro da **US-89** (subir degrau por check) ou fica separada? O `po` sugeriu fundir.
-- ❓ Autoriza editar a tabela do `CLAUDE.md` (arquivo seu)?
+- ~~❓ O degrau acima de Sonnet · médio é **Sonnet · alto** (esforço antes de modelo, como a US-96 e a US-97 fizeram) ou **Opus · médio**? Só o dono decide, e é o único pedaço que paga já.~~ → **Sonnet · alto** (dono, 01/11/2026): esforço antes de modelo.
+- ~~❓ Esta US vira uma linha dentro da **US-89** (subir degrau por check) ou fica separada? O `po` sugeriu fundir.~~ → **fica separada** (dono, 01/11/2026).
+- ~~❓ Autoriza editar a tabela do `CLAUDE.md` (arquivo seu)?~~ → **autorizado** (dono, 01/11/2026): só um ponteiro de uma linha na tabela.
 
 ## Fluxos ligados
 - [delegacao](../../../../../Contexto/Fluxos/delegacao.md) · [Equipe](../../../../../Contexto/Equipe.md)
@@ -31,8 +31,8 @@ Triagem 01/11/2026 (`tl` e `po` em Opus · médio; régua: só texto de document
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| responder as ❓ | dono | n/a | decisão de rumo, só do dono | pendente |
-| escrever a frase e o ponteiro | sessão principal | Sonnet · médio | texto; sem código | pendente (espera as ❓) |
+| responder as ❓ | dono | n/a | decisão de rumo, só do dono | feito 01/11 |
+| escrever a frase e o ponteiro | sessão principal | Sonnet · médio | texto; sem código | pendente |
 | conferir | qa | Sonnet · baixo | links e `git diff --check` | pendente |
 
 Grafo (01/11): `eccCost()` só é chamado por `eccAgent()`; esta versão não toca código, então não há mais nada a consultar.
@@ -57,3 +57,4 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **01/11/2026** — anotada na conversa de 01/11 com escopo grande (matriz canônica); o crivo cortou. **Divergência `po` × `tl`, trazida ao dono:** o `po` quer só a frase (a US é majoritariamente especulação, sem incidente); o `tl` quer também o arquivo de escada, o alinhamento do `eccCost()` e o template (US "nova", dividir, `tl` no diff, `UPDATES`). Gravei a versão do `po` porque a do `tl` depende de n=3–4 da US-92; a parte do `tl` fica como US filha.
+- **01/11/2026** — ❓ respondidas pelo dono: o degrau acima de Sonnet · médio é **Sonnet · alto** (esforço antes de modelo); fica separada da US-89; edição do `CLAUDE.md` autorizada, só um ponteiro de uma linha. Pronta para executar; a parte do `tl` (alinhar `eccCost()` e template) segue como US filha, depois de 3 a 4 US com a régua.

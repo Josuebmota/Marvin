@@ -17,6 +17,7 @@ pai: ../Sobre.md
 - [US-90-estado-que-nao-envelhece](US-90-estado-que-nao-envelhece/Sobre.md)
 - [US-99-nota-velha-no-status](US-99-nota-velha-no-status/Sobre.md)
 - [US-102-numero-de-us-sem-colisao](US-102-numero-de-us-sem-colisao/Sobre.md)
+- [US-103-fechar-tira-o-ponteiro-da-nota](US-103-fechar-tira-o-ponteiro-da-nota/Sobre.md)
 
 ## Rumo
 - **15/10/2026** — aberta, com a primeira US.

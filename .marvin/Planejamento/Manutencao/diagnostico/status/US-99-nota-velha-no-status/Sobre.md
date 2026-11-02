@@ -16,8 +16,8 @@ description: "O --status passa a avisar a nota que aponta para US cancelada ou q
 **Não entra:** o campo "Atualizado:" da nota (compará-lo com a data do git rende pouco e a nota é do humano; o `po` sugeriu tirar o campo do template, o que pediria marca em `UPDATES`: fica de fora); mexer no `/fechar`; reescrever a nota sozinho.
 
 ## Perguntas
-- ❓ Por que o aviso que já existia não foi atendido em 01/11? Se foi porque ninguém rodou o `--status`, mais um aviso não resolve; o conserto seria o `/fechar` tirar o ponteiro, e isso vira outra US.
-- ❓ `cancelada` deve contar como problema (muda o código de saída do `--status`) ou só avisar? Está assim: só avisar.
+- ~~❓ Por que o aviso que já existia não foi atendido em 01/11? Se foi porque ninguém rodou o `--status`, mais um aviso não resolve; o conserto seria o `/fechar` tirar o ponteiro, e isso vira outra US.~~ → **ninguém rodou o `--status`** (dono, 01/11/2026): mais um aviso não resolve; o conserto de fundo é o `/fechar` tirar o ponteiro, anotado como [US-103](../US-103-fechar-tira-o-ponteiro-da-nota/Sobre.md).
+- ~~❓ `cancelada` deve contar como problema (muda o código de saída do `--status`) ou só avisar? Está assim: só avisar.~~ → **só avisar** (dono, 01/11/2026).
 
 ## Fluxos ligados
 - [delegacao](../../../../../Contexto/Fluxos/delegacao.md)
@@ -124,3 +124,4 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **01/11/2026** — anotada na conversa de 01/11; a anotação dizia "acusar a nota velha", mas o crivo mostrou que metade já existia. Reescrita. Divergência: o `po` quis cortar o campo "Atualizado" do template e o `tl` o deixou fora por não valer a comparação com o git; prevaleceu deixar fora. Ilha "status" com a US-102 (mesma região).
+- **01/11/2026** — ❓ respondidas pelo dono: só avisar (sem mudar o código de saída); causa do alarme ignorado = ninguém rodou o `--status`, o que gerou a [US-103](../US-103-fechar-tira-o-ponteiro-da-nota/Sobre.md). Pronta para executar.

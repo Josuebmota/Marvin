@@ -17,7 +17,7 @@ description: "Cobrir com teste o ramo que aborta a migração de memória quando
 **Não entra:** mudar a migração; os abortos do `--migrar` (`marvin.mjs:2445`) e do regenerar (:3109), que também não têm teste (US própria, se o dono quiser); mock de dependência no código de produção.
 
 ## Perguntas
-- ❓ Aceita um preload de teste que troca `fs.cpSync` em tempo de execução? É a única forma sem refatorar a migração. Se a resposta for não, a US é cancelada e a lacuna declarada é a decisão certa (`po`).
+- ~~❓ Aceita um preload de teste que troca `fs.cpSync` em tempo de execução? É a única forma sem refatorar a migração. Se a resposta for não, a US é cancelada e a lacuna declarada é a decisão certa (`po`).~~ → **aceito** (dono, 01/11/2026).
 
 ## Fluxos ligados
 - [delegacao](../../../../../Contexto/Fluxos/delegacao.md)
@@ -77,3 +77,4 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **01/11/2026** — anotada na conversa de 01/11. Crivo `tl` + `po`: a US é testável sem tocar no script (preload do `tl`); o `po` achou lacuna e não falha medida, prioridade média, e tinha proposto uma função pura (que mudaria a migração); prevaleceu o preload porque respeita o "não mudar a migração". Divergência registrada: o `po` contou 3 ramos de aborto, o `tl` só cobre 1 (os outros 2 ficam fora).
+- **01/11/2026** — ❓ respondida pelo dono: preload aceito. Pronta para executar (dev-back Sonnet · médio, `tl` no diff).
