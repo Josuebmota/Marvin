@@ -67,7 +67,11 @@ sair dela, com o motivo no *Time*. Classifique **a etapa** (não a US) pelo sina
 Como usar:
 
 - **Sinal alto é motivo registrado para começar um degrau acima da partida**; sem sinal alto, vale a
-  partida. Baixo, médio e alto são rótulos da régua, não valores de `effort`: o *Time* grava o valor que a
+  partida. **O degrau acima é o esforço acima, no mesmo modelo** (Sonnet · médio → Sonnet · alto), e só
+  depois dele a troca de modelo (Sonnet → Opus): a ordem do passo 5 e da regra do sênior (dono, 01/11/2026,
+  [US-100](../../Planejamento/Novos/time/roteamento/US-100-matriz-canonica-de-esforco/Sobre.md)). Os valores de
+  `effort` que a ferramenta aceita estão na [documentação de subagentes](https://code.claude.com/docs/en/sub-agents#choose-an-effort-level)
+  que `triagem.md` já cita; não se repete a lista aqui. Baixo, médio e alto são rótulos da régua, não valores de `effort`: o *Time* grava o valor que a
   ferramenta aceita, ou "herdado (origem)", ou "não aplicável", e a etapa sem esforço declarado não roda.
 - **Subir** segue o passo 5. **Descer abaixo da partida** do glossário só depois de comparar uma saída real
   no degrau novo com a do antigo, numa US, e registrar no *Rumo*.

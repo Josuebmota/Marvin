@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-100-matriz-canonica-de-esforco
 description: "Definir em uma frase o 'degrau acima' da régua (esforço antes de modelo) e apontar a tabela do CLAUDE.md para ela; a fonte única e a escada completa ficam para depois."
@@ -32,8 +32,8 @@ Triagem 01/11/2026 (`tl` e `po` em Opus · médio; régua: só texto de document
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
 | responder as ❓ | dono | n/a | decisão de rumo, só do dono | feito 01/11 |
-| escrever a frase e o ponteiro | sessão principal | Sonnet · médio | texto; sem código | pendente |
-| conferir | qa | Sonnet · baixo | links e `git diff --check` | pendente |
+| escrever a frase e o ponteiro | sessão principal | Sonnet · médio | texto; sem código | feito 02/11 |
+| conferir | qa | Sonnet · baixo | links e `git diff --check` | feito 02/11: links existem, `git diff --check` limpo (conferido na sessão principal) |
 
 Grafo (01/11): `eccCost()` só é chamado por `eccAgent()`; esta versão não toca código, então não há mais nada a consultar.
 
@@ -58,3 +58,7 @@ Nada depende do que ela toca — folha do grafo.
 ## Rumo
 - **01/11/2026** — anotada na conversa de 01/11 com escopo grande (matriz canônica); o crivo cortou. **Divergência `po` × `tl`, trazida ao dono:** o `po` quer só a frase (a US é majoritariamente especulação, sem incidente); o `tl` quer também o arquivo de escada, o alinhamento do `eccCost()` e o template (US "nova", dividir, `tl` no diff, `UPDATES`). Gravei a versão do `po` porque a do `tl` depende de n=3–4 da US-92; a parte do `tl` fica como US filha.
 - **01/11/2026** — ❓ respondidas pelo dono: o degrau acima de Sonnet · médio é **Sonnet · alto** (esforço antes de modelo); fica separada da US-89; edição do `CLAUDE.md` autorizada, só um ponteiro de uma linha. Pronta para executar; a parte do `tl` (alinhar `eccCost()` e template) segue como US filha, depois de 3 a 4 US com a régua.
+- **02/11/2026** — **feito.** `delegacao.md` (seção "Régua de esforço por etapa") define o degrau acima: o esforço acima no mesmo modelo (Sonnet · médio → Sonnet · alto) e só depois a troca de modelo, com a fonte dos valores na documentação de subagentes já citada em `triagem.md`; o `CLAUDE.md` ganhou um ponteiro de duas linhas para a régua (autorizado pelo dono). Sem código, sem subagente: sessão principal em Sonnet · médio, como a régua previu (texto de documentação). A parte do `tl` (alinhar `eccCost()` e o template do `Equipe.md`, com `UPDATES`) segue como US filha, depois de 3 a 4 US com a régua.
+
+## Evidência
+Régua em `delegacao.md`; ponteiro em `CLAUDE.md`. Commit: `git log --grep "US-100 concluída"`.

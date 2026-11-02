@@ -36,6 +36,9 @@ Ao delegar, passe `model` e `effort` da linha do Time na chamada (autorização 
 **Haiku só para recuperação** — erra onde a tarefa exige segurar um invariante e notar
 o que está *faltando*.
 
+O degrau acima da partida (esforço antes de modelo) está definido na
+[régua de esforço](.marvin/Contexto/Fluxos/delegacao.md).
+
 ## Grafo de código
 
 Graphify é obrigatório na triagem deste repositório. Antes de apoiar uma decisão no grafo,
