@@ -46,7 +46,7 @@ Triagem 02/11/2026 (`/refinar`, `tl` e `po` em Opus · alto, em paralelo; régua
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
 | 0 medir marcas pendentes de comando nos projetos do dono | scout | Haiku · baixo | só contagem por comando, conferível | feito 02/11 (Rumo) |
-| 1 pesquisar o formato de plugin (fonte oficial) | claude-code-guide | Sonnet · baixo | precisa de web; recuperação delimitada, mas com ressalva da convenção que muda rápido (invariante 3) | pendente |
+| 1 pesquisar o formato de plugin (fonte oficial) | claude-code-guide | Sonnet · baixo | precisa de web; recuperação delimitada, mas com ressalva da convenção que muda rápido (invariante 3) | feito 02/11 (Rumo) |
 | 2 comparar as três saídas e recomendar | tl + po | Opus · alto | decide rumo; relê o invariante 2 | pendente |
 | 2 escolher | dono | humano | decisão que só o dono toma | pendente |
 
@@ -112,6 +112,18 @@ Nada depende do que ela toca — folha do grafo.
   - **Mas o dado muda a pergunta:** 59 das 81 pendências (73%) não são de comando — são README do Planejamento, `Equipe.md`, `ferramentas.md`, `agents/README.md` e o bloco *Devolução* em 6 a 11 agentes ECC copiados por projeto. Um plugin de comandos não resolve nada disso; o regenerar seletivo por hash (US-58) alcançaria qualquer arquivo ainda idêntico ao gerado, mas os agentes ECC e comandos customizados continuam à mão.
   - Observações do `scout`: no Heim o `--dry-run` diz "nothing to do" e lista 16 marcas na seção 10 (contradição do próprio script, não investigada); Zino e Journey têm grafo mais velho que o último commit e sem hook (o `--dry-run` criaria o hook e reescreveria o `graph.json`; não rodou de verdade); Journey é monorepo com 2 sub-repos (não rodar `graphify update .`); ponytail desabilitado nos quatro; Heim com contexto fixo ~7,5k tk. O script nunca reescreve arquivo existente, então "atualizar o projeto" é colar essas ~81 linhas à mão ou decidir o regenerar seletivo — é a fatia 2.
   - Próximo: fatia 1 (pesquisar o formato de plugin), que só importa se a fatia 2 ainda considerar o plugin.
+
+- **02/11/2026** — **fatia 1 pesquisada** (`claude-code-guide` Sonnet · baixo; documentação oficial em code.claude.com, lida em 02/11/2026; as páginas não trazem versão do Claude Code). Resumo; cada linha diz o status e a página.
+  - **Escopo por projeto — CONFIRMADA.** `enabledPlugins` em `.claude/settings.json` (escopo `project`) ou `.claude/settings.local.json` (`local`); fora do projeto não carrega. Cada colaborador ainda instala uma vez (`claude plugin install <nome>@<mkt> --scope project`). Dá para instalar no perfil e deixar desligado (`defaultEnabled: false`). *discover-plugins.md, plugins/loading.md, plugins/manifest-reference.md.*
+  - **Prefixo — CONFIRMADA; sem prefixo NÃO CONFIRMADA.** Comando de plugin vira `/<plugin>:<comando>` (`/marvin:retomar`); a doc não mostra como tirar o prefixo. **Consequência: o plugin não substitui o `/retomar` que o script escreve hoje**; o caminho sem prefixo documentado é `.claude/commands/` do projeto. *plugins/components.md.*
+  - **Mesmo nome — CONFIRMADA para skills** (os dois carregam, namespaced; ninguém vence). Plugin contra comando de projeto: inferência, não visto literalmente. *skills.md.*
+  - **Peso no contexto — CONFIRMADA.** Nome, `description` e `when_to_use` de cada comando/skill/agente entram em toda sessão com o plugin habilitado (truncado em 1.536 caracteres); o exemplo oficial pesa ~146 tk para 3 skills + 1 agente (de <20 a ~50 tk por componente). Não medido no Marvin: `claude plugin details <nome>` num protótipo. *plugins/measure.md.*
+  - **Dependência — CONFIRMADA** de outro plugin (`dependencies` no `plugin.json`, semver; faltando, o plugin fica desabilitado com erro em `/plugin`). **Não há campo para exigir binário externo** (graphify): o comando teria que checar em tempo de execução. *plugins/dependencies.md.*
+  - **Variar por projeto — CONFIRMADA.** Arquivo estático com substituição de `${CLAUDE_PROJECT_DIR}`, `${CLAUDE_PLUGIN_ROOT}` e `$ARGUMENTS`; o comando pode mandar ler `.marvin/` em tempo de execução. Não resolve sozinho os caminhos que o script interpola (`relDocs`, `DEST`) nem o layout antigo. *manifest-reference.md, skills.md.*
+  - **Atualização — CONFIRMADA.** Versão pelo `plugin.json`, depois a entrada do marketplace, depois o SHA do commit; **não toca os arquivos do projeto**; auto-update ligado só nos marketplaces oficiais; sessão em curso mantém a versão até `/reload-plugins`. *plugins/loading.md.*
+  - **Hooks — existência e disparo CONFIRMADOS; poder de bloquear NÃO CONFIRMADO** (falta ler hooks.md). Plugin habilitado pelo projeto só carrega depois do trust check. *plugins/components.md.*
+  - **Lacunas que fecham rápido:** ler hooks.md (bloqueio) e um protótipo com `--plugin-dir` para ver se algum nome sai sem prefixo e quanto pesa de verdade.
+  - **Leitura para a fatia 2 (não é decisão):** o plugin é viável tecnicamente, mas com o prefixo `/marvin:retomar` coexistindo com o `/retomar` do projeto, instalação manual por colaborador e 73% das pendências medidas fora do alcance dele, o ganho por cima do regenerar seletivo parece pequeno. Quem decide é o dono.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
