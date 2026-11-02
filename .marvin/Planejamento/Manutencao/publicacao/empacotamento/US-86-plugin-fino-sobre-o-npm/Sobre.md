@@ -14,7 +14,7 @@ description: "Refinada em fatias (02/11): 0 medir marcas pendentes de comando em
 **Desenho em discussão (não decidido):** o plugin leva o genérico — `/retomar`, `/refinar`, `/fechar`, hooks de trava, aviso na abertura; o `marvin.mjs` no npm continua o motor e escreve a base do projeto (memória, grafo das US, agentes com armadilha do código — invariante 4). Dependências obrigatórias viram **checagem que falha alto**, não pacote puxado: ECC como dependência traria de volta a carga global medida (74,8k, Fase 0 da US-50) e contraria "o que é global é pago em toda sessão"; graphify é Python e instalá-lo sem flag fere a US-50 e o invariante 1.
 
 **Pronto quando (fatias 0 a 2 — esta US não implementa):**
-1. **Fatia 0, medir:** o número de marcas de `.claude/commands/` pendentes em cada projeto real do dono (Parci e outros do OvenorGroup), contado com a flag de diagnóstico do `marvin` que NÃO escreve (conferida no código antes; `git status` limpo depois em cada projeto). Resultado no Rumo: marcas por projeto e o total, contra o limiar do `po` (≥5 marcas em ≥2 projetos).
+1. **Fatia 0, medir:** o número de marcas de `.claude/commands/` pendentes em cada projeto real do dono (Parci e outros do OvenorGroup), contado com `--status --curto` (o número) e `--dry-run` (quais; o `--check` não serve: sai na memória, `marvin.mjs:549`), conferido no código; `git status` igual antes e depois em cada projeto. Resultado no Rumo: marcas por projeto e o total, contra o limiar do `po` (≥5 marcas em ≥2 projetos).
 2. **Fatia 1, pesquisar o formato de plugin** com fonte oficial citada e data: escopo por projeto (`enabledPlugins`), prefixo de nome dos comandos, quem vence quando plugin e `.claude/commands/` têm o mesmo nome, peso das descrições no contexto, dependência declarada, e se um comando de plugin consegue variar por projeto (caminhos `relDocs`/`DEST`, layout antigo). Cada resposta marcada como confirmada na fonte ou **não confirmada**.
 3. **Fatia 2, decidir:** o `tl` e o `po` (Opus · alto) apresentam as três saídas — plugin, regenerar seletivo por hash (US-58, hash gravado no carimbo da US-17), nada — com custo, risco nos invariantes 1 e 2 e o que cada uma resolve do que foi medido; **o dono escolhe**. Se medir abaixo do limiar, a recomendação é "nada" e a US fecha como `cancelada` com os números.
 4. A escolha vira o Rumo desta US; a **fatia 3 (implementar)** abre como US filha com *Código tocado*, `UPDATES` e o `tl` no diff. Fica fora desta.
@@ -45,7 +45,7 @@ Triagem 02/11/2026 (`/refinar`, `tl` e `po` em Opus · alto, em paralelo; régua
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| 0 medir marcas pendentes de comando nos projetos do dono | scout | Haiku · baixo | só contagem por comando, conferível | pendente |
+| 0 medir marcas pendentes de comando nos projetos do dono | scout | Haiku · baixo | só contagem por comando, conferível | feito 02/11 (Rumo) |
 | 1 pesquisar o formato de plugin (fonte oficial) | claude-code-guide | Sonnet · baixo | precisa de web; recuperação delimitada, mas com ressalva da convenção que muda rápido (invariante 3) | pendente |
 | 2 comparar as três saídas e recomendar | tl + po | Opus · alto | decide rumo; relê o invariante 2 | pendente |
 | 2 escolher | dono | humano | decisão que só o dono toma | pendente |
@@ -97,6 +97,21 @@ Nada depende do que ela toca — folha do grafo.
 - **Divergência.** `po`: **estacionar** — reabre só se `marvin --check` em ≥3 projetos reais achar ≥5 marcas pendentes em `.claude/commands/` somando ≥2 projetos; sem spike antes; a medição vive em `Manutencao/diagnostico/atualizacoes` (scout, Haiku · baixo). `tl`: não cabe em 1 chat; fatias 0 medir (scout), 1 spike do formato (`claude-code-guide`), 2 o dono escolhe entre plugin, regenerar seletivo por hash ou nada (`tl` + `po`, Opus · alto), 3 implementar (dev-back Sonnet · alto, qa Sonnet · médio, `tl` Opus · alto no diff: escreve no disco de alguém e toca os invariantes 1 e 2). Devolução do `tl`: a alternativa por hash pede reler o invariante 2, decisão do dono (❓4). Grafo fresco (16:41, depois do `1f0de33`): `pendingUpdates` (L5209) sem dependentes no grafo (a aresta de L2002 falta; Grep como fallback); gerador de comandos e `--regenerar` sem nó (código de topo).
 
 - **02/11/2026** — dono: **refinar em fatias**. Estado `refinada`: fatias 0 (medir), 1 (pesquisar o formato) e 2 (decidir) ficam nesta US; a 3 (implementar) abre US filha depois da escolha. ❓3 e ❓4 ficam para a fatia 2.
+- **02/11/2026** — **fatia 0 medida** (`scout` Haiku · baixo, `--status --curto` + `--dry-run` com o `marvin.mjs` desta branch, a partir da raiz de cada projeto do OvenorGroup; `git status` igual antes e depois nos quatro, **mas isso não prova que nada foi escrito**: sem banco, `.env` nem Bemol).
+  - **Ressalva conferida à mão (02/11, 17:5x):** no Heim, `.marvin/.status/historico.jsonl` e `index.html` têm data de 02/11 17:48, dentro da janela da medição; os dois são git-ignorados, então o `git status` não os vê. Pode ter sido o `--status`/`--dry-run` do `scout` ou uma sessão sua; não distingui. No Zino e no Journey esses arquivos são antigos (21/09 e 17/10). No Parci, `index.html` é rastreado e já estava modificado (data 16:41, antes da medição). Conclusão: a medição pode gerar cache git-ignorado; o relato "nenhuma escrita" do `scout` vale só para arquivos que o git rastreia e não estavam modificados.
+
+  | projeto | marcas pendentes | em `.claude/commands/` | base |
+  |---|---|---|---|
+  | parci-development | 21 | 3 | 21 seções novas |
+  | zino-agent-service | 28 | 13 | 2.3.0 → 3.4.3 |
+  | journey-development | 16 | 3 | 16 seções novas |
+  | heim-development | 16 | 3 | 16 seções novas |
+  | **total** | **81** | **22 (27%)** | |
+
+  - **Limiar do `po` (≥5 marcas em comando somando ≥2 projetos): não cumprido** — só o Zino passa de 5 (13); os outros três têm 3. Pela régua escrita, a recomendação do `po` era estacionar.
+  - **Mas o dado muda a pergunta:** 59 das 81 pendências (73%) não são de comando — são README do Planejamento, `Equipe.md`, `ferramentas.md`, `agents/README.md` e o bloco *Devolução* em 6 a 11 agentes ECC copiados por projeto. Um plugin de comandos não resolve nada disso; o regenerar seletivo por hash (US-58) alcançaria qualquer arquivo ainda idêntico ao gerado, mas os agentes ECC e comandos customizados continuam à mão.
+  - Observações do `scout`: no Heim o `--dry-run` diz "nothing to do" e lista 16 marcas na seção 10 (contradição do próprio script, não investigada); Zino e Journey têm grafo mais velho que o último commit e sem hook (o `--dry-run` criaria o hook e reescreveria o `graph.json`; não rodou de verdade); Journey é monorepo com 2 sub-repos (não rodar `graphify update .`); ponytail desabilitado nos quatro; Heim com contexto fixo ~7,5k tk. O script nunca reescreve arquivo existente, então "atualizar o projeto" é colar essas ~81 linhas à mão ou decidir o regenerar seletivo — é a fatia 2.
+  - Próximo: fatia 1 (pesquisar o formato de plugin), que só importa se a fatia 2 ainda considerar o plugin.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
