@@ -32,10 +32,10 @@
  * directory. Without that the test would create junctions in the real profile of
  * whoever ran it — exactly the damage marvin takes care not to cause.
  *
- * KNOWN GAP: the ABORT branch of the migration (copied fewer than the source) is not
- * tested. Forcing a partial copy requires an fs mock or directory permissions, and
- * both would bring a dependency or platform-specific behavior. It is noted here
- * instead of faked — a test that pretends to cover is worse than a declared gap.
+ * KNOWN GAP: the aborts of `--migrar` and of the regenerate step are not tested. Forcing a
+ * partial copy there needs more than the `fs.cpSync` preload used for the memory migration
+ * (case 5b). It is noted here instead of faked — a test that pretends to cover is worse than
+ * a declared gap.
  */
 
 import fs from 'node:fs';
@@ -107,11 +107,11 @@ const pathWith = (dir) => ({ [PATH_KEY]: dir + path.delimiter + process.env[PATH
 const hermeticEnv = () => { const e = { ...process.env, GIT_CONFIG_NOSYSTEM: '1' }; delete e.XDG_CONFIG_HOME; delete e.GIT_CONFIG_GLOBAL; return e; };
 
 /** Runs marvin with HOME/USERPROFILE redirected. */
-function run({ proj: proj, lar: home, real, bin }, ...flags) {
-  return spawnSync(process.execPath, [SCRIPT, ...flags], {
+function run({ proj: proj, lar: home, real, bin, nodeArgs = [], env = {} }, ...flags) {
+  return spawnSync(process.execPath, [...nodeArgs, SCRIPT, ...flags], {
     cwd: proj,
     encoding: 'utf8',
-    env: { ...hermeticEnv(), HOME: home, USERPROFILE: home, ...pathWith(bin || (real ? NO_INSTALL : NO_GRAPHIFY)) },
+    env: { ...hermeticEnv(), HOME: home, USERPROFILE: home, ...pathWith(bin || (real ? NO_INSTALL : NO_GRAPHIFY)), ...env },
   });
 }
 
@@ -296,6 +296,39 @@ console.log('node ' + process.version + ' · ' + process.platform + '\n');
   check('perfil vira link DEPOIS de copiar', isLink);
   check('notas seguem visíveis pelo caminho do agente',
         isLink && fs.readdirSync(mem).filter(f => /^nota\d+\.md$/.test(f)).length === N);
+  cleanup(a);
+}
+
+// ── 5b. the ABORT branch of the migration (invariant 1). A preload (`node --import`, written inside the
+// arena, never in the repo) swaps `fs.cpSync` for a copy that skips the entry named in MARVIN_TESTE_SKIP.
+// It works because marvin imports the default `fs` and `fsw === fs` in a real run.
+for (const [label, skip] of [['nota sem copiar', 'nota3.md'], ['subpasta sem .md sem copiar', 'anexos']]) {
+  const a = arena('aborta');
+  const mem = memoryPath(a.lar, a.proj);
+  fs.mkdirSync(path.join(mem, 'anexos'), { recursive: true });
+  for (let i = 1; i <= 3; i++) fs.writeFileSync(path.join(mem, 'nota' + i + '.md'), '# nota ' + i + '\n');
+  fs.writeFileSync(path.join(mem, 'anexos', 'foto.png'), 'bytes');
+  const preload = path.join(a.base, 'preload-cp-parcial.mjs');
+  fs.writeFileSync(preload, [
+    "import fs from 'node:fs';",
+    "import path from 'node:path';",
+    'const real = fs.cpSync;',
+    'fs.cpSync = (src, dst, opts) => real(src, dst, { ...opts, filter: (s) => path.basename(s) !== process.env.MARVIN_TESTE_SKIP });',
+    '',
+  ].join(NLQ));
+  const before = files(mem).sort().map(f => f + '=' + fs.readFileSync(path.join(mem, f), 'utf8'));
+
+  const r = run({ ...a, nodeArgs: ['--import', pathToFileURL(preload).href], env: { MARVIN_TESTE_SKIP: skip } }, '--no-git');
+  const out = r.stdout + r.stderr;
+  check(`cópia parcial (${label}): sai com código 1`, r.status === 1, 'saiu ' + r.status + ' · ' + out.slice(0, 300));
+  check(`cópia parcial (${label}): avisa ABORTED`, /ABORTED/.test(out), out.slice(0, 300));
+  const after = files(mem).sort().map(f => f + '=' + fs.readFileSync(path.join(mem, f), 'utf8'));
+  let isLink = false;
+  try { isLink = fs.lstatSync(mem).isSymbolicLink(); } catch {}
+  check(`cópia parcial (${label}): memória de origem intacta`,
+        !isLink && before.length === 4 && JSON.stringify(before) === JSON.stringify(after));
+  check(`cópia parcial (${label}): nenhuma junction criada`, !isLink);
+  if (skip === 'anexos') check('a lista cita o item não copiado (a subpasta)', /missing at the destination: anexos/.test(out), out.slice(0, 300));
   cleanup(a);
 }
 

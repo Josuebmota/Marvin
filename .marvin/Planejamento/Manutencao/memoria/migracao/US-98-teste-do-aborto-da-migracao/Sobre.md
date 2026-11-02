@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-98-teste-do-aborto-da-migracao
 description: "Cobrir com teste o ramo que aborta a migração de memória quando a cópia sai menor que a origem (invariante 1), sem mudar o marvin.mjs."
@@ -31,9 +31,9 @@ Triagem 01/11/2026 (`tl` e `po` em Opus · médio, régua da US-92 aplicada: só
 
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
-| escrever os dois testes e o preload | dev-back | Sonnet · médio | só `teste.mjs`; o risco é o teste não chegar ao ramo, coberto pelo item 3 | pendente |
-| ler o diff | tl | Opus · médio | o teste é a prova do invariante 1 | pendente |
-| conferir | qa | Sonnet · baixo | teste verde, contagem nos READMEs, `git diff --check` | pendente |
+| escrever os dois testes e o preload | dev-back | Sonnet · médio | só `teste.mjs`; o risco é o teste não chegar ao ramo, coberto pelo item 3 | feito 02/11: 686 testes, ~40,2k tokens, 14 chamadas, ~8,2 min |
+| ler o diff | tl | Opus · médio | o teste é a prova do invariante 1 | feito 02/11: pode fechar |
+| conferir | qa | Sonnet · baixo | teste verde, contagem nos READMEs, `git diff --check` | feito 02/11: 686 passaram, itens conferem |
 
 Grafo (01/11): o bloco de migração fica no nível de cima do arquivo, **sem nó**; Grep para localizar. `countNotes` (:501) sem dependente. Sem nó é limite do grafo, não ausência de risco.
 
@@ -78,3 +78,8 @@ Nada depende do que ela toca — folha do grafo.
 ## Rumo
 - **01/11/2026** — anotada na conversa de 01/11. Crivo `tl` + `po`: a US é testável sem tocar no script (preload do `tl`); o `po` achou lacuna e não falha medida, prioridade média, e tinha proposto uma função pura (que mudaria a migração); prevaleceu o preload porque respeita o "não mudar a migração". Divergência registrada: o `po` contou 3 ramos de aborto, o `tl` só cobre 1 (os outros 2 ficam fora).
 - **01/11/2026** — ❓ respondida pelo dono: preload aceito. Pronta para executar (dev-back Sonnet · médio, `tl` no diff).
+- **02/11/2026** — **feito.** Bloco "5b" no `teste.mjs`: dois cenários (cópia que pula `nota3.md`; cópia que pula a subpasta `anexos`, sem `.md`), 9 verificações novas; `run()` aceita `nodeArgs` e `env` (retrocompatível); o preload `node --import` (URL `file://`, criado dentro da arena) troca `fs.cpSync`; o `marvin.mjs` não mudou. Mutação do `dev-back` (removeu o `process.exit(1)`, restaurou byte a byte): os dois cenários reprovam em 3 verificações cada (saída 1, origem intacta, nenhuma junction). `tl` (Opus · médio): pode fechar. Custo do `dev-back` (Sonnet · médio): ~40,2k tokens, 14 chamadas, ~8,2 min. 686 testes.
+- **02/11/2026** — limites ditos pelo `tl`: (a) "ABORTED" e "cita o item" só seguram a mensagem, quem segura o ramo são "origem intacta" e "nenhuma junction"; (b) tirar só a condição `copied < origin` não reprova, porque o cenário `nota3.md` também cai em `notCopied`: só uma `.md` aninhada pulada isolaria essa metade (sugestão, não feita); (c) `--import` exige Node 18.18+, e o CI usa 18.20; em Node mais velho o teste falha alto, não passa em falso; (d) o grafo estava velho no momento do crivo (o hook não tinha atualizado): bloco da migração sem nó, lido por Grep. O KNOWN GAP segue verdadeiro para o `--migrar` e o regenerar, que copiam com `copyFileSync`, não com `cpSync`.
+
+## Evidência
+Teste: 686 passaram. Commit: `git log --grep "US-98 concluída"`.
