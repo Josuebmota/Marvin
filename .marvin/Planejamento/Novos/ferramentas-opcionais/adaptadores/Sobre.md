@@ -25,6 +25,7 @@ pai: ../Sobre.md
 - [US-68-ponytail-medido](US-68-ponytail-medido/Sobre.md)
 - [US-93-ponytail-segundo-par](US-93-ponytail-segundo-par/Sobre.md)
 - [US-96-ecc-agentes-com-devolucao-e-escopo](US-96-ecc-agentes-com-devolucao-e-escopo/Sobre.md)
+- [US-104-impeccable-opcional](US-104-impeccable-opcional/Sobre.md)
 
 ## Rumo
 - **15/09/2026** — aberta com a US-11. No mesmo dia o Impacto acusou escopo largo (6 nós, 4 comunidades); **US-11 cancelada e fatiada** em 11a (registro + graphify) e 11b (ponytail + papéis). O Sobre.md da 11 fica como registro das decisões comuns.
