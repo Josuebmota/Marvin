@@ -40,7 +40,7 @@ structure; the agents and commands it sets up run the team on top of it.
 | 🧠 **Memory in git** | an inverted junction makes the agent's memory land inside `.marvin/` |
 | 🔁 **Idempotent** | run it twice, nothing duplicates or gets overwritten |
 | 🔍 **Diagnostics** | fixed-context cost per session, empty "services", junk in the root, canonical commands read from the manifest |
-| 🔌 **Tools** | `graphify` and the ECC catalog are **mandatory** (cost) and installed by marvin; `ponytail` (measured, no gain on `dev-back`, US-68) and `playwright` stay optional. All recorded in `.marvin/ferramentas.md` |
+| 🔌 **Tools** | `graphify` and the ECC catalog are **mandatory** (cost) and installed by marvin; `ponytail` (measured, no gain on `dev-back`, US-68), `playwright` and `impeccable` stay optional. All recorded in `.marvin/ferramentas.md` |
 
 > **The package is `marvin-kb`, the command is `marvin`.** `marvin` was already taken on
 > npm, so `npx marvin` would fetch someone else's package — use `npx marvin-kb`. After
@@ -259,7 +259,7 @@ Running again with a different list **adds** what's missing; nothing is removed.
 ### Optional tools — the `.marvin/ferramentas.md` record
 
 Some tools are not adapters but things a project *chooses* to use. marvin detects them
-on PATH (`playwright` is offered by a web front in a `package.json`, not by PATH).
+on PATH (`playwright` and `impeccable` are offered by a front in a `package.json`, not by PATH).
 **`graphify` and `ecc` are mandatory** (cost): a new record is born `sim` without asking and marvin installs what the machine lacks (a failure is a warning, never an abort). A `não` you wrote in the record is respected, with a warning that the default is mandatory. `ponytail` is optional (US-68 measured +22% cost with no gain on `dev-back`). The others ask **once** (only with a terminal — without one
 they record `não` and warn). The answer goes to `.marvin/ferramentas.md`, and later runs
 read the record instead of asking — a `não` you wrote there is never overwritten. Flip it
@@ -271,6 +271,7 @@ terminal. A comma list turns several on at once (`marvin --use=graphify,ponytail
 | `graphify` | `graphify-out/graph.json` — the code graph, see [below](#--graphify--queries-no-hook) | **any agent** reads the JSON/markdown; only the hook is Claude-specific, and it is not installed |
 | `ponytail` | a simplicity ladder for whoever *implements* — a `## Ferramentas` section in `AGENTS.md` (confidence **low**: installed and read, not measured) and a role table in `.claude/agents/README.md` (dev yes; `tl`/`po`/`scout` no) | plugin with hooks in **Claude Code, Codex and Copilot CLI** (each has its own install; marvin detects only the Claude one, telling *installed* — `~/.claude/plugins/installed_plugins.json` — from *active* — `~/.claude/.ponytail-active`); Cursor takes its hooks (`~/.cursor/hooks.json`) or its rule file, neither generated; everyone else copies the rule file from the ponytail repo |
 | `playwright` | a `## Ferramentas` section in `AGENTS.md` with the rule "a US that touches a screen closes only with Playwright evidence" (flow script + screenshot or `playwright-cli snapshot`); confidence **low**: not measured | offered only when a `package.json` (root or sub-repo, depth ≤ 3) has a web front; installation is not detected; covers web/PWA only — not React Native/Expo without `react-dom`, nor Flutter |
+| `impeccable` | with `--use=impeccable`, a short `## Ferramentas` section in a **generated** `AGENTS.md` (confidence **low**: not measured; *live* and *Apply* out; `PRODUCT.md` and `DESIGN.md` stay the human's; it does not tell any agent to use it); an existing `AGENTS.md` only gets a warning in step 10 | offered only when a `package.json` (root or sub-repo, depth ≤ 3) has a front, and marvin **never installs or copies it**: the offer is `npx impeccable install`. Detected by `SKILL.md` under `.claude/`, `.agents/` or `.github/` `skills/impeccable/` (project), or `~/.claude/skills/impeccable/` or an `impeccable@…` plugin at user scope (global); `~/.impeccable/` does not count. Not Flutter |
 
 *Reach* is the column that matters: it says who can consume what the tool produces.
 A tool whose output only one agent reads is a decision, not a default.
@@ -455,7 +456,7 @@ usually ~⅔ of it: every turn re-reads the whole context.
                   when missing (ECC at project scope; graphify via uv, which is user-profile).
                   It also installs ponytail, but only where the record says `sim`.
                   A failure warns and exits 0
---no-questions    records `não` for every OPTIONAL tool (playwright), even with a terminal
+--no-questions    records `não` for every OPTIONAL tool (playwright, impeccable), even with a terminal
 --help, -h        usage; exits without writing
 ```
 
@@ -781,7 +782,7 @@ rather than final text.
 node teste.mjs
 ```
 
-693 checks, no dependencies. It covers the invariants that protect other
+712 checks, no dependencies. It covers the invariants that protect other
 people's disks — `--help`, `--dry-run` and `--check` write nothing, running twice doesn't
 duplicate, existing memory is copied and counted before the profile is replaced by the
 link, and a junction broken by a moved folder is repaired instead of merely reported.

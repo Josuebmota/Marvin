@@ -89,6 +89,9 @@ let PONYTAIL = false;
 // Playwright CLI (US-34): no flag of its own either — the record (block 0b, `--use=playwright`)
 // decides. Turns on the browser-evidence rule in the generated AGENTS.md.
 let PLAYWRIGHT = false;
+// Impeccable (US-106): the owner installs it; Marvin only detects, offers and records (`--use=impeccable`).
+// Turns on a short section in the generated AGENTS.md.
+let IMPECCABLE = false;
 // ECC (US-60): the catalog the team's agents/skills come from; the record decides, like ponytail.
 let ECC = false;
 // Names the communities using the `claude` on PATH (graphify's claude-cli backend, which
@@ -197,7 +200,7 @@ Flags:
                     byte-identical, and only then the original is removed and recreated.
                     Never touches AGENTS.md, CLAUDE.md, the note, USs, agents or other Contexto/.
                     Lists the lines of yours that are not in the new text. Works with --dry-run
-  --no-questions    assume \`não\` for every OPTIONAL tool (playwright), even with a terminal
+  --no-questions    assume \`não\` for every OPTIONAL tool (playwright, impeccable), even with a terminal
                     skip AI availability questions; undeclared access stays unknown
   --executor=<id>   declare the session tool (${VALID_TOOLS.join(', ')}, other)
   --ai=<id>:<access>:<configured>  declare available AI; repeat for multiple options
@@ -1999,7 +2002,7 @@ if (hasFlag('--status')) {
       if (na) why.push(pl(na, 'agente do ECC faltando', 'agentes do ECC faltando'));
       if (ns) why.push(pl(ns, 'skill do ECC faltando', 'skills do ECC faltando'));
     }
-    const nu = pendingUpdates(GRAPHIFY || usa('graphify'), usa('ponytail'), usa('playwright'), COMMANDS).length;
+    const nu = pendingUpdates(GRAPHIFY || usa('graphify'), usa('ponytail'), usa('playwright'), COMMANDS, usa('impeccable')).length;
     if (nu) why.push(pl(nu, 'seção nova', 'seções novas'));
     if (why.length) warn('base desatualizada (' + why.join('; ') + ') — o /retomar sincroniza');
   }
@@ -2640,12 +2643,13 @@ const samePath = (a, b) => {
   const n = (p) => { let r = path.resolve(String(p)); try { r = fs.realpathSync.native(r); } catch {} return process.platform === 'win32' ? r.toLowerCase() : r; };
   return n(a) === n(b);
 };
-const detectPonytail = () => {
+// Scope at which a plugin whose key matches `re` is installed: 'user', 'project' (this ROOT) or ''.
+const pluginScope = (re) => {
   let scope = '';
   try {
     const plugins = JSON.parse(fs.readFileSync(path.join(CLAUDE_HOME, 'plugins', 'installed_plugins.json'), 'utf8')).plugins || {};
     for (const [key, entries] of Object.entries(plugins)) {
-      if (!/^ponytail@/i.test(key) || !Array.isArray(entries)) continue;
+      if (!re.test(key) || !Array.isArray(entries)) continue;
       for (const e of entries) {
         if (!e || typeof e !== 'object') continue;
         if (e.scope === 'project' || e.scope === 'local') { if (e.projectPath && samePath(e.projectPath, ROOT)) scope = scope || 'project'; }
@@ -2653,6 +2657,10 @@ const detectPonytail = () => {
       }
     }
   } catch {}
+  return scope;
+};
+const detectPonytail = () => {
+  const scope = pluginScope(/^ponytail@/i);
   if (!scope) return false;
   // US-67: enabledPlugins false disables it. First file with a ponytail@ key decides:
   // project local > project > user. Missing file or bad JSON: skip, never throws.
@@ -2685,6 +2693,18 @@ const ponytailReach = () => {
   if (TOOLS.some(f => !['claude', 'codex', 'copilot', 'cursor'].includes(f))) p.push('no resto, só o arquivo de regra copiado do repositório dele');
   return 'escada de simplicidade para quem IMPLEMENTA — ' + p.join('; ') + '. Confiança baixa: não medido';
 };
+// Impeccable (US-106): the owner installs it (`npx impeccable install`, asks project or global). Marvin never
+// installs or copies it. Project scope = its SKILL.md under the project's skills folders; global scope = the
+// user's ~/.claude/skills or a user-scope `impeccable@…` plugin. `~/.impeccable/` (engine cache) is NOT a signal.
+const detectImpeccable = () => {
+  for (const d of ['.claude', '.agents', '.github']) {
+    if (fs.existsSync(path.join(ROOT, d, 'skills', 'impeccable', 'SKILL.md'))) return 'installed (project scope)';
+  }
+  const scope = pluginScope(/^impeccable@/i);
+  if (scope === 'project') return 'installed (project scope)';
+  if (scope === 'user' || fs.existsSync(path.join(CLAUDE_HOME, 'skills', 'impeccable', 'SKILL.md'))) return 'installed — user scope (global, loads in every project)';
+  return false;
+};
 const PENDING_INSTALL = [];   // US-50: tools whose --install commands run late, once the settings.json hook is written
 const OPTIONAL_TOOLS = [
   // US-59: `obrigatorio` = mandatory for cost (graphify, ecc). A new record is born `sim`, a missing tool installs itself
@@ -2707,6 +2727,11 @@ const OPTIONAL_TOOLS = [
   // is the project, not the machine. Outside a web front: no line, no warning — a backend needs no browser.
   { nome: 'playwright', aplica: () => HAS_WEB_FRONT, detecta: () => 'suggested (web front in package.json)',
     alcance: 'navegador real dirigido pelo playwright-cli (screenshot e snapshot em arquivo) — qualquer agente com shell roda e lê; cobre web/PWA, não app mobile nativo (React Native/Expo/Flutter). Confiança baixa: não medido' },
+  // Impeccable (US-106): offered only where there is a front; the trigger is the project AND the machine. No `instalarProjeto`:
+  // the owner installs it (`semInstalador`), so the "record says sim but not installed" branch only informs.
+  { nome: 'impeccable', semInstalador: true, aplica: () => HAS_FRONT || HAS_WEB_FRONT, detecta: detectImpeccable,
+    instalar: 'npx impeccable install (pergunta projeto ou global)',
+    alcance: 'kit de design e front instalado pelo dono; o marvin só detecta e registra, não instala nem copia; live/Apply fora; confiança baixa, não medido' },
 ];
 {
   let rec = ''; try { rec = fs.readFileSync(RECORD, 'utf8'); } catch {}
@@ -2739,7 +2764,10 @@ const OPTIONAL_TOOLS = [
         else info(f.nome + ' not found — recording `sim` (mandatory); installing it below');
       } else if (!state) {
         uses = false;
-        info(f.nome + ' not found — recording `não`. To adopt it later:  marvin --use=' + f.nome + ' --install');
+        // US-106: a tool Marvin does not install is offered, never run: the owner installs it, then flips the record.
+        info(f.nome + ' not found — recording `não`. '
+          + (f.semInstalador ? 'To adopt it later, install it yourself (marvin does not):  ' + f.instalar + '  — then  marvin --use=' + f.nome
+            : 'To adopt it later:  marvin --use=' + f.nome + ' --install'));
       } else if (f.padrao) {
         uses = true;   // US-38: found on PATH → `sim` without asking (TTY or not); an existing record never gets here
         ok(f.nome + ' ' + state + ' — recording `sim` (flip with `marvin --use=` or by editing ' + RECORD_REL + ')');
@@ -2768,9 +2796,12 @@ const OPTIONAL_TOOLS = [
     else if (installedState && /user scope/i.test(installedState)) info(f.nome + ' ' + installedState);
     // US-67: disabled via enabledPlugins while the record says `sim` — needs action, so warn.
     else if (installedState && /DISABLED/.test(installedState)) warn(f.nome + ' ' + installedState + ' — the record says `sim` but it does not load');
+    // US-106: the record says `sim` for a tool Marvin does not install and the machine lacks it. Detection only, no exec.
+    else if (uses && f.semInstalador && !f.detecta()) info(f.nome + ' not found — the record says `sim` but it is not installed. To install (your call, marvin does not):  ' + f.instalar);
     if (f.nome === 'graphify' && uses) GRAPHIFY = true;
     if (f.nome === 'ponytail' && uses) PONYTAIL = true;
     if (f.nome === 'playwright' && uses) PLAYWRIGHT = true;
+    if (f.nome === 'impeccable' && uses) IMPECCABLE = true;
     if (f.nome === 'ecc' && uses) ECC = true;
   }
   // One tool: the same text as before. Two or more: one line — --use already takes a comma list (US-32).
@@ -4589,7 +4620,7 @@ atividade toca, propor o time dela em camadas (\`tl\`, \`po\` · \`dev-front\`, 
 mora lá porque é lá que ela dispara — aqui só o lembrete. A triagem do \`tl\` com o \`po\`
 (quem toca, agentes e skills, esforço e modelo) é registrada em *Time*/*Skills* da US.
 
-${PONYTAIL || PLAYWRIGHT ? `## Ferramentas
+${PONYTAIL || PLAYWRIGHT || IMPECCABLE ? `## Ferramentas
 
 ` : ''}${PONYTAIL ? `**Ponytail** (confiança **baixa** — plugin instalado e README lido, não medido): escada de
 simplicidade que faz o agente parar no primeiro degrau que resolve (não existir → reutilizar →
@@ -4606,6 +4637,11 @@ sem navegador não prova que o botão funciona: narração não é prova. Cobre 
 mobile nativo (React Native, Expo, Flutter) **não** é coberto e fica sem ferramenta de
 evidência até o projeto escolher uma. Instalar o Playwright CLI é de cada máquina; o
 \`marvin\` não instala nem confere.
+
+` : ''}${IMPECCABLE ? `**Impeccable** (confiança **baixa** — registrado em \`${RECORD_REL}\`, não medido aqui): kit de
+design e front que o dono instala; o \`marvin\` só detecta e registra, não instala nem copia.
+Ficam **fora** o modo *live* e o *Apply*. \`PRODUCT.md\` e \`DESIGN.md\` são do humano: o \`marvin\`
+não os escreve nem os confere. Este arquivo não manda nenhum agente usá-lo.
 
 ` : ''}## Higiene de sessão
 
@@ -5206,7 +5242,7 @@ if (legacy.length) {
 // version number is one more derived artifact — and derived artifacts age in silence,
 // which is the disease this whole project fights.
 // Pure read, callable from the --status hook (US-62): the flags that gate entries come as parameters.
-function pendingUpdates(GRAPHIFY, PONYTAIL, PLAYWRIGHT, COMMANDS) {
+function pendingUpdates(GRAPHIFY, PONYTAIL, PLAYWRIGHT, COMMANDS, IMPECCABLE) {
 const UPDATES = [
   { arquivo: path.relative(ROOT, path.join(DOCS, AI_GUIDE)).replace(/\\/g, '/'),
     marca: /##\s+Inventário\s+local[\s\S]*?##\s+Pesquisa\s+e\s+escolha\s+por\s+atividade[\s\S]*?##\s+Entradas\s+do\s+glossário/,
@@ -5312,6 +5348,9 @@ const UPDATES = [
   // Playwright only enters when the record says `sim` (US-34) — same rule as ponytail.
   { arquivo: 'AGENTS.md', marca: /## Ferramentas[\s\S]*?\*\*Playwright\s+CLI\*\*[\s\S]*?só\s+fecha\s+com\s+evidência/, soCom: PLAYWRIGHT, desde: '2.4.0',
     o_que: 'the "Ferramentas" section on Playwright — a US that touches a screen closes only with browser evidence (appears with --use=playwright)' },
+  // Impeccable only enters when the record says `sim` (US-106) — a generated AGENTS.md has the section; an existing one only gets this warning.
+  { arquivo: 'AGENTS.md', marca: /##\s+Ferramentas[\s\S]*?\*\*Impeccable\*\*[\s\S]*?\*live\*/, soCom: IMPECCABLE, desde: '3.4.5',
+    o_que: 'the "Ferramentas" section on Impeccable — low confidence, *live*/*Apply* out, PRODUCT.md and DESIGN.md are the human\'s (appears with --use=impeccable)' },
   // Refined USs and ilhas (US-16). /refinar itself is created by 7b when missing; what an
   // older base lacks is the door in /retomar and the fourth state in the planning README.
   { arquivo: '.claude/commands/retomar.md', marca: /duas portas/i, soCom: !OLD_LAYOUT, desde: '1.8.0',
@@ -5456,7 +5495,7 @@ try {
 } catch { /* no agents dir: nothing to check */ }
 return out;
 }
-const missing = pendingUpdates(GRAPHIFY, PONYTAIL, PLAYWRIGHT, COMMANDS);
+const missing = pendingUpdates(GRAPHIFY, PONYTAIL, PLAYWRIGHT, COMMANDS, IMPECCABLE);
 
 if (missing.length) {
   log('\n\x1b[1m10. Updates this project does not have yet\x1b[0m');

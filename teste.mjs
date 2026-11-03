@@ -733,6 +733,135 @@ for (const [label, skip] of [['nota sem copiar', 'nota3.md'], ['subpasta sem .md
   cleanup(m3);
 }
 
+// ── 9e4. Impeccable adapter (US-106): offered only with a front, never installed or copied by marvin.
+// KNOWN GAP: the TTY branch `y → sim` is not tested — same generic loop as playwright/ponytail (see 9e3).
+// Hermetic: HOME redirected to the arena, so the owner's real Impeccable (project or global) is never seen.
+{
+  const withFront = (name) => {
+    const x = arena(name);
+    fs.writeFileSync(path.join(x.proj, 'package.json'), JSON.stringify({ dependencies: { react: '18', 'react-dom': '18' } }));
+    return x;
+  };
+  const recOf = (x) => path.join(x.proj, '.marvin', 'ferramentas.md');
+  const agentsOf = (x) => fs.readFileSync(path.join(x.proj, 'AGENTS.md'), 'utf8');
+  const plantSkill = (root) => {
+    const d = path.join(root, 'skills', 'impeccable'); fs.mkdirSync(d, { recursive: true });
+    const f = path.join(d, 'SKILL.md'); fs.writeFileSync(f, '---\nname: impeccable\n---\n# plantada pelo teste\n');
+    return f;
+  };
+  const plantPlugins = (x, json) => {
+    const d = path.join(x.lar, '.claude', 'plugins'); fs.mkdirSync(d, { recursive: true });
+    fs.writeFileSync(path.join(d, 'installed_plugins.json'), json);
+  };
+  const IMP_OFFER = /impeccable not found[^\n]*npx impeccable install/;
+  const IMP_FOUND = /impeccable is installed[^\n]*no interactive terminal[^\n]*--use=[a-z,]*impeccable/;
+
+  // (a) no front: not a word about it in the record, AGENTS.md or output
+  const a = arena('imp-sem-front');
+  const ra = run(a, '--no-git');
+  check('US-106: sem front, nada de impeccable no registro, no AGENTS.md nem na saída',
+        !/impeccable/i.test(fs.readFileSync(recOf(a), 'utf8')) && !/impeccable/i.test(agentsOf(a)) && !/impeccable/i.test(ra.stdout), ra.stdout.slice(-400));
+  cleanup(a);
+
+  // (b) front, not installed: `não` row + the offer; marvin installs nothing
+  const b = withFront('imp-oferta');
+  const rb = run(b, '--no-git');
+  check('US-106: com front e sem instalação, o registro ganha `não` e a saída oferece `npx impeccable install`',
+        /^\| impeccable \| não \|/m.test(fs.readFileSync(recOf(b), 'utf8')) && IMP_OFFER.test(rb.stdout) && rb.status === 0, rb.stdout.slice(-500));
+  check('US-106: registrado `não`, o AGENTS.md não ganha a seção e nada é instalado',
+        !/Impeccable/.test(agentsOf(b)) && !fs.existsSync(path.join(b.proj, '.claude', 'skills', 'impeccable')) && !fs.existsSync(path.join(b.proj, '.codex')));
+  cleanup(b);
+
+  // (c) project scope: SKILL.md under the project's skills folder is detected; marvin touches none of it
+  const c = withFront('imp-projeto');
+  const skill = plantSkill(path.join(c.proj, '.claude'));
+  const bytesC = fs.readFileSync(skill);
+  const rc = run(c, '--no-git');
+  check('US-106: SKILL.md em .claude/skills/impeccable do projeto: detecta e adia (sem TTY) com --use',
+        IMP_FOUND.test(rc.stdout) && /^\| impeccable \| não \|/m.test(fs.readFileSync(recOf(c), 'utf8')), rc.stdout.slice(-500));
+  check('US-106: instalado no projeto, os bytes ficam intactos e o marvin não cria .codex nem .github nem arquivo na pasta do Impeccable',
+        fs.readFileSync(skill).equals(bytesC) && fs.readdirSync(path.dirname(skill)).join() === 'SKILL.md'
+        && !fs.existsSync(path.join(c.proj, '.codex')) && !fs.existsSync(path.join(c.proj, '.github')));
+  cleanup(c);
+  for (const dir of ['.agents', '.github']) {
+    const x = withFront('imp-projeto-' + dir.slice(1));
+    plantSkill(path.join(x.proj, dir));
+    check('US-106: SKILL.md em ' + dir + '/skills/impeccable também é detectada', IMP_FOUND.test(run(x, '--no-git').stdout));
+    cleanup(x);
+  }
+
+  // (d) global scope: the user's skills folder, or a user-scope plugin entry
+  const d1 = withFront('imp-global-skill');
+  plantSkill(path.join(d1.lar, '.claude'));
+  const rd1 = run(d1, '--no-git');
+  check('US-106: ~/.claude/skills/impeccable/SKILL.md: detecta como escopo de usuário',
+        IMP_FOUND.test(rd1.stdout) && /impeccable is installed — user scope/.test(rd1.stdout), rd1.stdout.slice(-500));
+  cleanup(d1);
+  const d2 = withFront('imp-global-plugin');
+  plantPlugins(d2, '{"plugins":{"impeccable@impeccable":[{"scope":"user"}]}}');
+  check('US-106: impeccable@… com scope user em installed_plugins.json: detecta', IMP_FOUND.test(run(d2, '--no-git').stdout));
+  cleanup(d2);
+  const d3 = withFront('imp-plugin-outro');
+  plantPlugins(d3, '{"plugins":{"impeccable@impeccable":[{"scope":"project","projectPath":' + JSON.stringify(path.join(d3.base, 'outro-projeto')) + '}]}}');
+  const rd3 = run(d3, '--no-git');
+  check('US-106: scope project de OUTRO projeto não conta como instalado aqui',
+        IMP_OFFER.test(rd3.stdout) && !IMP_FOUND.test(rd3.stdout), rd3.stdout.slice(-500));
+  cleanup(d3);
+  const d4 = withFront('imp-plugin-este');
+  plantPlugins(d4, '{"plugins":{"impeccable@impeccable":[{"scope":"project","projectPath":' + JSON.stringify(d4.proj) + '}]}}');
+  check('US-106: scope project deste projeto conta como instalado', IMP_FOUND.test(run(d4, '--no-git').stdout));
+  cleanup(d4);
+
+  // (e) ~/.impeccable/ is the engine cache, not an installation
+  const e = withFront('imp-cache');
+  fs.mkdirSync(path.join(e.lar, '.impeccable', 'bin'), { recursive: true });
+  const re = run(e, '--no-git');
+  check('US-106: só ~/.impeccable/bin (cache do motor) não é sinal de instalação',
+        IMP_OFFER.test(re.stdout) && !IMP_FOUND.test(re.stdout), re.stdout.slice(-500));
+  cleanup(e);
+
+  // (f) --use: dry-run writes nothing; the real run records `sim` and writes the short section
+  const f = withFront('imp-use');
+  run(f, '--no-git', '--use=impeccable', '--dry-run');
+  check('US-106: --use=impeccable --dry-run não cria o registro nem o AGENTS.md', !fs.existsSync(recOf(f)) && !fs.existsSync(path.join(f.proj, 'AGENTS.md')));
+  run(f, '--no-git', '--use=impeccable');
+  check('US-106: --use=impeccable grava `sim` com o alcance',
+        /^\| impeccable \| sim \| .*não instala nem copia/m.test(fs.readFileSync(recOf(f), 'utf8')));
+  check('US-106: o AGENTS.md gerado ganha a seção (selo baixa, live/Apply fora, PRODUCT.md e DESIGN.md do humano) e não manda usar',
+        /## Ferramentas[\s\S]*\*\*Impeccable\*\*[\s\S]*confiança \*\*baixa\*\*[\s\S]*\*live\*[\s\S]*\*Apply\*[\s\S]*PRODUCT\.md[\s\S]*DESIGN\.md[\s\S]*do humano/.test(agentsOf(f))
+        && !/use o Impeccable|use Impeccable/i.test(agentsOf(f)));
+  // (g) idempotent: a 2nd --use and a plain run neither duplicate the row nor change a byte
+  const recG = fs.readFileSync(recOf(f), 'utf8'), agG = agentsOf(f);
+  run(f, '--no-git', '--use=impeccable');
+  run(f, '--no-git');
+  check('US-106: rodar de novo (com e sem --use) mantém uma linha só e os mesmos bytes no registro e no AGENTS.md',
+        (fs.readFileSync(recOf(f), 'utf8').match(/^\| impeccable \|/gm) || []).length === 1
+        && fs.readFileSync(recOf(f), 'utf8') === recG && agentsOf(f) === agG);
+  // (i) record `sim` without an installation: informs, installs nothing, keeps `sim`
+  const ri = run(f, '--no-git');
+  check('US-106: registro `sim` sem instalação: informa que não está instalado e como instalar, sem instalar',
+        /impeccable not found — the record says `sim` but it is not installed[^\n]*npx impeccable install/.test(ri.stdout)
+        && /^\| impeccable \| sim \|/m.test(fs.readFileSync(recOf(f), 'utf8'))
+        && !fs.existsSync(path.join(f.proj, '.claude', 'skills', 'impeccable')), ri.stdout.slice(-500));
+  cleanup(f);
+
+  // (h) old base (row `não`, AGENTS.md without the section) + --use: step 10 warns, AGENTS.md is the human's
+  const h = withFront('imp-base-antiga');
+  run(h, '--no-git');
+  const agH = agentsOf(h);
+  const rh = run(h, '--no-git', '--use=impeccable');
+  check('US-106: base antiga + --use=impeccable: o passo 10 acusa a seção faltando (desde 3.4.5) e o AGENTS.md fica intocado',
+        /AGENTS\.md — missing the "Ferramentas" section on Impeccable[^\n]*\(desde 3\.4\.5\)/.test(rh.stdout)
+        && agentsOf(h) === agH && /^\| impeccable \| sim \|/m.test(fs.readFileSync(recOf(h), 'utf8')), rh.stdout.slice(-500));
+  // dry-run with an existing `não` row leaves the record as it was
+  const h2 = withFront('imp-dry-existente');
+  run(h2, '--no-git');
+  const recH2 = fs.readFileSync(recOf(h2), 'utf8');
+  run(h2, '--no-git', '--use=impeccable', '--dry-run');
+  check('US-106: --use=impeccable --dry-run sobre um registro `não` existente não o altera', fs.readFileSync(recOf(h2), 'utf8') === recH2);
+  cleanup(h); cleanup(h2);
+}
+
 // ── 9e. monorepo: the sub-repo ignored by the root reaches the generated CLAUDE.md
 // In a monorepo the graph was born useless IN SILENCE: the root ignores the sub-repos,
 // graphify respects .gitignore, and what was left was a graph without the product code.

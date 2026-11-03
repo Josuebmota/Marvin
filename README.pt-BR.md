@@ -40,7 +40,7 @@ escreve a estrutura; os agentes e comandos que ele monta tocam a equipe em cima 
 | 🧠 **Memória no git** | uma junction invertida faz a memória do agente nascer dentro de `.marvin/` |
 | 🔁 **Idempotente** | rodar duas vezes não duplica nem sobrescreve nada |
 | 🔍 **Diagnóstico** | custo do contexto fixo por sessão, "serviços" vazios, lixo na raiz, comandos canônicos lidos do manifesto |
-| 🔌 **Ferramentas** | `graphify` e o catálogo ECC são **obrigatórios** (custo) e o marvin instala; `ponytail` (medido, sem ganho no `dev-back`, US-68) e `playwright` continuam opcionais. Tudo registrado em `.marvin/ferramentas.md` |
+| 🔌 **Ferramentas** | `graphify` e o catálogo ECC são **obrigatórios** (custo) e o marvin instala; `ponytail` (medido, sem ganho no `dev-back`, US-68), `playwright` e `impeccable` continuam opcionais. Tudo registrado em `.marvin/ferramentas.md` |
 
 > **O pacote é `marvin-kb`, o comando é `marvin`.** O nome `marvin` já estava ocupado no
 > npm, então `npx marvin` baixaria o pacote de outra pessoa — use `npx marvin-kb`. Depois
@@ -255,7 +255,7 @@ Rodar de novo com outra lista **acrescenta** o que falta; nada é removido.
 ### Ferramentas opcionais — o registro `.marvin/ferramentas.md`
 
 Algumas ferramentas não são adaptador: são coisas que o projeto *escolhe* usar. O marvin
-detecta no PATH (o `playwright` é oferecido pelo front web num `package.json`, não pelo
+detecta no PATH (o `playwright` e o `impeccable` são oferecidos pelo front num `package.json`, não pelo
 PATH). **`graphify` e `ecc` são obrigatórios** (custo): o registro novo nasce `sim`
 sem perguntar e o marvin instala o que a máquina não tem (falha vira aviso, nunca aborta);
 um `não` escrito ali é respeitado, com aviso de que o padrão é obrigatório. O `ponytail`
@@ -271,6 +271,7 @@ que perguntam, mesmo com terminal. Uma lista com vírgula liga várias de uma ve
 | `graphify` | `graphify-out/graph.json` — o grafo de código, ver [abaixo](#--graphify--consulta-sem-hook) | **qualquer agente** lê o JSON/markdown; só o hook é do Claude, e ele não é instalado |
 | `ponytail` | escada de simplicidade para quem *implementa* — seção `## Ferramentas` no `AGENTS.md` (confiança **baixa**: instalado e lido, não medido) e tabela de papéis no `.claude/agents/README.md` (dev sim; `tl`/`po`/`scout` não) | plugin com hooks no **Claude Code, Codex e Copilot CLI** (cada um com o seu install; o marvin detecta só o do Claude, distinguindo *instalado* — `~/.claude/plugins/installed_plugins.json` — de *ativo* — `~/.claude/.ponytail-active`); no Cursor, os hooks (`~/.cursor/hooks.json`) ou o arquivo de regra, nenhum gerado; o resto copia o arquivo de regra do repositório do ponytail |
 | `playwright` | seção `## Ferramentas` no `AGENTS.md` com a regra "US que toca tela só fecha com evidência do Playwright" (roteiro do fluxo + screenshot ou `playwright-cli snapshot`); confiança **baixa**: não medido | oferecido só quando um `package.json` (raiz ou sub-repo, profundidade ≤ 3) tem front web; a instalação não é detectada; cobre só web/PWA — não React Native/Expo sem `react-dom`, nem Flutter |
+| `impeccable` | com `--use=impeccable`, uma seção curta `## Ferramentas` num `AGENTS.md` **gerado** (confiança **baixa**: não medido; *live* e *Apply* fora; `PRODUCT.md` e `DESIGN.md` seguem do humano; não manda nenhum agente usá-lo); um `AGENTS.md` existente só recebe aviso no passo 10 | oferecido só quando um `package.json` (raiz ou sub-repo, profundidade ≤ 3) tem front, e o marvin **nunca instala nem copia**: a oferta é `npx impeccable install`. Detecta o `SKILL.md` em `skills/impeccable/` sob `.claude/`, `.agents/` ou `.github/` (projeto), ou em `~/.claude/skills/impeccable/` ou plugin `impeccable@…` no escopo de usuário (global); `~/.impeccable/` não conta. Não cobre Flutter |
 
 *Alcance* é a coluna que importa: diz quem consegue consumir o que a ferramenta produz.
 Ferramenta cuja saída só um agente lê é decisão, não padrão.
@@ -452,7 +453,7 @@ turno relê o contexto inteiro.
                   quando faltam (ECC no escopo do projeto; graphify via uv, do perfil do usuário).
                   Instala também o ponytail, mas só onde o registro diz `sim`.
                   Falha vira aviso e sai 0
---no-questions    registra `não` para toda ferramenta OPCIONAL (playwright), mesmo com terminal
+--no-questions    registra `não` para toda ferramenta OPCIONAL (playwright, impeccable), mesmo com terminal
 --help, -h        uso; sai sem escrever nada
 ```
 
@@ -770,7 +771,7 @@ suíte no `macos-latest` a cada push.
 node teste.mjs
 ```
 
-693 verificações, zero dependência. Cobre os invariantes que protegem o disco
+712 verificações, zero dependência. Cobre os invariantes que protegem o disco
 alheio — `--help`, `--dry-run` e `--check` não escrevem nada, rodar duas vezes não duplica,
 a memória existente é copiada e conferida antes de o perfil virar link, e junction quebrada
 por pasta movida é **consertada**, não só reportada. O plano do dry-run também é conferido:
