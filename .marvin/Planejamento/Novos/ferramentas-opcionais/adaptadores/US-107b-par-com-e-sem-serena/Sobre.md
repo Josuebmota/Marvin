@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: cancelada
 pai: ../Sobre.md
 name: US-107b-par-com-e-sem-serena
 description: "Refinada: o par com e sem a Serena na mesma US de leitura de código, mesmo modelo e esforço, para decidir o usa no ferramentas.md. Só roda se a US-107a não parar. Segunda metade da US-107."
@@ -43,6 +43,8 @@ Nenhuma.
 
 ## Rumo
 - **04/11/2026** — refinada (`/refinar`, `tl` e `po` no Opus · médio). Nasce da US-107. Fica atrás da 107a e da ❓1.
+
+- **04/11/2026** — cancelada: o par inline coube na 107a (1 par, tarefa de achar usos; Serena pior em completude) e o dono fechou `usa: não`.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->

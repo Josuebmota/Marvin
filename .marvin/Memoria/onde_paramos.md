@@ -23,6 +23,5 @@ metadata:
 
 ## Em andamento
 
-
-- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — última release registrada 3.4.4; nenhuma US ativa. Próximo passo: `/retomar` e a porta 1, ilha `ferramentas` (US-107a, depois a 107b, que depende da 107a); ❓ da 107a: o Parci tem servidor de linguagem? Anotadas paradas por decisão do dono: US-88, 89 e 102
+- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — última release registrada 3.4.4; nenhuma US ativa. Serena avaliada e fechada `usa: não` (US-107a concluída, 107b cancelada, 04/11). Próximo passo: `/refinar`; a fila refinada está vazia. Anotadas paradas por decisão do dono: US-88, 89 e 102
 

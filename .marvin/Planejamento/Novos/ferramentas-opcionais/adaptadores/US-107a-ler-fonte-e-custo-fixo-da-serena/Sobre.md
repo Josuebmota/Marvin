@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: refinada
+estado: concluida
 pai: ../Sobre.md
 name: US-107a-ler-fonte-e-custo-fixo-da-serena
 description: "Refinada: ler a fonte da Serena (MCP) e medir o custo fixo por sessão; para sem par se ela não carregar como MCP ou se o custo fixo comer o ganho plausível. Primeira metade da US-107."
@@ -44,9 +44,40 @@ Grafo (fresco, 04/11): `OPTIONAL_TOOLS` L2709 — grau 3 (contains; US-71 e US-4
 ## Skills
 Nenhuma.
 
+## Impacto
+
+<!-- gerado por `marvin --us` a partir do grafo; regerado a cada run — não edite à mão -->
+
+Toca 1 nó(s) de código em 0 comunidade(s).
+
+Nada depende do que ela toca — folha do grafo.
+
+**Outras US no mesmo código** — combine antes, não no merge:
+- [US-84 — quebrar o `delegacao.md` e ligar os órfãos](../../../../Manutencao/publicacao/contexto-fixo/US-84-quebrar-delegacao-e-ligar-orfaos/Sobre.md) — 1 nó(s) em comum
+- [US-104 — Impeccable como ferramenta opcional](../US-104-impeccable-opcional/Sobre.md) — 1 nó(s) em comum
+- [US-105 — Motion para sites](../US-105-motion-para-sites/Sobre.md) — 1 nó(s) em comum
+- [US-106 — O Marvin oferece o Impeccable (entrada no `OPTIONAL_TOOLS`)](../US-106-impeccable-oferta-no-optional-tools/Sobre.md) — 1 nó(s) em comum
+- [US-107b — o par com e sem a Serena](../US-107b-par-com-e-sem-serena/Sobre.md) — 1 nó(s) em comum
+- [US-25 — avaliar Superpowers e Claude Octopus contra o fluxo do Marvin](../US-25-avaliar-superpowers-e-octopus/Sobre.md) — 1 nó(s) em comum
+- [US-48 — Superpowers e ECC como ferramentas de execução da equipe](../US-48-superpowers-e-ecc/Sobre.md) — 1 nó(s) em comum
+- [US-68 — ponytail ligado e medido](../US-68-ponytail-medido/Sobre.md) — 1 nó(s) em comum
+- [US-93 — ponytail: segundo par medido](../US-93-ponytail-segundo-par/Sobre.md) — 1 nó(s) em comum
+- [US-50 — o Marvin instala as ferramentas por projeto](../../curadoria/US-50-marvin-plugin-e-curador/Sobre.md) — 1 nó(s) em comum
+
 ## Rumo
 - **04/11/2026** — refinada (`/refinar`, `tl` e `po` no Opus · médio). Nasce da US-107, dividida como a US-11 em 11a/11b. Nada da Serena foi conferido ainda.
+- **04/11/2026 — ativa; item 1 (fonte lida), conferido em 04/11/2026 em github.com/oraios/serena (README, via WebFetch resumido: o texto literal não foi relido).**
+  - Licença por componente: SolidLSP MIT; o restante GPL-3.0-or-later; combinação rege-se pela GPL. Contribuição exige CLA.
+  - Instala com `uv tool install -p 3.13 serena-agent` e `serena init`; a página avisa para **não** instalar por marketplace de MCP ou plugin. `uvx` e `pip`: não consta.
+  - Carrega como MCP de duas formas: comando de início do cliente, ou servidor em modo HTTP com a URL no cliente. **stdio: não consta.**
+  - Ferramentas citadas: recuperação (find symbol, overview, referencing symbols, declaration, implementations, diagnósticos), edição simbólica (replace symbol body, insert before/after, safe delete), rename, básicas (search_for_pattern, replace_content, list_dir, find_file, read_file, execute_shell_command — **desligadas por padrão dentro de Claude Code**). Lista completa com parâmetros: não consta.
+  - Backend padrão: servidores de linguagem (LSP), "mais de 40 linguagens", C# e TypeScript entre elas. Backend alternativo: plugin JetBrains, pago.
+  - Memória: **existe** e pode ser desligada; onde guarda: não consta. Não é só navegação: é conjunto (leitura, edição, memória). ❓ 1 da US-107: a parte de memória é confirmada, vira US separada.
+  - Parci (`<caminho do Parci>/repos`): `parci-api` (.sln, C#), `parci-front` e `parci-mobile` (TypeScript). Há LSP para as duas linguagens segundo a página; **não conferido** que funcione no Windows e na solução do Parci.
+  - Item 5 (parcial): o servidor entra como MCP sempre carregado quando ligado, mas o **custo fixo só o `/context` diz**.
+- **04/11/2026 — instalada com autorização do dono.** O `uv` **não** estava instalado (a entrada do PATH era de uma pasta inexistente; o registro acima errou); instalado por `winget install astral-sh.uv`. Depois `uv tool install -p 3.13 serena-agent` (Serena 2.1.0, backend LSP) e `serena init` (cria `~/.serena`). MCP registrado **só em escopo local do Parci** (`claude mcp add --scope local serena -- serena start-mcp-server --context claude-code --project-from-cwd`; nada no git do Parci). Transporte **stdio**: conectou (`claude mcp list`: ✔ Connected). A conexão criou `.serena/` não rastreado na raiz do Parci (a remover ao desinstalar). Falta o número: o dono abre o Claude Code no Parci e lê o `/context` com e sem o MCP.
+- **Pendente do dono (original):** `uv` já está no PATH. A medição exige instalar a Serena (download e execução de código de terceiro, GPL) e ler o `/context` numa sessão do Claude Code aberta no Parci; esta sessão não enxerga o `/context` de outra.
 - Parada de gasto: leitura mais custo fixo, sem par. O teto do par (~2 × 125k tokens, no máximo 300k) é da 107b.
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+Fechada pelo dono em 04/11/2026 com a parada do item 3 adaptada: o par rodou inline na tarefa "onde `finalidadeEfetiva` é usada" no Parci (1 par). Com Serena 8 de 9 usos; sem, 9 de 9. Totais de `/context` do par não foram entregues. Linha `serena` em `.marvin/ferramentas.md`, `usa: não`.
