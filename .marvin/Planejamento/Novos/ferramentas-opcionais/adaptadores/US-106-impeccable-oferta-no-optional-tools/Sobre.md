@@ -22,7 +22,7 @@ description: "Refinada: o Marvin detecta front e oferece o Impeccable como ferra
 **Fatos conferidos no disco pelo `tl` (03/11/2026):** a instalação em escopo de projeto escreve `SKILL.md` (`name: impeccable`, versão 4.8.0) em `.claude/skills/`, `.agents/skills/` e `.github/skills/`, mais `scripts/impeccable` e `.cmd`, os agentes `impeccable-*`, e hooks em `.codex/hooks.json` e `.github/hooks/impeccable.json`. `~/.claude/skills/impeccable*` não existe; `~/.impeccable/` existe desde antes (falso positivo). O `installed_plugins.json` tem `{"version":2,"plugins":{"<nome>@<marketplace>":[{scope,projectPath?}]}}` e **não há chave `impeccable`**: o nome da chave não está confirmado. O `marvin.mjs` não escreve `.codex/hooks.json` em lugar nenhum.
 
 ## Perguntas
-- ❓ 1. O Impeccable instalado neste repo (~66 MB, hooks) entra no git ou fica fora? O Marvin não escreve exclude; a decisão é sua. Até lá, não commitar com `git add -A`.
+- ✅ 1. O Impeccable instalado neste repo (~66 MB, hooks) entra no git ou fica fora? **Fica instalado e fora do git** (dono, 04/11/2026): excluído em `.git/info/exclude`, só nesta máquina. O `.codex/hooks.json` é versionado e segue modificado: não commitar com `git add -A`.
 
 ## Fluxos ligados
 Nenhum fluxo novo: segue o ciclo do `adaptador-de-ferramenta` (detectar, perguntar uma vez, registrar). Padrão de comparação: a entrada do `playwright` e a detecção do `ponytail`.
@@ -88,6 +88,7 @@ Nada depende do que ela toca — folha do grafo.
 
 ## Rumo
 - **03/11/2026** — implementada, verificada pelo `qa` e lida pelo `tl` no mesmo dia (ver Evidência). Aberta por decisão do dono (❓ 7 da US-104: "já, como oferta"); `tl` Opus · alto definiu a especificação acima a partir da instalação real neste repo. Em conflito com o item 4 da US-104 (código só depois do par), vence a escolha do dono; o par continua valendo para virar `sim`.
+- **04/11/2026** — ❓ 1 respondida: o dono mantém o Impeccable instalado neste repo, sem versionar. A exclusão é local (`.git/info/exclude`), não no `.gitignore` público, porque é escolha desta máquina e o `usa` segue `não`. Os hooks em `.codex/hooks.json` ficam ativos e o arquivo continua aparecendo como modificado no `git status`. O aviso de agentes sem `model:` pode continuar, porque os 4 `impeccable-*` seguem no disco.
 
 ## Evidência
 - `node teste.mjs`: **712 passaram**, exit 0 (693 antes, 19 novas), conferido de novo pelo `qa` (Sonnet · médio) em execução própria; os dois READMEs dizem 712.
