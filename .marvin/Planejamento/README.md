@@ -51,7 +51,8 @@ Regras:
 - **Pausada não é ativa.** US parada que não acabou é `estado: pausada`, com `espera:` (o que ou
   quem destrava) e `desde:` no frontmatter; o `--status` a lista à parte, fora de "Em andamento".
   Pausa-se com `marvin --us <caminho> --pausar "<espera>"` (a volta é `--ativa`), sem editar o
-  frontmatter à mão.
+  frontmatter à mão. Codada e falta só conferir: `marvin --us <caminho> --pausar "qa"` (o `qa`
+  em lote destrava).
 - **Aresta é link.** Fluxo ligado, código tocado e pai são links/caminhos — é o que o
   grafo lê.
 
