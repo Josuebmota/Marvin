@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: anotada
+estado: cancelada
 pai: ../Sobre.md
 name: US-107-avaliar-serena
 description: "Anotação: avaliar a Serena (MCP) como ferramenta opcional, frente ao graphify; a origem é um reel que afirma 90% de economia sem medição. Nada conferido na fonte ainda."
@@ -33,6 +33,13 @@ _(procedimento que vai repetir — proposta aqui, SKILL.md na segunda vez)_
 
 ## Rumo
 - **03/11/2026** — anotada a pedido do dono, depois de assistir ao reel (áudio transcrito e quadros lidos). Sem crivo `tl` + `po` ainda: fica `anotada` até o `/refinar`.
+
+- **04/11/2026** — `/refinar` ("refina tudo"), crivo `tl` e `po` no Opus · médio, em paralelo; grafo fresco. **Segue `anotada`: os dois divergem e a ❓1 bloqueia.** Nada da Serena foi conferido na fonte.
+  - **`tl`:** refina já, como avaliação pura (Código tocado vazio, ilha em `.marvin/ferramentas.md`, risco zero para o script). Dividir em **107a** ler a fonte e medir o custo fixo (para sem par se não carregar como MCP ou se o custo fixo comer o ganho) e **107b** o par com e sem, num projeto do OvenorGroup com servidor de linguagem. Time: scout Haiku · baixo (fonte, exige rede) · dev-back Sonnet · baixo (custo fixo) · dev-back Sonnet · médio (par) · qa Sonnet · baixo · tl+po Opus · médio (decidir o `usa`). Instalar o MCP só em escopo de projeto ou worktree, e remover depois.
+  - **`po`:** fica estacionada. Não há dor medida nem caso em que o Grep ou o graphify errou; é o gêmeo do graft (reel sem linha de base, `usa: não`) e passa pelo mesmo portão da US-43. Só vale o passo 0: ler a fonte e procurar nos Rumo e *Time* do Parci e deste repo casos de "onde está X" errado; com 3 ou mais, refina; com menos, segue `anotada` (régua da US-88 e da US-89). Teto do par, se vier: ~2 × 125k tokens, no máximo 300k; um par decide só o `não`, o `sim` exige um segundo.
+  - Fora do parecer, a apontar: a Feature `adaptadores` está `concluida` e já recebeu US-68, 93 e 104 sem reabrir; e se a Serena for MCP sempre carregado, o `tl` deve dizer se cai na decisão fechada "graphify como consulta, nunca o hook".
+
+- **04/11/2026** — dono: "refinar em 107a/b". Cancelada, substituída pela [US-107a](../US-107a-ler-fonte-e-custo-fixo-da-serena/Sobre.md) (ler a fonte e medir o custo fixo) e pela [US-107b](../US-107b-par-com-e-sem-serena/Sobre.md) (o par), como a US-11 virou 11a e 11b. As ❓ 1 e 2 foram para as duas.
 
 ## Evidência
 <!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->

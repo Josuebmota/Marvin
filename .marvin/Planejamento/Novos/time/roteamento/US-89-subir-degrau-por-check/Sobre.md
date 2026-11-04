@@ -31,11 +31,11 @@ O *Time* é lido em `readNode` (L655-667), mas só saem `comModelo` e `papeis`; 
   - **`tl`:** refinar já. Cabe em 1 chat (ou duas fatias: método com `UPDATES`, depois leitura e `--status`), e a taxa medida é o que vai responder se começar barato compensa.
   - **`po`:** voltar para `anotada` com um passo 0. Contar, nos Rumo e *Time* do Parci e do heim-development, as etapas com check reprovado e o que se fez (subiu, corrigiu o contexto, repetiu no mesmo degrau). Reabrir só com pelo menos 3 subidas reais. Se a regra existe e ninguém sobe, o problema é a regra não disparar, não faltar métrica. Mesma régua que fez a US-88 voltar.
   - A US está parada em `anotada` até você responder.~~ → medir antes (dono, 29/10/2026). Medido: 2 subidas reais, abaixo do limiar de 3 — segue `anotada` (Rumo).
-- ❓ 2. **Onde registrar a subida:**
+- ~~❓ 2. **Onde registrar a subida:**~~ → **linha nova no *Time***, a do `tl` (dono, 04/11/2026): muda o comentário do template e exige marca em `UPDATES`. As duas opções, para registro:
   - **`tl`:** numa linha nova do *Time* (`reprovado` e `sobe:`). Muda o comentário do template e exige marca em `UPDATES`.
   - **`po`:** numa linha de formato fixo no Rumo, onde o `delegacao.md` já manda registrar. Não muda o template.
-- ❓ 3. O teto é de 2 subidas por etapa, com o esforço contando junto? E, ao bater no teto, a US vira `pausada` com `espera: dono`?
-- ❓ 4. Esforço baixo como padrão: os dois dizem que não por ora. A matriz já diz "parte da tabela, nunca acima", e quem decide é a taxa medida.
+- ~~❓ 3. O teto é de 2 subidas por etapa, com o esforço contando junto? E, ao bater no teto, a US vira `pausada` com `espera: dono`?~~ → **sim, como proposto** (dono, 04/11/2026).
+- ~~❓ 4. Esforço baixo como padrão: os dois dizem que não por ora. A matriz já diz "parte da tabela, nunca acima", e quem decide é a taxa medida.~~ → **não, por ora** (dono, 04/11/2026).
 - ~~❓ 5. Se for medir antes: posso ler os `.marvin/` do Parci e do heim-development (só leitura, contagem por grep)?~~ → sim (dono, 29/10/2026).
 
 ## Fluxos ligados

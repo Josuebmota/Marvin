@@ -20,9 +20,9 @@ description: "Rituais do Marvin que hoje são só conselho (teste antes do commi
 
 ## Perguntas
 - ~~❓ 1. Como o hook sabe que o teste passou depois da última edição? `tl`: marca com hash do estado de trabalho (`git diff HEAD` + não rastreados) escrita pelo `teste.mjs` ao passar — determinística, pega edição fora da sessão. `po`: marca escrita por um `PostToolUse` quando o comando canônico sai com 0, comparada com o mtime do stage — não toca o teste, mas depende de o `tool_response` trazer o código de saída (não verificado). Transcrição: descartada pelos dois (formato não é contrato).~~ → a do `tl`: marca com hash do estado de trabalho escrita pelo `teste.mjs` ao passar (dono, 29/10/2026).
-- ❓ 2. Onde fica a marca? Arquivo novo no `.gitignore` gerado vira marca em `UPDATES` no passo 2.
+- ~~❓ 2. Onde fica a marca? Arquivo novo no `.gitignore` gerado vira marca em `UPDATES` no passo 2.~~ → **dentro do `.git`** (dono, 04/11/2026), em `git rev-parse --git-dir` (funciona em worktree), p.ex. `marvin-teste-passou`. Nunca é versionada, não mexe no `.gitignore` gerado e não exige marca em `UPDATES`.
 - ~~❓ 3. Se a medição der 1 caso: espera a segunda vez, como manda a régua, ou a trava entra mesmo assim (é pergunta de confiança, não de token)?~~ → espera a segunda vez, como manda a régua (dono, 29/10/2026).
-- ❓ 4. Aceita subir o node em todo Bash da LLM, se o matcher não filtrar por comando?
+- ~~❓ 4. Aceita subir o node em todo Bash da LLM, se o matcher não filtrar por comando?~~ → **sim, aceito** (dono, 04/11/2026). A trava continua liberando em qualquer erro próprio.
 
 ## Fluxos ligados
 - [delegacao.md](../../../../../Contexto/Fluxos/delegacao.md)
