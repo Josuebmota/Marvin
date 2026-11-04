@@ -23,5 +23,5 @@ metadata:
 
 ## Em andamento
 
-- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — última release registrada 3.4.4; nenhuma US ativa. Serena avaliada e fechada `usa: não` (US-107a concluída, 107b cancelada, 04/11). Próximo passo: `/refinar`; a fila refinada está vazia. Anotadas paradas por decisão do dono: US-88, 89 e 102
+- ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — última release registrada 3.4.4; nenhuma US ativa. Serena fechada `usa: não` (US-107a/b); US-102, 88 e 89 desenvolvidas e concluídas em 04/11 (teste 727), sem commit de release. Próximo passo: a release (3.4.5: as entradas de `UPDATES` já usam essa versão) e depois `/refinar`; a fila refinada está vazia. Segue pendente: item 5 da US-88 (conferir a partir de 18/11 se há commit de código sem teste)
 

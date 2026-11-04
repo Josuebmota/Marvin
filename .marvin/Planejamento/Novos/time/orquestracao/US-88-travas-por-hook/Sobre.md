@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: anotada
+estado: concluida
 pai: ../Sobre.md
 name: US-88-travas-por-hook
 description: "Rituais do Marvin que hoje são só conselho (teste antes do commit, tl depois da última edição) viram trava por hook do Claude Code (PreToolUse/Stop), escritos pelo script no .claude/settings.json. Separada da US-86: não precisa de plugin."
@@ -9,7 +9,7 @@ description: "Rituais do Marvin que hoje são só conselho (teste antes do commi
 
 **Por quê:** pergunta do dono (27/10/2026): "como eu sei que a LLM está seguindo o Marvin a todo momento?". O hook que o script escreve só tem `SessionStart` (`marvin.mjs:4250`): avisa, não impede. Caso de 29/10: um commit da nota saiu sem `node teste.mjs` antes. Separada da [US-86](../../../../Manutencao/publicacao/empacotamento/US-86-plugin-fino-sobre-o-npm/Sobre.md) por decisão do dono (29/10). **Um caso só** — pela régua da US-53 é especulação até medir; `tl` e `po` concordam: medir primeiro.
 
-**Pronto quando** (esta US é o passo 0 e o passo 1; o passo 2 abre outra US):
+**Pronto quando** (o dono mandou desenvolver em 04/11/2026 sem o segundo caso; os itens 1, 2 e 5 já estão cumpridos ou dispensados: medição = 0 casos de código, formato do hook conferido no Rumo, e o item 5 é de duas semanas depois, fora desta rodada; valem 3 e 4, com a marca da ❓1/❓2):
 1. **Medir (passo 0, só leitura):** contar nas transcrições deste repo os `git commit` feitos pela LLM sem o comando canônico de teste depois do último Edit/Write, com o período. Número no Rumo. Se der 1, a US volta a `anotada` (❓3).
 2. Com ≥2: conferir na documentação atual do Claude Code o formato de `PreToolUse`/`PostToolUse`, o que o stdin traz e como bloquear (`exit 2` ou `permissionDecision: deny`), com link no Rumo — invariante 3.
 3. **Trava à mão neste repo (passo 1):** `PreToolUse` com matcher `Bash` no `.claude/settings.json` daqui; quando o comando contém `git commit` e há edição depois da marca "teste passou", bloqueia e diz o que rodar. Libera em qualquer erro próprio (JSON inválido, git ausente, marca ilegível) — trava com bug não pode travar todo commit.
@@ -90,6 +90,7 @@ Nada depende do que ela toca — folha do grafo.
 - **29/10/2026** — passo 0 (medir). 43 transcripts, 03/08 a 29/10/2026, 178 commits: 41 com teste depois da última edição, 90 sem edição desde o commit anterior, 47 marcados "sem teste". Dos 47, só 3 tocavam `marvin.mjs`/`teste.mjs`, e conferidos à mão os 3 são falso positivo: o `node teste.mjs` rodou no mesmo comando do commit (09-11 11:37 e 20:35, 10-15 19:12). **Commit de código sem teste: 0.** Os outros 44 são commits só de base (`.md`, `onde_paramos.md`, `Sobre.md`) ou com edição só no scratchpad; vários também têm o teste no mesmo comando (o contador não separa). O caso de 29/10 (nota sem teste) é desse tipo — o `teste.mjs` quase não cobre o texto da base. Pela ❓3 (dono: com 1 caso, espera a segunda vez), a US volta a `anotada`.
 - **04/11/2026** — `/refinar` ("refina tudo"): segue `anotada`, o passo 0 deu 0 e o dono mandou esperar o segundo caso. Respondidas as ❓ 2 e 4: a marca "teste passou" fica **dentro do `.git`** (`git rev-parse --git-dir`, sem `.gitignore` nem `UPDATES`); o dono aceita o node em todo Bash da LLM. Nenhuma ❓ aberta; reabre com o segundo commit de código sem teste.
 - **Achado da medição, outro problema:** nos casos de setembro o commit vinha encadeado com `;` depois do teste (`node teste.mjs | tail -1; git add -A; git commit`) — teria commitado com o teste falhando. Se a trava voltar, ela exige teste **que passou**, não teste que rodou. Script da contagem: `analise_commits.mjs` (scratchpad da sessão, não versionado).
+- **04/11/2026** — o dono mandou refinar e desenvolver as três anotadas; a espera pelo segundo caso foi dispensada. Ativa. Formato do hook conferido em code.claude.com/docs/en/hooks (WebFetch resumido, 04/11/2026): `PreToolUse` com `matcher: "Bash"`; stdin traz `tool_name`, `tool_input.command`, `cwd`; **exit 2 bloqueia** e o stderr vira o motivo; exit 1 e timeout **não bloqueiam** (a ação segue); `tool_response` do `PostToolUse` não conferido (a marca vem do `teste.mjs`, não do hook).
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+Passo 1 (04/11/2026): `.claude/hooks/trava-commit.mjs` + `PreToolUse` Bash no `.claude/settings.json`; `teste.mjs` escreve a marca `marvin-teste-passou` no git-dir só com tudo verde; hash de `marvin.mjs` + `teste.mjs` + `package.json` (decisão da sessão: só código, não notas). +7 verificações; `node teste.mjs`: 727 passaram. Hook lido pela sessão principal: erro próprio libera, exit 2 só com marca ausente ou diferente. Item 5 (duas semanas sem commit de código sem teste) fica aberto: conferir a partir de 18/11/2026. Passo 2 (o script escrever a trava nos projetos), `Stop` e a trava do `tl` seguem fora.

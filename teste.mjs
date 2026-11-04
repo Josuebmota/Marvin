@@ -41,6 +41,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync, spawn } from 'node:child_process';
 
@@ -1347,6 +1348,18 @@ for (const [label, skip] of [['nota sem copiar', 'nota3.md'], ['subpasta sem .md
   check('US-83: caminho fora de Planejamento/ recusa com código 2, mostra um exemplo e não cria nada', bad.every(b => b.status === 2 && /e\.g\. Novos\//.test(b.stdout + b.stderr)) && tree(a.proj) === t0);
   cleanup(a); }
 
+  { const a = arena('us102'); run(a, '--no-git');
+  // US-102: a new US with a US-NN prefix that exists at another path warns (both paths) and still writes, exit 0.
+  const PL = path.join(a.proj, '.marvin', 'Planejamento');
+  const first = run(a, '--us', 'Novos/E/F/US-77-a');
+  check('US-102: sem colisão não avisa', first.status === 0 && !/already exists at/.test(first.stdout + first.stderr), first.stdout.slice(-300));
+  const col = run(a, '--us', 'Manutencao/E2/F2/US-77-b');
+  const colOut = col.stdout + col.stderr;
+  check('US-102: colisão avisa com os dois caminhos, escreve a US e sai 0', col.status === 0 && /already exists at Novos\/E\/F\/US-77-a/.test(colOut) && /Manutencao\/E2\/F2\/US-77-b/.test(colOut) && fs.existsSync(path.join(PL, 'Manutencao', 'E2', 'F2', 'US-77-b', 'Sobre.md')), colOut.slice(-300));
+  const again = run(a, '--us', 'Manutencao/E2/F2/US-77-b');
+  check('US-102: repetir o mesmo caminho não avisa', again.status === 0 && !/already exists at/.test(again.stdout + again.stderr), again.stdout.slice(-300));
+  cleanup(a); }
+
   // ── 9s. --status: reads the nodes, checks against the note, and the exit code is the message.
   const s1 = run(a, '--status');
   check('--status sai 0 quando nota e nós concordam', s1.status === 0, s1.stdout.slice(-400));
@@ -1828,6 +1841,32 @@ for (const [label, skip] of [['nota sem copiar', 'nota3.md'], ['subpasta sem .md
   const short = run(a, '--status', '--curto', '--html');
   check('--curto --html regera o dashboard em silêncio (é o hook)', short.status === 0 && !/index\.html/.test(short.stdout) && fs.statSync(path.join(a.proj, '.marvin', '.status', 'index.html')).size > 1000);
   check('o hook gerado regera o HTML', /--status --curto --html/.test(fs.readFileSync(path.join(a.proj, '.claude', 'settings.json'), 'utf8')));
+  cleanup(a);
+}
+
+// ── US-89: the step-up ladder read from the Time rows (no transcript) and the UPDATES marks for the new text.
+{
+  const a = arena('escada');
+  const fresh = run(a, '--no-git', '--no-questions');
+  check('US-89: base nova com o teto de subidas: o passo 10 não acusa', !/desde 3\.4\.5/.test(fresh.stdout), fresh.stdout.slice(-500));
+  const eq = path.join(a.proj, '.marvin', 'Contexto', 'Equipe.md'), ia = path.join(a.proj, '.marvin', 'Contexto', 'IA.md');
+  const eqTxt = fs.readFileSync(eq, 'utf8'), iaTxt = fs.readFileSync(ia, 'utf8');
+  check('US-89: Equipe.md e IA.md gerados trazem o teto, a repetição com o erro do check e a volta ao dono',
+        [eqTxt, iaTxt].every(t => /Teto\s+de\s+2\s+subidas/.test(t) && /erro\s+do\s+check/.test(t) && /volta\s+para\s+o\s+dono/.test(t)) && /`sobe:`/.test(eqTxt));
+  const oldEq = eqTxt.replace(/\*\*Teto de 2 subidas[\s\S]*?pausar "dono"`\.\n/, () => ''), oldIa = iaTxt.replace(/Teto de 2 subidas[\s\S]*?sem subir mais\.\n/, () => '');
+  fs.writeFileSync(eq, oldEq); fs.writeFileSync(ia, oldIa);
+  const old = run(a, '--no-git', '--no-questions');
+  check('US-89: base antiga recebe o aviso (desde 3.4.5) no Equipe.md e no IA.md, sem reescrever',
+        /Equipe\.md — missing[^\n]*desde 3\.4\.5/.test(old.stdout) && /IA\.md — missing[^\n]*desde 3\.4\.5/.test(old.stdout)
+        && fs.readFileSync(eq, 'utf8') === oldEq && fs.readFileSync(ia, 'utf8') === oldIa, old.stdout.slice(-600));
+  const usDir = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E', 'F', 'US-9-x'); fs.mkdirSync(usDir, { recursive: true });
+  fs.writeFileSync(path.join(usDir, 'Sobre.md'), '---\ntipo: us\nestado: ativa\n---\n# US-9 — x\n\n## Time\n\n| etapa | papel | modelo · esforço | motivo | estado |\n|---|---|---|---|---|\n'
+    + '| implementar | dev-back | Haiku · baixo | partida | reprovado |\n| implementar | dev-back | Sonnet · baixo | sobe: teste X | feito |\n| verificar | qa | Sonnet · baixo | partida | pendente |\n');
+  const antiga = path.join(a.proj, '.marvin', 'Planejamento', 'Novos', 'E', 'F', 'US-8-velha'); fs.mkdirSync(antiga, { recursive: true });
+  fs.writeFileSync(path.join(antiga, 'Sobre.md'), '---\ntipo: us\nestado: concluida\n---\n# US-8 — velha\n\n## Time\n\n| etapa | papel | modelo · esforço | motivo | estado |\n|---|---|---|---|---|\n| implementar | dev-back | Sonnet · médio | partida | pendente |\n');
+  const r = run(a, '--status');
+  check('US-89: --status conta 1 subida no dev-back e a taxa de primeira é 0 de 1', /subidas por papel: dev-back 1\b/.test(r.stdout) && /etapas de primeira: 0 de 1 registradas \(0%\)/.test(r.stdout), r.stdout.slice(-900));
+  check('US-89: a US antiga sem registro não conta como acerto de primeira ("1 de 2 US com registro")', /1 de 2 US com registro/.test(r.stdout), r.stdout.slice(-900));
   cleanup(a);
 }
 
@@ -3805,6 +3844,30 @@ for (const [label, skip] of [['nota sem copiar', 'nota3.md'], ['subpasta sem .md
   cleanup(d);
 }
 
+// ── US-88: the commit lock (.claude/hooks/trava-commit.mjs), run with simulated stdin.
+{
+  const hook = path.join(HERE, '.claude', 'hooks', 'trava-commit.mjs');
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'marvin-us88-'));
+  spawnSync('git', ['init', '-q', '.'], { cwd: repo });
+  const files = ['marvin.mjs', 'teste.mjs', 'package.json'];
+  for (const f of files) fs.writeFileSync(path.join(repo, f), f + ' v1\n');
+  const markFile = path.join(repo, '.git', 'marvin-teste-passou');
+  const hashOf = () => files.reduce((h, f) => h.update(fs.readFileSync(path.join(repo, f))), crypto.createHash('sha1')).digest('hex');
+  const hookRun = (command, raw) => spawnSync('node', [hook], { input: raw ?? JSON.stringify({ tool_input: { command }, cwd: repo }), encoding: 'utf8' });
+
+  check('US-88: comando sem git commit passa', hookRun('git status').status === 0);
+  const noMark = hookRun('git commit -m x');
+  check('US-88: git commit sem marca bloqueia (exit 2) e cita node teste.mjs', noMark.status === 2 && /node teste\.mjs/.test(noMark.stderr), noMark.status + ' ' + noMark.stderr);
+  fs.writeFileSync(markFile, hashOf());
+  check('US-88: git commit com a marca igual ao hash passa', hookRun('git commit -m x').status === 0);
+  fs.writeFileSync(path.join(repo, 'marvin.mjs'), 'marvin.mjs v2\n');
+  check('US-88: edição depois da marca bloqueia de novo', hookRun('git commit -m x').status === 2);
+  check('US-88: JSON inválido no stdin libera (erro próprio nunca bloqueia)', hookRun('', 'isto não é json').status === 0);
+  check('US-88: node teste.mjs && git commit passa (o teste gateia no mesmo comando)', hookRun('node teste.mjs && git commit -m x').status === 0);
+  check('US-88: node teste.mjs ; git commit continua bloqueado', hookRun('node teste.mjs ; git commit -m x').status === 2);
+  fs.rmSync(repo, { recursive: true, force: true });
+}
+
 // ── LAST. The number of checks claimed in the READMEs matches the real one.
 //
 // It has drifted THREE times in this repository: 26 when there were 28, 48 when there
@@ -3828,6 +3891,18 @@ for (const [label, skip] of [['nota sem copiar', 'nota3.md'], ['subpasta sem .md
   }
 }
 // ═══════════════════════════════════════════════════════════════════════
+// US-88: all green and inside a git repo => write the "tests passed" mark the commit lock reads.
+// A failure to write must never break the test.
+if (failed === 0) {
+  try {
+    const gd = spawnSync('git', ['rev-parse', '--git-dir'], { cwd: HERE, encoding: 'utf8' });
+    if (gd.status === 0) {
+      const h = crypto.createHash('sha1');
+      for (const f of ['marvin.mjs', 'teste.mjs', 'package.json']) h.update(fs.readFileSync(path.join(HERE, f)));
+      fs.writeFileSync(path.resolve(HERE, gd.stdout.trim(), 'marvin-teste-passou'), h.digest('hex'));
+    }
+  } catch {}
+}
 console.log('\n' + (failed === 0
   ? green(`${passed} passaram`)
   : red(`${failed} falharam`) + `, ${passed} passaram`) + '\n');

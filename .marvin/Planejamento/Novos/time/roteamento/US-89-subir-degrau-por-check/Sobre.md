@@ -1,6 +1,6 @@
 ---
 tipo: us
-estado: anotada
+estado: concluida
 pai: ../Sobre.md
 name: US-89-subir-degrau-por-check
 description: "Issue #11: teto de subidas e subida com o erro do check no método gerado, tentativas registradas no Time e o --status medindo custo por US resolvida, subidas por papel e taxa de primeira tentativa. Parada em anotada: tl e po divergem entre refinar já e medir antes."
@@ -87,6 +87,7 @@ Nenhuma.
   - **Leitura:** abaixo do limiar de 3 do `po`, a US segue `anotada`. O padrão dominante é repetir no mesmo degrau com o erro do `tl`, e funciona; a subida de modelo apareceu exatamente no teto de 2 tentativas do `/continuar`, e o registro em texto livre no *Time* bastou para achá-la. A contagem do Parci é parcial: busca por palavra-chave, não leitura de todas as 230 US. Reabre com o terceiro caso, ou se uma subida faltar e custar retrabalho.
 
 - **04/11/2026** — `/refinar` ("refina tudo"): segue `anotada`, 2 subidas reais contra o limiar de 3. Respondidas as ❓ 2, 3 e 4 (dono): a subida é **linha nova no *Time*** (muda o template, marca em `UPDATES`); teto de 2 por etapa com o esforço contando, e no teto a US vira `pausada` com `espera: dono`; esforço baixo como padrão, **não por ora**. A ❓ 1 já estava respondida (medir antes). Nenhuma ❓ aberta; reabre com o terceiro caso, e a tabela do *Time* a valer é a primeira (refinar já).
+- **04/11/2026** — o dono mandou refinar e desenvolver as três anotadas; o limiar de 3 subidas foi dispensado. Ativa; vale a primeira tabela do *Time* (implementar, qa, tl) e a proposta do `tl` (itens 1 a 4).
 
 ## Evidência
-<!-- preenchido ao concluir: PR, teste, print, link. Vazio = não concluiu. -->
+`marvin.mjs`: `readNode` (etapas), `ladderOf`/`printLadder`, templates do `Equipe.md`, `IA.md` e README do Planejamento, 3 entradas em `UPDATES` (`desde: 3.4.5`); `teste.mjs`: +5 verificações; `node teste.mjs`: 720 passaram (04/11/2026). Diff lido pelo `tl` (Opus · médio): APROVADO, sem bloqueio. Sugestões não aplicadas: texto do Time no `--us` sem `sobe:`; estado entre crases ou negrito some do registro; custo contado em dobro com número de US repetido.

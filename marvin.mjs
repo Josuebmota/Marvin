@@ -668,7 +668,10 @@ const readNode = (file) => {
   // US-64: roles named in the table's "papel" column (2nd cell), for the "sem medição" line in --status.
   // A human row (3rd cell "humano", or role "dono") is not an LLM role and has no turn to measure.
   const papeis = [...new Set(rows.filter(c => !/^humano\b/i.test(c[2] || '') && !/^dono$/i.test((c[1] || '').trim())).flatMap(c => (c[1] || '').split('·')[0].split(/[\/,+&]|\s+e\s+/).map(s => s.replace(/`/g, '').trim().toLowerCase()).filter(s => /^[a-z][\w-]*$/.test(s))))];
-  return { arq: file, tipo: field('tipo'), estado: field('estado'), espera: field('espera'), desde: field('desde'), pai: field('pai'), titulo: title, rumo, papeis,
+  // US-89: per-row stage, role, state (first word of the 5th cell) and whether the reason opens with `sobe:` (a step up).
+  const etapas = rows.map(c => ({ etapa: (c[0] || '').replace(/`/g, '').toLowerCase(), papel: (c[1] || '').split('·')[0].replace(/`/g, '').trim().toLowerCase(),
+    estado: ((c[4] || '').match(/^[a-zçãé]+/i) || [''])[0].toLowerCase(), sobe: /^sobe:/i.test((c[3] || '').trim()) }));
+  return { arq: file, tipo: field('tipo'), estado: field('estado'), espera: field('espera'), desde: field('desde'), pai: field('pai'), titulo: title, rumo, papeis, etapas,
            evidencia: cleanEvidence, comEvidencia: /\S/.test(cleanEvidence), tocados, perguntas, pronto, time, comModelo };
 };
 // US-73: the one list of valid `estado:` values. stateMark, roadmap, epics, the history and the
@@ -842,6 +845,33 @@ const computeSpend = (nodes = []) => {
   const medidos = new Set([...byRM.values()].map(q => q.papel));
   const semMedicao = [...new Set(nodes.filter(n => n.tipo === 'us').flatMap(n => n.papeis || []))].filter(p => !medidos.has(p)).sort();
   return { total, sub, porModelo: byModel, porDia: byDay, porPapel: byRole, porPapelModelo: [...byRM.values()], desvios: [...desvios.values()], porUs: [...byUs.values()], semMedicao, sessoes: sessions.size, custo: cost, contextoMedio: avgContext, transcricoes: files.length };
+};
+// US-89: the ladder read from the Time rows (no transcript): steps up by role (rows whose reason opens with `sobe:`),
+// stages solved at the first try over the recorded ones (a `feito`/`reprovado` row), and the cost of the concluded USs.
+// A US with no recorded stage counts nowhere: an old US is not a first-try hit.
+const ladderOf = (nodes, gastos) => {
+  const us = nodes.filter(n => n.tipo === 'us'), done = (e) => e.estado === 'feito' || e.estado === 'reprovado';
+  const comRegistro = us.filter(n => (n.etapas || []).some(done));
+  const subidas = {}; let registradas = 0, primeira = 0;
+  for (const n of us) for (const e of n.etapas || []) if (e.sobe) subidas[e.papel || '?'] = (subidas[e.papel || '?'] || 0) + 1;
+  for (const n of comRegistro) {
+    const por = new Map();
+    for (const e of n.etapas) { if (!done(e) && !e.sobe) continue; por.set(e.etapa, (por.get(e.etapa) || false) || e.estado === 'reprovado' || e.sobe); }
+    registradas += por.size; primeira += [...por.values()].filter(v => !v).length;
+  }
+  const concl = us.filter(n => n.estado === 'concluida'), porUs = new Map((gastos.porUs || []).filter(u => u.us).map(u => [u.us, u.custo]));
+  const medidas = concl.filter(n => porUs.has(usKeyOf(path.dirname(n.arq))));
+  return { us: us.length, comRegistro: comRegistro.length, subidas, registradas, primeira, concluidas: concl.length, medidas: medidas.length,
+           custo: medidas.reduce((t, n) => t + porUs.get(usKeyOf(path.dirname(n.arq))), 0) };
+};
+const printLadder = (l) => {
+  if (!l.comRegistro && !l.concluidas) return;
+  log('\n\x1b[1mEscada\x1b[0m  (do Time das US — linhas `feito`/`reprovado` e motivo `sobe:`; não lê transcrição)');
+  info(`${l.comRegistro} de ${l.us} US com registro; as antigas, sem registro, não contam como acerto de primeira`);
+  info(`etapas de primeira: ${l.primeira} de ${l.registradas} registradas` + (l.registradas ? ` (${Math.round(100 * l.primeira / l.registradas)}%)` : ''));
+  const sub = Object.entries(l.subidas);
+  info('subidas por papel: ' + (sub.length ? sub.sort((a, b) => b[1] - a[1]).map(([r, n]) => `${r} ${n}`).join(', ') : 'nenhuma'));
+  info(`${l.concluidas} US concluídas; ${l.medidas} com turno medido ≈ $${l.custo.toFixed(2)} (janelas de \`marvin --us\`)`);
 };
 const kTk = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n);
 const printSpend = (g, fixedTk) => {
@@ -1524,7 +1554,7 @@ const computeStatus = () => {
   const byFile = new Map(nodes.map(n => [path.resolve(n.arq), n]));
   const parentOf = (n) => n.pai ? byFile.get(path.resolve(path.dirname(n.arq), n.pai)) || null : null;
   const chain = (n) => { const c = []; for (let p = parentOf(n); p; p = parentOf(p)) c.unshift(p.titulo); return c; };
-  const st = { ativas: [], avisos: [], contextoPonteiros: [], problemas: 0, epics: [], release: null, contexto: fixedContext(), grafo: null, gastos: computeSpend(nodes), ilhas: ilhasOf(nodes),
+  const st = { ativas: [], avisos: [], contextoPonteiros: [], problemas: 0, epics: [], release: null, contexto: fixedContext(), grafo: null, gastos: computeSpend(nodes), ilhas: ilhasOf(nodes), nodes,
                nos: { us: nodes.filter(n => n.tipo === 'us').length, concluidas: nodes.filter(n => n.tipo === 'us' && n.estado === 'concluida').length } };
   let note = ''; try { note = fs.readFileSync(path.join(DEST, 'onde_paramos.md'), 'utf8'); } catch {}
   const pointers = [...note.matchAll(/^- \[([^\]]+)\]\(([^)]+)\)(?:\s*[—-]+\s*(.*))?$/gm)];
@@ -1788,6 +1818,7 @@ const printStatus = (st, short) => {
   log('\n\x1b[1mFixed context\x1b[0m');
   printFixedContext();
   printSpend(st.gastos, st.contexto.total);
+  printLadder(ladderOf(st.nodes, st.gastos));
   if (st.herdam.length) warn('agent(s) without model: (inherit the session model): ' + st.herdam.join(', ') + ' — declare model: or record in the US why it inherits');
   log('\n\x1b[1mGraph\x1b[0m');
   info(st.grafo ? `${st.grafo.nos} nodes (${st.grafo.docs} from the knowledge base) — extracted ${st.grafo.idade}d ago` + (st.grafo.idade > 7 ? '  → marvin --graphify --graphify-rebuild' : '') : 'none — marvin --graphify builds it');
@@ -2068,6 +2099,12 @@ if (argUS || hasFlag('--us')) {
   const REFINED = hasFlag('--refinada');   // born in the queue, not in the note (US-16)
   log('\x1b[1m--us\x1b[0m — ' + target + (REFINED ? '  (refinada)' : ANNOTATED ? '  (anotada)' : '') + '\n');
   const today = (() => { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); })();
+  // US-102: a NEW US whose US-NN prefix already lives at another path gets a warning with both paths; it is still
+  // written (exit 0). Local Planejamento only: no network, no git, no suggested number.
+  if (!fs.existsSync(path.join(DOCS, 'Planejamento', ...parts, 'Sobre.md')) && /^US-\d+$/.test(usKeyOf(target))) {
+    const mine = parts.join('/'), key = usKeyOf(target);
+    for (const n of planningNodes()) if (n.tipo === 'us' && usKeyOf(n.arq) === key && normUsPath(n.arq) !== mine) warn(key + ' already exists at ' + normUsPath(n.arq) + ' — creating ' + mine + ' too; check the number');
+  }
   const types = ['epic', 'feature', 'us'];
   for (let i = 1; i <= 3; i++) {
     const dir = path.join(DOCS, 'Planejamento', ...parts.slice(0, i + 1));
@@ -3212,6 +3249,8 @@ Não declarar economia sem comparação completa em atividades reais.
 A escolha visa o mesmo resultado com o menor gasto: parta da opção elegível mais barata.
 O degrau sobe só com motivo registrado no Time da US. Se o \`tl\` já decidiu,
 quem executa não precisa do modelo do \`tl\`.
+Teto de 2 subidas por etapa (o esforço conta como subida): a subida repete a etapa com o
+erro do check, e no teto a etapa volta para o dono, sem subir mais.
 
 ## Entradas do glossário
 
@@ -3271,6 +3310,10 @@ localiza vai no Haiku. Spec clara faz o pensamento antes: o esforço parte do qu
 **Regra do sênior:** começa no degrau mais barato que serve (Haiku para tarefa mecânica
 bem especificada); a verificação (\`qa\`, teste) confere; **sobe só se falhar** — esforço
 antes de modelo —, com o motivo no *Time* da US. Tarefa trivial vai direto, sem triagem.
+**Teto de 2 subidas por etapa** (subir o esforço conta como subida). A subida repete a etapa
+com o erro do check na tarefa, num degrau acima; cada uma é uma linha nova no *Time*: a anterior
+fica \`reprovado\` e o \`motivo\` da nova começa com \`sobe:\` e diz o check que falhou. No teto, a
+etapa volta para o dono: \`marvin --us <caminho> --pausar "dono"\`.
 A última coluna é ponto de partida no Claude, não regra fixa: com outro fornecedor,
 consulte o guia de IA em [\`IA.md\`](IA.md).
 
@@ -3532,7 +3575,11 @@ pai: ../Sobre.md
 <!-- proposto ANTES de começar, pela regra do AGENTS.md. Uma linha por ETAPA, com o modelo.
      Partida no Equipe.md: o degrau mais barato que serve; subir exige motivo. Quem decide
      (tl/po) não é quem executa. Papel = agente do \`.claude/agents\`, com a skill da etapa depois do \`·\`
-     quando houver. Etapa sem modelo trava a execução e volta ao /refinar. -->
+     quando houver. Etapa sem modelo trava a execução e volta ao /refinar.
+     Subida (teto de 2 por etapa): linha nova da mesma etapa logo abaixo; a anterior fica \`reprovado\`
+     e o motivo da nova começa com \`sobe:\` e diz o check que falhou. Ex.:
+     | implementar | dev-back | Haiku · baixo | partida | reprovado |
+     | implementar | dev-back | Sonnet · baixo | sobe: teste X falhou | feito | -->
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
 | mapear o código | scout | Haiku · baixo | recuperação | pendente |
@@ -5471,6 +5518,17 @@ const UPDATES = [
     soCom: (() => { try { return HOOK_SIGNATURE.test(fs.readFileSync(path.join(ROOT, '.git', 'hooks', 'post-commit'), 'utf8')); } catch { return false; } })(),
     desde: '3.4.2',
     o_que: 'the docs refresh (`--graph-docs`): the graph loses the knowledge base at every commit — rewrite it with `marvin --graphify --graphify-git-hook`' },
+  // US-89: the step-up ceiling (2 per stage, effort counts), "repeat with the check's error", back to the owner at the ceiling,
+  // and the Time row format for a step up (previous row `reprovado`, new reason `sobe:`).
+  { arquivo: path.relative(ROOT, path.join(DOCS, TEAM_GUIDE)).replace(/\\/g, '/'),
+    marca: /Teto\s+de\s+2\s+subidas/, desde: '3.4.5',
+    o_que: 'the step-up ceiling in the "Regra do sênior" — 2 per stage (effort counts), repeat the stage with the check\'s error, back to the owner at the ceiling' },
+  { arquivo: path.relative(ROOT, path.join(DOCS, AI_GUIDE)).replace(/\\/g, '/'),
+    marca: /Teto\s+de\s+2\s+subidas/, desde: '3.4.5',
+    o_que: 'the step-up ceiling — 2 per stage (effort counts), repeat the stage with the check\'s error, back to the owner at the ceiling' },
+  { arquivo: path.relative(ROOT, path.join(DOCS, 'Planejamento', 'README.md')).replace(/\\/g, '/'),
+    marca: /motivo\s+da\s+nova\s+começa\s+com\s+`sobe:`/, soCom: !OLD_LAYOUT, desde: '3.4.5',
+    o_que: 'the Time example of a step up — previous row `reprovado`, the new row\'s reason starts with `sobe:` (--status counts them)' },
 ];
 
 const out = UPDATES.filter(a => {

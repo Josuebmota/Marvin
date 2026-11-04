@@ -10,6 +10,17 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/trava-commit.mjs"
+          }
+        ]
+      }
     ]
   },
   "model": "sonnet"
