@@ -28,6 +28,7 @@ pai: ../Sobre.md
 - [US-104-impeccable-opcional](US-104-impeccable-opcional/Sobre.md)
 - [US-105-motion-para-sites](US-105-motion-para-sites/Sobre.md)
 - [US-106-impeccable-oferta-no-optional-tools](US-106-impeccable-oferta-no-optional-tools/Sobre.md)
+- [US-107-avaliar-serena](US-107-avaliar-serena/Sobre.md)
 
 ## Rumo
 - **15/09/2026** — aberta com a US-11. No mesmo dia o Impacto acusou escopo largo (6 nós, 4 comunidades); **US-11 cancelada e fatiada** em 11a (registro + graphify) e 11b (ponytail + papéis). O Sobre.md da 11 fica como registro das decisões comuns.
