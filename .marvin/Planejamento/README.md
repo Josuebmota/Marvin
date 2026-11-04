@@ -81,8 +81,12 @@ pai: ../Sobre.md
 ## Time
 <!-- proposto ANTES de começar, pela regra do AGENTS.md. Uma linha por ETAPA, com o modelo.
      Partida no Equipe.md: o degrau mais barato que serve; subir exige motivo. Quem decide
-     (tl/po) não é quem executa. Etapa sem modelo trava a execução e volta ao /refinar. -->
-     Papel = agente do `.claude/agents`, com a skill da etapa depois do `·` quando houver.
+     (tl/po) não é quem executa. Papel = agente do `.claude/agents`, com a skill da etapa depois do `·`
+     quando houver. Etapa sem modelo trava a execução e volta ao /refinar.
+     Subida (teto de 2 por etapa): linha nova da mesma etapa logo abaixo; a anterior fica `reprovado`
+     e o motivo da nova começa com `sobe:` e diz o check que falhou. Ex.:
+     | implementar | dev-back | Haiku · baixo | partida | reprovado |
+     | implementar | dev-back | Sonnet · baixo | sobe: teste X falhou | feito | -->
 | etapa | papel | modelo · esforço | motivo | estado |
 |---|---|---|---|---|
 | mapear o código | scout | Haiku · baixo | recuperação | pendente |

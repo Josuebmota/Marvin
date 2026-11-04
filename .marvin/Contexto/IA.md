@@ -27,6 +27,8 @@ Não há migração automática de sessão por quota nem economia medida.
 A escolha visa o mesmo resultado com o menor gasto: parta da opção elegível mais barata.
 O degrau sobe só com motivo registrado no Time da US. Se o `tl` já decidiu,
 quem executa não precisa do modelo do `tl`.
+Teto de 2 subidas por etapa (o esforço conta como subida): a subida repete a etapa com o
+erro do check, e no teto a etapa volta para o dono, sem subir mais.
 
 ## Entradas do glossário
 

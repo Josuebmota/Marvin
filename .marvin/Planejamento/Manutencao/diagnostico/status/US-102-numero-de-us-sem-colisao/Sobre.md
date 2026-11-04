@@ -38,3 +38,6 @@ Grafo (fresco, 04/11 17:21): `planningNodes` e `normUsPath`/`usKeyOf` (L716, L75
 - **01/11/2026** — anotada na conversa de 01/11. Crivo `tl` + `po`: **não refinada**. O `po` a quer cancelada ou estacionada (n=1, premissa errada); o `tl` descreve o menor escopo possível, mas pede que o `po` pese se vale com n=1. Fica `anotada` até o dono responder as ❓.
 - **01/11/2026** — ❓ respondidas pelo dono: a colisão foi US aberta por fora sem commit (conserto de processo) e a US fica estacionada.
 - **04/11/2026** — o dono mandou refinar e desenvolver as três anotadas (US-88, 89, 102); a espera pela segunda colisão foi dispensada. Ativa.
+
+## Evidência
+`marvin.mjs`, ramo `--us` (guarda de colisão antes de criar) + 3 verificações em `teste.mjs`; `node teste.mjs`: 727 passaram no commit `0e716c8` (04/11/2026). Diff lido pela sessão principal: sem escrita nova, sem rede nem git.

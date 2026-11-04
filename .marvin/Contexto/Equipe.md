@@ -29,6 +29,10 @@ localiza vai no Haiku. Spec clara faz o pensamento antes: o esforço parte do qu
 **Regra do sênior:** começa no degrau mais barato que serve (Haiku para tarefa mecânica
 bem especificada); a verificação (`qa`, teste) confere; **sobe só se falhar** — esforço
 antes de modelo —, com o motivo no *Time* da US. Tarefa trivial vai direto, sem triagem.
+**Teto de 2 subidas por etapa** (subir o esforço conta como subida). A subida repete a etapa
+com o erro do check na tarefa, num degrau acima; cada uma é uma linha nova no *Time*: a anterior
+fica `reprovado` e o `motivo` da nova começa com `sobe:` e diz o check que falhou. No teto, a
+etapa volta para o dono: `marvin --us <caminho> --pausar "dono"`.
 A última coluna é ponto de partida no Claude, não regra fixa: com outro fornecedor,
 consulte o guia de IA em [`IA.md`](IA.md).
 
