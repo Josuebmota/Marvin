@@ -23,5 +23,7 @@ metadata:
 
 ## Em andamento
 
+- [US-108-freellmapi-gateway-e-termos](../Planejamento/Novos/ferramentas-opcionais/adaptadores/US-108-freellmapi-gateway-e-termos/Sobre.md) — aberta 06/11/2026 (as US-109 e 110 estão refinadas, na fila, esperando esta); próximo passo: o dono responde as ❓ 1 e 2 (quais provedores tem chave, desktop ou Docker) e instala o gateway; depois o `scout` lê os termos
+
 - ⚪ [equipe-barata](../Contexto/Arquitetura/equipe-barata.md) — última release registrada 3.4.4; nenhuma US ativa. Serena fechada `usa: não` (US-107a/b); US-102, 88 e 89 desenvolvidas e concluídas em 04/11 (teste 727), sem commit de release. Próximo passo: a release (3.4.5: as entradas de `UPDATES` já usam essa versão) e depois `/refinar`; a fila refinada está vazia. Segue pendente: item 5 da US-88 (conferir a partir de 18/11 se há commit de código sem teste)
 

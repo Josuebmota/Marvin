@@ -80,7 +80,7 @@ Como usar:
   chamou, que leva ao `tl`. O bloco vai no `.md` de cada papel; o agente não lê este arquivo.
 - **Registrar ao lado:** na primeira US em que a régua for aplicada, anote também a escolha que o julgamento
   solto teria feito. Se a régua não mudar nenhuma escolha, ela é texto morto e sai.
-- **Hipótese não medida no Marvin:** trocar modelo ou esforço só na fronteira entre etapas, por causa do cache.
+- **Cache** (US-111, 07/11/2026; [doc oficial](https://code.claude.com/docs/en/prompt-caching)): trocar o **modelo** no meio da tarefa derruba o cache (cada modelo tem o seu e a requisição seguinte relê o histórico sem acerto), então troque na fronteira entre etapas. Trocar o **esforço** mantém o cache no Opus 5.5, Sonnet 5.5, Haiku 5.5 e Fable 5.1 (chave de API ou assinatura) e derruba nos demais modelos. Que isso economize no Marvin segue **hipótese não medida**.
 
 ## Regras que não podem quebrar
 
